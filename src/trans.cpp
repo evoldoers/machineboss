@@ -6,6 +6,35 @@
 
 using json = nlohmann::json;
 
+TransWeight MachineTransition::multiply (const TransWeight& l, const TransWeight& r) {
+  TransWeight w;
+  if (l.is_boolean() && l.get<bool>())
+    w = r;
+  else if (r.is_boolean() && r.get<bool>())
+    w = l;
+  else if (l.is_number_integer() && r.is_number_integer())
+    w = l.get<int>() * r.get<int>();
+  else if (l.is_number() && r.is_number())
+    w = l.get<double>() * r.get<double>();
+  else {
+    TransWeight& m = w["*"];
+    if (l.is_object() && l.count("*")) {
+      m = l.at("*");
+      if (r.is_object() && r.count("*"))
+	m.insert (m.end(), r.at("*").begin(), r.at("*").end());
+      else
+	m.push_back (r);
+    } else {
+      if (r.is_object() && r.count("*")) {
+	m = r.at("*");
+	m.push_back (l);
+      } else
+	m = TransWeight ({l, r});
+    }
+  }
+  return w;
+}
+
 MachineTransition::MachineTransition()
 { }
 
@@ -198,9 +227,10 @@ void Machine::writeJson (ostream& out) const {
       out << "{";
       if (t.in) out << "\"in\":\"" << t.in << "\",";
       if (t.out) out << "\"out\":\"" << t.out << "\",";
-      out << "\"to\":" << t.dest
-	  << ",\"weight\":" << t.weight
-	  << "}";
+      out << "\"to\":" << t.dest;
+      if (!(t.weight.is_boolean() && t.weight.get<bool>()))
+	out << ",\"weight\":" << t.weight;
+      out << "}";
     }
     out << "]}";
     if (s < nStates() - 1)
@@ -261,7 +291,7 @@ void Machine::readJson (istream& in) {
 	  Assert (tout.size() == 1, "Invalid output character: %s", tout.c_str());
 	  t.out = tout[0];
 	}
-	t.weight = jt.count("weight") ? jt.at("weight").get<double>() : 1.;
+	t.weight = jt.count("weight") ? jt.at("weight") : TransWeight(true);
 	ms.trans.push_back (t);
       }
     }
@@ -317,7 +347,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
 	  } else
 	    for (const auto& jt: msj.trans)
 	      if (it.out == jt.in) {
-		ms.trans.push_back (MachineTransition (it.in, jt.out, compState(it.dest,jt.dest), it.weight * jt.weight));
+		ms.trans.push_back (MachineTransition (it.in, jt.out, compState(it.dest,jt.dest), MachineTransition::multiply (it.weight, jt.weight)));
 		LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(it.dest,jt.dest) << endl);
 	      }
       } else
@@ -438,7 +468,7 @@ Machine Machine::waitingMachine() const {
 	  j.trans.push_back(t);
 	else
 	  w.trans.push_back(t);
-      j.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), 1.));
+      j.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(1)));
       old2new.push_back (new2old.size());
       new2old.push_back (newState.size());
       swap (newState[s], j);

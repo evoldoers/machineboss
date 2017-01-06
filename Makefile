@@ -73,14 +73,14 @@ TEST = t/testexpect.pl
 test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter-stutter
 
 test-echo:
-	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json t/expect/bitecho.json
+	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/expect/bitecho.json
 
 test-echo2:
-	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json -c t/machine/bitecho.json t/expect/bitecho-bitecho.json
+	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/machine/bitecho.json t/expect/bitecho-bitecho.json
 
 test-echo-stutter:
-	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json -c t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
+	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
 
 test-stutter-stutter:
-	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitstutter.json -c t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
+	@$(TEST) bin/$(MAIN) -v0 t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
 

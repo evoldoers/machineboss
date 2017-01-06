@@ -24,15 +24,18 @@ int main (int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "display this help message")
-      ("compose,c", po::value<vector<string> >(), "load machine from JSON file")
+      ("load,l", po::value<vector<string> >(), "load machine from JSON file")
       ("save,s", po::value<string>(), "save machine to JSON file")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log everything in this function")
       ("nocolor", "log in monochrome")
       ;
 
+    po::positional_options_description p;
+    p.add("load", -1);
+
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::store (po::command_line_parser(argc,argv).options(desc).positional(p).run(), vm);
     po::notify(vm);    
 
     // parse args
@@ -44,33 +47,26 @@ int main (int argc, char** argv) {
     logger.parseLogArgs (vm);
 
     // load transducers
-    if (!vm.count("compose"))
-      throw runtime_error ("Please specify at least one machine");
+    if (!vm.count("load"))
+      throw runtime_error ("Please load at least one machine");
 
-    const vector<string> comps = vm.at("compose").as<vector<string> >();
+    const vector<string> machines = vm.at("load").as<vector<string> >();
     Machine machine;
-    bool first = true;
-    for (auto iter = comps.rbegin(); iter != comps.rend(); ++iter) {
-      const Machine mc = Machine::fromFile((*iter).c_str());
-      if (first) {
-	LogThisAt(3,"Loading " << *iter << endl);
-	machine = mc;
-	first = false;
-      } else {
-	LogThisAt(3,"Pre-composing with " << *iter << endl);
-	machine = Machine::compose (mc, machine);
-      }
+    int n = 0;
+    for (auto iter = machines.rbegin(); iter != machines.rend(); ++iter) {
+      LogThisAt(2,(n ? "Pre-composing" : "Starting") << " with transducer " << *iter << endl);
+      const char* filename = (*iter).c_str();
+      if (n++)
+	machine = Machine::compose (Machine::fromFile(filename), machine);
+      else
+	machine = Machine::fromFile(filename);
     }
 
     // save transducer
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();
-      if (savefile == "-")
-	machine.writeJson (cout);
-      else {
-	  ofstream out (savefile);
-	  machine.writeJson (out);
-      }
+      ofstream out (savefile);
+      machine.writeJson (out);
     } else
       machine.writeJson (cout);
 

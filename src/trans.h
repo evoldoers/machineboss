@@ -4,8 +4,10 @@
 #include <string>
 #include <map>
 #include "vguard.h"
+#include "json.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 typedef unsigned long long State;
 
@@ -13,7 +15,7 @@ typedef unsigned long long State;
 
 typedef char OutputSymbol;
 typedef char InputSymbol;
-typedef double TransWeight;
+typedef json TransWeight;
 
 struct MachineTransition {
   InputSymbol in;
@@ -25,6 +27,7 @@ struct MachineTransition {
   bool inputEmpty() const;
   bool outputEmpty() const;
   bool isNull() const;
+  static TransWeight multiply (const TransWeight& l, const TransWeight& r);
 };
 
 struct MachineState {
