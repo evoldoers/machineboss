@@ -12,11 +12,18 @@ using json = nlohmann::json;
 typedef unsigned long long State;
 
 #define MachineNull '\0'
+#define MachineWaitTag "&"
+#define MachineSilentTag "$"
 
 typedef char OutputSymbol;
 typedef char InputSymbol;
 typedef json TransWeight;
 typedef json StateName;
+
+struct WeightAlgebra {
+  static TransWeight multiply (const TransWeight& l, const TransWeight& r);
+  static TransWeight add (const TransWeight& l, const TransWeight& r);
+};
 
 struct MachineTransition {
   InputSymbol in;
@@ -27,9 +34,7 @@ struct MachineTransition {
   MachineTransition (InputSymbol, OutputSymbol, State, TransWeight);
   bool inputEmpty() const;
   bool outputEmpty() const;
-  bool isNull() const;
-  static TransWeight multiply (const TransWeight& l, const TransWeight& r);
-  static TransWeight add (const TransWeight& l, const TransWeight& r);
+  bool isSilent() const;  // inputEmpty() && outputEmpty()
 };
 
 struct MachineState {
@@ -37,14 +42,16 @@ struct MachineState {
   vguard<MachineTransition> trans;
   MachineState();
   const MachineTransition* transFor (InputSymbol in) const;
-  bool exitsWithInput (const char* symbols) const;  // true if this has an input transition for the specified symbols
   bool exitsWithInput() const;  // true if this has an input transition
   bool exitsWithoutInput() const;  // true if this has a non-input transition
-  bool emitsOutput() const;  // true if this has an output transition
-  bool isDeterministic() const;  // true if this has only one transition and it is non-input
+  bool exitsWithIO() const;  // true if this has any transitions with input and/or output
+  bool exitsWithoutIO() const;  // true if this has any transitions without input or output
   bool terminates() const;  // true if this has no outgoing transitions. Note that the end state is not required to have this property
   bool waits() const;  // !exitsWithoutInput()
   bool continues() const;  // !exitsWithInput() && !terminates()
+  bool isDeterministic() const;  // true if this has only one transition and it is non-input
+  bool isSilent() const;  // !exitsWithIO()
+  bool isLoud() const;  // exitsWithIO() && !exitsWithoutIO()
   const MachineTransition& next() const;  // throws an exception if !isDeterministic()
 };
 
@@ -56,8 +63,6 @@ struct Machine {
   State startState() const;
   State endState() const;
   
-  bool isWaitingMachine() const;
-
   static Machine compose (const Machine& first, const Machine& second);
   
   void write (ostream& out) const;
@@ -77,8 +82,13 @@ struct Machine {
 
   map<InputSymbol,double> expectedBasesPerInputSymbol (const char* symbols = "01") const;
 
+  bool isWaitingMachine() const;  // all states wait or continue
+  bool isPunctuatedMachine() const;  // all states silent or loud
+  bool isAcyclicMachine() const;  // no 
+
+  Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine() const;  // convert to waiting machine
-  vguard<State> decoderToposort (const string& inputAlphabet) const;  // topological sort by non-output transitions
+  Machine punctuatedMachine() const;  // convert to punctuated machine
 };
 
 #endif /* TRANSDUCER_INCLUDED */

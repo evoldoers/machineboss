@@ -6,7 +6,7 @@
 
 using json = nlohmann::json;
 
-TransWeight MachineTransition::multiply (const TransWeight& l, const TransWeight& r) {
+TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
   if (l.is_boolean() && l.get<bool>())
     w = r;
@@ -27,7 +27,7 @@ TransWeight MachineTransition::multiply (const TransWeight& l, const TransWeight
     } else {
       if (r.is_object() && r.count("*")) {
 	m = r.at("*");
-	m.push_back (l);
+	m.insert (m.begin(), l);
       } else
 	m = TransWeight ({l, r});
     }
@@ -35,7 +35,7 @@ TransWeight MachineTransition::multiply (const TransWeight& l, const TransWeight
   return w;
 }
 
-TransWeight MachineTransition::add (const TransWeight& l, const TransWeight& r) {
+TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
   if (l.is_number_integer() && r.is_number_integer())
     w = l.get<int>() + r.get<int>();
@@ -78,7 +78,7 @@ bool MachineTransition::outputEmpty() const {
   return out == MachineNull;
 }
 
-bool MachineTransition::isNull() const {
+bool MachineTransition::isSilent() const {
   return in == MachineNull && out == MachineNull;
 }
 
@@ -94,13 +94,6 @@ const MachineTransition* MachineState::transFor (InputSymbol in) const {
 
 bool MachineState::terminates() const {
   return trans.empty();
-}
-
-bool MachineState::exitsWithInput (const char* symbols) const {
-  for (const auto& t: trans)
-    if (t.in && strchr (symbols, t.in) != NULL)
-      return true;
-  return false;
 }
 
 bool MachineState::exitsWithInput() const {
@@ -125,13 +118,6 @@ bool MachineState::continues() const {
   return !exitsWithInput() && !terminates();
 }
 
-bool MachineState::emitsOutput() const {
-  for (const auto& t: trans)
-    if (t.out)
-      return true;
-  return false;
-}
-
 bool MachineState::isDeterministic() const {
   return trans.size() == 1 && trans.front().in == 0;
 }
@@ -139,6 +125,28 @@ bool MachineState::isDeterministic() const {
 const MachineTransition& MachineState::next() const {
   Assert (isDeterministic(), "Called next() method on a non-deterministic state");
   return trans.front();
+}
+
+bool MachineState::exitsWithIO() const {
+  for (const auto& t: trans)
+    if (t.in || t.out)
+      return true;
+  return false;
+}
+
+bool MachineState::exitsWithoutIO() const {
+  for (const auto& t: trans)
+    if (!t.in && !t.out)
+      return true;
+  return false;
+}
+
+bool MachineState::isSilent() const {
+  return !exitsWithIO();
+}
+
+bool MachineState::isLoud() const {
+  return exitsWithIO() && !exitsWithoutIO();
 }
 
 State Machine::nStates() const {
@@ -239,30 +247,32 @@ string Machine::outputAlphabet() const {
 }
 
 void Machine::writeJson (ostream& out) const {
-  out << "{\"state\": [" << endl;
+  out << "{\"state\":" << endl;
   for (State s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
-    out << " {\"n\":" << s << ",";
-    if (ms.name.size())
-	out << "\"id\":" << ms.name << ",";
-    out << "\"trans\":[";
-    for (size_t nt = 0; nt < ms.trans.size(); ++nt) {
-      const MachineTransition& t = ms.trans[nt];
-      if (nt > 0) out << ",";
-      out << "{";
-      if (t.in) out << "\"in\":\"" << t.in << "\",";
-      if (t.out) out << "\"out\":\"" << t.out << "\",";
-      out << "\"to\":" << t.dest;
-      if (!(t.weight.is_boolean() && t.weight.get<bool>()))
-	out << ",\"weight\":" << t.weight;
-      out << "}";
+    out << (s == 0 ? " [" : "  ") << "{\"n\":" << s;
+    if (!ms.name.is_null())
+      out << "," << endl << "   \"id\":" << ms.name;
+    if (ms.trans.size()) {
+      out << "," << endl << "   \"trans\":[";
+      for (size_t nt = 0; nt < ms.trans.size(); ++nt) {
+	const MachineTransition& t = ms.trans[nt];
+	if (nt > 0)
+	  out << "," << endl << "            ";
+	out << "{\"to\":" << t.dest;
+	if (t.in) out << ",\"in\":\"" << t.in << "\"";
+	if (t.out) out << ",\"out\":\"" << t.out << "\"";
+	if (!(t.weight.is_boolean() && t.weight.get<bool>()))
+	  out << ",\"weight\":" << t.weight;
+	out << "}";
+      }
+      out << "]";
     }
-    out << "]}";
+    out << "}";
     if (s < nStates() - 1)
-      out << ",";
-    out << endl;
+      out << "," << endl;
   }
-  out << "]}" << endl;
+  out << endl << " ]" << endl << "}" << endl;
 }
 
 string Machine::toJsonString() const {
@@ -345,149 +355,135 @@ bool Machine::isWaitingMachine() const {
   return true;
 }
 
+bool Machine::isPunctuatedMachine() const {
+  for (const auto& ms: state)
+    if (!ms.isSilent() && !ms.isLoud())
+      return false;
+  return true;
+}
+
 Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   LogThisAt(3,"Composing " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to compose transducers A*B where B is not a waiting machine");
 
-  Machine tmpMachine;
-  vguard<MachineState>& comp = tmpMachine.state;
+  Machine compMachine;
+  vguard<MachineState>& comp = compMachine.state;
   comp = vguard<MachineState> (first.nStates() * second.nStates());
 
   auto compState = [&](State i,State j) -> State {
     return i * second.nStates() + j;
   };
-  auto compStateName = [&](State i,State j) -> StateName {
-    return StateName ({first.state[i].name, second.state[j].name});
-  };
+  for (State i = 0; i < first.nStates(); ++i)
+    for (State j = 0; j < second.nStates(); ++j) {
+      MachineState& ms = comp[compState(i,j)];
+      ms.name = StateName ({first.state[i].name, second.state[j].name});
+    }
   for (State i = 0; i < first.nStates(); ++i)
     for (State j = 0; j < second.nStates(); ++j) {
       MachineState& ms = comp[compState(i,j)];
       const MachineState& msi = first.state[i];
       const MachineState& msj = second.state[j];
-      ms.name = compStateName(i,j);
-      map<InputSymbol,map<OutputSymbol,map<State,TransWeight> > > t;
+      map<State,map<InputSymbol,map<OutputSymbol,TransWeight> > > t;
       auto accum = [&] (InputSymbol in, OutputSymbol out, State dest, TransWeight w) {
-	if (t[in][out].count(dest))
-	  t[in][out][dest] = MachineTransition::add(w,t[in][out][dest]);
+	LogThisAt(6,"Adding transition from " << ms.name << " to " << comp[dest].name << " with weight " << w << endl);
+	if (t[dest][in].count(out))
+	  t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
 	else
-	  t[in][out][dest] = w;
+	  t[dest][in][out] = w;
       };
       if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
-	  if (it.out == MachineNull) {
+	  if (it.out == MachineNull)
 	    accum (it.in, MachineNull, compState(it.dest,j), it.weight);
-	    LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(it.dest,j) << endl);
-	  } else
+	  else
 	    for (const auto& jt: msj.trans)
-	      if (it.out == jt.in) {
-		accum (it.in, jt.out, compState(it.dest,jt.dest), MachineTransition::multiply (it.weight, jt.weight));
-		LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(it.dest,jt.dest) << endl);
-	      }
+	      if (it.out == jt.in)
+		accum (it.in, jt.out, compState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight));
       } else
-	for (const auto& jt: msj.trans) {
+	for (const auto& jt: msj.trans)
 	  accum (MachineNull, jt.out, compState(i,jt.dest), jt.weight);
-	  LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(i,jt.dest) << endl);
-	}
-      for (const auto& in_map: t)
-	for (const auto& out_map: in_map.second)
-	  for (const auto& dest_weight: out_map.second)
-	    ms.trans.push_back (MachineTransition (in_map.first, out_map.first, dest_weight.first, dest_weight.second));
+      for (const auto& dest_map: t)
+	for (const auto& in_map: dest_map.second)
+	  for (const auto& out_weight: in_map.second)
+	    ms.trans.push_back (MachineTransition (in_map.first, out_weight.first, dest_map.first, out_weight.second));
     }
 
-  LogThisAt(8,"Intermediate machine:" << endl << tmpMachine.toJsonString());
+  LogThisAt(8,"Intermediate machine:" << endl << compMachine.toJsonString());
 
-  vguard<bool> reachableFromStart (comp.size(), false);
-  deque<State> queue;
-  queue.push_back (compState(first.startState(),second.startState()));
-  reachableFromStart[queue.front()] = true;
-  while (queue.size()) {
-    const State c = queue.front();
-    queue.pop_front();
-    for (const auto& t: comp[c].trans)
+  Machine finalMachine = compMachine.ergodicMachine();
+  LogThisAt(3,"Transducer composition yielded " << finalMachine.nStates() << "-state machine; " << plural (compMachine.nStates() - finalMachine.nStates(), "more state was", "more states were") << " unreachable" << endl);
+
+  return finalMachine;
+}
+
+Machine Machine::ergodicMachine() const {
+  vguard<bool> reachableFromStart (nStates(), false);
+  deque<State> fwdQueue;
+  fwdQueue.push_back (startState());
+  reachableFromStart[fwdQueue.front()] = true;
+  while (fwdQueue.size()) {
+    const State c = fwdQueue.front();
+    fwdQueue.pop_front();
+    for (const auto& t: state[c].trans)
       if (!reachableFromStart[t.dest]) {
 	reachableFromStart[t.dest] = true;
-	queue.push_back (t.dest);
+	fwdQueue.push_back (t.dest);
       }
   }
 
-  vguard<bool> endReachableFrom (comp.size(), false);
-  vguard<vguard<State> > sources (comp.size());
-  for (State s = 0; s < comp.size(); ++s)
-    for (const auto& t: comp[s].trans)
+  vguard<bool> endReachableFrom (nStates(), false);
+  vguard<vguard<State> > sources (nStates());
+  deque<State> backQueue;
+  for (State s = 0; s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
       sources[t.dest].push_back (s);
-  queue.push_back (compState(first.nStates()-1,second.nStates()-1));
-  endReachableFrom[queue.front()] = true;
-  while (queue.size()) {
-    const State c = queue.front();
-    queue.pop_front();
+  backQueue.push_back (endState());
+  endReachableFrom[backQueue.front()] = true;
+  while (backQueue.size()) {
+    const State c = backQueue.front();
+    backQueue.pop_front();
     for (State src: sources[c])
       if (!endReachableFrom[src]) {
 	endReachableFrom[src] = true;
-	queue.push_back (src);
+	backQueue.push_back (src);
       }
   }
 
+  vguard<bool> keep (nStates());
+  for (State s = 0; s < nStates(); ++s)
+    keep[s] = reachableFromStart[s] && endReachableFrom[s];
+
   map<State,State> nullEquiv;
-  for (State s = 0; s < comp.size(); ++s)
-    if (reachableFromStart[s] && endReachableFrom[s]) {
+  for (State s = 0; s < nStates(); ++s)
+    if (keep[s]) {
       State d = s;
-      while (comp[d].trans.size() == 1 && comp[d].trans.front().isNull())
-	d = comp[d].trans.front().dest;
+      while (state[d].trans.size() == 1 && state[d].trans.front().isSilent())
+	d = state[d].trans.front().dest;
       if (d != s)
 	nullEquiv[s] = d;
     }
-  vguard<State> old2new (comp.size());
-  State nStates = 0;
-  for (State oldIdx = 0; oldIdx < comp.size(); ++oldIdx)
-    if (reachableFromStart[oldIdx] && endReachableFrom[oldIdx] && !nullEquiv.count(oldIdx))
-      old2new[oldIdx] = nStates++;
-  for (State oldIdx = 0; oldIdx < comp.size(); ++oldIdx)
-    if (reachableFromStart[oldIdx] && endReachableFrom[oldIdx] && nullEquiv.count(oldIdx))
+  vguard<State> old2new (nStates());
+  State ns = 0;
+  for (State oldIdx = 0; oldIdx < nStates(); ++oldIdx)
+    if (keep[oldIdx] && !nullEquiv.count(oldIdx))
+      old2new[oldIdx] = ns++;
+  for (State oldIdx = 0; oldIdx < nStates(); ++oldIdx)
+    if (keep[oldIdx] && nullEquiv.count(oldIdx))
       old2new[oldIdx] = old2new[nullEquiv.at(oldIdx)];
-  for (State oldIdx = 0; oldIdx < comp.size(); ++oldIdx)
-    if (reachableFromStart[oldIdx] && endReachableFrom[oldIdx])
-      for (auto& t: comp[oldIdx].trans)
-	t.dest = old2new[t.dest];
-  LogThisAt(3,"Transducer composition yielded " << nStates << "-state machine; " << plural (comp.size() - nStates, "more state was", "more states were") << " unreachable" << endl);
-  Machine compMachine;
-  compMachine.state.reserve (nStates);
-  for (State oldIdx = 0; oldIdx < comp.size(); ++oldIdx)
-    if (reachableFromStart[oldIdx] && endReachableFrom[oldIdx] && !nullEquiv.count(oldIdx))
-      compMachine.state.push_back (comp[oldIdx]);
-  return compMachine;
-}
 
-vguard<State> Machine::decoderToposort (const string& inputAlphabet) const {
-  LogThisAt(5,"Toposorting transducer for decoder" << endl);
-  deque<State> S;
-  vguard<State> L;
-  vguard<int> nParents (nStates());
-  vguard<vguard<State> > children (nStates());
-  int edges = 0;
-  for (State s = 0; s < nStates(); ++s)
-    for (const auto& t: state[s].trans)
-      if (t.outputEmpty() && (t.inputEmpty() || inputAlphabet.find(t.in) != string::npos)) {
-	++nParents[t.dest];
-	++edges;
-	children[s].push_back (t.dest);
-      }
-  for (State s = 0; s < nStates(); ++s)
-    if (nParents[s] == 0)
-      S.push_back (s);
-  while (S.size()) {
-    const State n = S.front();
-    S.pop_front();
-    L.push_back (n);
-    for (auto m : children[n]) {
-      --edges;
-      if (--nParents[m] == 0)
-	S.push_back (m);
+  Machine em;
+  em.state.reserve (ns);
+  for (State oldIdx = 0; oldIdx < nStates(); ++oldIdx)
+    if (keep[oldIdx] && !nullEquiv.count(oldIdx)) {
+      em.state.push_back (MachineState());
+      em.state.back().name = state[oldIdx].name;
+      for (auto& t: state[oldIdx].trans)
+	if (keep[t.dest])
+	  em.state.back().trans.push_back (MachineTransition (t.in, t.out, old2new.at(t.dest), t.weight));
     }
-  }
-  if (edges > 0)
-    throw std::domain_error ("Transducer is cyclic, can't toposort");
-  return L;
+
+  return em;
 }
 
 Machine Machine::waitingMachine() const {
@@ -498,18 +494,18 @@ Machine Machine::waitingMachine() const {
     old2new[s] = new2old.size();
     new2old.push_back (s);
     if (!ms.waits() && !ms.continues()) {
-      MachineState j, w;
-      j.name = ms.name;
-      w.name["wait"] = ms.name;
+      MachineState c, w;
+      c.name = ms.name;
+      w.name[MachineWaitTag] = ms.name;
       for (const auto& t: ms.trans)
 	if (t.inputEmpty())
-	  j.trans.push_back(t);
+	  c.trans.push_back(t);
 	else
 	  w.trans.push_back(t);
-      j.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(1)));
+      c.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(true)));
       old2new.push_back (new2old.size());
       new2old.push_back (newState.size());
-      swap (newState[s], j);
+      swap (newState[s], c);
       newState.push_back (w);
     }
   }
@@ -523,4 +519,39 @@ Machine Machine::waitingMachine() const {
   LogThisAt(5,"Converted " << nStates() << "-state transducer into " << wm.nStates() << "-state waiting machine" << endl);
   LogThisAt(7,wm.toJsonString() << endl);
   return wm;
+}
+
+Machine Machine::punctuatedMachine() const {
+  vguard<MachineState> newState (state);
+  vguard<State> old2new (nStates()), new2old;
+  for (State s = 0; s < nStates(); ++s) {
+    const MachineState& ms = state[s];
+    old2new[s] = new2old.size();
+    new2old.push_back (s);
+    if (!ms.isSilent() && !ms.isLoud()) {
+      MachineState loud, silent;
+      loud.name = ms.name;
+      silent.name[MachineSilentTag] = ms.name;
+      for (const auto& t: ms.trans)
+	if (t.isSilent())
+	  silent.trans.push_back(t);
+	else
+	  loud.trans.push_back(t);
+      silent.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(true)));
+      old2new.push_back (new2old.size());
+      new2old.push_back (newState.size());
+      swap (newState[s], loud);
+      newState.push_back (silent);
+    }
+  }
+  Machine pm;
+  for (State s: new2old) {
+    MachineState& ms = newState[s];
+    for (auto& t: ms.trans)
+      t.dest = old2new[t.dest];
+    pm.state.push_back (ms);
+  }
+  LogThisAt(5,"Converted " << nStates() << "-state transducer into " << pm.nStates() << "-state punctuated machine" << endl);
+  LogThisAt(7,pm.toJsonString() << endl);
+  return pm;
 }
