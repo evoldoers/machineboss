@@ -56,7 +56,7 @@ obj/%.o: src/%.cpp
 	@test -e obj || mkdir obj
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
-obj/%.o: t/%.cpp
+obj/%.o: target/%.cpp
 	@test -e obj || mkdir obj
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
@@ -70,4 +70,17 @@ debug: all
 # Tests
 TEST = t/testexpect.pl
 
-test:
+test: test-echo test-echo2 test-echo-stutter test-stutter-stutter
+
+test-echo:
+	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json t/expect/bitecho.json
+
+test-echo2:
+	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json -c t/machine/bitecho.json t/expect/bitecho-bitecho.json
+
+test-echo-stutter:
+	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json -c t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
+
+test-stutter-stutter:
+	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitstutter.json -c t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
+
