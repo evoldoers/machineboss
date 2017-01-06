@@ -1,5 +1,5 @@
 {"state": [
  {"n":0,"id":["S","S"],"trans":[{"in":"0","out":"0","to":1},{"in":"1","out":"1","to":2}]},
- {"n":1,"id":["S","S0"],"trans":[{"out":"0","to":0,"weight":0.99},{"to":0,"weight":0.01}]},
- {"n":2,"id":["S","S1"],"trans":[{"out":"1","to":0,"weight":0.99},{"to":0,"weight":0.01}]}
+ {"n":1,"id":["S","S0"],"trans":[{"to":0,"weight":0.99},{"out":"0","to":1,"weight":0.01}]},
+ {"n":2,"id":["S","S1"],"trans":[{"to":0,"weight":0.99},{"out":"1","to":2,"weight":0.01}]}
 ]}

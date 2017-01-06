@@ -35,6 +35,31 @@ TransWeight MachineTransition::multiply (const TransWeight& l, const TransWeight
   return w;
 }
 
+TransWeight MachineTransition::add (const TransWeight& l, const TransWeight& r) {
+  TransWeight w;
+  if (l.is_number_integer() && r.is_number_integer())
+    w = l.get<int>() + r.get<int>();
+  else if (l.is_number() && r.is_number())
+    w = l.get<double>() + r.get<double>();
+  else {
+    TransWeight& s = w["+"];
+    if (l.is_object() && l.count("+")) {
+      s = l.at("+");
+      if (r.is_object() && r.count("+"))
+	s.insert (s.end(), r.at("+").begin(), r.at("+").end());
+      else
+	s.push_back (r);
+    } else {
+      if (r.is_object() && r.count("+")) {
+	s = r.at("+");
+	s.push_back (l);
+      } else
+	s = TransWeight ({l, r});
+    }
+  }
+  return w;
+}
+
 MachineTransition::MachineTransition()
 { }
 
@@ -341,22 +366,33 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
       const MachineState& msi = first.state[i];
       const MachineState& msj = second.state[j];
       ms.name = compStateName(i,j);
+      map<InputSymbol,map<OutputSymbol,map<State,TransWeight> > > t;
+      auto accum = [&] (InputSymbol in, OutputSymbol out, State dest, TransWeight w) {
+	if (t[in][out].count(dest))
+	  t[in][out][dest] = MachineTransition::add(w,t[in][out][dest]);
+	else
+	  t[in][out][dest] = w;
+      };
       if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
 	  if (it.out == MachineNull) {
-	    ms.trans.push_back (MachineTransition (it.in, MachineNull, compState(it.dest,j), it.weight));
+	    accum (it.in, MachineNull, compState(it.dest,j), it.weight);
 	    LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(it.dest,j) << endl);
 	  } else
 	    for (const auto& jt: msj.trans)
 	      if (it.out == jt.in) {
-		ms.trans.push_back (MachineTransition (it.in, jt.out, compState(it.dest,jt.dest), MachineTransition::multiply (it.weight, jt.weight)));
+		accum (it.in, jt.out, compState(it.dest,jt.dest), MachineTransition::multiply (it.weight, jt.weight));
 		LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(it.dest,jt.dest) << endl);
 	      }
       } else
 	for (const auto& jt: msj.trans) {
-	  ms.trans.push_back (MachineTransition (MachineNull, jt.out, compState(i,jt.dest), jt.weight));
+	  accum (MachineNull, jt.out, compState(i,jt.dest), jt.weight);
 	  LogThisAt(6,"Adding transition from " << ms.name << " to " << compStateName(i,jt.dest) << endl);
 	}
+      for (const auto& in_map: t)
+	for (const auto& out_map: in_map.second)
+	  for (const auto& dest_weight: out_map.second)
+	    ms.trans.push_back (MachineTransition (in_map.first, out_map.first, dest_weight.first, dest_weight.second));
     }
 
   LogThisAt(8,"Intermediate machine:" << endl << tmpMachine.toJsonString());

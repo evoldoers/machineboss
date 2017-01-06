@@ -29,6 +29,7 @@ struct MachineTransition {
   bool outputEmpty() const;
   bool isNull() const;
   static TransWeight multiply (const TransWeight& l, const TransWeight& r);
+  static TransWeight add (const TransWeight& l, const TransWeight& r);
 };
 
 struct MachineState {
