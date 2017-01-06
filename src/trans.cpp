@@ -94,6 +94,11 @@ State Machine::startState() const {
   return 0;
 }
 
+State Machine::endState() const {
+  Assert (nStates() > 0, "Machine has no states");
+  return nStates() - 1;
+}
+
 Machine::Machine()
 { }
 

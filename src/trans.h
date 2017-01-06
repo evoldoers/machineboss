@@ -32,7 +32,7 @@ struct MachineState {
   vguard<MachineTransition> trans;
   MachineState();
   const MachineTransition* transFor (InputSymbol in) const;
-  bool terminates() const;  // true if this has no outgoing transitions
+  bool terminates() const;  // true if this has no outgoing transitions. Note that the end state is not required to have this property
   bool exitsWithInput (const char* symbols) const;  // true if this has an input transition for the specified symbols
   bool exitsWithInput() const;  // true if this has an input transition
   bool exitsWithoutInput() const;  // true if this has a non-input transition
@@ -49,6 +49,7 @@ struct Machine {
   Machine();
   State nStates() const;
   State startState() const;
+  State endState() const;
   
   bool isWaitingMachine() const;
 
