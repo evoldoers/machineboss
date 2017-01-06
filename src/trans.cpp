@@ -2,9 +2,9 @@
 #include <fstream>
 #include "trans.h"
 #include "logger.h"
-#include "jsonutil.h"
+#include "json.hpp"
 
-using namespace JsonParser;
+using json = nlohmann::json;
 
 MachineTransition::MachineTransition()
 { }
@@ -218,18 +218,19 @@ string Machine::toJsonString() const {
 
 void Machine::readJson (istream& in) {
   state.clear();
-  ParsedJson pj (in);
-  JsonValue jstate = pj.getType ("state", JsonTag::JSON_ARRAY);
-  map<string,size_t> id2n;
-  for (JsonIterator iter = begin(jstate); iter != end(jstate); ++iter) {
-    const JsonMap jsmap (iter->value);
+  json pj;
+  in >> pj;
+  json jstate = pj.at("state");
+  Assert (jstate.is_array(), "state is not an array");
+  map<string,State> id2n;
+  for (const json& js : jstate) {
     MachineState ms;
-    if (jsmap.contains("n")) {
-      const size_t n = jsmap.getNumber("n");
-      Require (state.size() == n, "State n=%u out of sequence", n);
+    if (js.count("n")) {
+      const State n = js.at("n").get<State>();
+      Require ((State) state.size() == n, "State n=%ld out of sequence", n);
     }
-    if (jsmap.contains("id")) {
-      const string id = jsmap.getString("id");
+    if (js.count("id")) {
+      const string id = js.at("id").get<string>();
       Require (!id2n.count(id), "Duplicate state %s", id.c_str());
       id2n[id] = state.size();
       ms.name = id;
@@ -238,30 +239,29 @@ void Machine::readJson (istream& in) {
   }
 
   vguard<MachineState>::iterator msiter = state.begin();
-  for (JsonIterator iter = begin(jstate); iter != end(jstate); ++iter, ++msiter) {
-    const JsonMap jsmap (iter->value);
-    MachineState& ms = *msiter;
-    if (jsmap.contains ("trans")) {
-      JsonValue jtrans = jsmap.getType ("trans", JsonTag::JSON_ARRAY);
-      for (JsonIterator transIter = begin(jtrans); transIter != end(jtrans); ++transIter) {
-	const JsonMap jtmap (transIter->value);
+  for (const json& js : jstate) {
+    MachineState& ms = *msiter++;
+    if (js.count ("trans")) {
+      const json& jtrans = js.at("trans");
+      Assert (jtrans.is_array(), "trans is not an array");
+      for (const json& jt : jtrans) {
 	MachineTransition t;
 	t.in = t.out = 0;
-	const JsonValue& dest = jtmap["to"];
-	t.dest = dest.getTag() == JsonTag::JSON_NUMBER
-	  ? (size_t) dest.toNumber()
-	  : (size_t) id2n.at (string (dest.toString()));
-	if (jtmap.contains("in")) {
-	  const string& tin = jtmap.getString("in");
+	const json& dest = jt.at("to");
+	t.dest = dest.is_number()
+	  ? dest.get<State>()
+	  : id2n.at (dest.get<string>());
+	if (jt.count("in")) {
+	  const string tin = jt.at("in").get<string>();
 	  Assert (tin.size() == 1, "Invalid input character: %s", tin.c_str());
 	  t.in = tin[0];
 	}
-	if (jtmap.contains("out")) {
-	  const string& tout = jtmap.getString("out");
+	if (jt.count("out")) {
+	  const string tout = jt.at("out").get<string>();
 	  Assert (tout.size() == 1, "Invalid output character: %s", tout.c_str());
 	  t.out = tout[0];
 	}
-	t.weight = jtmap.contains("weight") ? jtmap.getNumber("weight") : 1.;
+	t.weight = jt.count("weight") ? jt.at("weight").get<double>() : 1.;
 	ms.trans.push_back (t);
       }
     }
