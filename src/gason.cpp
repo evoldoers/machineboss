@@ -4,7 +4,9 @@
 #define JSON_ZONE_SIZE 4096
 #define JSON_STACK_SIZE 32
 
-const char *jsonStrError(int err) {
+using namespace Gason;
+
+const char * Gason::jsonStrError(int err) {
     switch (err) {
 #define XX(no, str) \
     case JSON_##no: \
@@ -133,7 +135,7 @@ static inline JsonValue listToValue(JsonTag tag, JsonNode *tail) {
     return JsonValue(tag, nullptr);
 }
 
-int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator) {
+int Gason::jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator) {
     JsonNode *tails[JSON_STACK_SIZE];
     JsonTag tags[JSON_STACK_SIZE];
     char *keys[JSON_STACK_SIZE];
@@ -172,7 +174,7 @@ int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator
             }
             break;
         case '"':
-            o = JsonValue(JSON_STRING, s);
+            o = JsonValue(JsonTag::JSON_STRING, s);
             for (char *it = s; *s; ++it, ++s) {
                 int c = *it = *s;
                 if (c == '\\') {
@@ -240,42 +242,42 @@ int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator
         case 't':
             if (!(s[0] == 'r' && s[1] == 'u' && s[2] == 'e' && isdelim(s[3])))
                 return JSON_BAD_IDENTIFIER;
-            o = JsonValue(JSON_TRUE);
+            o = JsonValue(JsonTag::JSON_TRUE);
             s += 3;
             break;
         case 'f':
             if (!(s[0] == 'a' && s[1] == 'l' && s[2] == 's' && s[3] == 'e' && isdelim(s[4])))
                 return JSON_BAD_IDENTIFIER;
-            o = JsonValue(JSON_FALSE);
+            o = JsonValue(JsonTag::JSON_FALSE);
             s += 4;
             break;
         case 'n':
             if (!(s[0] == 'u' && s[1] == 'l' && s[2] == 'l' && isdelim(s[3])))
                 return JSON_BAD_IDENTIFIER;
-            o = JsonValue(JSON_NULL);
+            o = JsonValue(JsonTag::JSON_NULL);
             s += 3;
             break;
         case ']':
             if (pos == -1)
                 return JSON_STACK_UNDERFLOW;
-            if (tags[pos] != JSON_ARRAY)
+            if (tags[pos] != JsonTag::JSON_ARRAY)
                 return JSON_MISMATCH_BRACKET;
-            o = listToValue(JSON_ARRAY, tails[pos--]);
+            o = listToValue(JsonTag::JSON_ARRAY, tails[pos--]);
             break;
         case '}':
             if (pos == -1)
                 return JSON_STACK_UNDERFLOW;
-            if (tags[pos] != JSON_OBJECT)
+            if (tags[pos] != JsonTag::JSON_OBJECT)
                 return JSON_MISMATCH_BRACKET;
             if (keys[pos] != nullptr)
                 return JSON_UNEXPECTED_CHARACTER;
-            o = listToValue(JSON_OBJECT, tails[pos--]);
+            o = listToValue(JsonTag::JSON_OBJECT, tails[pos--]);
             break;
         case '[':
             if (++pos == JSON_STACK_SIZE)
                 return JSON_STACK_OVERFLOW;
             tails[pos] = nullptr;
-            tags[pos] = JSON_ARRAY;
+            tags[pos] = JsonTag::JSON_ARRAY;
             keys[pos] = nullptr;
             separator = true;
             continue;
@@ -283,7 +285,7 @@ int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator
             if (++pos == JSON_STACK_SIZE)
                 return JSON_STACK_OVERFLOW;
             tails[pos] = nullptr;
-            tags[pos] = JSON_OBJECT;
+            tags[pos] = JsonTag::JSON_OBJECT;
             keys[pos] = nullptr;
             separator = true;
             continue;
@@ -311,9 +313,9 @@ int jsonParse(char *s, char **endptr, JsonValue *value, JsonAllocator &allocator
             return JSON_OK;
         }
 
-        if (tags[pos] == JSON_OBJECT) {
+        if (tags[pos] == JsonTag::JSON_OBJECT) {
             if (!keys[pos]) {
-                if (o.getTag() != JSON_STRING)
+                if (o.getTag() != JsonTag::JSON_STRING)
                     return JSON_UNQUOTED_KEY;
                 keys[pos] = o.toString();
                 continue;

@@ -3,12 +3,14 @@
 #include "util.h"
 #include "logger.h"
 
+using namespace JsonParser;
+
 JsonMap::JsonMap (const JsonValue& value) {
   initMap (value);
 }
 
 void JsonMap::initMap (const JsonValue& value) {
-  Assert (value.getTag() == JSON_OBJECT, "JSON value is not an object");
+  Assert (value.getTag() == JsonTag::JSON_OBJECT, "JSON value is not an object");
   for (auto n : value)
     m[string(n->key)] = &n->value;
 }
@@ -50,41 +52,41 @@ JsonValue& JsonMap::getType (const string& key, JsonTag type) const {
 }
 
 JsonMap JsonMap::getObject (const char* key) const {
-  const JsonValue json = getType (key, JSON_OBJECT);
+  const JsonValue json = getType (key, JsonTag::JSON_OBJECT);
   return JsonMap (json);
 }
 
 JsonMap JsonMap::getObject (const string& key) const {
-  const JsonValue json = getType (key, JSON_OBJECT);
+  const JsonValue json = getType (key, JsonTag::JSON_OBJECT);
   return JsonMap (json);
 }
 
 double JsonMap::getNumber (const char* key) const {
-  return getType (key, JSON_NUMBER).toNumber();
+  return getType (key, JsonTag::JSON_NUMBER).toNumber();
 }
 
 double JsonMap::getNumber (const string& key) const {
-  return getType (key, JSON_NUMBER).toNumber();
+  return getType (key, JsonTag::JSON_NUMBER).toNumber();
 }
 
 string JsonMap::getString (const char* key) const {
-  return string (getType (key, JSON_STRING).toString());
+  return string (getType (key, JsonTag::JSON_STRING).toString());
 }
 
 string JsonMap::getString (const string& key) const {
-  return string (getType (key, JSON_STRING).toString());
+  return string (getType (key, JsonTag::JSON_STRING).toString());
 }
 
 bool JsonMap::getBool (const char* key) const {
   const JsonTag tag = (*this)[key].getTag();
-  Assert (tag == JSON_TRUE || tag == JSON_FALSE, "%s is not a boolean in JSON", key);
-  return tag == JSON_TRUE;
+  Assert (tag == JsonTag::JSON_TRUE || tag == JsonTag::JSON_FALSE, "%s is not a boolean in JSON", key);
+  return tag == JsonTag::JSON_TRUE;
 }
 
 bool JsonMap::getBool (const string& key) const {
   const JsonTag tag = (*this)[key].getTag();
-  Assert (tag == JSON_TRUE || tag == JSON_FALSE, "%s is not a boolean in JSON", key.c_str());
-  return tag == JSON_TRUE;
+  Assert (tag == JsonTag::JSON_TRUE || tag == JsonTag::JSON_FALSE, "%s is not a boolean in JSON", key.c_str());
+  return tag == JsonTag::JSON_TRUE;
 }
 
 ParsedJson::ParsedJson (const string& s, bool parseOrDie) {
@@ -100,15 +102,15 @@ void ParsedJson::parse (const string& s, bool parseOrDie) {
   str = s;
   buf = new char[str.size() + 1];
   strcpy (buf, str.c_str());
-  status = jsonParse (buf, &endPtr, &value, allocator);
+  status = Gason::jsonParse (buf, &endPtr, &value, allocator);
   if (parsedOk()) {
-    if (value.getTag() == JSON_OBJECT)
+    if (value.getTag() == JsonTag::JSON_OBJECT)
       initMap(value);
   } else {
     if (parseOrDie)
-      Fail ("JSON parsing error: %s at byte %zd", jsonStrError(status), endPtr - buf);
+      Fail ("JSON parsing error: %s at byte %zd", Gason::jsonStrError(status), endPtr - buf);
     else
-      Warn ("JSON parsing error: %s at byte %zd", jsonStrError(status), endPtr - buf);
+      Warn ("JSON parsing error: %s at byte %zd", Gason::jsonStrError(status), endPtr - buf);
   }
 }
 
@@ -117,7 +119,7 @@ ParsedJson::~ParsedJson() {
 }
 
 JsonValue* JsonUtil::find (const JsonValue& parent, const char* key) {
-  Assert (parent.getTag() == JSON_OBJECT, "JSON value is not an object");
+  Assert (parent.getTag() == JsonTag::JSON_OBJECT, "JSON value is not an object");
   for (auto i : parent)
     if (strcmp (i->key, key) == 0)
       return &i->value;
@@ -132,9 +134,9 @@ JsonValue& JsonUtil::findOrDie (const JsonValue& parent, const char* key) {
 
 vguard<double> JsonUtil::doubleVec (const JsonValue& arr) {
   vguard<double> v;
-  Assert (arr.getTag() == JSON_ARRAY, "JSON value is not an array");
+  Assert (arr.getTag() == JsonTag::JSON_ARRAY, "JSON value is not an array");
   for (auto n : arr) {
-    Assert (n->value.getTag() == JSON_NUMBER, "JSON value is not a number");
+    Assert (n->value.getTag() == JsonTag::JSON_NUMBER, "JSON value is not a number");
     v.push_back (n->value.toNumber());
   }
   return v;
@@ -142,9 +144,9 @@ vguard<double> JsonUtil::doubleVec (const JsonValue& arr) {
 
 vguard<size_t> JsonUtil::indexVec (const JsonValue& arr) {
   vguard<size_t> v;
-  Assert (arr.getTag() == JSON_ARRAY, "JSON value is not an array");
+  Assert (arr.getTag() == JsonTag::JSON_ARRAY, "JSON value is not an array");
   for (auto n : arr) {
-    Assert (n->value.getTag() == JSON_NUMBER, "JSON value is not a number");
+    Assert (n->value.getTag() == JsonTag::JSON_NUMBER, "JSON value is not a number");
     v.push_back ((size_t) n->value.toNumber());
   }
   return v;

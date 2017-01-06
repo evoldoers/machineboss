@@ -70,7 +70,7 @@ debug: all
 # Tests
 TEST = t/testexpect.pl
 
-test: test-echo test-echo2 test-echo-stutter test-stutter-stutter
+test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter-stutter
 
 test-echo:
 	@$(TEST) bin/$(MAIN) -v0 -c t/machine/bitecho.json t/expect/bitecho.json

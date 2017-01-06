@@ -4,6 +4,8 @@
 #include "logger.h"
 #include "jsonutil.h"
 
+using namespace JsonParser;
+
 MachineTransition::MachineTransition()
 { }
 
@@ -217,7 +219,7 @@ string Machine::toJsonString() const {
 void Machine::readJson (istream& in) {
   state.clear();
   ParsedJson pj (in);
-  JsonValue jstate = pj.getType ("state", JSON_ARRAY);
+  JsonValue jstate = pj.getType ("state", JsonTag::JSON_ARRAY);
   map<string,size_t> id2n;
   for (JsonIterator iter = begin(jstate); iter != end(jstate); ++iter) {
     const JsonMap jsmap (iter->value);
@@ -240,13 +242,13 @@ void Machine::readJson (istream& in) {
     const JsonMap jsmap (iter->value);
     MachineState& ms = *msiter;
     if (jsmap.contains ("trans")) {
-      JsonValue jtrans = jsmap.getType ("trans", JSON_ARRAY);
+      JsonValue jtrans = jsmap.getType ("trans", JsonTag::JSON_ARRAY);
       for (JsonIterator transIter = begin(jtrans); transIter != end(jtrans); ++transIter) {
 	const JsonMap jtmap (transIter->value);
 	MachineTransition t;
 	t.in = t.out = 0;
 	const JsonValue& dest = jtmap["to"];
-	t.dest = dest.getTag() == JSON_NUMBER
+	t.dest = dest.getTag() == JsonTag::JSON_NUMBER
 	  ? (size_t) dest.toNumber()
 	  : (size_t) id2n.at (string (dest.toString()));
 	if (jtmap.contains("in")) {
