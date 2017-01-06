@@ -1,0 +1,2 @@
+# acidbot
+Bioinformatics automata
