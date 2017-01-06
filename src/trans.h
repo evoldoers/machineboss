@@ -16,6 +16,7 @@ typedef unsigned long long State;
 typedef char OutputSymbol;
 typedef char InputSymbol;
 typedef json TransWeight;
+typedef json StateName;
 
 struct MachineTransition {
   InputSymbol in;
@@ -31,7 +32,7 @@ struct MachineTransition {
 };
 
 struct MachineState {
-  string name;
+  StateName name;
   vguard<MachineTransition> trans;
   MachineState();
   const MachineTransition* transFor (InputSymbol in) const;
@@ -43,7 +44,7 @@ struct MachineState {
   bool isDeterministic() const;  // true if this has only one transition and it is non-input
   bool waits() const;  // exitsWithInput() && !exitsWithoutInput()
   bool jumps() const;  // !exitsWithInput() && exitsWithoutInput()
-  const MachineTransition& next() const;
+  const MachineTransition& next() const;  // throws an exception if !isDeterministic()
 };
 
 struct Machine {

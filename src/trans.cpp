@@ -162,7 +162,7 @@ void Machine::write (ostream& out) const {
   for (State s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
     out << setw(iw+1) << left << stateIndex(s)
-	<< setw(nw+1) << left << ms.name;
+	<< setw(nw+1) << left << ms.name.dump();
     for (const auto& t: ms.trans) {
       out << " ";
       if (!t.inputEmpty())
@@ -184,7 +184,7 @@ string Machine::stateIndex (State s) {
 size_t Machine::stateNameWidth() const {
   size_t w = 0;
   for (const auto& ms: state)
-    w = max (w, ms.name.size());
+    w = max (w, ms.name.dump().size());
   return w;
 }
 
@@ -219,7 +219,7 @@ void Machine::writeJson (ostream& out) const {
     const MachineState& ms = state[s];
     out << " {\"n\":" << s << ",";
     if (ms.name.size())
-	out << "\"id\":\"" << ms.name << "\",";
+	out << "\"id\":" << ms.name << ",";
     out << "\"trans\":[";
     for (size_t nt = 0; nt < ms.trans.size(); ++nt) {
       const MachineTransition& t = ms.trans[nt];
@@ -260,9 +260,11 @@ void Machine::readJson (istream& in) {
       Require ((State) state.size() == n, "State n=%ld out of sequence", n);
     }
     if (js.count("id")) {
-      const string id = js.at("id").get<string>();
-      Require (!id2n.count(id), "Duplicate state %s", id.c_str());
-      id2n[id] = state.size();
+      const StateName id = js.at("id");
+      Assert (!id.is_number(), "id can't be a number");
+      const string idStr = id.dump();
+      Require (!id2n.count(idStr), "Duplicate state %s", idStr.c_str());
+      id2n[idStr] = state.size();
       ms.name = id;
     }
     state.push_back (ms);
@@ -280,7 +282,7 @@ void Machine::readJson (istream& in) {
 	const json& dest = jt.at("to");
 	t.dest = dest.is_number()
 	  ? dest.get<State>()
-	  : id2n.at (dest.get<string>());
+	  : id2n.at (dest.dump());
 	if (jt.count("in")) {
 	  const string tin = jt.at("in").get<string>();
 	  Assert (tin.size() == 1, "Invalid input character: %s", tin.c_str());
@@ -330,8 +332,8 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   auto compState = [&](State i,State j) -> State {
     return i * second.nStates() + j;
   };
-  auto compStateName = [&](State i,State j) -> string {
-    return string("(") + first.state[i].name + "," + second.state[j].name + ")";
+  auto compStateName = [&](State i,State j) -> StateName {
+    return StateName ({first.state[i].name, second.state[j].name});
   };
   for (State i = 0; i < first.nStates(); ++i)
     for (State j = 0; j < second.nStates(); ++j) {
@@ -461,8 +463,8 @@ Machine Machine::waitingMachine() const {
     new2old.push_back (s);
     if (!ms.waits() && !ms.jumps() && !ms.terminates()) {
       MachineState j, w;
-      j.name = ms.name + ";j";
-      w.name = ms.name + ";w";
+      j.name = ms.name;
+      w.name["wait"] = ms.name;
       for (const auto& t: ms.trans)
 	if (t.inputEmpty())
 	  j.trans.push_back(t);
