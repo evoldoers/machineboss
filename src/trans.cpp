@@ -36,7 +36,7 @@ const MachineTransition* MachineState::transFor (InputSymbol in) const {
   return NULL;
 }
 
-bool MachineState::isEnd() const {
+bool MachineState::terminates() const {
   return trans.empty();
 }
 
@@ -61,11 +61,11 @@ bool MachineState::exitsWithoutInput() const {
   return false;
 }
 
-bool MachineState::isWait() const {
+bool MachineState::waits() const {
   return exitsWithInput() && !exitsWithoutInput();
 }
 
-bool MachineState::isNonWait() const {
+bool MachineState::jumps() const {
   return !exitsWithInput() && exitsWithoutInput();
 }
 
@@ -276,7 +276,7 @@ Machine Machine::fromFile (const char* filename) {
 
 bool Machine::isWaitingMachine() const {
   for (const auto& ms: state)
-    if (!ms.isWait() && !ms.isNonWait() && !ms.isEnd())
+    if (!ms.waits() && !ms.jumps() && !ms.terminates())
       return false;
   return true;
 }
@@ -302,7 +302,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
       const MachineState& msi = first.state[i];
       const MachineState& msj = second.state[j];
       ms.name = compStateName(i,j);
-      if (msj.isWait() || msj.isEnd()) {
+      if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
 	  if (it.out == MachineNull) {
 	    ms.trans.push_back (MachineTransition (it.in, MachineNull, compState(it.dest,j), it.weight));
@@ -422,19 +422,19 @@ Machine Machine::waitingMachine() const {
     const MachineState& ms = state[s];
     old2new[s] = new2old.size();
     new2old.push_back (s);
-    if (!ms.isWait() && !ms.isNonWait()) {
-      MachineState nw, w;
-      nw.name = ms.name + ";n";
+    if (!ms.waits() && !ms.jumps() && !ms.terminates()) {
+      MachineState j, w;
+      j.name = ms.name + ";j";
       w.name = ms.name + ";w";
       for (const auto& t: ms.trans)
 	if (t.inputEmpty())
-	  nw.trans.push_back(t);
+	  j.trans.push_back(t);
 	else
 	  w.trans.push_back(t);
-      nw.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), 1.));
+      j.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), 1.));
       old2new.push_back (new2old.size());
       new2old.push_back (newState.size());
-      swap (newState[s], nw);
+      swap (newState[s], j);
       newState.push_back (w);
     }
   }

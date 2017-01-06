@@ -32,14 +32,14 @@ struct MachineState {
   vguard<MachineTransition> trans;
   MachineState();
   const MachineTransition* transFor (InputSymbol in) const;
-  bool isEnd() const;  // true if this has no outgoing transitions
+  bool terminates() const;  // true if this has no outgoing transitions
   bool exitsWithInput (const char* symbols) const;  // true if this has an input transition for the specified symbols
   bool exitsWithInput() const;  // true if this has an input transition
   bool exitsWithoutInput() const;  // true if this has a non-input transition
   bool emitsOutput() const;  // true if this has an output transition
   bool isDeterministic() const;  // true if this has only one transition and it is non-input
-  bool isWait() const;  // exitsWithInput() && !exitsWithoutInput()
-  bool isNonWait() const;  // !exitsWithInput() && exitsWithoutInput()
+  bool waits() const;  // exitsWithInput() && !exitsWithoutInput()
+  bool jumps() const;  // !exitsWithInput() && exitsWithoutInput()
   const MachineTransition& next() const;
 };
 
