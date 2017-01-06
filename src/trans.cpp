@@ -118,11 +118,11 @@ bool MachineState::exitsWithoutInput() const {
 }
 
 bool MachineState::waits() const {
-  return exitsWithInput() && !exitsWithoutInput();
+  return !exitsWithoutInput();
 }
 
-bool MachineState::jumps() const {
-  return !exitsWithInput() && exitsWithoutInput();
+bool MachineState::continues() const {
+  return !exitsWithInput() && !terminates();
 }
 
 bool MachineState::emitsOutput() const {
@@ -340,7 +340,7 @@ Machine Machine::fromFile (const char* filename) {
 
 bool Machine::isWaitingMachine() const {
   for (const auto& ms: state)
-    if (!ms.waits() && !ms.jumps() && !ms.terminates())
+    if (!ms.waits() && !ms.continues())
       return false;
   return true;
 }
@@ -497,7 +497,7 @@ Machine Machine::waitingMachine() const {
     const MachineState& ms = state[s];
     old2new[s] = new2old.size();
     new2old.push_back (s);
-    if (!ms.waits() && !ms.jumps() && !ms.terminates()) {
+    if (!ms.waits() && !ms.continues()) {
       MachineState j, w;
       j.name = ms.name;
       w.name["wait"] = ms.name;
