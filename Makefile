@@ -24,6 +24,7 @@ CPPFLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(BOOSTFLAGS)
 else
 CPPFLAGS = -std=c++11 -g -O3 $(BOOSTFLAGS)
 endif
+CPPFLAGS += -Iext -Iext/nlohmann_json
 LIBFLAGS = -lstdc++ -lz $(BOOSTLIBS)
 
 CPPFILES = $(wildcard src/*.cpp)
@@ -66,6 +67,14 @@ clean:
 	rm -rf bin/$(MAIN) obj/*
 
 debug: all
+
+# Schema
+# valijson doesn't like the URLs, but other validators demand them, so strip them out for xxd
+schema/%.h: schema/%.nourl.json
+	xxd -i $< | sed 's/.nourl//' >$@
+
+schema/%.nourl.json: schema/%.json
+	grep -v http $< >$@
 
 # Tests
 TEST = t/testexpect.pl

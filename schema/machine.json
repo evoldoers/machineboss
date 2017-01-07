@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/machine.json",
+  "description": "Acidbot transducer schema",
+  "type": "object",
+  "required": ["state"],
+  "properties": {
+    "state": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "not": {
+              "type": "number"
+            }
+          },
+          "n": {
+            "type": "number"
+          },
+          "trans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "to": {},
+                "in": { "type": "string" },
+                "out": { "type": "string" },
+                "weight": { "$ref": "#/definitions/expr" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "anyOf": [ {"required": ["id"]}, {"required": ["n"]} ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "expr": {
+      "oneOf": [
+        {"type": ["boolean","number","string"]},
+        {"type": "object",
+         "oneOf": [
+           { "required": ["*"],
+             "additionalProperties": false,
+             "properties": { "*": { "type": "array", "items": { "$ref": "#/definitions/expr" } } } },
+           { "required": ["+"],
+             "additionalProperties": false,
+             "properties": { "+": { "type": "array", "items": { "$ref": "#/definitions/expr" } } } },
+           { "required": ["/"],
+             "additionalProperties": false,
+             "properties": { "/": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } },
+           { "required": ["-"],
+             "additionalProperties": false,
+             "properties": { "+": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } }
+         ]
+        }
+      ]
+    }
+  }
+}

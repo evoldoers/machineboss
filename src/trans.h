@@ -4,8 +4,8 @@
 #include <string>
 #include <map>
 #include <list>
+#include <json.hpp>
 #include "vguard.h"
-#include "json.hpp"
 
 using namespace std;
 using json = nlohmann::json;
@@ -67,6 +67,7 @@ struct Machine {
   void writeJson (ostream& out) const;
   string toJsonString() const;
   void readJson (istream& in);
+  void readJson (const json& json);
   static Machine fromJson (istream& in);
   static Machine fromFile (const char* filename);
 

@@ -1,9 +1,11 @@
 #include <iomanip>
 #include <fstream>
 #include <set>
+#include <json.hpp>
+
 #include "trans.h"
 #include "logger.h"
-#include "json.hpp"
+#include "schema.h"
 
 using json = nlohmann::json;
 
@@ -199,6 +201,11 @@ void Machine::readJson (istream& in) {
   state.clear();
   json pj;
   in >> pj;
+  readJson(pj);
+}
+
+void Machine::readJson (const json& pj) {
+  Require (MachineSchema::validate(pj), "Machine specification does not fit schema");
   json jstate = pj.at("state");
   Assert (jstate.is_array(), "state is not an array");
   map<string,StateIndex> id2n;
