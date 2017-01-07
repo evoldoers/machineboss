@@ -7,6 +7,10 @@
 
 using json = nlohmann::json;
 
+TransWeight WeightAlgebra::geometricSum (const TransWeight& p) {
+  return TransWeight::object ({{"/", TransWeight::array ({1, TransWeight::object ({{"-", TransWeight::array ({1,p})}})})}});
+}
+
 TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
   if (l.is_boolean() && l.get<bool>())
@@ -17,22 +21,8 @@ TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r)
     w = l.get<int>() * r.get<int>();
   else if (l.is_number() && r.is_number())
     w = l.get<double>() * r.get<double>();
-  else {
-    TransWeight& m = w["*"];
-    if (l.is_object() && l.count("*")) {
-      m = l.at("*");
-      if (r.is_object() && r.count("*"))
-	m.insert (m.end(), r.at("*").begin(), r.at("*").end());
-      else
-	m.push_back (r);
-    } else {
-      if (r.is_object() && r.count("*")) {
-	m = r.at("*");
-	m.insert (m.begin(), l);
-      } else
-	m = TransWeight ({l, r});
-    }
-  }
+  else
+    w = TransWeight::object ({{"*", TransWeight::array({l,r})}});
   return w;
 }
 
@@ -46,22 +36,8 @@ TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
     w = l.get<int>() + r.get<int>();
   else if (l.is_number() && r.is_number())
     w = l.get<double>() + r.get<double>();
-  else {
-    TransWeight& s = w["+"];
-    if (l.is_object() && l.count("+")) {
-      s = l.at("+");
-      if (r.is_object() && r.count("+"))
-	s.insert (s.end(), r.at("+").begin(), r.at("+").end());
-      else
-	s.push_back (r);
-    } else {
-      if (r.is_object() && r.count("+")) {
-	s = r.at("+");
-	s.push_back (l);
-      } else
-	s = TransWeight ({l, r});
-    }
-  }
+  else
+    w = TransWeight::object ({{"+", TransWeight::array({l,r})}});
   return w;
 }
 
@@ -76,30 +52,23 @@ MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, StateInd
 { }
 
 bool MachineTransition::inputEmpty() const {
-  return in == MachineNull;
+  return in.empty();
 }
 
 bool MachineTransition::outputEmpty() const {
-  return out == MachineNull;
+  return out.empty();
 }
 
 bool MachineTransition::isSilent() const {
-  return in == MachineNull && out == MachineNull;
+  return in.empty() && out.empty();
 }
 
 bool MachineTransition::isLoud() const {
-  return in != MachineNull || out != MachineNull;
+  return !in.empty() || !out.empty();
 }
 
 MachineState::MachineState()
 { }
-
-const MachineTransition* MachineState::transFor (InputSymbol in) const {
-  for (const auto& t: trans)
-    if (t.in == in)
-      return &t;
-  return NULL;
-}
 
 bool MachineState::terminates() const {
   return trans.empty();
@@ -107,14 +76,14 @@ bool MachineState::terminates() const {
 
 bool MachineState::exitsWithInput() const {
   for (const auto& t: trans)
-    if (t.in)
+    if (!t.inputEmpty())
       return true;
   return false;
 }
 
 bool MachineState::exitsWithoutInput() const {
   for (const auto& t: trans)
-    if (!t.in)
+    if (t.inputEmpty())
       return true;
   return false;
 }
@@ -127,25 +96,16 @@ bool MachineState::continues() const {
   return !exitsWithInput() && !terminates();
 }
 
-bool MachineState::isDeterministic() const {
-  return trans.size() == 1 && trans.front().in == 0;
-}
-
-const MachineTransition& MachineState::next() const {
-  Assert (isDeterministic(), "Called next() method on a non-deterministic state");
-  return trans.front();
-}
-
 bool MachineState::exitsWithIO() const {
   for (const auto& t: trans)
-    if (t.in || t.out)
+    if (!t.inputEmpty() || !t.outputEmpty())
       return true;
   return false;
 }
 
 bool MachineState::exitsWithoutIO() const {
   for (const auto& t: trans)
-    if (!t.in && !t.out)
+    if (t.inputEmpty() && t.outputEmpty())
       return true;
   return false;
 }
@@ -162,6 +122,13 @@ StateIndex Machine::nStates() const {
   return state.size();
 }
 
+size_t Machine::nTransitions() const {
+  size_t n = 0;
+  for (auto& ms: state)
+    n += ms.trans.size();
+  return n;
+}
+
 StateIndex Machine::startState() const {
   Assert (nStates() > 0, "Machine has no states");
   return 0;
@@ -175,22 +142,22 @@ StateIndex Machine::endState() const {
 Machine::Machine()
 { }
 
-string Machine::inputAlphabet() const {
-  set<char> alph;
+vguard<InputSymbol> Machine::inputAlphabet() const {
+  set<InputSymbol> alph;
   for (const auto& ms: state)
     for (const auto& t: ms.trans)
       if (!t.inputEmpty())
 	alph.insert (t.in);
-  return string (alph.begin(), alph.end());
+  return vguard<InputSymbol> (alph.begin(), alph.end());
 }
 
-string Machine::outputAlphabet() const {
-  set<char> alph;
+vguard<OutputSymbol> Machine::outputAlphabet() const {
+  set<OutputSymbol> alph;
   for (const auto& ms: state)
     for (const auto& t: ms.trans)
       if (!t.outputEmpty())
 	alph.insert (t.out);
-  return string (alph.begin(), alph.end());
+  return vguard<OutputSymbol> (alph.begin(), alph.end());
 }
 
 void Machine::writeJson (ostream& out) const {
@@ -207,8 +174,8 @@ void Machine::writeJson (ostream& out) const {
 	if (nt++)
 	  out << "," << endl << "            ";
 	out << "{\"to\":" << t.dest;
-	if (t.in) out << ",\"in\":\"" << t.in << "\"";
-	if (t.out) out << ",\"out\":\"" << t.out << "\"";
+	if (!t.inputEmpty()) out << ",\"in\":\"" << t.in << "\"";
+	if (!t.outputEmpty()) out << ",\"out\":\"" << t.out << "\"";
 	if (!(t.weight.is_boolean() && t.weight.get<bool>()))
 	  out << ",\"weight\":" << t.weight;
 	out << "}";
@@ -260,21 +227,14 @@ void Machine::readJson (istream& in) {
       Assert (jtrans.is_array(), "trans is not an array");
       for (const json& jt : jtrans) {
 	MachineTransition t;
-	t.in = t.out = 0;
 	const json& dest = jt.at("to");
 	t.dest = dest.is_number()
 	  ? dest.get<StateIndex>()
 	  : id2n.at (dest.dump());
-	if (jt.count("in")) {
-	  const string tin = jt.at("in").get<string>();
-	  Assert (tin.size() == 1, "Invalid input character: %s", tin.c_str());
-	  t.in = tin[0];
-	}
-	if (jt.count("out")) {
-	  const string tout = jt.at("out").get<string>();
-	  Assert (tout.size() == 1, "Invalid output character: %s", tout.c_str());
-	  t.out = tout[0];
-	}
+	if (jt.count("in"))
+	  t.in = jt.at("in").get<string>();
+	if (jt.count("out"))
+	  t.out = jt.at("out").get<string>();
 	t.weight = jt.count("weight") ? jt.at("weight") : TransWeight(true);
 	ms.trans.push_back (t);
       }
@@ -302,13 +262,6 @@ bool Machine::isErgodicMachine() const {
 bool Machine::isWaitingMachine() const {
   for (const auto& ms: state)
     if (!ms.waits() && !ms.continues())
-      return false;
-  return true;
-}
-
-bool Machine::isPunctuatedMachine() const {
-  for (const auto& ms: state)
-    if (!ms.isSilent() && !ms.isLoud())
       return false;
   return true;
 }
@@ -346,20 +299,20 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
       TransAccumulator ta;
       if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
-	  if (it.out == MachineNull)
-	    ta.accumulate (it.in, MachineNull, compState(it.dest,j), it.weight);
+	  if (it.outputEmpty())
+	    ta.accumulate (it.in, string(), compState(it.dest,j), it.weight);
 	  else
 	    for (const auto& jt: msj.trans)
 	      if (it.out == jt.in)
 		ta.accumulate (it.in, jt.out, compState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight));
       } else
 	for (const auto& jt: msj.trans)
-	  ta.accumulate (MachineNull, jt.out, compState(i,jt.dest), jt.weight);
+	  ta.accumulate (string(), jt.out, compState(i,jt.dest), jt.weight);
       ms.trans = ta.transitions();
     }
 
   LogThisAt(3,"Transducer composition yielded " << compMachine.nStates() << "-state machine" << endl);
-  return compMachine.ergodicMachine().advancingMachine().punctuatedMachine();
+  return compMachine.ergodicMachine().advancingMachine();
 }
 
 set<StateIndex> Machine::accessibleStates() const {
@@ -438,7 +391,7 @@ Machine Machine::ergodicMachine() const {
     }
 
   Assert (em.isErgodicMachine(), "failed to create ergodic machine");
-  LogThisAt(5,"Converted " << nStates() << "-state transducer into " << em.nStates() << "-state ergodic machine" << endl);
+  LogThisAt(5,"Trimmed " << nStates() << "-state transducer into " << em.nStates() << "-state ergodic machine" << endl);
   LogThisAt(7,em.toJsonString() << endl);
 
   return em;
@@ -460,7 +413,7 @@ Machine Machine::waitingMachine() const {
 	  c.trans.push_back(t);
 	else
 	  w.trans.push_back(t);
-      c.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(true)));
+      c.trans.push_back (MachineTransition (string(), string(), newState.size(), TransWeight(true)));
       old2new.push_back (new2old.size());
       new2old.push_back (newState.size());
       swap (newState[s], c);
@@ -480,104 +433,76 @@ Machine Machine::waitingMachine() const {
   return wm;
 }
 
-Machine Machine::punctuatedMachine() const {
-  vguard<MachineState> newState (state);
-  vguard<StateIndex> old2new (nStates()), new2old;
-  for (StateIndex s = 0; s < nStates(); ++s) {
-    const MachineState& ms = state[s];
-    old2new[s] = new2old.size();
-    new2old.push_back (s);
-    if (!ms.isSilent() && !ms.isLoud()) {
-      MachineState loud, silent;
-      loud.name = ms.name;
-      silent.name[MachineSilentTag] = ms.name;
-      for (const auto& t: ms.trans)
-	if (t.isSilent())
-	  silent.trans.push_back(t);
-	else
-	  loud.trans.push_back(t);
-      silent.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(true)));
-      old2new.push_back (new2old.size());
-      new2old.push_back (newState.size());
-      swap (newState[s], silent);
-      newState.push_back (loud);
-    }
-  }
-  Machine pm;
-  for (StateIndex s: new2old) {
-    MachineState& ms = newState[s];
-    for (auto& t: ms.trans)
-      t.dest = old2new[t.dest];
-    pm.state.push_back (ms);
-  }
-  Assert (pm.isPunctuatedMachine(), "failed to create punctuated machine");
-  LogThisAt(5,"Converted " << nStates() << "-state transducer into " << pm.nStates() << "-state punctuated machine" << endl);
-  LogThisAt(7,pm.toJsonString() << endl);
-  return pm;
-}
-
 Machine Machine::advancingMachine() const {
   Machine am;
-  am.state.reserve (nStates());
-  map<StateIndex,TransList> effTrans;
-  map<StateIndex,StateIndex> pos;
-  for (StateIndex s = 0; s < nStates(); ++s) {
-    function<void(StateIndex)> updateEffTrans = [&](StateIndex i) {
-      bool upToDate = false;
-      TransList oldEffTrans;
-      if (effTrans.count(i)) {
-	if (pos[i] >= s)
-	  upToDate = true;
-	else
-	  oldEffTrans = effTrans.at(i);
-      } else
-	oldEffTrans = state[i].trans;
-      if (!upToDate) {
-	TransList newEffTrans;
-	StateIndex newPos = nStates();
-	for (auto& t_ij: oldEffTrans) {
-	  const StateIndex j = t_ij.dest;
+  if (nStates()) {
+    am.state.reserve (nStates());
+    vguard<TransList> effTrans;
+    vguard<StateIndex> minDest (nStates());
+    for (StateIndex s = 0; s < nStates(); ++s) {
+      const MachineState& ms = state[s];
+      effTrans.push_back (ms.trans);
+      am.state.push_back (MachineState());
+      MachineState& ams = am.state.back();
+      ams.name = ms.name;
+      vguard<bool> markedForUpdate (s + 1, false);
+      function<void(StateIndex)> markForUpdate = [&](StateIndex i) {
+	markedForUpdate[i] = true;
+	if (minDest[i] < s)
+	  for (auto& t_ij: effTrans[i]) {
+	    Assert (t_ij.isLoud() || i == s || t_ij.dest > i, "oops: cycle. i=%d j=%d", i, t_ij.dest);
+	    if (t_ij.isSilent() && t_ij.dest < s && !markedForUpdate[t_ij.dest])
+	      markForUpdate (t_ij.dest);
+	  }
+      };
+      markForUpdate(s);
+      function<void(StateIndex)> updateEffTrans = [&](StateIndex i) {
+	TransList newEffTrans, elimTrans;
+	StateIndex newMinDest = nStates();
+	for (auto& t_ij: effTrans[i]) {
 	  if (t_ij.isLoud())
 	    newEffTrans.push_back(t_ij);
-	  else if (j >= s) {
-	    newEffTrans.push_back(t_ij);
-	    newPos = min (newPos, j);
-	  } else {
-	    updateEffTrans(j);
-	    for (auto& t_jk: effTrans.at(j)) {
-	      newEffTrans.push_back (MachineTransition (t_jk.in, t_jk.out, t_jk.dest, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
-	      newPos = min (newPos, t_jk.dest);
-	    }
+	  else {
+	    const StateIndex j = t_ij.dest;
+	    if (j >= s) {
+	      newMinDest = min (newMinDest, j);
+	      newEffTrans.push_back(t_ij);
+	    } else
+	      for (auto& t_jk: effTrans[j]) {
+		const StateIndex k = t_jk.dest;
+		Assert (t_jk.isLoud() || (k>j && (k > i || (k == i && i == s))), "oops: cycle. i=%d j=%d k=%d", i, j, k);
+		newMinDest = min (newMinDest, k);
+		newEffTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
+	      }
 	  }
 	}
+	minDest[i] = newMinDest;
 	effTrans[i] = newEffTrans;
-	pos[i] = newPos;
-      }
-    };
-    const MachineState& ms = state[s];
-    am.state.push_back (MachineState());
-    MachineState& ams = am.state.back();
-    ams.name = ms.name;
-    updateEffTrans(s);
-    // aggregate all transitions that go to the same place
-    TransAccumulator ta;
-    for (const auto& t: effTrans.at(s))
-      ta.accumulate (t.in, t.out, t.dest, t.weight);
-    const auto et = ta.transitions();
-    // factor out self-loops
-    TransWeight exitSelf (true);
-    for (const auto& t: et)
-      if (t.isSilent() && t.dest == s)
-	exitSelf = TransWeight ({"/",{1,{"-",{1,t.weight}}}});
-      else
-	ams.trans.push_back (t);
-    if (!(exitSelf.is_boolean() && exitSelf.get<bool>()))
-      for (auto& t: ams.trans)
-	t.weight = WeightAlgebra::multiply (exitSelf, t.weight);
+      };
+      for (StateIndex t = s; t > 0; --t)
+	updateEffTrans(t-1);
+      updateEffTrans(s);
+      // aggregate all transitions that go to the same place
+      TransAccumulator ta;
+      for (const auto& t: effTrans[s])
+	ta.accumulate (t.in, t.out, t.dest, t.weight);
+      const auto et = ta.transitions();
+      // factor out self-loops
+      TransWeight exitSelf (true);
+      for (const auto& t: et)
+	if (t.isSilent() && t.dest == s)
+	  exitSelf = WeightAlgebra::geometricSum (t.weight);
+	else
+	  ams.trans.push_back (t);
+      if (!(exitSelf.is_boolean() && exitSelf.get<bool>()))
+	for (auto& t: ams.trans)
+	  t.weight = WeightAlgebra::multiply (exitSelf, t.weight);
+      effTrans[s] = ams.trans;
+    }
+    Assert (am.isAdvancingMachine(), "failed to create advancing machine");
+    LogThisAt(5,"Converted " << nTransitions() << "-transition transducer into " << am.nTransitions() << "-transition advancing machine" << endl);
+    LogThisAt(7,am.toJsonString() << endl);
   }
-  Assert (am.isAdvancingMachine(), "failed to create advancing machine");
-  LogThisAt(5,"Converted " << nStates() << "-state transducer into " << am.nStates() << "-state advancing machine" << endl);
-  LogThisAt(7,am.toJsonString() << endl);
   return am;
 }
 

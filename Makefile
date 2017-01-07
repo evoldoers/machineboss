@@ -70,7 +70,7 @@ debug: all
 # Tests
 TEST = t/testexpect.pl
 
-test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2
+test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
 
 test-echo:
 	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/expect/bitecho.json
@@ -86,4 +86,7 @@ test-stutter2:
 
 test-noise2:
 	@$(TEST) bin/$(MAIN) -v0 t/machine/bitnoise.json t/machine/bitnoise.json t/expect/bitnoise-bitnoise.json
+
+test-unitindel2:
+	@$(TEST) bin/$(MAIN) -v0 t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
