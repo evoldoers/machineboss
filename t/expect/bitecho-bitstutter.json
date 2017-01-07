@@ -5,11 +5,13 @@
             {"to":2,"in":"1","out":"1"}]},
   {"n":1,
    "id":["S","S0"],
-   "trans":[{"to":0,"weight":0.99},
-            {"to":1,"out":"0","weight":0.01}]},
+   "trans":[{"to":1,"out":"0","weight":0.01},
+            {"to":1,"in":"0","out":"0","weight":0.99},
+            {"to":2,"in":"1","out":"1","weight":0.99}]},
   {"n":2,
    "id":["S","S1"],
-   "trans":[{"to":0,"weight":0.99},
-            {"to":2,"out":"1","weight":0.01}]}
+   "trans":[{"to":1,"in":"0","out":"0","weight":0.99},
+            {"to":2,"out":"1","weight":0.01},
+            {"to":2,"in":"1","out":"1","weight":0.99}]}
  ]
 }

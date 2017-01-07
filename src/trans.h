@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <list>
 #include "vguard.h"
 #include "json.hpp"
 
@@ -12,8 +13,8 @@ using json = nlohmann::json;
 typedef unsigned long long StateIndex;
 
 #define MachineNull '\0'
-#define MachineWaitTag "&"
-#define MachineSilentTag "$"
+#define MachineWaitTag "wait"
+#define MachineSilentTag "silent"
 
 typedef char OutputSymbol;
 typedef char InputSymbol;
@@ -37,10 +38,11 @@ struct MachineTransition {
   bool isSilent() const;  // inputEmpty() && outputEmpty()
   bool isLoud() const;  // !isSilent()
 };
+typedef list<MachineTransition> TransList;
 
 struct MachineState {
   StateName name;
-  vguard<MachineTransition> trans;
+  TransList trans;
   MachineState();
   const MachineTransition* transFor (InputSymbol in) const;
   bool exitsWithInput() const;  // true if this has an input transition
@@ -86,6 +88,12 @@ struct Machine {
   Machine waitingMachine() const;  // convert to waiting machine
   Machine punctuatedMachine() const;  // convert to punctuated machine
   Machine advancingMachine() const;  // convert to advancing machine
+};
+
+struct TransAccumulator {
+  map<StateIndex,map<InputSymbol,map<OutputSymbol,TransWeight> > > t;
+  void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight w);
+  TransList transitions() const;
 };
 
 #endif /* TRANSDUCER_INCLUDED */

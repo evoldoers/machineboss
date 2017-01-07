@@ -38,7 +38,11 @@ TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r)
 
 TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
-  if (l.is_number_integer() && r.is_number_integer())
+  if (l.is_null())
+    w = r;
+  else if (r.is_null())
+    w = l;
+  else if (l.is_number_integer() && r.is_number_integer())
     w = l.get<int>() + r.get<int>();
   else if (l.is_number() && r.is_number())
     w = l.get<double>() + r.get<double>();
@@ -198,9 +202,9 @@ void Machine::writeJson (ostream& out) const {
       out << "," << endl << "   \"id\":" << ms.name;
     if (ms.trans.size()) {
       out << "," << endl << "   \"trans\":[";
-      for (size_t nt = 0; nt < ms.trans.size(); ++nt) {
-	const MachineTransition& t = ms.trans[nt];
-	if (nt > 0)
+      size_t nt = 0;
+      for (const auto& t: ms.trans) {
+	if (nt++)
 	  out << "," << endl << "            ";
 	out << "{\"to\":" << t.dest;
 	if (t.in) out << ",\"in\":\"" << t.in << "\"";
@@ -339,37 +343,23 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
       MachineState& ms = comp[compState(i,j)];
       const MachineState& msi = first.state[i];
       const MachineState& msj = second.state[j];
-      map<StateIndex,map<InputSymbol,map<OutputSymbol,TransWeight> > > t;
-      auto accum = [&] (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight w) {
-	LogThisAt(6,"Adding transition from " << ms.name << " to " << comp[dest].name << " with weight " << w << endl);
-	if (t[dest][in].count(out))
-	  t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
-	else
-	  t[dest][in][out] = w;
-      };
+      TransAccumulator ta;
       if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
 	  if (it.out == MachineNull)
-	    accum (it.in, MachineNull, compState(it.dest,j), it.weight);
+	    ta.accumulate (it.in, MachineNull, compState(it.dest,j), it.weight);
 	  else
 	    for (const auto& jt: msj.trans)
 	      if (it.out == jt.in)
-		accum (it.in, jt.out, compState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight));
+		ta.accumulate (it.in, jt.out, compState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight));
       } else
 	for (const auto& jt: msj.trans)
-	  accum (MachineNull, jt.out, compState(i,jt.dest), jt.weight);
-      for (const auto& dest_map: t)
-	for (const auto& in_map: dest_map.second)
-	  for (const auto& out_weight: in_map.second)
-	    ms.trans.push_back (MachineTransition (in_map.first, out_weight.first, dest_map.first, out_weight.second));
+	  ta.accumulate (MachineNull, jt.out, compState(i,jt.dest), jt.weight);
+      ms.trans = ta.transitions();
     }
 
-  LogThisAt(8,"Intermediate machine:" << endl << compMachine.toJsonString());
-
-  Machine finalMachine = compMachine.ergodicMachine();
-  LogThisAt(3,"Transducer composition yielded " << finalMachine.nStates() << "-state machine; " << plural (compMachine.nStates() - finalMachine.nStates(), "more state was", "more states were") << " unreachable" << endl);
-
-  return finalMachine;
+  LogThisAt(3,"Transducer composition yielded " << compMachine.nStates() << "-state machine" << endl);
+  return compMachine.ergodicMachine().advancingMachine().punctuatedMachine();
 }
 
 set<StateIndex> Machine::accessibleStates() const {
@@ -412,7 +402,7 @@ set<StateIndex> Machine::accessibleStates() const {
 
   return as;
 }
-  
+
 Machine Machine::ergodicMachine() const {
   vguard<bool> keep (nStates(), false);
   for (StateIndex s : accessibleStates())
@@ -509,8 +499,8 @@ Machine Machine::punctuatedMachine() const {
       silent.trans.push_back (MachineTransition (MachineNull, MachineNull, newState.size(), TransWeight(true)));
       old2new.push_back (new2old.size());
       new2old.push_back (newState.size());
-      swap (newState[s], loud);
-      newState.push_back (silent);
+      swap (newState[s], silent);
+      newState.push_back (loud);
     }
   }
   Machine pm;
@@ -529,22 +519,80 @@ Machine Machine::punctuatedMachine() const {
 Machine Machine::advancingMachine() const {
   Machine am;
   am.state.reserve (nStates());
-  typedef map<StateIndex,MachineTransition> DestMap;
-  map<StateIndex,DestMap> effDest;
+  map<StateIndex,TransList> effTrans;
   map<StateIndex,StateIndex> pos;
   for (StateIndex s = 0; s < nStates(); ++s) {
+    function<void(StateIndex)> updateEffTrans = [&](StateIndex i) {
+      bool upToDate = false;
+      TransList oldEffTrans;
+      if (effTrans.count(i)) {
+	if (pos[i] >= s)
+	  upToDate = true;
+	else
+	  oldEffTrans = effTrans.at(i);
+      } else
+	oldEffTrans = state[i].trans;
+      if (!upToDate) {
+	TransList newEffTrans;
+	StateIndex newPos = nStates();
+	for (auto& t_ij: oldEffTrans) {
+	  const StateIndex j = t_ij.dest;
+	  if (t_ij.isLoud())
+	    newEffTrans.push_back(t_ij);
+	  else if (j >= s) {
+	    newEffTrans.push_back(t_ij);
+	    newPos = min (newPos, j);
+	  } else {
+	    updateEffTrans(j);
+	    for (auto& t_jk: effTrans.at(j)) {
+	      newEffTrans.push_back (MachineTransition (t_jk.in, t_jk.out, t_jk.dest, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
+	      newPos = min (newPos, t_jk.dest);
+	    }
+	  }
+	}
+	effTrans[i] = newEffTrans;
+	pos[i] = newPos;
+      }
+    };
     const MachineState& ms = state[s];
     am.state.push_back (MachineState());
     MachineState& ams = am.state.back();
     ams.name = ms.name;
-    DestMap dm;
-    for (const auto& t : ms.trans)
-      if (t.isLoud() || t.dest > s)
-	ams.trans.push_back(t);
-      else {
-	// WRITE ME
-      }
+    updateEffTrans(s);
+    // aggregate all transitions that go to the same place
+    TransAccumulator ta;
+    for (const auto& t: effTrans.at(s))
+      ta.accumulate (t.in, t.out, t.dest, t.weight);
+    const auto et = ta.transitions();
+    // factor out self-loops
+    TransWeight exitSelf (true);
+    for (const auto& t: et)
+      if (t.isSilent() && t.dest == s)
+	exitSelf = TransWeight ({"/",{1,{"-",{1,t.weight}}}});
+      else
+	ams.trans.push_back (t);
+    if (!(exitSelf.is_boolean() && exitSelf.get<bool>()))
+      for (auto& t: ams.trans)
+	t.weight = WeightAlgebra::multiply (exitSelf, t.weight);
   }
+  Assert (am.isAdvancingMachine(), "failed to create advancing machine");
+  LogThisAt(5,"Converted " << nStates() << "-state transducer into " << am.nStates() << "-state advancing machine" << endl);
+  LogThisAt(7,am.toJsonString() << endl);
   return am;
 }
 
+void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight w) {
+  if (t[dest][in].count(out))
+    t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
+  else
+    t[dest][in][out] = w;
+}
+
+TransList TransAccumulator::transitions() const {
+  TransList trans;
+  for (const auto& dest_map: t)
+    for (const auto& in_map: dest_map.second)
+      for (const auto& out_weight: in_map.second)
+	trans.push_back (MachineTransition (in_map.first, out_weight.first, dest_map.first, out_weight.second));
+  return trans;
+}
