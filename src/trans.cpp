@@ -64,7 +64,7 @@ TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
 MachineTransition::MachineTransition()
 { }
 
-MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, State dest, TransWeight weight)
+MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight weight)
   : in (in),
   out (out),
   dest (dest),
@@ -154,16 +154,16 @@ bool MachineState::isLoud() const {
   return exitsWithIO() && !exitsWithoutIO();
 }
 
-State Machine::nStates() const {
+StateIndex Machine::nStates() const {
   return state.size();
 }
 
-State Machine::startState() const {
+StateIndex Machine::startState() const {
   Assert (nStates() > 0, "Machine has no states");
   return 0;
 }
 
-State Machine::endState() const {
+StateIndex Machine::endState() const {
   Assert (nStates() > 0, "Machine has no states");
   return nStates() - 1;
 }
@@ -191,7 +191,7 @@ string Machine::outputAlphabet() const {
 
 void Machine::writeJson (ostream& out) const {
   out << "{\"state\":" << endl;
-  for (State s = 0; s < nStates(); ++s) {
+  for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
     out << (s == 0 ? " [" : "  ") << "{\"n\":" << s;
     if (!ms.name.is_null())
@@ -230,12 +230,12 @@ void Machine::readJson (istream& in) {
   in >> pj;
   json jstate = pj.at("state");
   Assert (jstate.is_array(), "state is not an array");
-  map<string,State> id2n;
+  map<string,StateIndex> id2n;
   for (const json& js : jstate) {
     MachineState ms;
     if (js.count("n")) {
-      const State n = js.at("n").get<State>();
-      Require ((State) state.size() == n, "State n=%ld out of sequence", n);
+      const StateIndex n = js.at("n").get<StateIndex>();
+      Require ((StateIndex) state.size() == n, "StateIndex n=%ld out of sequence", n);
     }
     if (js.count("id")) {
       const StateName id = js.at("id");
@@ -259,7 +259,7 @@ void Machine::readJson (istream& in) {
 	t.in = t.out = 0;
 	const json& dest = jt.at("to");
 	t.dest = dest.is_number()
-	  ? dest.get<State>()
+	  ? dest.get<StateIndex>()
 	  : id2n.at (dest.dump());
 	if (jt.count("in")) {
 	  const string tin = jt.at("in").get<string>();
@@ -310,7 +310,7 @@ bool Machine::isPunctuatedMachine() const {
 }
 
 bool Machine::isAdvancingMachine() const {
-  for (State s = 1; s < nStates(); ++s)
+  for (StateIndex s = 1; s < nStates(); ++s)
     for (const auto& t: state[s].trans)
       if (t.isSilent() && t.dest <= s)
 	return false;
@@ -326,21 +326,21 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   vguard<MachineState>& comp = compMachine.state;
   comp = vguard<MachineState> (first.nStates() * second.nStates());
 
-  auto compState = [&](State i,State j) -> State {
+  auto compState = [&](StateIndex i,StateIndex j) -> StateIndex {
     return i * second.nStates() + j;
   };
-  for (State i = 0; i < first.nStates(); ++i)
-    for (State j = 0; j < second.nStates(); ++j) {
+  for (StateIndex i = 0; i < first.nStates(); ++i)
+    for (StateIndex j = 0; j < second.nStates(); ++j) {
       MachineState& ms = comp[compState(i,j)];
       ms.name = StateName ({first.state[i].name, second.state[j].name});
     }
-  for (State i = 0; i < first.nStates(); ++i)
-    for (State j = 0; j < second.nStates(); ++j) {
+  for (StateIndex i = 0; i < first.nStates(); ++i)
+    for (StateIndex j = 0; j < second.nStates(); ++j) {
       MachineState& ms = comp[compState(i,j)];
       const MachineState& msi = first.state[i];
       const MachineState& msj = second.state[j];
-      map<State,map<InputSymbol,map<OutputSymbol,TransWeight> > > t;
-      auto accum = [&] (InputSymbol in, OutputSymbol out, State dest, TransWeight w) {
+      map<StateIndex,map<InputSymbol,map<OutputSymbol,TransWeight> > > t;
+      auto accum = [&] (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight w) {
 	LogThisAt(6,"Adding transition from " << ms.name << " to " << comp[dest].name << " with weight " << w << endl);
 	if (t[dest][in].count(out))
 	  t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
@@ -372,13 +372,13 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   return finalMachine;
 }
 
-set<State> Machine::accessibleStates() const {
+set<StateIndex> Machine::accessibleStates() const {
   vguard<bool> reachableFromStart (nStates(), false);
-  deque<State> fwdQueue;
+  deque<StateIndex> fwdQueue;
   fwdQueue.push_back (startState());
   reachableFromStart[fwdQueue.front()] = true;
   while (fwdQueue.size()) {
-    const State c = fwdQueue.front();
+    const StateIndex c = fwdQueue.front();
     fwdQueue.pop_front();
     for (const auto& t: state[c].trans)
       if (!reachableFromStart[t.dest]) {
@@ -388,25 +388,25 @@ set<State> Machine::accessibleStates() const {
   }
 
   vguard<bool> endReachableFrom (nStates(), false);
-  vguard<vguard<State> > sources (nStates());
-  deque<State> backQueue;
-  for (State s = 0; s < nStates(); ++s)
+  vguard<vguard<StateIndex> > sources (nStates());
+  deque<StateIndex> backQueue;
+  for (StateIndex s = 0; s < nStates(); ++s)
     for (const auto& t: state[s].trans)
       sources[t.dest].push_back (s);
   backQueue.push_back (endState());
   endReachableFrom[backQueue.front()] = true;
   while (backQueue.size()) {
-    const State c = backQueue.front();
+    const StateIndex c = backQueue.front();
     backQueue.pop_front();
-    for (State src: sources[c])
+    for (StateIndex src: sources[c])
       if (!endReachableFrom[src]) {
 	endReachableFrom[src] = true;
 	backQueue.push_back (src);
       }
   }
 
-  set<State> as;
-  for (State s = 0; s < nStates(); ++s)
+  set<StateIndex> as;
+  for (StateIndex s = 0; s < nStates(); ++s)
     if (reachableFromStart[s] && endReachableFrom[s])
       as.insert (s);
 
@@ -415,30 +415,30 @@ set<State> Machine::accessibleStates() const {
   
 Machine Machine::ergodicMachine() const {
   vguard<bool> keep (nStates(), false);
-  for (State s : accessibleStates())
+  for (StateIndex s : accessibleStates())
     keep[s] = true;
 
-  map<State,State> nullEquiv;
-  for (State s = 0; s < nStates(); ++s)
+  map<StateIndex,StateIndex> nullEquiv;
+  for (StateIndex s = 0; s < nStates(); ++s)
     if (keep[s]) {
-      State d = s;
+      StateIndex d = s;
       while (state[d].trans.size() == 1 && state[d].trans.front().isSilent())
 	d = state[d].trans.front().dest;
       if (d != s)
 	nullEquiv[s] = d;
     }
-  vguard<State> old2new (nStates());
-  State ns = 0;
-  for (State oldIdx = 0; oldIdx < nStates(); ++oldIdx)
+  vguard<StateIndex> old2new (nStates());
+  StateIndex ns = 0;
+  for (StateIndex oldIdx = 0; oldIdx < nStates(); ++oldIdx)
     if (keep[oldIdx] && !nullEquiv.count(oldIdx))
       old2new[oldIdx] = ns++;
-  for (State oldIdx = 0; oldIdx < nStates(); ++oldIdx)
+  for (StateIndex oldIdx = 0; oldIdx < nStates(); ++oldIdx)
     if (keep[oldIdx] && nullEquiv.count(oldIdx))
       old2new[oldIdx] = old2new[nullEquiv.at(oldIdx)];
 
   Machine em;
   em.state.reserve (ns);
-  for (State oldIdx = 0; oldIdx < nStates(); ++oldIdx)
+  for (StateIndex oldIdx = 0; oldIdx < nStates(); ++oldIdx)
     if (keep[oldIdx] && !nullEquiv.count(oldIdx)) {
       em.state.push_back (MachineState());
       em.state.back().name = state[oldIdx].name;
@@ -456,8 +456,8 @@ Machine Machine::ergodicMachine() const {
 
 Machine Machine::waitingMachine() const {
   vguard<MachineState> newState (state);
-  vguard<State> old2new (nStates()), new2old;
-  for (State s = 0; s < nStates(); ++s) {
+  vguard<StateIndex> old2new (nStates()), new2old;
+  for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
     old2new[s] = new2old.size();
     new2old.push_back (s);
@@ -478,7 +478,7 @@ Machine Machine::waitingMachine() const {
     }
   }
   Machine wm;
-  for (State s: new2old) {
+  for (StateIndex s: new2old) {
     MachineState& ms = newState[s];
     for (auto& t: ms.trans)
       t.dest = old2new[t.dest];
@@ -492,8 +492,8 @@ Machine Machine::waitingMachine() const {
 
 Machine Machine::punctuatedMachine() const {
   vguard<MachineState> newState (state);
-  vguard<State> old2new (nStates()), new2old;
-  for (State s = 0; s < nStates(); ++s) {
+  vguard<StateIndex> old2new (nStates()), new2old;
+  for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
     old2new[s] = new2old.size();
     new2old.push_back (s);
@@ -514,7 +514,7 @@ Machine Machine::punctuatedMachine() const {
     }
   }
   Machine pm;
-  for (State s: new2old) {
+  for (StateIndex s: new2old) {
     MachineState& ms = newState[s];
     for (auto& t: ms.trans)
       t.dest = old2new[t.dest];
@@ -529,10 +529,10 @@ Machine Machine::punctuatedMachine() const {
 Machine Machine::advancingMachine() const {
   Machine am;
   am.state.reserve (nStates());
-  typedef map<State,MachineTransition> DestMap;
-  map<State,DestMap> effDest;
-  map<State,State> pos;
-  for (State s = 0; s < nStates(); ++s) {
+  typedef map<StateIndex,MachineTransition> DestMap;
+  map<StateIndex,DestMap> effDest;
+  map<StateIndex,StateIndex> pos;
+  for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
     am.state.push_back (MachineState());
     MachineState& ams = am.state.back();

@@ -9,7 +9,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-typedef unsigned long long State;
+typedef unsigned long long StateIndex;
 
 #define MachineNull '\0'
 #define MachineWaitTag "&"
@@ -28,10 +28,10 @@ struct WeightAlgebra {
 struct MachineTransition {
   InputSymbol in;
   OutputSymbol out;
-  State dest;
+  StateIndex dest;
   TransWeight weight;
   MachineTransition();
-  MachineTransition (InputSymbol, OutputSymbol, State, TransWeight);
+  MachineTransition (InputSymbol, OutputSymbol, StateIndex, TransWeight);
   bool inputEmpty() const;
   bool outputEmpty() const;
   bool isSilent() const;  // inputEmpty() && outputEmpty()
@@ -60,9 +60,9 @@ struct Machine {
   vguard<MachineState> state;
   
   Machine();
-  State nStates() const;
-  State startState() const;
-  State endState() const;
+  StateIndex nStates() const;
+  StateIndex startState() const;
+  StateIndex endState() const;
 
   void writeJson (ostream& out) const;
   string toJsonString() const;
@@ -73,7 +73,7 @@ struct Machine {
   string inputAlphabet() const;
   string outputAlphabet() const;
 
-  set<State> accessibleStates() const;
+  set<StateIndex> accessibleStates() const;
   
   static Machine compose (const Machine& first, const Machine& second);
 
