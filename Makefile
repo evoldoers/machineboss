@@ -79,7 +79,7 @@ schema/%.nourl.json: schema/%.json
 # Tests
 TEST = t/testexpect.pl
 
-test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
+test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2 test-unitindel2-valid
 
 test-echo:
 	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/expect/bitecho.json
@@ -99,3 +99,5 @@ test-noise2:
 test-unitindel2:
 	@$(TEST) bin/$(MAIN) -v0 t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
+test-unitindel2-valid:
+	@$(TEST) bin/$(MAIN) -v0 t/expect/unitindel-unitindel.json t/expect/unitindel-unitindel.json
