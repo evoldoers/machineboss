@@ -1,0 +1,4 @@
+{
+  "something": {"that","is","json"},
+  "but": ["has","no","state property"]
+}

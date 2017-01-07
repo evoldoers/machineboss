@@ -1,5 +1,8 @@
 .SECONDARY:
 
+MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
+
 BOOSTPREFIX = /usr
 ifeq (,$(wildcard $(BOOSTPREFIX)/include/boost/regex.h))
 BOOSTPREFIX = /usr/local
@@ -70,34 +73,60 @@ debug: all
 
 # Schema
 # valijson doesn't like the URLs, but other validators demand them, so strip them out for xxd
-schema/%.h: schema/%.nourl.json
+src/schema/%.h: schema/%.nourl.json
 	xxd -i $< | sed 's/.nourl//' >$@
 
 schema/%.nourl.json: schema/%.json
 	grep -v http $< >$@
 
-# Tests
-TEST = t/testexpect.pl
-
-test: $(MAIN) test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2 test-unitindel2-valid
-
+# Transducer composition tests
+COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
 test-echo:
-	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/expect/bitecho.json
+	@$(TEST) bin/$(MAIN) t/machine/bitecho.json t/expect/bitecho.json
 
 test-echo2:
-	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/machine/bitecho.json t/expect/bitecho-bitecho.json
+	@$(TEST) bin/$(MAIN) t/machine/bitecho.json t/machine/bitecho.json t/expect/bitecho-bitecho.json
 
 test-echo-stutter:
-	@$(TEST) bin/$(MAIN) -v0 t/machine/bitecho.json t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
+	@$(TEST) bin/$(MAIN) t/machine/bitecho.json t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
 
 test-stutter2:
-	@$(TEST) bin/$(MAIN) -v0 t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
+	@$(TEST) bin/$(MAIN) t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
 
 test-noise2:
-	@$(TEST) bin/$(MAIN) -v0 t/machine/bitnoise.json t/machine/bitnoise.json t/expect/bitnoise-bitnoise.json
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json t/machine/bitnoise.json t/expect/bitnoise-bitnoise.json
 
 test-unitindel2:
-	@$(TEST) bin/$(MAIN) -v0 t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
+	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
+
+# Schema validation tests
+VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
+test-echo-valid:
+	@$(TEST) bin/$(MAIN) t/expect/bitecho.json -idem
 
 test-unitindel2-valid:
-	@$(TEST) bin/$(MAIN) -v0 t/expect/unitindel-unitindel.json t/expect/unitindel-unitindel.json
+	@$(TEST) bin/$(MAIN) t/expect/unitindel-unitindel.json -idem
+
+# Schema validation failure tests
+INVALID_SCHEMA_TESTS = test-not-json test-no-state test-bad-state test-bad-trans test-bad-weight
+test-not-json:
+	@$(TEST) bin/$(MAIN) t/invalid/not_json.txt -fail
+
+test-no-state:
+	@$(TEST) bin/$(MAIN) t/invalid/no_state.txt -fail
+
+test-bad-state:
+	@$(TEST) bin/$(MAIN) t/invalid/bad_state.txt -fail
+
+test-bad-trans:
+	@$(TEST) bin/$(MAIN) t/invalid/bad_trans.txt -fail
+
+test-bad-weight:
+	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.txt -fail
+
+# Top-level test target
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS)
+TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
+TEST = t/testexpect.pl $@ $(TESTLEN)
+
+test: $(MAIN) $(TESTS)

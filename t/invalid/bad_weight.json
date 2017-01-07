@@ -1,0 +1,5 @@
+{
+  "state": [
+    {"id":"S","trans":[{"in":"x","out":"x","weight":{"%%unknown_operation%%":[2,2]}}]}
+  ]
+}

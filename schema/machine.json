@@ -22,6 +22,7 @@
             "type": "array",
             "items": {
               "type": "object",
+              "required": ["to"],
               "properties": {
                 "to": {},
                 "in": { "type": "string" },

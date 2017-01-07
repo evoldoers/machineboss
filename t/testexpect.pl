@@ -3,37 +3,63 @@
 use warnings;
 use File::Temp;
 
-die "Usage: $0 <prog> <args...> <expected>" unless @ARGV >= 2;
+die "Usage: $0 <testName> <testNameWidth> <prog> <args...> (<expected>|-fail|-idem)" unless @ARGV >= 3;
 my $expected = pop @ARGV;
-my ($prog, @args) = @ARGV;
+my ($test, $testWidth, @args) = @ARGV;
+
+my $indentTest = sprintf ("% ${testWidth}s", $test);
 
 my $fh = File::Temp->new();
 my $fname = $fh->filename;
 
-system "$prog @args >$fname";
+my $fhErr = File::Temp->new();
+my $fnameErr = $fhErr->filename;
 
-if (-e $expected) {
-    my $diff = `diff $fname $expected`;
+my $status = system "@args >$fname 2>$fnameErr";
 
-    if (length $diff) {
-	print "`$prog @args` does not match $expected:\n";
-	print `diff -y $fname $expected`;
-	die "not ok: `$prog @args`\n";
+my $idem;
+if ($expected eq '-idem') {
+    $expected = $args[$#args];
+    $idem = 1;
+}
+
+if ($expected eq '-fail') {
+    if ($status) {
+	print "$indentTest     ok: `@args` failed on cue\n";
     } else {
-	print "ok: `$prog @args` matches $expected\n";
+	print "Standard output:\n", `cat $fname`;
+	print "Standard error:\n", `cat $fnameErr`;
+	die "$indentTest not ok: `@args` succeeded (was expected to fail)\n";
+    }
+} else {
+    if ($status) {
+	print "Standard output:\n", `cat $fname`;
+	print "Standard error:\n", `cat $fnameErr`;
+	die "$indentTest not ok: `@args` failed with exit code $status: $!\n";
     }
 
-} else {
+    if (-e $expected) {
+	my $diff = `diff $fname $expected`;
 
-    my $actual = `cat $fname`;
-    chomp $actual;
-    
-    if ($actual eq $expected) {
-	print "ok: `$prog @args` = '$expected'\n";
+	if (length $diff) {
+	    print "`@args` does not match '$expected':\n";
+	    print `diff -y $fname $expected`;
+	    die "$indentTest not ok: `@args`\n";
+	} else {
+	    print "$indentTest     ok: `@args` ", ($idem ? "is idempotent" : "matches '$expected'"), "\n";
+	}
+
     } else {
-	print "`$prog @args` does not match '$expected':\n";
-	print $actual, "\n";
-	print "Possibly '$expected' is a filename? (in which case, file not found)\n";
-	die "not ok: `$prog @args`\n";
+	my $actual = `cat $fname`;
+	chomp $actual;
+	
+	if ($actual eq $expected) {
+	    print "$indentTest     ok: `@args` = '$expected'\n";
+	} else {
+	    print "`@args` does not match '$expected':\n";
+	    print $actual, "\n";
+	    print "Possibly '$expected' is a filename? (in which case, file not found)\n";
+	    die "$indentTest not ok: `@args`\n";
+	}
     }
 }

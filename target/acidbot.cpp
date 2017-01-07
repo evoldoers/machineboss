@@ -16,9 +16,7 @@ namespace po = boost::program_options;
 
 int main (int argc, char** argv) {
 
-#ifndef DEBUG
   try {
-#endif /* DEBUG */
     
     // Declare the supported options.
     po::options_description desc("Allowed options");
@@ -70,11 +68,10 @@ int main (int argc, char** argv) {
     } else
       machine.writeJson (cout);
 
-#ifndef DEBUG
   } catch (const std::exception& e) {
     cerr << e.what() << endl;
+    return EXIT_FAILURE;
   }
-#endif /* DEBUG */
   
   return EXIT_SUCCESS;
 }

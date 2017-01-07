@@ -8,8 +8,8 @@
 #include <valijson/validation_results.hpp>
 
 #include "schema.h"
+#include "schema/machine.h"
 #include "util.h"
-#include "../schema/machine.h"
 
 using namespace std;
 
