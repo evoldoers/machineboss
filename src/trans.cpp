@@ -163,10 +163,10 @@ vguard<OutputSymbol> Machine::outputAlphabet() const {
 }
 
 void Machine::writeJson (ostream& out) const {
-  out << "{\"state\":" << endl;
+  out << "{\"state\":" << endl << " [";
   for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
-    out << (s == 0 ? " [" : "  ") << "{\"n\":" << s;
+    out << (s ? "  " : "") << "{\"n\":" << s;
     if (!ms.name.is_null())
       out << "," << endl << "   \"id\":" << ms.name;
     if (ms.trans.size()) {

@@ -113,16 +113,16 @@ test-not-json:
 	@$(TEST) bin/$(MAIN) t/invalid/not_json.txt -fail
 
 test-no-state:
-	@$(TEST) bin/$(MAIN) t/invalid/no_state.txt -fail
+	@$(TEST) bin/$(MAIN) t/invalid/no_state.json -fail
 
 test-bad-state:
-	@$(TEST) bin/$(MAIN) t/invalid/bad_state.txt -fail
+	@$(TEST) bin/$(MAIN) t/invalid/bad_state.json -fail
 
 test-bad-trans:
-	@$(TEST) bin/$(MAIN) t/invalid/bad_trans.txt -fail
+	@$(TEST) bin/$(MAIN) t/invalid/bad_trans.json -fail
 
 test-bad-weight:
-	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.txt -fail
+	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.json -fail
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS)
