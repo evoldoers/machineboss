@@ -35,6 +35,7 @@ struct MachineTransition {
   bool inputEmpty() const;
   bool outputEmpty() const;
   bool isSilent() const;  // inputEmpty() && outputEmpty()
+  bool isLoud() const;  // !isSilent()
 };
 
 struct MachineState {
@@ -62,33 +63,29 @@ struct Machine {
   State nStates() const;
   State startState() const;
   State endState() const;
-  
-  static Machine compose (const Machine& first, const Machine& second);
-  
-  void write (ostream& out) const;
-  void writeDot (ostream& out) const;
+
   void writeJson (ostream& out) const;
   string toJsonString() const;
   void readJson (istream& in);
   static Machine fromJson (istream& in);
   static Machine fromFile (const char* filename);
-  
-  static string stateIndex (State s);
-  size_t stateNameWidth() const;
-  size_t stateIndexWidth() const;
 
   string inputAlphabet() const;
   string outputAlphabet() const;
 
-  map<InputSymbol,double> expectedBasesPerInputSymbol (const char* symbols = "01") const;
+  set<State> accessibleStates() const;
+  
+  static Machine compose (const Machine& first, const Machine& second);
 
+  bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
   bool isPunctuatedMachine() const;  // all states silent or loud
-  bool isAcyclicMachine() const;  // no 
+  bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
 
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine() const;  // convert to waiting machine
   Machine punctuatedMachine() const;  // convert to punctuated machine
+  Machine advancingMachine() const;  // convert to advancing machine
 };
 
 #endif /* TRANSDUCER_INCLUDED */

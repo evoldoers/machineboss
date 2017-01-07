@@ -1,5 +1,6 @@
 #include <iomanip>
 #include <fstream>
+#include <set>
 #include "trans.h"
 #include "logger.h"
 #include "json.hpp"
@@ -80,6 +81,10 @@ bool MachineTransition::outputEmpty() const {
 
 bool MachineTransition::isSilent() const {
   return in == MachineNull && out == MachineNull;
+}
+
+bool MachineTransition::isLoud() const {
+  return in != MachineNull || out != MachineNull;
 }
 
 MachineState::MachineState()
@@ -165,68 +170,6 @@ State Machine::endState() const {
 
 Machine::Machine()
 { }
-
-void Machine::writeDot (ostream& out) const {
-  out << "digraph G {" << endl;
-  for (State s = 0; s < nStates(); ++s) {
-    const MachineState& ms = state[s];
-    out << " " << s << " [label=\"" << ms.name << "\"];" << endl;
-  }
-  out << endl;
-  for (State s = 0; s < nStates(); ++s) {
-    const MachineState& ms = state[s];
-    for (const auto& t: ms.trans) {
-      out << " " << s << " -> " << t.dest << " [label=\"";
-      if (!t.inputEmpty())
-	out << t.in;
-      out << "/";
-      if (!t.outputEmpty())
-	out << t.out;
-      out << "\"];" << endl;
-    }
-    out << endl;
-  }
-  out << "}" << endl;
-}
-
-void Machine::write (ostream& out) const {
-  const size_t iw = stateIndexWidth();
-  const size_t nw = stateNameWidth();
-  for (State s = 0; s < nStates(); ++s) {
-    const MachineState& ms = state[s];
-    out << setw(iw+1) << left << stateIndex(s)
-	<< setw(nw+1) << left << ms.name.dump();
-    for (const auto& t: ms.trans) {
-      out << " ";
-      if (!t.inputEmpty())
-	out << t.in;
-      out << "/";
-      if (!t.outputEmpty())
-	out << t.out;
-      out << "->" << stateIndex(t.dest)
-	  << " " << t.weight;
-    }
-    out << endl;
-  }
-}
-
-string Machine::stateIndex (State s) {
-  return string("#") + to_string(s);
-}
-
-size_t Machine::stateNameWidth() const {
-  size_t w = 0;
-  for (const auto& ms: state)
-    w = max (w, ms.name.dump().size());
-  return w;
-}
-
-size_t Machine::stateIndexWidth() const {
-  size_t w = 0;
-  for (State s = 0; s < nStates(); ++s)
-    w = max (w, stateIndex(s).size());
-  return w;
-}
 
 string Machine::inputAlphabet() const {
   set<char> alph;
@@ -348,6 +291,10 @@ Machine Machine::fromFile (const char* filename) {
   return fromJson (infile);
 }
 
+bool Machine::isErgodicMachine() const {
+  return accessibleStates().size() == nStates();
+}
+
 bool Machine::isWaitingMachine() const {
   for (const auto& ms: state)
     if (!ms.waits() && !ms.continues())
@@ -359,6 +306,14 @@ bool Machine::isPunctuatedMachine() const {
   for (const auto& ms: state)
     if (!ms.isSilent() && !ms.isLoud())
       return false;
+  return true;
+}
+
+bool Machine::isAdvancingMachine() const {
+  for (State s = 1; s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
+      if (t.isSilent() && t.dest <= s)
+	return false;
   return true;
 }
 
@@ -417,7 +372,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   return finalMachine;
 }
 
-Machine Machine::ergodicMachine() const {
+set<State> Machine::accessibleStates() const {
   vguard<bool> reachableFromStart (nStates(), false);
   deque<State> fwdQueue;
   fwdQueue.push_back (startState());
@@ -450,9 +405,18 @@ Machine Machine::ergodicMachine() const {
       }
   }
 
-  vguard<bool> keep (nStates());
+  set<State> as;
   for (State s = 0; s < nStates(); ++s)
-    keep[s] = reachableFromStart[s] && endReachableFrom[s];
+    if (reachableFromStart[s] && endReachableFrom[s])
+      as.insert (s);
+
+  return as;
+}
+  
+Machine Machine::ergodicMachine() const {
+  vguard<bool> keep (nStates(), false);
+  for (State s : accessibleStates())
+    keep[s] = true;
 
   map<State,State> nullEquiv;
   for (State s = 0; s < nStates(); ++s)
@@ -482,6 +446,10 @@ Machine Machine::ergodicMachine() const {
 	if (keep[t.dest])
 	  em.state.back().trans.push_back (MachineTransition (t.in, t.out, old2new.at(t.dest), t.weight));
     }
+
+  Assert (em.isErgodicMachine(), "failed to create ergodic machine");
+  LogThisAt(5,"Converted " << nStates() << "-state transducer into " << em.nStates() << "-state ergodic machine" << endl);
+  LogThisAt(7,em.toJsonString() << endl);
 
   return em;
 }
@@ -516,6 +484,7 @@ Machine Machine::waitingMachine() const {
       t.dest = old2new[t.dest];
     wm.state.push_back (ms);
   }
+  Assert (wm.isWaitingMachine(), "failed to create waiting machine");
   LogThisAt(5,"Converted " << nStates() << "-state transducer into " << wm.nStates() << "-state waiting machine" << endl);
   LogThisAt(7,wm.toJsonString() << endl);
   return wm;
@@ -551,7 +520,31 @@ Machine Machine::punctuatedMachine() const {
       t.dest = old2new[t.dest];
     pm.state.push_back (ms);
   }
+  Assert (pm.isPunctuatedMachine(), "failed to create punctuated machine");
   LogThisAt(5,"Converted " << nStates() << "-state transducer into " << pm.nStates() << "-state punctuated machine" << endl);
   LogThisAt(7,pm.toJsonString() << endl);
   return pm;
 }
+
+Machine Machine::advancingMachine() const {
+  Machine am;
+  am.state.reserve (nStates());
+  typedef map<State,MachineTransition> DestMap;
+  map<State,DestMap> effDest;
+  map<State,State> pos;
+  for (State s = 0; s < nStates(); ++s) {
+    const MachineState& ms = state[s];
+    am.state.push_back (MachineState());
+    MachineState& ams = am.state.back();
+    ams.name = ms.name;
+    DestMap dm;
+    for (const auto& t : ms.trans)
+      if (t.isLoud() || t.dest > s)
+	ams.trans.push_back(t);
+      else {
+	// WRITE ME
+      }
+  }
+  return am;
+}
+
