@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/expr.json",
+  "description": "Acidbot expression schema",
+  "definitions": {
+    "expr": {
+      "anyOf": [
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "object",
+          "required": ["*"],
+          "additionalProperties": false,
+          "properties": { "*": { "type": "array", "items": { "$ref": "#/definitions/expr" } } } },
+        { "type": "object",
+          "required": ["+"],
+          "additionalProperties": false,
+          "properties": { "+": { "type": "array", "items": { "$ref": "#/definitions/expr" } } } },
+        { "type": "object",
+          "required": ["/"],
+          "additionalProperties": false,
+          "properties": { "/": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } },
+        { "type": "object",
+          "required": ["-"],
+          "additionalProperties": false,
+          "properties": { "-": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } }
+      ]
+    }
+  },
+  "$ref": "#/definitions/expr"
+}

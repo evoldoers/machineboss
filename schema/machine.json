@@ -27,7 +27,7 @@
                 "to": {},
                 "in": { "type": "string" },
                 "out": { "type": "string" },
-                "weight": { "$ref": "#/definitions/expr" }
+                "weight": { "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/expr.json" }
               },
               "additionalProperties": false
             }
@@ -38,30 +38,5 @@
       }
     }
   },
-  "additionalProperties": false,
-  "definitions": {
-    "expr": {
-      "anyOf": [
-        { "type": "boolean" },
-        { "type": "number" },
-        { "type": "string" },
-        { "type": "object",
-          "required": ["*"],
-          "additionalProperties": false,
-          "properties": { "*": { "type": "array", "items": { "$ref": "#/definitions/expr" } } } },
-        { "type": "object",
-          "required": ["+"],
-          "additionalProperties": false,
-          "properties": { "+": { "type": "array", "items": { "$ref": "#/definitions/expr" } } } },
-        { "type": "object",
-          "required": ["/"],
-          "additionalProperties": false,
-          "properties": { "/": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } },
-        { "type": "object",
-          "required": ["-"],
-          "additionalProperties": false,
-          "properties": { "-": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } }
-      ]
-    }
-  }
+  "additionalProperties": false
 }

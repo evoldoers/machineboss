@@ -77,7 +77,7 @@ src/schema/%.h: schema/%.nourl.json
 	xxd -i $< | sed 's/.nourl//' >$@
 
 schema/%.nourl.json: schema/%.json
-	grep -v http $< >$@
+	grep -v '"id": "http' $< >$@
 
 # Transducer composition tests
 COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
@@ -130,3 +130,10 @@ TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TEST
 TEST = t/testexpect.pl $@ $(TESTLEN)
 
 test: $(MAIN) $(TESTS)
+
+# Schema validator
+ajv:
+	npm install ajv-cli
+
+validate-%:
+	ajv -s schema/machine.json -r schema/expr.json -d $*
