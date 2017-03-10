@@ -5,6 +5,7 @@
 #include <map>
 #include <list>
 #include <json.hpp>
+#include "weight.h"
 #include "vguard.h"
 
 using namespace std;
@@ -17,14 +18,7 @@ typedef unsigned long long StateIndex;
 
 typedef string OutputSymbol;
 typedef string InputSymbol;
-typedef json TransWeight;
 typedef json StateName;
-
-struct WeightAlgebra {
-  static TransWeight multiply (const TransWeight& l, const TransWeight& r);
-  static TransWeight add (const TransWeight& l, const TransWeight& r);
-  static TransWeight geometricSum (const TransWeight& p);
-};
 
 struct MachineTransition {
   InputSymbol in;
