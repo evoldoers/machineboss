@@ -10,10 +10,13 @@ using json = nlohmann::json;
 typedef json TransWeight;
 
 struct WeightAlgebra {
-  static TransWeight multiply (const TransWeight& l, const TransWeight& r);
-  static TransWeight add (const TransWeight& l, const TransWeight& r);
-  static TransWeight subtract (const TransWeight& l, const TransWeight& r);
-  static TransWeight divide (const TransWeight& l, const TransWeight& r);
+  static TransWeight multiply (const TransWeight& l, const TransWeight& r);  // l*r
+  static TransWeight add (const TransWeight& l, const TransWeight& r);  // l+r
+  static TransWeight subtract (const TransWeight& l, const TransWeight& r);  // l-r
+  static TransWeight divide (const TransWeight& l, const TransWeight& r);  // l/r
+  static TransWeight pow (const TransWeight& a, const TransWeight& b);  // a^b
+  static TransWeight log (const TransWeight& p);  // log(p)
+  static TransWeight exp (const TransWeight& p);  // exp(p)
   static TransWeight geometricSum (const TransWeight& p);
 
   static string opcode (const TransWeight& w);

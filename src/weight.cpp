@@ -1,3 +1,4 @@
+#include <math.h>
 #include "weight.h"
 #include "logsumexp.h"
 #include "util.h"
@@ -12,6 +13,18 @@ TransWeight WeightAlgebra::divide (const TransWeight& l, const TransWeight& r) {
 
 TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r) {
   return TransWeight::object ({{"-", TransWeight::array ({l, r})}});
+}
+
+TransWeight WeightAlgebra::pow (const TransWeight& a, const TransWeight& b) {
+  return TransWeight::object ({{"^", TransWeight::array ({a, b})}});
+}
+
+TransWeight WeightAlgebra::log (const TransWeight& p) {
+  return TransWeight::object ({{"log", p}});
+}
+
+TransWeight WeightAlgebra::exp (const TransWeight& p) {
+  return TransWeight::object ({{"exp", p}});
 }
 
 TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
@@ -78,6 +91,9 @@ double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
   if (op == "/") return evalArgs[0] / evalArgs[1];
   if (op == "+") return evalArgs[0] + evalArgs[1];
   if (op == "-") return evalArgs[0] - evalArgs[1];
+  if (op == "^") return pow (evalArgs[0], evalArgs[1]);
+  if (op == "log") return log (evalArgs[0]);
+  if (op == "exp") return exp (evalArgs[0]);
   Abort("Unknown opcode: %s", op.c_str());
   return -numeric_limits<double>::infinity();
 }
@@ -98,6 +114,9 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
     else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[0])));  // w = f/g, w' = f'/g - g'f/g^2
     else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
     else if (op == "-") d = subtract (derivArgs[0], derivArgs[1]);  // w = f - g, w' = f' - g'
+    else if (op == "exp") Abort ("WRITE ME");  // w = exp(x), w' = x'exp(x)
+    else if (op == "log") Abort ("WRITE ME");  // w = log(x), w' = x'/x
+    else if (op == "^") Abort ("WRITE ME");  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
     else
       Abort("Unknown opcode: %s", op.c_str());
   }
