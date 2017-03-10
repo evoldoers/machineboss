@@ -1,5 +1,5 @@
-#ifndef SCORES_INCLUDED
-#define SCORES_INCLUDED
+#ifndef EVAL_INCLUDED
+#define EVAL_INCLUDED
 
 #include "trans.h"
 #include "params.h"
@@ -51,4 +51,4 @@ struct EvaluatedMachine {
   EvaluatedMachine (const Machine&, const Params&);
 };
 
-#endif /* SCORES_INCLUDED */
+#endif /* EVAL_INCLUDED */
