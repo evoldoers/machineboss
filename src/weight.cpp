@@ -19,11 +19,11 @@ TransWeight WeightAlgebra::pow (const TransWeight& a, const TransWeight& b) {
   return TransWeight::object ({{"^", TransWeight::array ({a, b})}});
 }
 
-TransWeight WeightAlgebra::log (const TransWeight& p) {
+TransWeight WeightAlgebra::logOf (const TransWeight& p) {
   return TransWeight::object ({{"log", p}});
 }
 
-TransWeight WeightAlgebra::exp (const TransWeight& p) {
+TransWeight WeightAlgebra::expOf (const TransWeight& p) {
   return TransWeight::object ({{"exp", p}});
 }
 
@@ -114,9 +114,9 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
     else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[0])));  // w = f/g, w' = f'/g - g'f/g^2
     else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
     else if (op == "-") d = subtract (derivArgs[0], derivArgs[1]);  // w = f - g, w' = f' - g'
-    else if (op == "exp") Abort ("WRITE ME");  // w = exp(x), w' = x'exp(x)
-    else if (op == "log") Abort ("WRITE ME");  // w = log(x), w' = x'/x
-    else if (op == "^") Abort ("WRITE ME");  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
+    else if (op == "exp") d = multiply (derivArgs[0], w);  // w = exp(x), w' = x'exp(x)
+    else if (op == "log") d = divide (derivArgs[0], args[0]);  // w = log(x), w' = x'/x
+    else if (op == "^") d = multiply (w, add (multiply(derivArgs[1],logOf(args[0])), multiply(derivArgs[0],divide(args[1],args[0]))));  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
     else
       Abort("Unknown opcode: %s", op.c_str());
   }
