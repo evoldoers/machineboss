@@ -120,7 +120,7 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
     // d = null
   } else if (op == "param") {
     if (param == w.get<string>())
-      d = 1;
+      d = true;
     // else d = null
   } else if (op == "exp") d = multiply (deriv (w.at("exp"), param), w);  // w = exp(x), w' = x'exp(x)
   else if (op == "log") d = divide (deriv (w.at("log"), param), w.at("log"));  // w = log(x), w' = x'/x
