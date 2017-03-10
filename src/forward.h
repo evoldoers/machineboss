@@ -4,7 +4,7 @@
 #include "dpmatrix.h"
 
 struct ForwardMatrix : DPMatrix {
-  ForwardMatrix (const EvaluatedMachine&, const vguard<InputToken>&, const vguard<OutputToken>&);
+  ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
   double logLike() const;
 };
 

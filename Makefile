@@ -176,8 +176,13 @@ test-deriv-xy-x: bin/testderiv
 test-eval-1plus2: bin/testeval
 	@$(TEST) bin/testeval t/algebra/x_plus_y.json t/algebra/params.json t/expect/1_plus_2.json
 
+# Dynamic programming tests
+DP_TESTS = test-bitnoise-params-tiny
+test-bitnoise-params-tiny: bin/testforward
+	@$(TEST) bin/testforward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/bitnoise-params-tiny.json
+
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 

@@ -21,7 +21,7 @@ void Params::writeJson (ostream& out) const {
   size_t n = 0;
   for (auto& pv: param)
     out << (n++ ? "," : "") << "\"" << pv.first << "\":" << pv.second;
-  out << "}";
+  out << "}" << endl;
 }
 
 Params Params::fromJson (istream& in) {

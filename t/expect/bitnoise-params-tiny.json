@@ -1,0 +1,22 @@
+{
+ "input": "001",
+ "output": "101",
+ "cell": [
+  { "inPos": 0, "outPos": 0, "state": "S", "logLike": 0 },
+  { "inPos": 0, "outPos": 1, "state": "S", "logLike": -inf },
+  { "inPos": 0, "outPos": 2, "state": "S", "logLike": -inf },
+  { "inPos": 0, "outPos": 3, "state": "S", "logLike": -inf },
+  { "inPos": 1, "outPos": 0, "state": "S", "logLike": -inf },
+  { "inPos": 1, "outPos": 1, "state": "S", "logLike": -4.6052 },
+  { "inPos": 1, "outPos": 2, "state": "S", "logLike": -inf },
+  { "inPos": 1, "outPos": 3, "state": "S", "logLike": -inf },
+  { "inPos": 2, "outPos": 0, "state": "S", "logLike": -inf },
+  { "inPos": 2, "outPos": 1, "state": "S", "logLike": -inf },
+  { "inPos": 2, "outPos": 2, "state": "S", "logLike": -4.6152 },
+  { "inPos": 2, "outPos": 3, "state": "S", "logLike": -inf },
+  { "inPos": 3, "outPos": 0, "state": "S", "logLike": -inf },
+  { "inPos": 3, "outPos": 1, "state": "S", "logLike": -inf },
+  { "inPos": 3, "outPos": 2, "state": "S", "logLike": -inf },
+  { "inPos": 3, "outPos": 3, "state": "S", "logLike": -4.6253 }
+ ]
+}

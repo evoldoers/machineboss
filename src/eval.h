@@ -17,8 +17,10 @@ struct Tokenizer {
   }
   static inline Token emptyToken() { return 0; }
   vguard<Token> tokenize (const vguard<Symbol>& symSeq) const {
-    vguard<Token> tokSeq (symSeq.size());
-    transform (symSeq.begin(), symSeq.end(), tokSeq.begin(), sym2tok.at);
+    vguard<Token> tokSeq;
+    tokSeq.reserve (symSeq.size());
+    for (auto sym: symSeq)
+      tokSeq.push_back (sym2tok.at(sym));
     return tokSeq;
   }
 };

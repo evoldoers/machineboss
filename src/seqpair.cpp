@@ -3,21 +3,6 @@
 #include "schema.h"
 #include "util.h"
 
-void NamedSeq::readJson (const json& json) {
-  if (json.count("name"))
-    name = json.at("name").get<string>();
-  seq.clear();
-  for (const auto& js: json.at("sequence"))
-    seq.push_back (js.get<string>());
-}
-
-void NamedSeq::writeJson (ostream& out) const {
-  out << "{\"name\":\"" << name << "\",\"sequence\":[";
-  for (size_t n = 0; n < seq.size(); ++n)
-    out << (n > 0 ? "," : "") << "\"" << seq[n] << "\"";
-  out << "]}";
-}
-
 void SeqPair::readJson (istream& in) {
   json pj;
   in >> pj;
@@ -37,7 +22,7 @@ void SeqPair::writeJson (ostream& out) const {
   input.writeJson (out);
   out << ",\"output\":";
   output.writeJson (out);
-  out << "}";
+  out << "}" << endl;
 }
 
 SeqPair SeqPair::fromJson (istream& in) {

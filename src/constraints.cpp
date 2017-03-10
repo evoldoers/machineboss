@@ -30,7 +30,7 @@ void Constraints::writeJson (ostream& out) const {
       out << (nj++ ? "," : "") << "\"" << p << "\"";
     out << "]";
   }
-  out << "]}";
+  out << "]}" << endl;
 }
 
 Constraints Constraints::fromJson (istream& in) {

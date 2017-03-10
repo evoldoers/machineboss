@@ -2,6 +2,7 @@
 #define DPMATRIX_INCLUDED
 
 #include "eval.h"
+#include "seqpair.h"
 #include "logsumexp.h"
 
 class DPMatrix {
@@ -14,8 +15,8 @@ private:
 
   vguard<double> cellStorage;
 
-  static CellIndex nCells (const EvaluatedMachine& machine, const vguard<InputToken>& input, const vguard<OutputToken>& output) {
-    return machine.nStates() * (input.size() + 1) * (output.size() + 1);
+  inline CellIndex nCells() const {
+    return nStates * (inLen + 1) * (outLen + 1);
   }
 
   inline CellIndex cellIndex (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
@@ -37,22 +38,17 @@ protected:
 
 public:
   const EvaluatedMachine& machine;
-  const vguard<InputToken>& input;
-  const vguard<OutputToken>& output;
-  InputIndex inLen;
-  OutputIndex outLen;
-  StateIndex nStates;
+  const SeqPair& seqPair;
+  const vguard<InputToken> input;
+  const vguard<OutputToken> output;
+  const InputIndex inLen;
+  const OutputIndex outLen;
+  const StateIndex nStates;
 
-  DPMatrix (const EvaluatedMachine& machine, const vguard<InputToken>& input, const vguard<OutputToken>& output) :
-    machine (machine),
-    input (input),
-    output (output),
-    inLen (input.size()),
-    outLen (output.size()),
-    nStates (machine.nStates()),
-    cellStorage (nCells (machine, input, output))
-  { }
+  DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
 
+  void writeJson (ostream& out) const;
+  
   inline double& cell (InputIndex inPos, OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(inPos,outPos,state)]; }
   inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(inPos,outPos,state)]; }
 };
