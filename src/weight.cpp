@@ -139,3 +139,22 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
   }
   return d;
 }
+
+set<string> WeightAlgebra::params (const TransWeight& w) {
+  set<string> p;
+  const string op = opcode(w);
+  if (op == "null" || op == "boolean" || op == "int" || op == "float") {
+    // p is empty
+  } else if (op == "param")
+    p.insert (w.get<string>());
+  else if (op == "exp" || op == "log")
+    p = params (w.at(op));
+  else {
+    const json& args = operands(w);
+    for (const auto& arg: args) {
+      const set<string> argParams = params(arg);
+      p.insert (argParams.begin(), argParams.end());
+    }
+  }
+  return p;
+}

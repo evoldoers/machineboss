@@ -166,7 +166,10 @@ test-constraints: bin/testconstraints
 	@$(TEST) bin/testconstraints t/io/constraints.json -idem
 
 # Symbolic algebra tests
-ALGEBRA_TESTS = test-deriv-xplusy-x test-deriv-xy-x test-eval-1plus2
+ALGEBRA_TESTS = test-list-params test-deriv-xplusy-x test-deriv-xy-x test-eval-1plus2
+test-list-params: bin/testlistparams
+	@$(TEST) bin/testlistparams t/algebra/x_plus_y.json t/expect/xy_params.txt
+
 test-deriv-xplusy-x: bin/testderiv
 	@$(TEST) bin/testderiv t/algebra/x_plus_y.json x t/expect/dxplusy_dx.json
 

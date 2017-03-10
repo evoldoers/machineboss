@@ -24,6 +24,7 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
       state[d].incoming[in][out].push_back (EvaluatedMachineState::Trans (s, lw, ti));
       ++ti;
     }
+    state[s].nTransitions = ti;
   }
 }
 

@@ -1,6 +1,7 @@
 #ifndef WEIGHT_INCLUDED
 #define WEIGHT_INCLUDED
 
+#include <set>
 #include <json.hpp>
 #include "params.h"
 
@@ -27,6 +28,8 @@ struct WeightAlgebra {
 
   static double eval (const TransWeight& w, const Params& params);
   static TransWeight deriv (const TransWeight& w, const string& param);
+
+  static set<string> params (const TransWeight& w);
 };
 
 #endif /* WEIGHT_INCLUDED */
