@@ -119,6 +119,14 @@ double log_sum_exp_slow (double a, double b, double c, double d);
 
 void log_accum_exp_slow (double& a, double b);
 
+inline double log_subtract_exp (double a, double b) {
+  if (a < b) {
+    cerr << "Sign error in log_subtract_exp" << endl;
+    throw;
+  }
+  return a + log (1. - exp(b-a));
+}
+
 vguard<LogProb> log_vector (const vguard<double>& v);
 
 vguard<LogProb> log_gsl_vector (gsl_vector* v);

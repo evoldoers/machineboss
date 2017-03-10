@@ -2,6 +2,8 @@
 #define WEIGHT_INCLUDED
 
 #include <json.hpp>
+#include "params.h"
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -14,6 +16,9 @@ struct WeightAlgebra {
 
   static string opcode (const TransWeight& w);
   static const json& operands (const TransWeight& w);
+
+  static double evalLog (const TransWeight& w, const Params& params);
+  static TransWeight logDerivLog (const TransWeight& w, const string& param);
 };
 
 #endif /* WEIGHT_INCLUDED */
