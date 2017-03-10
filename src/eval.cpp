@@ -7,6 +7,7 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
   outputTokenizer (machine.outputAlphabet()),
   state (machine.nStates())
 {
+  Assert (machine.isAdvancingMachine(), "Machine is not topologically sorted");
   for (StateIndex s = 0; s < nStates(); ++s) {
     state[s].name = machine.state[s].name;
     for (const auto& trans: machine.state[s].trans) {
