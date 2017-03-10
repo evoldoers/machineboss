@@ -14,7 +14,7 @@ struct WeightAlgebra {
   static TransWeight add (const TransWeight& l, const TransWeight& r);  // l+r
   static TransWeight subtract (const TransWeight& l, const TransWeight& r);  // l-r
   static TransWeight divide (const TransWeight& l, const TransWeight& r);  // l/r
-  static TransWeight pow (const TransWeight& a, const TransWeight& b);  // a^b
+  static TransWeight power (const TransWeight& a, const TransWeight& b);  // a^b
   static TransWeight logOf (const TransWeight& p);  // log(p)
   static TransWeight expOf (const TransWeight& p);  // exp(p)
   static TransWeight geometricSum (const TransWeight& p);
