@@ -4,11 +4,6 @@
 #include "trans.h"
 #include "params.h"
 
-typedef int Token;
-typedef Token InputToken;
-typedef Token OutputToken;
-typedef pair<InputToken,OutputToken> MachineTransitionLabel;
-
 template<class AlphabetSymbol,class AlphabetToken>
 struct Tokenizer {
   vguard<AlphabetSymbol> tok2sym;
@@ -29,28 +24,31 @@ struct Tokenizer {
     return tokSeq;
   }
 };
+
+typedef int InputToken;
+typedef int OutputToken;
+
 typedef Tokenizer<InputSymbol,InputToken> InputTokenizer;
 typedef Tokenizer<OutputSymbol,OutputToken> OutputTokenizer;
 
-struct MachineTransitionScore {
-  InputSymbol in;
-  OutputSymbol out;
+struct EvaluatedMachineTransition {
+  InputToken in;
+  OutputToken out;
   StateIndex src, dest;
   double logWeight;
 
-  MachineTransitionScore (StateIndex src, const MachineTransition&, const Params&, const InputTokenizer&, const OutputTokenizer&);
-  MachineTransitionLabel label() const;
+  EvaluatedMachineTransition (StateIndex src, const MachineTransition&, const Params&, const InputTokenizer&, const OutputTokenizer&);
 };
 
-struct MachineStateScores {
-  map<MachineTransitionLabel,MachineTransitionScore> incoming, outgoing;
+struct EvaluatedMachineState {
+  map<InputToken,map<OutputToken,EvaluatedMachineTransition> > incoming, outgoing;
 };
 
-struct MachineScores {
+struct EvaluatedMachine {
   InputTokenizer inputTokenizer;
   OutputTokenizer outputTokenizer;
-  vguard<MachineStateScores> state;
-  MachineStateScores (const Machine&, const Params&);
+  vguard<EvaluatedMachineState> state;
+  EvaluatedMachine (const Machine&, const Params&);
 };
 
 #endif /* SCORES_INCLUDED */
