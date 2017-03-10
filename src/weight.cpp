@@ -6,6 +6,14 @@ TransWeight WeightAlgebra::geometricSum (const TransWeight& p) {
   return TransWeight::object ({{"/", TransWeight::array ({1, TransWeight::object ({{"-", TransWeight::array ({1,p})}})})}});
 }
 
+TransWeight WeightAlgebra::divide (const TransWeight& l, const TransWeight& r) {
+  return TransWeight::object ({{"/", TransWeight::array ({l, r})}});
+}
+
+TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r) {
+  return TransWeight::object ({{"-", TransWeight::array ({l, r})}});
+}
+
 TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
   if (l.is_boolean() && l.get<bool>())
@@ -57,25 +65,42 @@ const json& WeightAlgebra::operands (const TransWeight& w) {
 }
 
 
-double WeightAlgebra::evalLog (const TransWeight& w, const Params& params) {
+double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
   const string op = opcode(w);
-  if (op == "null") return -numeric_limits<double>::infinity();
-  if (op == "boolean") return w.get<bool>() ? 0. : -numeric_limits<double>::infinity();
-  if (op == "int" || op == "float") return log (w.get<double>());
-  if (op == "param") return log (params.param.at (w.get<string>()));
-  vguard<double> evalLogArgs;
+  if (op == "null") return 0;
+  if (op == "boolean") return w.get<bool>() ? 1. : 0.;
+  if (op == "int" || op == "float") return w.get<double>();
+  if (op == "param") return params.param.at (w.get<string>());
+  vguard<double> evalArgs;
   const json& args = operands(w);
   for (const auto& arg: args)
-    evalLogArgs.push_back (evalLog (arg, params));
-  if (op == "*") return evalLogArgs[0] + evalLogArgs[1];
-  if (op == "/") return evalLogArgs[0] - evalLogArgs[1];
-  if (op == "+") return log_sum_exp (evalLogArgs[0], evalLogArgs[1]);
-  if (op == "-") return log_subtract_exp (evalLogArgs[0], evalLogArgs[1]);
+    evalArgs.push_back (eval (arg, params));
+  if (op == "*") return evalArgs[0] * evalArgs[1];
+  if (op == "/") return evalArgs[0] / evalArgs[1];
+  if (op == "+") return evalArgs[0] + evalArgs[1];
+  if (op == "-") return evalArgs[0] - evalArgs[1];
   Abort("Unknown opcode: %s", op.c_str());
   return -numeric_limits<double>::infinity();
 }
 
-TransWeight WeightAlgebra::logDerivLog (const TransWeight& w, const string& param) {
-  // WRITE ME
-  return TransWeight();
+TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
+  TransWeight d;
+  const string op = opcode(w);
+  if (op == "null" || op == "boolean" || op == "int" || op == "float")
+    d = 0;
+  else if (op == "param")
+    d = (param == w.get<string>() ? 1. : 0.);
+  else {
+    const json& args = operands(w);
+    vguard<TransWeight> derivArgs;
+    for (const auto& arg: args)
+      derivArgs.push_back (deriv (arg, param));
+    if (op == "*") d = add (multiply(derivArgs[0],args[1]), multiply(args[0],derivArgs[1]));  // w = fg, w' = f'g + g'f
+    else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[0])));  // w = f/g, w' = f'/g - g'f/g^2
+    else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
+    else if (op == "-") d = subtract (derivArgs[0], derivArgs[1]);  // w = f - g, w' = f' - g'
+    else
+      Abort("Unknown opcode: %s", op.c_str());
+  }
+  return d;
 }
