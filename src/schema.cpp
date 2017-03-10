@@ -10,6 +10,7 @@
 #include "schema.h"
 #include "util.h"
 
+#include "schema/constraints.h"
 #include "schema/expr.h"
 #include "schema/machine.h"
 #include "schema/params.h"
@@ -38,8 +39,9 @@ struct SchemaCache {
 #define addSchema(NAME) namedSchema[string(SchemaUrlPrefix #NAME SchemaUrlSuffix)] = string (schema_##NAME##_json, schema_##NAME##_json + schema_##NAME##_json_len);
 
 SchemaCache::SchemaCache() {
-  addSchema(machine);
   addSchema(expr);
+  addSchema(constraints);
+  addSchema(machine);
   addSchema(seqpair);
   addSchema(params);
 }

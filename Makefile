@@ -52,7 +52,7 @@ MAIN = acidbot
 all: $(MAIN)
 
 # Main build rules
-bin/%: $(OBJFILES) obj/%.o
+bin/%: $(OBJFILES) obj/%.o target/%.cpp
 	@test -e bin || mkdir bin
 	$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
 
@@ -64,9 +64,13 @@ obj/%.o: target/%.cpp
 	@test -e obj || mkdir obj
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
+bin/%: $(OBJFILES) obj/%.o t/src/%.cpp
+	@test -e bin || mkdir bin
+	@$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
+
 obj/%.o: t/src/%.cpp
 	@test -e obj || mkdir obj
-	$(CPP) $(CPPFLAGS) -c -o $@ $<
+	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 $(MAIN): bin/$(MAIN)
 
@@ -129,12 +133,15 @@ test-bad-weight:
 	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.json -fail
 
 # Non-transducer I/O tests
-IO_TESTS = test-seqpair test-params
+IO_TESTS = test-seqpair test-params test-constraints
 test-seqpair: bin/testseqpair
 	@$(TEST) bin/testseqpair t/io/tiny.json -idem
 
 test-params: bin/testparams
 	@$(TEST) bin/testparams t/io/params.json -idem
+
+test-constraints: bin/testconstraints
+	@$(TEST) bin/testconstraints t/io/constraints.json -idem
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS)
@@ -147,5 +154,5 @@ test: $(MAIN) $(TESTS)
 ajv:
 	npm install ajv-cli
 
-validate-%:
-	ajv -s schema/machine.json -r schema/expr.json -d $*
+validate-$D-$F:
+	ajv -s schema/machine.json -r schema/expr.json -d t/$D/$F.json
