@@ -34,8 +34,14 @@ typedef Tokenizer<OutputSymbol,OutputToken> OutputTokenizer;
 typedef double LogWeight;
 
 struct EvaluatedMachineState {
-  typedef pair<StateIndex,LogWeight> StateScore;
-  typedef map<OutputToken,list<StateScore> > OutTransMap;
+  typedef size_t TransIndex;
+  struct Trans {
+    StateIndex state;
+    LogWeight logWeight;
+    TransIndex transIndex;  // index of this transition in source state's TransList. Need to track this so we can map forward-backward counts back to MachineTransitions
+    Trans (StateIndex, LogWeight, TransIndex);
+  };
+  typedef map<OutputToken,list<Trans> > OutTransMap;
   typedef map<InputToken,OutTransMap> InOutTransMap;
   
   StateName name;

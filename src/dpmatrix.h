@@ -28,8 +28,8 @@ protected:
     if (inOutTransMap.count (inTok)) {
       const EvaluatedMachineState::OutTransMap& outTransMap = inOutTransMap.at (inTok);
       if (outTransMap.count (outTok))
-	for (const auto& sw: outTransMap.at (outTok))
-	  ll = reduce (ll, cell(inPos,outPos,sw.first) + sw.second);
+	for (const auto& trans: outTransMap.at (outTok))
+	  ll = reduce (ll, cell(inPos,outPos,trans.state) + trans.logWeight);
     }
   }
 

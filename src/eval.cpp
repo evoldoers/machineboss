@@ -2,6 +2,10 @@
 #include "weight.h"
 #include "util.h"
 
+EvaluatedMachineState::Trans::Trans (StateIndex s, LogWeight lw, TransIndex ti) :
+  state (s), logWeight (lw), transIndex (ti)
+{ }
+
 EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params) :
   inputTokenizer (machine.inputAlphabet()),
   outputTokenizer (machine.outputAlphabet()),
@@ -10,13 +14,15 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
   Assert (machine.isAdvancingMachine(), "Machine is not topologically sorted");
   for (StateIndex s = 0; s < nStates(); ++s) {
     state[s].name = machine.state[s].name;
+    EvaluatedMachineState::TransIndex ti = 0;
     for (const auto& trans: machine.state[s].trans) {
       const StateIndex d = trans.dest;
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
       const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params));
-      state[s].outgoing[in][out].push_back (EvaluatedMachineState::StateScore (d, lw));
-      state[d].incoming[in][out].push_back (EvaluatedMachineState::StateScore (s, lw));
+      state[s].outgoing[in][out].push_back (EvaluatedMachineState::Trans (d, lw, ti));
+      state[d].incoming[in][out].push_back (EvaluatedMachineState::Trans (s, lw, ti));
+      ++ti;
     }
   }
 }
