@@ -4,7 +4,7 @@
 #include "util.h"
 
 TransWeight WeightAlgebra::geometricSum (const TransWeight& p) {
-  return TransWeight::object ({{"/", TransWeight::array ({1, TransWeight::object ({{"-", TransWeight::array ({1,p})}})})}});
+  return TransWeight::object ({{"/", TransWeight::array ({true, TransWeight::object ({{"-", TransWeight::array ({true, p})}})})}});
 }
 
 TransWeight WeightAlgebra::divide (const TransWeight& l, const TransWeight& r) {
@@ -20,11 +20,11 @@ TransWeight WeightAlgebra::pow (const TransWeight& a, const TransWeight& b) {
 }
 
 TransWeight WeightAlgebra::logOf (const TransWeight& p) {
-  return TransWeight::object ({{"log", p}});
+  return isOne(p) ? TransWeight() : TransWeight::object ({{"log", p}});
 }
 
 TransWeight WeightAlgebra::expOf (const TransWeight& p) {
-  return TransWeight::object ({{"exp", p}});
+  return isZero(p) ? TransWeight(true) : TransWeight::object ({{"exp", p}});
 }
 
 TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
