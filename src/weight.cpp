@@ -16,7 +16,7 @@ TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r)
 }
 
 TransWeight WeightAlgebra::power (const TransWeight& a, const TransWeight& b) {
-  return isOne(b) ? TransWeight(a) : TransWeight::object ({{"pow", TransWeight::array ({a, b})}});
+  return isOne(b) ? TransWeight(a) : (isZero(b) ? TransWeight(true) : TransWeight::object ({{"pow", TransWeight::array ({a, b})}}));
 }
 
 TransWeight WeightAlgebra::logOf (const TransWeight& p) {
