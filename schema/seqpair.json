@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/seqpair.json",
+  "description": "Acidbot sequence-pair schema",
+  "type": "object",
+  "required": ["input","output"],
+  "properties": {
+    "input": {
+      "$ref": "#/definitions/namedsequence"
+    },
+    "output": {
+      "$ref": "#/definitions/namedsequence"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "namedsequence": {
+      "type": "object",
+      "required": ["sequence"],
+      "properties": {
+	"sequence": {
+	  "type": "array",
+	  "items": { "type": "string" }
+	},
+	"name": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

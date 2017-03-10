@@ -205,7 +205,7 @@ void Machine::readJson (istream& in) {
 }
 
 void Machine::readJson (const json& pj) {
-  Require (MachineSchema::validate(pj), "Machine specification does not fit schema");
+  MachineSchema::validateOrDie ("machine", pj);
   json jstate = pj.at("state");
   Assert (jstate.is_array(), "state is not an array");
   map<string,StateIndex> id2n;

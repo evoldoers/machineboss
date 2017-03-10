@@ -64,6 +64,10 @@ obj/%.o: target/%.cpp
 	@test -e obj || mkdir obj
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
+obj/%.o: t/src/%.cpp
+	@test -e obj || mkdir obj
+	$(CPP) $(CPPFLAGS) -c -o $@ $<
+
 $(MAIN): bin/$(MAIN)
 
 clean:
@@ -124,8 +128,13 @@ test-bad-trans:
 test-bad-weight:
 	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.json -fail
 
+# Sequence I/O test
+SEQ_TESTS = test-seqpair
+test-seqpair: bin/testseqpair
+	@$(TEST) bin/testseqpair t/seqpair/tiny.json -idem
+
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(SEQ_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 
