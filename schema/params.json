@@ -3,14 +3,7 @@
   "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/params.json",
   "description": "Acidbot parameters schema",
   "type": "object",
-  "required": ["param"],
-  "properties": {
-    "param": {
-      "type": "object",
-      "patternProperties": {
-	".*": { "type": "number" }
-      }
-    }
-  },
-  "additionalProperties": false
+  "patternProperties": {
+    ".*": { "type": "number" }
+  }
 }
