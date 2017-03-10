@@ -3,6 +3,28 @@
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
 
+# try to figure out where GSL is
+# autoconf would be better but we just need a quick hack for now :)
+# Thanks to Torsten Seemann for gsl-config and pkg-config formulae
+GSLPREFIX = $(shell gsl-config --prefix)
+ifeq (,$(wildcard $(GSLPREFIX)/include/gsl/gsl_sf.h))
+GSLPREFIX = /usr
+ifeq (,$(wildcard $(GSLPREFIX)/include/gsl/gsl_sf.h))
+GSLPREFIX = /usr/local
+endif
+endif
+
+GSLFLAGS = $(shell pkg-config --cflags gsl)
+ifeq (, $(GSLFLAGS))
+GSLFLAGS = -I$(GSLPREFIX)/include
+endif
+
+GSLLIBS = $(shell pkg-config --libs gsl)
+ifeq (, $(GSLLIBS))
+GSLLIBS = -L$(GSLPREFIX)/lib -lgsl -lgslcblas -lm
+endif
+
+# NB pkg-config support for Boost is lacking; see https://svn.boost.org/trac/boost/ticket/1094
 BOOSTPREFIX = /usr
 ifeq (,$(wildcard $(BOOSTPREFIX)/include/boost/regex.h))
 BOOSTPREFIX = /usr/local
@@ -23,12 +45,12 @@ PREFIX = /usr/local
 
 # other flags
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
-CPPFLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(BOOSTFLAGS)
+CPPFLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSLFLAGS) $(BOOSTFLAGS)
 else
-CPPFLAGS = -std=c++11 -g -O3 $(BOOSTFLAGS)
+CPPFLAGS = -std=c++11 -g -O3 $(GSLFLAGS) $(BOOSTFLAGS)
 endif
 CPPFLAGS += -Iext -Iext/nlohmann_json
-LIBFLAGS = -lstdc++ -lz $(BOOSTLIBS)
+LIBFLAGS = -lstdc++ -lz $(GSLLIBS) $(BOOSTLIBS)
 
 CPPFILES = $(wildcard src/*.cpp)
 OBJFILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPPFILES)))
