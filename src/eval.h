@@ -15,7 +15,7 @@ struct Tokenizer {
     for (Token tok = 0; tok < (Token) tok2sym.size(); ++tok)
       sym2tok[tok2sym[tok]] = tok;
   }
-  inline Token emptyToken() const { return 0; }
+  static inline Token emptyToken() { return 0; }
   vguard<Token> tokenize (const vguard<Symbol>& symSeq) const {
     vguard<Token> tokSeq (symSeq.size());
     transform (symSeq.begin(), symSeq.end(), tokSeq.begin(), sym2tok.at);
@@ -29,18 +29,15 @@ typedef int OutputToken;
 typedef Tokenizer<InputSymbol,InputToken> InputTokenizer;
 typedef Tokenizer<OutputSymbol,OutputToken> OutputTokenizer;
 
-struct EvaluatedMachineTransition {
-  InputToken in;
-  OutputToken out;
-  StateIndex src, dest;
-  double logWeight;
-
-  EvaluatedMachineTransition (StateIndex src, const MachineTransition&, const Params&, const InputTokenizer&, const OutputTokenizer&);
-};
+typedef double LogWeight;
 
 struct EvaluatedMachineState {
+  typedef pair<StateIndex,LogWeight> StateScore;
+  typedef map<OutputToken,list<StateScore> > OutTransMap;
+  typedef map<InputToken,OutTransMap> InOutTransMap;
+  
   StateName name;
-  map<InputToken,multimap<OutputToken,EvaluatedMachineTransition> > incoming, outgoing;
+  InOutTransMap incoming, outgoing;
 };
 
 struct EvaluatedMachine {
@@ -48,7 +45,9 @@ struct EvaluatedMachine {
   OutputTokenizer outputTokenizer;
   vguard<EvaluatedMachineState> state;
   EvaluatedMachine (const Machine&, const Params&);
-  inline StateIndex nStates() const { return state.size(); }
+  StateIndex nStates() const;
+  StateIndex startState() const;
+  StateIndex endState() const;
 };
 
 #endif /* EVAL_INCLUDED */

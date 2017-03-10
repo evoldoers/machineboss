@@ -1,13 +1,6 @@
 #include "eval.h"
 #include "weight.h"
-
-EvaluatedMachineTransition::EvaluatedMachineTransition (StateIndex src, const MachineTransition& trans, const Params& params, const InputTokenizer& inTok, const OutputTokenizer& outTok) :
-  in (inTok.sym2tok.at(trans.in)),
-  out (outTok.sym2tok.at(trans.out)),
-  src (src),
-  dest (trans.dest),
-  logWeight (log (WeightAlgebra::eval (trans.weight, params)))
-{ }
+#include "util.h"
 
 EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params) :
   inputTokenizer (machine.inputAlphabet()),
@@ -18,10 +11,25 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
     state[s].name = machine.state[s].name;
     for (const auto& trans: machine.state[s].trans) {
       const StateIndex d = trans.dest;
-      const EvaluatedMachineTransition evalTrans (s, trans, params, inputTokenizer, outputTokenizer);
-      const pair<OutputToken,EvaluatedMachineTransition> outEvalTrans (evalTrans.out, evalTrans);
-      state[s].outgoing[evalTrans.in].insert (outEvalTrans);
-      state[d].incoming[evalTrans.in].insert (outEvalTrans);
+      const InputToken in = inputTokenizer.sym2tok.at (trans.in);
+      const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
+      const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params));
+      state[s].outgoing[in][out].push_back (EvaluatedMachineState::StateScore (d, lw));
+      state[d].incoming[in][out].push_back (EvaluatedMachineState::StateScore (s, lw));
     }
   }
+}
+
+StateIndex EvaluatedMachine::nStates() const {
+  return state.size();
+}
+
+StateIndex EvaluatedMachine::startState() const {
+  Assert (nStates() > 0, "EvaluatedMachine has no states");
+  return 0;
+}
+
+StateIndex EvaluatedMachine::endState() const {
+  Assert (nStates() > 0, "EvaluatedMachine has no states");
+  return nStates() - 1;
 }
