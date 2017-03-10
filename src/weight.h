@@ -19,6 +19,9 @@ struct WeightAlgebra {
   static TransWeight expOf (const TransWeight& p);  // exp(p)
   static TransWeight geometricSum (const TransWeight& p);
 
+  static bool isZero (const TransWeight& w);
+  static bool isOne (const TransWeight& w);
+  
   static string opcode (const TransWeight& w);
   static const json& operands (const TransWeight& w);
 

@@ -8,15 +8,15 @@ TransWeight WeightAlgebra::geometricSum (const TransWeight& p) {
 }
 
 TransWeight WeightAlgebra::divide (const TransWeight& l, const TransWeight& r) {
-  return TransWeight::object ({{"/", TransWeight::array ({l, r})}});
+  return isOne(r) ? TransWeight(l) : TransWeight::object ({{"/", TransWeight::array ({l, r})}});
 }
 
 TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r) {
-  return TransWeight::object ({{"-", TransWeight::array ({l, r})}});
+  return isZero(r) ? TransWeight(l) : TransWeight::object ({{"-", TransWeight::array ({l, r})}});
 }
 
 TransWeight WeightAlgebra::pow (const TransWeight& a, const TransWeight& b) {
-  return TransWeight::object ({{"pow", TransWeight::array ({a, b})}});
+  return isOne(b) ? TransWeight(a) : TransWeight::object ({{"pow", TransWeight::array ({a, b})}});
 }
 
 TransWeight WeightAlgebra::logOf (const TransWeight& p) {
@@ -29,11 +29,13 @@ TransWeight WeightAlgebra::expOf (const TransWeight& p) {
 
 TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
-  if (l.is_boolean() && l.get<bool>())
+  if (isOne(l))
     w = r;
-  else if (r.is_boolean() && r.get<bool>())
+  else if (isOne(r))
     w = l;
-  else if (l.is_number_integer() && r.is_number_integer())
+  else if (isZero(l) || isZero(r)) {
+    // w = null
+  } else if (l.is_number_integer() && r.is_number_integer())
     w = l.get<int>() * r.get<int>();
   else if (l.is_number() && r.is_number())
     w = l.get<double>() * r.get<double>();
@@ -44,9 +46,9 @@ TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r)
 
 TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
   TransWeight w;
-  if (l.is_null())
+  if (isZero(l))
     w = r;
-  else if (r.is_null())
+  else if (isZero(r))
     w = l;
   else if (l.is_number_integer() && r.is_number_integer())
     w = l.get<int>() + r.get<int>();
@@ -55,6 +57,19 @@ TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
   else
     w = TransWeight::object ({{"+", TransWeight::array({l,r})}});
   return w;
+}
+
+bool WeightAlgebra::isZero (const TransWeight& w) {
+  return w.is_null()
+    || (w.is_boolean() && !w.get<bool>())
+    || (w.is_number_integer() && w.get<int>() == 0)
+    || (w.is_number() && w.get<double>() == 0.);
+}
+
+bool WeightAlgebra::isOne (const TransWeight& w) {
+  return (w.is_boolean() && w.get<bool>())
+    || (w.is_number_integer() && w.get<int>() == 1)
+    || (w.is_number() && w.get<double>() == 1.);
 }
 
 string WeightAlgebra::opcode (const TransWeight& w) {
@@ -101,11 +116,13 @@ double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
 TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
   TransWeight d;
   const string op = opcode(w);
-  if (op == "null" || op == "boolean" || op == "int" || op == "float")
-    d = 0;
-  else if (op == "param")
-    d = (param == w.get<string>() ? 1. : 0.);
-  else if (op == "exp") d = multiply (deriv (w.at("exp"), param), w);  // w = exp(x), w' = x'exp(x)
+  if (op == "null" || op == "boolean" || op == "int" || op == "float") {
+    // d = null
+  } else if (op == "param") {
+    if (param == w.get<string>())
+      d = 1;
+    // else d = null
+  } else if (op == "exp") d = multiply (deriv (w.at("exp"), param), w);  // w = exp(x), w' = x'exp(x)
   else if (op == "log") d = divide (deriv (w.at("log"), param), w.at("log"));  // w = log(x), w' = x'/x
   else {
     const json& args = operands(w);

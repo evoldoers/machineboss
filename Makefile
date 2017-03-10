@@ -165,8 +165,16 @@ test-params: bin/testparams
 test-constraints: bin/testconstraints
 	@$(TEST) bin/testconstraints t/io/constraints.json -idem
 
+# Symbolic algebra tests
+ALGEBRA_TESTS = test-deriv-xplusy-x test-deriv-xy-x
+test-deriv-xplusy-x: bin/testderiv
+	@$(TEST) bin/testderiv t/algebra/x_plus_y.json x t/expect/dxplusy_dx.json
+
+test-deriv-xy-x: bin/testderiv
+	@$(TEST) bin/testderiv t/algebra/x_times_y.json x t/expect/dxy_dx.json
+
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 
