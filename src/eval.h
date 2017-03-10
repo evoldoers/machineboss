@@ -1,26 +1,24 @@
 #ifndef EVAL_INCLUDED
 #define EVAL_INCLUDED
 
+#include <algorithm>
 #include "trans.h"
 #include "params.h"
 
-template<class AlphabetSymbol,class AlphabetToken>
+template<typename Symbol,typename Token>
 struct Tokenizer {
-  vguard<AlphabetSymbol> tok2sym;
-  map<AlphabetSymbol,AlphabetToken> sym2tok;
-  Tokenizer (const vguard<AlphabetSymbol>& symbols) {
+  vguard<Symbol> tok2sym;
+  map<Symbol,Token> sym2tok;
+  Tokenizer (const vguard<Symbol>& symbols) {
     tok2sym.push_back (string());   // token zero is the empty string
     tok2sym.insert (tok2sym.end(), symbols.begin(), symbols.end());
-    for (AlphabetToken tok = 0; tok < tok2sym.size(); ++tok)
+    for (Token tok = 0; tok < (Token) tok2sym.size(); ++tok)
       sym2tok[tok2sym[tok]] = tok;
   }
-  inline AlphabetToken emptyToken() const { return 0; }
-  inline AlphabetToken badToken() const { return -1; }
-  vguard<AlphabetToken> tokenize (const vguard<AlphabetSymbol>& symSeq) const {
-    vguard<AlphabetToken> tokSeq;
-    tokSeq.reserve (symSeq.size());
-    for (const auto& sym: symSeq)
-      tokSeq.push_back (sym2tok.count(sym) ? sym2tok.at(sym) : badToken());
+  inline Token emptyToken() const { return 0; }
+  vguard<Token> tokenize (const vguard<Symbol>& symSeq) const {
+    vguard<Token> tokSeq (symSeq.size());
+    transform (symSeq.begin(), symSeq.end(), tokSeq.begin(), sym2tok.at);
     return tokSeq;
   }
 };
@@ -41,7 +39,8 @@ struct EvaluatedMachineTransition {
 };
 
 struct EvaluatedMachineState {
-  map<InputToken,map<OutputToken,EvaluatedMachineTransition> > incoming, outgoing;
+  StateName name;
+  map<InputToken,multimap<OutputToken,EvaluatedMachineTransition> > incoming, outgoing;
 };
 
 struct EvaluatedMachine {
@@ -49,6 +48,7 @@ struct EvaluatedMachine {
   OutputTokenizer outputTokenizer;
   vguard<EvaluatedMachineState> state;
   EvaluatedMachine (const Machine&, const Params&);
+  inline StateIndex nStates() const { return state.size(); }
 };
 
 #endif /* EVAL_INCLUDED */

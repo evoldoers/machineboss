@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <list>
 #include <json.hpp>
 #include "weight.h"
