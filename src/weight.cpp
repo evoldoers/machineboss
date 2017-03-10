@@ -16,7 +16,7 @@ TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r)
 }
 
 TransWeight WeightAlgebra::pow (const TransWeight& a, const TransWeight& b) {
-  return TransWeight::object ({{"^", TransWeight::array ({a, b})}});
+  return TransWeight::object ({{"pow", TransWeight::array ({a, b})}});
 }
 
 TransWeight WeightAlgebra::logOf (const TransWeight& p) {
@@ -83,6 +83,8 @@ double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
   if (op == "boolean") return w.get<bool>() ? 1. : 0.;
   if (op == "int" || op == "float") return w.get<double>();
   if (op == "param") return params.param.at (w.get<string>());
+  if (op == "log") return log (eval (w.at("log"), params));
+  if (op == "exp") return exp (eval (w.at("exp"), params));
   vguard<double> evalArgs;
   const json& args = operands(w);
   for (const auto& arg: args)
@@ -91,9 +93,7 @@ double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
   if (op == "/") return evalArgs[0] / evalArgs[1];
   if (op == "+") return evalArgs[0] + evalArgs[1];
   if (op == "-") return evalArgs[0] - evalArgs[1];
-  if (op == "^") return pow (evalArgs[0], evalArgs[1]);
-  if (op == "log") return log (evalArgs[0]);
-  if (op == "exp") return exp (evalArgs[0]);
+  if (op == "pow") return pow (evalArgs[0], evalArgs[1]);
   Abort("Unknown opcode: %s", op.c_str());
   return -numeric_limits<double>::infinity();
 }
@@ -105,6 +105,8 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
     d = 0;
   else if (op == "param")
     d = (param == w.get<string>() ? 1. : 0.);
+  else if (op == "exp") d = multiply (deriv (w.at("exp"), param), w);  // w = exp(x), w' = x'exp(x)
+  else if (op == "log") d = divide (deriv (w.at("log"), param), w.at("log"));  // w = log(x), w' = x'/x
   else {
     const json& args = operands(w);
     vguard<TransWeight> derivArgs;
@@ -114,9 +116,7 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
     else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[0])));  // w = f/g, w' = f'/g - g'f/g^2
     else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
     else if (op == "-") d = subtract (derivArgs[0], derivArgs[1]);  // w = f - g, w' = f' - g'
-    else if (op == "exp") d = multiply (derivArgs[0], w);  // w = exp(x), w' = x'exp(x)
-    else if (op == "log") d = divide (derivArgs[0], args[0]);  // w = log(x), w' = x'/x
-    else if (op == "^") d = multiply (w, add (multiply(derivArgs[1],logOf(args[0])), multiply(derivArgs[0],divide(args[1],args[0]))));  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
+    else if (op == "pow") d = multiply (w, add (multiply(derivArgs[1],logOf(args[0])), multiply(derivArgs[0],divide(args[1],args[0]))));  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
     else
       Abort("Unknown opcode: %s", op.c_str());
   }
