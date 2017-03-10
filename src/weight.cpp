@@ -34,3 +34,19 @@ TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
     w = TransWeight::object ({{"+", TransWeight::array({l,r})}});
   return w;
 }
+
+string WeightAlgebra::opcode (const TransWeight& w) {
+  if (w.is_null())
+    return string("null");
+  else if (w.is_number())
+    return string("number");
+  else if (w.is_boolean())
+    return string("boolean");
+  auto iter = w.begin();
+  return iter.key();
+}
+
+const json& WeightAlgebra::operands (const TransWeight& w) {
+  auto iter = w.begin();
+  return iter.value();
+}
