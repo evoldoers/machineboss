@@ -35,7 +35,7 @@
         { "type": "object",
           "required": ["pow"],
           "additionalProperties": false,
-          "properties": { "*": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } }
+          "properties": { "pow": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/definitions/expr" } } } }
       ]
     }
   },
