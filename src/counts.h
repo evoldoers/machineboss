@@ -10,6 +10,7 @@ struct MachineCounts {
   vguard<vguard<double> > count;  // indexed: count[state][nTrans]
   MachineCounts (const EvaluatedMachine&, const SeqPair&);
   MachineCounts& operator+= (const MachineCounts&);
+  void writeJson (ostream&) const;
 };
 
 // M-step

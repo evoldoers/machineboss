@@ -29,6 +29,11 @@ protected:
     iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
+  inline void accumulateCounts (double logOddsRatio, vguard<double>& transCounts, const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
+    auto visit = [&] (EvaluatedMachineState::TransIndex ti, double tll) { transCounts[ti] += exp (logOddsRatio + tll); };
+    iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
+  }
+
   inline void iterate (const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(EvaluatedMachineState::TransIndex,double)> visit) const {
     if (inOutTransMap.count (inTok)) {
       const EvaluatedMachineState::OutTransMap& outTransMap = inOutTransMap.at (inTok);
