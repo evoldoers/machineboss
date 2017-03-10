@@ -25,11 +25,16 @@ private:
 
 protected:
   inline void accumulate (double& ll, const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<double(double,double)> reduce) const {
+    auto visit = [&] (EvaluatedMachineState::TransIndex, double t) { ll = reduce(ll,t); };
+    iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
+  }
+
+  inline void iterate (const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(EvaluatedMachineState::TransIndex,double)> visit) const {
     if (inOutTransMap.count (inTok)) {
       const EvaluatedMachineState::OutTransMap& outTransMap = inOutTransMap.at (inTok);
       if (outTransMap.count (outTok))
 	for (const auto& trans: outTransMap.at (outTok))
-	  ll = reduce (ll, cell(inPos,outPos,trans.state) + trans.logWeight);
+	  visit (trans.transIndex, cell(inPos,outPos,trans.state) + trans.logWeight);
     }
   }
 
