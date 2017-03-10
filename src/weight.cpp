@@ -64,7 +64,6 @@ const json& WeightAlgebra::operands (const TransWeight& w) {
   return iter.value();
 }
 
-
 double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
   const string op = opcode(w);
   if (op == "null") return 0;
