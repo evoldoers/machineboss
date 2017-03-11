@@ -11,7 +11,7 @@
 #define TransformedParamPrefix "$param"
 
 // GSL multidimensional optimization parameters
-#define StepSize 0.01
+#define StepSize 0.1
 #define LineSearchTolerance 1e-4
 #define EpsilonAbsolute 1e-3
 #define MaxIterations 100
@@ -73,7 +73,7 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
 
       transformedParamIndex[cParam] = param.size();
       param.push_back (trParam);
-      paramTransform[cParam] = WeightAlgebra::power (WeightExpr(trParam), 2);
+      paramTransform[cParam] = WeightAlgebra::multiply (WeightExpr(trParam), WeightExpr(trParam));
     }
 
     lagrangian = WeightAlgebra::add (lagrangian,
@@ -81,9 +81,10 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
 							      WeightAlgebra::subtract (true, cSum)));
   }
 
-  for (const auto& p: param)
-    gradSquared = WeightAlgebra::add (gradSquared,
-				      WeightAlgebra::power (WeightAlgebra::deriv (lagrangian, paramTransform, p), 2));
+  for (const auto& p: param) {
+    const WeightExpr d = WeightAlgebra::deriv (lagrangian, paramTransform, p);
+    gradSquared = WeightAlgebra::add (gradSquared, WeightAlgebra::multiply (d, d));
+  }
 
   deriv.reserve (param.size());
   for (const auto& p: param)
@@ -146,7 +147,7 @@ Params MachineLagrangian::optimize (const Params& seed) const {
 
   gsl_vector* x = gsl_vector_alloc (func.n);
   for (size_t n = 0; n < func.n; ++n)
-    gsl_vector_set (x, n, 0);
+    gsl_vector_set (x, n, 1);
   // acidbot_param_n = (gsl_param_n)^2
   // so gsl_param_n = sqrt(acidbot_param_n)
   for (const auto& paramIdx: transformedParamIndex)
