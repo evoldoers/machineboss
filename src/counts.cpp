@@ -4,7 +4,14 @@
 #include "backward.h"
 #include "util.h"
 
+// Prefix for Lagrange multiplier parameters
 #define LagrangeMultiplierPrefix "LagrangeMultiplier"
+
+// GSL multidimensional optimization parameters
+#define StepSize 0.01
+#define LineSearchTolerance 1e-4
+#define EpsilonAbsolute 1e-3
+#define MaxIterations 100
 
 MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   count (machine.nStates())
@@ -50,7 +57,7 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
   for (const auto& c: constraints.norm) {
     string lambda;
     do
-      lambda = string(LagrangeMultiplierPrefix) + to_string(lm++);
+      lambda = string(LagrangeMultiplierPrefix) + to_string(++lm);
     while (p.count(lambda));
     lagrangeMultiplier.push_back (lambda);
 
@@ -70,15 +77,16 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
     multiplierDeriv.push_back (WeightAlgebra::deriv (lagrangian, lambda));
 }
 
-Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml) {
+Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml, bool wantLagrangeMultipliers) {
   Params p;
 
   // acidbot_param_n = exp (gsl_param_n)
   for (size_t n = 0; n < ml.param.size(); ++n)
     p.param[ml.param[n]] = exp (gsl_vector_get (v, n));
 
-  for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
-    p.param[ml.param[n]] = gsl_vector_get (v, n + ml.param.size());
+  if (wantLagrangeMultipliers)
+    for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
+      p.param[ml.lagrangeMultiplier[n]] = gsl_vector_get (v, n + ml.param.size());
 
   return p;
 }
@@ -86,14 +94,14 @@ Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml) {
 double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
-  const Params pv = gsl_vector_to_params (v, ml);
+  const Params pv = gsl_vector_to_params (v, ml, true);
   return WeightAlgebra::eval (ml.lagrangian, pv);
 }
 
 void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector *df)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
-  const Params pv = gsl_vector_to_params (v, ml);
+  const Params pv = gsl_vector_to_params (v, ml, true);
 
   // acidbot_param_n = exp (gsl_param_n)
   // so d(lagrangian)/d(gsl_param_n) = d(lagrangian)/d(acidbot_param_n) * acidbot_param_n
@@ -110,10 +118,6 @@ void gsl_machine_lagrangian_with_deriv (const gsl_vector *x, void *voidML, doubl
   gsl_machine_lagrangian_deriv (x, voidML, df);
 }
 
-#define StepSize 0.01
-#define LineSearchTolerance 1e-4
-#define EpsilonAbsolute 1e-3
-#define MaxIterations 100
 Params MachineLagrangian::optimize (const Params& seed) const {
   gsl_vector *v;
   gsl_multimin_function_fdf func;
@@ -151,7 +155,7 @@ Params MachineLagrangian::optimize (const Params& seed) const {
     }
   while (status == GSL_CONTINUE && iter < MaxIterations);
 
-  const Params finalParams = gsl_vector_to_params (x, *this);
+  const Params finalParams = gsl_vector_to_params (x, *this, false);
 
   gsl_multimin_fdfminimizer_free (s);
   gsl_vector_free (x);
