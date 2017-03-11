@@ -136,7 +136,7 @@ WeightExpr WeightAlgebra::deriv (const WeightExpr& w, const ParamDefs& defs, con
     for (const auto& arg: args)
       derivArgs.push_back (deriv (arg, defs, param));
     if (op == "*") d = add (multiply(derivArgs[0],args[1]), multiply(args[0],derivArgs[1]));  // w = fg, w' = f'g + g'f
-    else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[0])));  // w = f/g, w' = f'/g - g'f/g^2
+    else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[1])));  // w = f/g, w' = f'/g - g'f/g^2
     else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
     else if (op == "-") d = subtract (derivArgs[0], derivArgs[1]);  // w = f - g, w' = f' - g'
     else if (op == "pow") d = multiply (w, add (multiply(derivArgs[1],logOf(args[0])), multiply(derivArgs[0],divide(args[1],args[0]))));  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
