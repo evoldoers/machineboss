@@ -30,6 +30,8 @@ struct WeightAlgebra {
   static TransWeight deriv (const TransWeight& w, const string& param);
 
   static set<string> params (const TransWeight& w);
+
+  static string toString (const TransWeight& w);
 };
 
 #endif /* WEIGHT_INCLUDED */

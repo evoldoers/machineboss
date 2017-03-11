@@ -158,3 +158,15 @@ set<string> WeightAlgebra::params (const TransWeight& w) {
   }
   return p;
 }
+
+string WeightAlgebra::toString (const TransWeight& w) {
+  const string op = opcode(w);
+  if (op == "null") return string("0");
+  if (op == "boolean") return to_string (w.get<bool>() ? 1 : 0);
+  if (op == "int" || op == "float") return to_string (w.get<double>());
+  if (op == "param") return w.get<string>();
+  if (op == "log" || op == "exp") return op + "(" + toString(w.at(op)) + ")";
+  const json& args = operands(w);
+  if (op == "pow") return string("pow(") + toString(args[0]) + "," + toString(args[1]) + ")";
+  return string("(") + toString(args[0]) + op + toString(args[1]) + ")";
+}
