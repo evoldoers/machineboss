@@ -51,7 +51,7 @@ struct JsonLoader : Base {
   }
 
   std::string toJsonString() const {
-    toJsonString (this);
+    return toJsonString (*this);
   }
 };
 
