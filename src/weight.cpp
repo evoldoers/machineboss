@@ -8,7 +8,7 @@ TransWeight WeightAlgebra::geometricSum (const TransWeight& p) {
 }
 
 TransWeight WeightAlgebra::divide (const TransWeight& l, const TransWeight& r) {
-  return isOne(r) ? TransWeight(l) : TransWeight::object ({{"/", TransWeight::array ({l, r})}});
+  return (isOne(r) || isZero(l)) ? TransWeight(l) : TransWeight::object ({{"/", TransWeight::array ({l, r})}});
 }
 
 TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r) {

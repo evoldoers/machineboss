@@ -75,6 +75,13 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
     paramDeriv.push_back (WeightAlgebra::deriv (lagrangian, p));
   for (const auto& lambda: lagrangeMultiplier)
     multiplierDeriv.push_back (WeightAlgebra::deriv (lagrangian, lambda));
+
+  cerr << WeightAlgebra::toString(lagrangian) << endl;
+  for (const auto& f: paramDeriv)
+    cerr << WeightAlgebra::toString(f) << endl;
+  for (const auto& f: multiplierDeriv)
+    cerr << WeightAlgebra::toString(f) << endl;
+
 }
 
 Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml, bool wantLagrangeMultipliers) {
