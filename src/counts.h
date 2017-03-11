@@ -16,8 +16,8 @@ struct MachineCounts {
 // M-step
 struct MachineLagrangian {
   vguard<string> param, lagrangeMultiplier;
-  TransWeight lagrangian;
-  vguard<TransWeight> paramDeriv, multiplierDeriv;
+  WeightExpr lagrangian;
+  vguard<WeightExpr> paramDeriv, multiplierDeriv;
   MachineLagrangian (const Machine&, const MachineCounts&, const Constraints&);
   Params optimize (const Params& seed) const;
 };

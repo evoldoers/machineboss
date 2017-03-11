@@ -4,13 +4,13 @@
 #include <map>
 #include <string>
 #include <json.hpp>
-#include "vguard.h"
+#include "weight.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 struct Params {
-  map<string,double> param;
+  ParamDefs defs;
 
   void readJson (istream& in);
   void readJson (const json& json);

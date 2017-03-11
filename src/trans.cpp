@@ -12,7 +12,7 @@ using json = nlohmann::json;
 MachineTransition::MachineTransition()
 { }
 
-MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight weight)
+MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr weight)
   : in (in),
   out (out),
   dest (dest),
@@ -208,7 +208,7 @@ void Machine::readJson (const json& pj) {
 	  t.in = jt.at("in").get<string>();
 	if (jt.count("out"))
 	  t.out = jt.at("out").get<string>();
-	t.weight = jt.count("weight") ? jt.at("weight") : TransWeight(true);
+	t.weight = jt.count("weight") ? jt.at("weight") : WeightExpr(true);
 	ms.trans.push_back (t);
       }
     }
@@ -386,7 +386,7 @@ Machine Machine::waitingMachine() const {
 	  c.trans.push_back(t);
 	else
 	  w.trans.push_back(t);
-      c.trans.push_back (MachineTransition (string(), string(), newState.size(), TransWeight(true)));
+      c.trans.push_back (MachineTransition (string(), string(), newState.size(), WeightExpr(true)));
       old2new.push_back (new2old.size());
       new2old.push_back (newState.size());
       swap (newState[s], c);
@@ -461,7 +461,7 @@ Machine Machine::advancingMachine() const {
 	ta.accumulate (t.in, t.out, t.dest, t.weight);
       const auto et = ta.transitions();
       // factor out self-loops
-      TransWeight exitSelf (true);
+      WeightExpr exitSelf (true);
       for (const auto& t: et)
 	if (t.isSilent() && t.dest == s)
 	  exitSelf = WeightAlgebra::geometricSum (t.weight);
@@ -479,7 +479,7 @@ Machine Machine::advancingMachine() const {
   return am;
 }
 
-void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight w) {
+void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w) {
   if (t[dest][in].count(out))
     t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
   else

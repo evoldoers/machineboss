@@ -11,15 +11,15 @@ void Params::readJson (istream& in) {
 
 void Params::readJson (const json& pj) {
   MachineSchema::validateOrDie ("params", pj);
-  param.clear();
+  defs.clear();
   for (auto iter = pj.begin(); iter != pj.end(); ++iter)
-    param[iter.key()] = iter.value().get<double>();
+    defs[iter.key()] = iter.value();
 }
 
 void Params::writeJson (ostream& out) const {
   out << "{";
   size_t n = 0;
-  for (auto& pv: param)
+  for (auto& pv: defs)
     out << (n++ ? "," : "") << "\"" << pv.first << "\":" << pv.second;
   out << "}" << endl;
 }

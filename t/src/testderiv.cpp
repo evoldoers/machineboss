@@ -11,7 +11,7 @@ int main (int argc, char** argv) {
   ifstream in (argv[1]);
   in >> w;
   MachineSchema::validateOrDie ("expr", w);
-  TransWeight d = WeightAlgebra::deriv (w, string(argv[2]));
+  WeightExpr d = WeightAlgebra::deriv (w, ParamDefs(), string(argv[2]));
   cout << d << endl;
   exit(0);
 }

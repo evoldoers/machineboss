@@ -3,32 +3,32 @@
 #include "logsumexp.h"
 #include "util.h"
 
-TransWeight WeightAlgebra::geometricSum (const TransWeight& p) {
-  return TransWeight::object ({{"/", TransWeight::array ({true, TransWeight::object ({{"-", TransWeight::array ({true, p})}})})}});
+WeightExpr WeightAlgebra::geometricSum (const WeightExpr& p) {
+  return WeightExpr::object ({{"/", WeightExpr::array ({true, WeightExpr::object ({{"-", WeightExpr::array ({true, p})}})})}});
 }
 
-TransWeight WeightAlgebra::divide (const TransWeight& l, const TransWeight& r) {
-  return (isOne(r) || isZero(l)) ? TransWeight(l) : TransWeight::object ({{"/", TransWeight::array ({l, r})}});
+WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {
+  return (isOne(r) || isZero(l)) ? WeightExpr(l) : WeightExpr::object ({{"/", WeightExpr::array ({l, r})}});
 }
 
-TransWeight WeightAlgebra::subtract (const TransWeight& l, const TransWeight& r) {
-  return isZero(r) ? TransWeight(l) : TransWeight::object ({{"-", TransWeight::array ({l, r})}});
+WeightExpr WeightAlgebra::subtract (const WeightExpr& l, const WeightExpr& r) {
+  return isZero(r) ? WeightExpr(l) : WeightExpr::object ({{"-", WeightExpr::array ({l, r})}});
 }
 
-TransWeight WeightAlgebra::power (const TransWeight& a, const TransWeight& b) {
-  return isOne(b) ? TransWeight(a) : (isZero(b) ? TransWeight(true) : TransWeight::object ({{"pow", TransWeight::array ({a, b})}}));
+WeightExpr WeightAlgebra::power (const WeightExpr& a, const WeightExpr& b) {
+  return isOne(b) ? WeightExpr(a) : (isZero(b) ? WeightExpr(true) : WeightExpr::object ({{"pow", WeightExpr::array ({a, b})}}));
 }
 
-TransWeight WeightAlgebra::logOf (const TransWeight& p) {
-  return isOne(p) ? TransWeight() : TransWeight::object ({{"log", p}});
+WeightExpr WeightAlgebra::logOf (const WeightExpr& p) {
+  return isOne(p) ? WeightExpr() : WeightExpr::object ({{"log", p}});
 }
 
-TransWeight WeightAlgebra::expOf (const TransWeight& p) {
-  return isZero(p) ? TransWeight(true) : TransWeight::object ({{"exp", p}});
+WeightExpr WeightAlgebra::expOf (const WeightExpr& p) {
+  return isZero(p) ? WeightExpr(true) : WeightExpr::object ({{"exp", p}});
 }
 
-TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r) {
-  TransWeight w;
+WeightExpr WeightAlgebra::multiply (const WeightExpr& l, const WeightExpr& r) {
+  WeightExpr w;
   if (isOne(l))
     w = r;
   else if (isOne(r))
@@ -40,12 +40,12 @@ TransWeight WeightAlgebra::multiply (const TransWeight& l, const TransWeight& r)
   else if (l.is_number() && r.is_number())
     w = l.get<double>() * r.get<double>();
   else
-    w = TransWeight::object ({{"*", TransWeight::array({l,r})}});
+    w = WeightExpr::object ({{"*", WeightExpr::array({l,r})}});
   return w;
 }
 
-TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
-  TransWeight w;
+WeightExpr WeightAlgebra::add (const WeightExpr& l, const WeightExpr& r) {
+  WeightExpr w;
   if (isZero(l))
     w = r;
   else if (isZero(r))
@@ -55,24 +55,24 @@ TransWeight WeightAlgebra::add (const TransWeight& l, const TransWeight& r) {
   else if (l.is_number() && r.is_number())
     w = l.get<double>() + r.get<double>();
   else
-    w = TransWeight::object ({{"+", TransWeight::array({l,r})}});
+    w = WeightExpr::object ({{"+", WeightExpr::array({l,r})}});
   return w;
 }
 
-bool WeightAlgebra::isZero (const TransWeight& w) {
+bool WeightAlgebra::isZero (const WeightExpr& w) {
   return w.is_null()
     || (w.is_boolean() && !w.get<bool>())
     || (w.is_number_integer() && w.get<int>() == 0)
     || (w.is_number() && w.get<double>() == 0.);
 }
 
-bool WeightAlgebra::isOne (const TransWeight& w) {
+bool WeightAlgebra::isOne (const WeightExpr& w) {
   return (w.is_boolean() && w.get<bool>())
     || (w.is_number_integer() && w.get<int>() == 1)
     || (w.is_number() && w.get<double>() == 1.);
 }
 
-string WeightAlgebra::opcode (const TransWeight& w) {
+string WeightAlgebra::opcode (const WeightExpr& w) {
   if (w.is_null())
     return string("null");
   if (w.is_boolean())
@@ -87,23 +87,26 @@ string WeightAlgebra::opcode (const TransWeight& w) {
   return iter.key();
 }
 
-const json& WeightAlgebra::operands (const TransWeight& w) {
+const json& WeightAlgebra::operands (const WeightExpr& w) {
   auto iter = w.begin();
   return iter.value();
 }
 
-double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
+double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs) {
   const string op = opcode(w);
   if (op == "null") return 0;
   if (op == "boolean") return w.get<bool>() ? 1. : 0.;
   if (op == "int" || op == "float") return w.get<double>();
-  if (op == "param") return params.param.at (w.get<string>());
-  if (op == "log") return log (eval (w.at("log"), params));
-  if (op == "exp") return exp (eval (w.at("exp"), params));
+  if (op == "param") {
+    const string n = w.get<string>();
+    return eval (defs.at(n), exclude(defs,n));
+  }
+  if (op == "log") return log (eval (w.at("log"), defs));
+  if (op == "exp") return exp (eval (w.at("exp"), defs));
   vguard<double> evalArgs;
   const json& args = operands(w);
   for (const auto& arg: args)
-    evalArgs.push_back (eval (arg, params));
+    evalArgs.push_back (eval (arg, defs));
   if (op == "*") return evalArgs[0] * evalArgs[1];
   if (op == "/") return evalArgs[0] / evalArgs[1];
   if (op == "+") return evalArgs[0] + evalArgs[1];
@@ -113,22 +116,25 @@ double WeightAlgebra::eval (const TransWeight& w, const Params& params) {
   return -numeric_limits<double>::infinity();
 }
 
-TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
-  TransWeight d;
+WeightExpr WeightAlgebra::deriv (const WeightExpr& w, const ParamDefs& defs, const string& param) {
+  WeightExpr d;
   const string op = opcode(w);
   if (op == "null" || op == "boolean" || op == "int" || op == "float") {
-    // d = null
+    // d = null (implicit)
   } else if (op == "param") {
-    if (param == w.get<string>())
+    const string n = w.get<string>();
+    if (param == n)
       d = true;
-    // else d = null
-  } else if (op == "exp") d = multiply (deriv (w.at("exp"), param), w);  // w = exp(x), w' = x'exp(x)
-  else if (op == "log") d = divide (deriv (w.at("log"), param), w.at("log"));  // w = log(x), w' = x'/x
+    else if (defs.count(n))
+      d = deriv (defs.at(n), exclude(defs,n), param);
+    // else d = null (implicit)
+  } else if (op == "exp") d = multiply (deriv (w.at("exp"), defs, param), w);  // w = exp(x), w' = x'exp(x)
+  else if (op == "log") d = divide (deriv (w.at("log"), defs, param), w.at("log"));  // w = log(x), w' = x'/x
   else {
     const json& args = operands(w);
-    vguard<TransWeight> derivArgs;
+    vguard<WeightExpr> derivArgs;
     for (const auto& arg: args)
-      derivArgs.push_back (deriv (arg, param));
+      derivArgs.push_back (deriv (arg, defs, param));
     if (op == "*") d = add (multiply(derivArgs[0],args[1]), multiply(args[0],derivArgs[1]));  // w = fg, w' = f'g + g'f
     else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[0])));  // w = f/g, w' = f'/g - g'f/g^2
     else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
@@ -140,33 +146,46 @@ TransWeight WeightAlgebra::deriv (const TransWeight& w, const string& param) {
   return d;
 }
 
-set<string> WeightAlgebra::params (const TransWeight& w) {
+set<string> WeightAlgebra::params (const WeightExpr& w, const ParamDefs& defs) {
   set<string> p;
   const string op = opcode(w);
   if (op == "null" || op == "boolean" || op == "int" || op == "float") {
     // p is empty
-  } else if (op == "param")
-    p.insert (w.get<string>());
-  else if (op == "exp" || op == "log")
-    p = params (w.at(op));
+  } else if (op == "param") {
+    const string n = w.get<string>();
+    if (defs.count(n))
+      p = params (defs.at(n), exclude(defs,n));
+    else
+      p.insert (n);
+  } else if (op == "exp" || op == "log")
+    p = params (w.at(op), defs);
   else {
     const json& args = operands(w);
     for (const auto& arg: args) {
-      const set<string> argParams = params(arg);
+      const set<string> argParams = params(arg,defs);
       p.insert (argParams.begin(), argParams.end());
     }
   }
   return p;
 }
 
-string WeightAlgebra::toString (const TransWeight& w) {
+string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs) {
   const string op = opcode(w);
   if (op == "null") return string("0");
   if (op == "boolean") return to_string (w.get<bool>() ? 1 : 0);
   if (op == "int" || op == "float") return to_string (w.get<double>());
-  if (op == "param") return w.get<string>();
-  if (op == "log" || op == "exp") return op + "(" + toString(w.at(op)) + ")";
+  if (op == "param") {
+    const string n = w.get<string>();
+    return defs.count(n) ? toString(defs.at(n),exclude(defs,n)) : n;
+  }
+  if (op == "log" || op == "exp") return op + "(" + toString(w.at(op),defs) + ")";
   const json& args = operands(w);
-  if (op == "pow") return string("pow(") + toString(args[0]) + "," + toString(args[1]) + ")";
-  return string("(") + toString(args[0]) + op + toString(args[1]) + ")";
+  if (op == "pow") return string("pow(") + toString(args[0],defs) + "," + toString(args[1],defs) + ")";
+  return string("(") + toString(args[0],defs) + op + toString(args[1],defs) + ")";
+}
+
+ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
+  ParamDefs defsCopy (defs);
+  defsCopy.erase (param);
+  return defsCopy;
 }

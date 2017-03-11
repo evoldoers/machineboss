@@ -25,9 +25,9 @@ struct MachineTransition {
   InputSymbol in;
   OutputSymbol out;
   StateIndex dest;
-  TransWeight weight;
+  WeightExpr weight;
   MachineTransition();
-  MachineTransition (InputSymbol, OutputSymbol, StateIndex, TransWeight);
+  MachineTransition (InputSymbol, OutputSymbol, StateIndex, WeightExpr);
   bool inputEmpty() const;
   bool outputEmpty() const;
   bool isSilent() const;  // inputEmpty() && outputEmpty()
@@ -83,8 +83,8 @@ struct Machine {
 };
 
 struct TransAccumulator {
-  map<StateIndex,map<InputSymbol,map<OutputSymbol,TransWeight> > > t;
-  void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, TransWeight w);
+  map<StateIndex,map<InputSymbol,map<OutputSymbol,WeightExpr> > > t;
+  void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w);
   TransList transitions() const;
 };
 

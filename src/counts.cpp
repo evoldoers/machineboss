@@ -50,7 +50,7 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
 								WeightAlgebra::logOf ((*iter).weight)));
   }
 
-  const auto p = WeightAlgebra::params (lagrangian);
+  const auto p = WeightAlgebra::params (lagrangian, ParamDefs());  // FIX ME
   param.insert (param.end(), p.begin(), p.end());
 
   int lm = 0;
@@ -61,7 +61,7 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
     while (p.count(lambda));
     lagrangeMultiplier.push_back (lambda);
 
-    TransWeight cSum;
+    WeightExpr cSum;
     for (const auto& cParam: c)
       cSum = WeightAlgebra::add (cSum, cParam);
     lagrangian = WeightAlgebra::add (lagrangian,
@@ -72,16 +72,31 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
   paramDeriv.reserve (param.size());
   multiplierDeriv.reserve (lagrangeMultiplier.size());
   for (const auto& p: param)
-    paramDeriv.push_back (WeightAlgebra::deriv (lagrangian, p));
+    paramDeriv.push_back (WeightAlgebra::deriv (lagrangian, ParamDefs(), p));  // FIX ME
   for (const auto& lambda: lagrangeMultiplier)
-    multiplierDeriv.push_back (WeightAlgebra::deriv (lagrangian, lambda));
+    multiplierDeriv.push_back (WeightAlgebra::deriv (lagrangian, ParamDefs(), lambda));  // FIX ME
 
-  cerr << "f = " << WeightAlgebra::toString(lagrangian) << endl;
+  cerr << "f = " << WeightAlgebra::toString(lagrangian,ParamDefs()) << endl;  // FIX ME
   for (size_t n = 0; n < param.size(); ++n)
-    cerr << "df/d" << param[n] << " = " << WeightAlgebra::toString(paramDeriv[n]) << endl;
+    cerr << "df/d" << param[n] << " = " << WeightAlgebra::toString(paramDeriv[n],ParamDefs()) << endl;  // FIX ME
   for (size_t n = 0; n < lagrangeMultiplier.size(); ++n)
-    cerr << "df/d" << lagrangeMultiplier[n] << " = " <<  WeightAlgebra::toString(multiplierDeriv[n]) << endl;
+    cerr << "df/d" << lagrangeMultiplier[n] << " = " <<  WeightAlgebra::toString(multiplierDeriv[n],ParamDefs()) << endl;  // FIX ME
 }
+
+// To force numerical maximizer to find the Lagrangian critical points, which are saddle points rather than minima,
+// we must minimize the square of the magnitude of the gradient.
+
+// To maintain probabilistic normalization without use of Lagrange multipliers (which don't play well with numerical optimizers),
+// we could use the following transformation.
+// Suppose that a normalized parameter group consists of parameters (p_1,p_2,p_3...p_n) subject to \sum_n p_i = 1
+// Make a change of variables to (a_1,a_2...a_{n-1}) with
+//  p_1 = (1 - exp(-(a_1)^2))
+//  p_2 = exp(-(a_1)^2 (1 - exp(-(a_2)^2))
+//  p_3 = exp(-(a_1)^2) exp(-(a_2)^2) (1 - exp(-(a_3)^2))
+//  ...
+//  p_n = \prod_{k=1}^{n-1} exp(-(a_k)^2)
+// And for m<n in general
+//  p_m = (1 - exp(-(a_m)^2)) \prod_{k=1}^{m-1} exp(-(a_k)^2)
 
 Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml, bool wantLagrangeMultipliers) {
   Params p;
@@ -89,12 +104,12 @@ Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml, b
   // acidbot_param_n = exp (-(gsl_param_n)^2)
   for (size_t n = 0; n < ml.param.size(); ++n) {
     const double vn = gsl_vector_get (v, n);
-    p.param[ml.param[n]] = exp (-vn*vn);
+    p.defs[ml.param[n]] = WeightExpr (exp (-vn*vn));
   }
 
   if (wantLagrangeMultipliers)
     for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
-      p.param[ml.lagrangeMultiplier[n]] = gsl_vector_get (v, n + ml.param.size());
+      p.defs[ml.lagrangeMultiplier[n]] = WeightExpr (gsl_vector_get (v, n + ml.param.size()));
 
   return p;
 }
@@ -104,7 +119,7 @@ double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
   const Params pv = gsl_vector_to_params (v, ml, true);
 
-  const double l = -WeightAlgebra::eval (ml.lagrangian, pv);  // introduce minus sign for minimizer because we want to maximize
+  const double l = -WeightAlgebra::eval (ml.lagrangian, pv.defs);  // introduce minus sign for minimizer because we want to maximize
 
   pv.writeJson(cerr);
   const vguard<double> v_stl = gsl_vector_to_stl(v);
@@ -121,10 +136,10 @@ void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector
   // acidbot_param_n = exp (-(gsl_param_n)^2)
   // so d(lagrangian)/d(gsl_param_n) = d(lagrangian)/d(acidbot_param_n) * acidbot_param_n * (-2*gsl_param_n)
   for (size_t n = 0; n < ml.param.size(); ++n)
-    gsl_vector_set (df, n, WeightAlgebra::eval (ml.paramDeriv[n], pv) * pv.param.at (ml.param[n]) * gsl_vector_get(v,n) * 2);  // introduce minus sign for minimizer because we want to maximize
+    gsl_vector_set (df, n, WeightAlgebra::eval (ml.paramDeriv[n], pv.defs) * pv.defs.at(ml.param[n]).get<double>() * gsl_vector_get(v,n) * 2);  // (FIX ME) introduce minus sign for minimizer because we want to maximize
 
   for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
-    gsl_vector_set (df, n + ml.param.size(), -WeightAlgebra::eval (ml.multiplierDeriv[n], pv));  // introduce minus sign for minimizer because we want to maximize
+    gsl_vector_set (df, n + ml.param.size(), -WeightAlgebra::eval (ml.multiplierDeriv[n], pv.defs));  // introduce minus sign for minimizer because we want to maximize
 
   const vguard<double> v_stl = gsl_vector_to_stl(v), df_stl = gsl_vector_to_stl(df);
   cerr << "gsl_machine_lagrangian_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl;
@@ -149,7 +164,7 @@ Params MachineLagrangian::optimize (const Params& seed) const {
   // acidbot_param_n = exp (-(gsl_param_n)^2)
   // so gsl_param_n = sqrt(-log (acidbot_param_n))
   for (size_t n = 0; n < param.size(); ++n)
-    gsl_vector_set (x, n, sqrt (-log (seed.param.at (param[n]))));
+    gsl_vector_set (x, n, sqrt (-log (seed.defs.at(param[n]).get<double>()))); // FIX ME
 
   for (size_t n = 0; n < lagrangeMultiplier.size(); ++n)
     gsl_vector_set (x, n + param.size(), 1.);

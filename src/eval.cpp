@@ -19,7 +19,7 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
       const StateIndex d = trans.dest;
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
-      const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params));
+      const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params.defs));
       state[s].outgoing[in][out].push_back (EvaluatedMachineState::Trans (d, lw, ti));
       state[d].incoming[in][out].push_back (EvaluatedMachineState::Trans (s, lw, ti));
       ++ti;
