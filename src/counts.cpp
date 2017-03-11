@@ -5,7 +5,10 @@
 #include "util.h"
 
 // Prefix for Lagrange multiplier parameters
-#define LagrangeMultiplierPrefix "LagrangeMultiplier"
+#define LagrangeMultiplierPrefix "$lagrange"
+
+// Prefix for sqrt-transformed parameters
+#define TransformedParamPrefix "$param"
 
 // GSL multidimensional optimization parameters
 #define StepSize 0.01
@@ -50,96 +53,77 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
 								WeightAlgebra::logOf ((*iter).weight)));
   }
 
-  const auto p = WeightAlgebra::params (lagrangian, ParamDefs());  // FIX ME
-  param.insert (param.end(), p.begin(), p.end());
-
-  int lm = 0;
+  const set<string> p = WeightAlgebra::params (lagrangian, ParamDefs());
+  int lmIdx = 0, trIdx = 0;
   for (const auto& c: constraints.norm) {
-    string lambda;
+    string lmParam;
     do
-      lambda = string(LagrangeMultiplierPrefix) + to_string(++lm);
-    while (p.count(lambda));
-    lagrangeMultiplier.push_back (lambda);
+      lmParam = string(LagrangeMultiplierPrefix) + to_string(++lmIdx);
+    while (p.count(lmParam));
+    param.push_back (lmParam);
 
     WeightExpr cSum;
-    for (const auto& cParam: c)
+    for (const auto& cParam: c) {
       cSum = WeightAlgebra::add (cSum, cParam);
+
+      string trParam;
+      do
+	trParam = string(TransformedParamPrefix) + to_string(++trIdx);
+      while (p.count(trParam));
+
+      transformedParamIndex[cParam] = param.size();
+      param.push_back (trParam);
+      paramTransform[cParam] = WeightAlgebra::power (WeightExpr(trParam), 2);
+    }
+
     lagrangian = WeightAlgebra::add (lagrangian,
-				     WeightAlgebra::multiply (lambda,
+				     WeightAlgebra::multiply (lmParam,
 							      WeightAlgebra::subtract (true, cSum)));
   }
 
-  paramDeriv.reserve (param.size());
-  multiplierDeriv.reserve (lagrangeMultiplier.size());
   for (const auto& p: param)
-    paramDeriv.push_back (WeightAlgebra::deriv (lagrangian, ParamDefs(), p));  // FIX ME
-  for (const auto& lambda: lagrangeMultiplier)
-    multiplierDeriv.push_back (WeightAlgebra::deriv (lagrangian, ParamDefs(), lambda));  // FIX ME
+    gradSquared = WeightAlgebra::add (gradSquared,
+				      WeightAlgebra::power (WeightAlgebra::deriv (lagrangian, paramTransform, p), 2));
 
-  cerr << "f = " << WeightAlgebra::toString(lagrangian,ParamDefs()) << endl;  // FIX ME
+  deriv.reserve (param.size());
+  for (const auto& p: param)
+    deriv.push_back (WeightAlgebra::deriv (gradSquared, paramTransform, p));
+
+  cerr << "f = " << WeightAlgebra::toString(lagrangian,paramTransform) << endl;
+  cerr << "(grad f)^2 = " << WeightAlgebra::toString(gradSquared,paramTransform) << endl;
   for (size_t n = 0; n < param.size(); ++n)
-    cerr << "df/d" << param[n] << " = " << WeightAlgebra::toString(paramDeriv[n],ParamDefs()) << endl;  // FIX ME
-  for (size_t n = 0; n < lagrangeMultiplier.size(); ++n)
-    cerr << "df/d" << lagrangeMultiplier[n] << " = " <<  WeightAlgebra::toString(multiplierDeriv[n],ParamDefs()) << endl;  // FIX ME
+    cerr << "d(grad f)^2/d" << param[n] << " = " << WeightAlgebra::toString(deriv[n],paramTransform) << endl;
 }
 
-// To force numerical maximizer to find the Lagrangian critical points, which are saddle points rather than minima,
-// we must minimize the square of the magnitude of the gradient.
-
-// To maintain probabilistic normalization without use of Lagrange multipliers (which don't play well with numerical optimizers),
-// we could use the following transformation.
-// Suppose that a normalized parameter group consists of parameters (p_1,p_2,p_3...p_n) subject to \sum_n p_i = 1
-// Make a change of variables to (a_1,a_2...a_{n-1}) with
-//  p_1 = (1 - exp(-(a_1)^2))
-//  p_2 = exp(-(a_1)^2 (1 - exp(-(a_2)^2))
-//  p_3 = exp(-(a_1)^2) exp(-(a_2)^2) (1 - exp(-(a_3)^2))
-//  ...
-//  p_n = \prod_{k=1}^{n-1} exp(-(a_k)^2)
-// And for m<n in general
-//  p_m = (1 - exp(-(a_m)^2)) \prod_{k=1}^{m-1} exp(-(a_k)^2)
-
-Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml, bool wantLagrangeMultipliers) {
+Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml) {
   Params p;
-
-  // acidbot_param_n = exp (-(gsl_param_n)^2)
-  for (size_t n = 0; n < ml.param.size(); ++n) {
-    const double vn = gsl_vector_get (v, n);
-    p.defs[ml.param[n]] = WeightExpr (exp (-vn*vn));
-  }
-
-  if (wantLagrangeMultipliers)
-    for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
-      p.defs[ml.lagrangeMultiplier[n]] = WeightExpr (gsl_vector_get (v, n + ml.param.size()));
-
+  p.defs = ml.paramTransform;
+  for (size_t n = 0; n < ml.param.size(); ++n)
+    p.defs[ml.param[n]] = WeightExpr (gsl_vector_get (v, n));
   return p;
 }
 
 double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
-  const Params pv = gsl_vector_to_params (v, ml, true);
+  const Params pv = gsl_vector_to_params (v, ml);
 
-  const double l = -WeightAlgebra::eval (ml.lagrangian, pv.defs);  // introduce minus sign for minimizer because we want to maximize
+  const double g2 = WeightAlgebra::eval (ml.gradSquared, pv.defs);
 
   pv.writeJson(cerr);
   const vguard<double> v_stl = gsl_vector_to_stl(v);
-  cerr << "gsl_machine_lagrangian(" << to_string_join(v_stl) << ") = " << l << endl;
+  cerr << "gsl_machine_lagrangian(" << to_string_join(v_stl) << ") = " << g2 << endl;
 
-  return l;
+  return g2;
 }
 
 void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector *df)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
-  const Params pv = gsl_vector_to_params (v, ml, true);
+  const Params pv = gsl_vector_to_params (v, ml);
 
-  // acidbot_param_n = exp (-(gsl_param_n)^2)
-  // so d(lagrangian)/d(gsl_param_n) = d(lagrangian)/d(acidbot_param_n) * acidbot_param_n * (-2*gsl_param_n)
   for (size_t n = 0; n < ml.param.size(); ++n)
-    gsl_vector_set (df, n, WeightAlgebra::eval (ml.paramDeriv[n], pv.defs) * pv.defs.at(ml.param[n]).get<double>() * gsl_vector_get(v,n) * 2);  // (FIX ME) introduce minus sign for minimizer because we want to maximize
-
-  for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
-    gsl_vector_set (df, n + ml.param.size(), -WeightAlgebra::eval (ml.multiplierDeriv[n], pv.defs));  // introduce minus sign for minimizer because we want to maximize
+    gsl_vector_set (df, n, WeightAlgebra::eval (ml.deriv[n], pv.defs));
 
   const vguard<double> v_stl = gsl_vector_to_stl(v), df_stl = gsl_vector_to_stl(df);
   cerr << "gsl_machine_lagrangian_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl;
@@ -154,20 +138,19 @@ void gsl_machine_lagrangian_with_deriv (const gsl_vector *x, void *voidML, doubl
 Params MachineLagrangian::optimize (const Params& seed) const {
   gsl_vector *v;
   gsl_multimin_function_fdf func;
-  func.n = param.size() + lagrangeMultiplier.size();
+  func.n = param.size();
   func.f = gsl_machine_lagrangian;
   func.df = gsl_machine_lagrangian_deriv;
   func.fdf = gsl_machine_lagrangian_with_deriv;
   func.params = (void*) this;
 
   gsl_vector* x = gsl_vector_alloc (func.n);
-  // acidbot_param_n = exp (-(gsl_param_n)^2)
-  // so gsl_param_n = sqrt(-log (acidbot_param_n))
-  for (size_t n = 0; n < param.size(); ++n)
-    gsl_vector_set (x, n, sqrt (-log (seed.defs.at(param[n]).get<double>()))); // FIX ME
-
-  for (size_t n = 0; n < lagrangeMultiplier.size(); ++n)
-    gsl_vector_set (x, n + param.size(), 1.);
+  for (size_t n = 0; n < func.n; ++n)
+    gsl_vector_set (x, n, 0);
+  // acidbot_param_n = (gsl_param_n)^2
+  // so gsl_param_n = sqrt(acidbot_param_n)
+  for (const auto& paramIdx: transformedParamIndex)
+    gsl_vector_set (x, paramIdx.second, sqrt (seed.defs.at(paramIdx.first).get<double>()));
 
   const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_vector_bfgs2;
   gsl_multimin_fdfminimizer *s = gsl_multimin_fdfminimizer_alloc (T, func.n);
@@ -192,8 +175,11 @@ Params MachineLagrangian::optimize (const Params& seed) const {
     }
   while (status == GSL_CONTINUE && iter < MaxIterations);
 
-  const Params finalParams = gsl_vector_to_params (x, *this, false);
-
+  const Params finalTransformedParams = gsl_vector_to_params (x, *this);
+  Params finalParams = seed;
+  for (const auto& paramFunc: paramTransform)
+    finalParams.defs[paramFunc.first] = WeightAlgebra::eval (paramFunc.second, finalTransformedParams.defs);
+  
   gsl_multimin_fdfminimizer_free (s);
   gsl_vector_free (x);
 

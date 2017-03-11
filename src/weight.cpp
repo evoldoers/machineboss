@@ -20,11 +20,11 @@ WeightExpr WeightAlgebra::power (const WeightExpr& a, const WeightExpr& b) {
 }
 
 WeightExpr WeightAlgebra::logOf (const WeightExpr& p) {
-  return isOne(p) ? WeightExpr() : WeightExpr::object ({{"log", p}});
+  return isOne(p) ? WeightExpr() : (opcode(p) == "exp" ? p.at("exp") : WeightExpr::object ({{"log", p}}));
 }
 
 WeightExpr WeightAlgebra::expOf (const WeightExpr& p) {
-  return isZero(p) ? WeightExpr(true) : WeightExpr::object ({{"exp", p}});
+  return isZero(p) ? WeightExpr(true) : (opcode(p) == "log" ? p.at("log") : WeightExpr::object ({{"exp", p}}));
 }
 
 WeightExpr WeightAlgebra::multiply (const WeightExpr& l, const WeightExpr& r) {
@@ -173,7 +173,8 @@ string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs) {
   const string op = opcode(w);
   if (op == "null") return string("0");
   if (op == "boolean") return to_string (w.get<bool>() ? 1 : 0);
-  if (op == "int" || op == "float") return to_string (w.get<double>());
+  if (op == "int") return to_string (w.get<int>());
+  if (op == "float") return to_string (w.get<double>());
   if (op == "param") {
     const string n = w.get<string>();
     return defs.count(n) ? toString(defs.at(n),exclude(defs,n)) : n;

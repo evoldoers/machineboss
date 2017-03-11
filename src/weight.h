@@ -22,7 +22,7 @@ struct WeightAlgebra {
 
   static bool isZero (const WeightExpr& w);
   static bool isOne (const WeightExpr& w);
-  
+
   static string opcode (const WeightExpr& w);
   static const json& operands (const WeightExpr& w);
 
