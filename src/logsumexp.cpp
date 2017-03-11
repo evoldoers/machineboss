@@ -56,28 +56,28 @@ vguard<LogProb> log_vector (const vguard<double>& v) {
   return transform_container<double,vguard<double> > (v, log);
 }
 
-vguard<LogProb> log_gsl_vector (gsl_vector* v) {
+vguard<LogProb> log_gsl_vector (const gsl_vector* v) {
   vguard<LogProb> l (v->size);
   for (size_t i = 0; i < v->size; ++i)
     l[i] = log (gsl_vector_get (v, i));
   return l;
 }
 
-vguard<double> gsl_vector_to_stl (gsl_vector* v) {
+vguard<double> gsl_vector_to_stl (const gsl_vector* v) {
   vguard<double> stlv (v->size);
   for (size_t i = 0; i < v->size; ++i)
     stlv[i] = gsl_vector_get (v, i);
   return stlv;
 }
 
-vguard<vguard<LogProb> > log_vector_gsl_vector (const vguard<gsl_vector*>& v) {
+vguard<vguard<LogProb> > log_vector_gsl_vector (const vguard<const gsl_vector*>& v) {
   vguard<vguard<LogProb> > result (v.size());
   for (size_t i = 0; i < v.size(); ++i)
     result[i] = log_gsl_vector (v[i]);
   return result;
 }
 
-vguard<vguard<double> > gsl_matrix_to_stl (gsl_matrix* m) {
+vguard<vguard<double> > gsl_matrix_to_stl (const gsl_matrix* m) {
   vguard<vguard<double> > vv (m->size1, vguard<double> (m->size2));
   for (size_t i = 0; i < m->size1; ++i)
     for (size_t j = 0; j < m->size2; ++j)

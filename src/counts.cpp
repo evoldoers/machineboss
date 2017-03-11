@@ -76,20 +76,21 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
   for (const auto& lambda: lagrangeMultiplier)
     multiplierDeriv.push_back (WeightAlgebra::deriv (lagrangian, lambda));
 
-  cerr << WeightAlgebra::toString(lagrangian) << endl;
-  for (const auto& f: paramDeriv)
-    cerr << WeightAlgebra::toString(f) << endl;
-  for (const auto& f: multiplierDeriv)
-    cerr << WeightAlgebra::toString(f) << endl;
-
+  cerr << "f = " << WeightAlgebra::toString(lagrangian) << endl;
+  for (size_t n = 0; n < param.size(); ++n)
+    cerr << "df/d" << param[n] << " = " << WeightAlgebra::toString(paramDeriv[n]) << endl;
+  for (size_t n = 0; n < lagrangeMultiplier.size(); ++n)
+    cerr << "df/d" << lagrangeMultiplier[n] << " = " <<  WeightAlgebra::toString(multiplierDeriv[n]) << endl;
 }
 
 Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml, bool wantLagrangeMultipliers) {
   Params p;
 
-  // acidbot_param_n = exp (gsl_param_n)
-  for (size_t n = 0; n < ml.param.size(); ++n)
-    p.param[ml.param[n]] = exp (gsl_vector_get (v, n));
+  // acidbot_param_n = exp (-(gsl_param_n)^2)
+  for (size_t n = 0; n < ml.param.size(); ++n) {
+    const double vn = gsl_vector_get (v, n);
+    p.param[ml.param[n]] = exp (-vn*vn);
+  }
 
   if (wantLagrangeMultipliers)
     for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
@@ -102,7 +103,13 @@ double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
   const Params pv = gsl_vector_to_params (v, ml, true);
-  return WeightAlgebra::eval (ml.lagrangian, pv);
+
+  const double l = -WeightAlgebra::eval (ml.lagrangian, pv);  // introduce minus sign for minimizer because we want to maximize
+
+  const vguard<double> v_stl = gsl_vector_to_stl(v);
+  cerr << "gsl_machine_lagrangian(" << to_string_join(v_stl) << ") = " << l << endl;
+
+  return l;
 }
 
 void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector *df)
@@ -110,13 +117,16 @@ void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
   const Params pv = gsl_vector_to_params (v, ml, true);
 
-  // acidbot_param_n = exp (gsl_param_n)
-  // so d(lagrangian)/d(gsl_param_n) = d(lagrangian)/d(acidbot_param_n) * acidbot_param_n
+  // acidbot_param_n = exp (-(gsl_param_n)^2)
+  // so d(lagrangian)/d(gsl_param_n) = d(lagrangian)/d(acidbot_param_n) * acidbot_param_n * (-2*gsl_param_n)
   for (size_t n = 0; n < ml.param.size(); ++n)
-    gsl_vector_set (df, n, WeightAlgebra::eval (ml.paramDeriv[n], pv) * pv.param.at (ml.param[n]));
+    gsl_vector_set (df, n, WeightAlgebra::eval (ml.paramDeriv[n], pv) * pv.param.at (ml.param[n]) * gsl_vector_get(v,n) * 2);  // introduce minus sign for minimizer because we want to maximize
 
   for (size_t n = 0; n < ml.lagrangeMultiplier.size(); ++n)
-    gsl_vector_set (df, n + ml.param.size(), WeightAlgebra::eval (ml.multiplierDeriv[n], pv));
+    gsl_vector_set (df, n + ml.param.size(), -WeightAlgebra::eval (ml.multiplierDeriv[n], pv));  // introduce minus sign for minimizer because we want to maximize
+
+  const vguard<double> v_stl = gsl_vector_to_stl(v), df_stl = gsl_vector_to_stl(df);
+  cerr << "gsl_machine_lagrangian_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl;
 }
 
 void gsl_machine_lagrangian_with_deriv (const gsl_vector *x, void *voidML, double *f, gsl_vector *df)
@@ -135,13 +145,13 @@ Params MachineLagrangian::optimize (const Params& seed) const {
   func.params = (void*) this;
 
   gsl_vector* x = gsl_vector_alloc (func.n);
-  // acidbot_param_n = exp (gsl_param_n)
-  // so gsl_param_n = log (acidbot_param_n)
+  // acidbot_param_n = exp (-(gsl_param_n)^2)
+  // so gsl_param_n = sqrt(-log (acidbot_param_n))
   for (size_t n = 0; n < param.size(); ++n)
-    gsl_vector_set (x, n, log (seed.param.at (param[n])));
+    gsl_vector_set (x, n, sqrt (-log (seed.param.at (param[n]))));
 
   for (size_t n = 0; n < lagrangeMultiplier.size(); ++n)
-    gsl_vector_set (x, n + param.size(), 0.);
+    gsl_vector_set (x, n + param.size(), 1.);
 
   const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_vector_bfgs2;
   gsl_multimin_fdfminimizer *s = gsl_multimin_fdfminimizer_alloc (T, func.n);

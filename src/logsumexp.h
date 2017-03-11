@@ -129,12 +129,12 @@ inline double log_subtract_exp (double a, double b) {
 
 vguard<LogProb> log_vector (const vguard<double>& v);
 
-vguard<LogProb> log_gsl_vector (gsl_vector* v);
-vguard<double> gsl_vector_to_stl (gsl_vector* v);
+vguard<LogProb> log_gsl_vector (const gsl_vector* v);
+vguard<double> gsl_vector_to_stl (const gsl_vector* v);
 
-vguard<vguard<LogProb> > log_vector_gsl_vector (const vguard<gsl_vector*>& v);
+vguard<vguard<LogProb> > log_vector_gsl_vector (const vguard<const gsl_vector*>& v);
 
-vguard<vguard<double> > gsl_matrix_to_stl (gsl_matrix* m);
+vguard<vguard<double> > gsl_matrix_to_stl (const gsl_matrix* m);
 gsl_matrix* stl_to_gsl_matrix (const vguard<vguard<double> >& m);
 
 inline LogProb logInnerProduct (const vguard<LogProb>& v1, const vguard<LogProb>& v2) {
