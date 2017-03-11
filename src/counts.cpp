@@ -124,6 +124,8 @@ Params MachineLagrangian::optimize (const Params& seed) const {
   func.params = (void*) this;
 
   gsl_vector* x = gsl_vector_alloc (func.n);
+  // acidbot_param_n = exp (gsl_param_n)
+  // so gsl_param_n = log (acidbot_param_n)
   for (size_t n = 0; n < param.size(); ++n)
     gsl_vector_set (x, n, log (seed.param.at (param[n])));
 
