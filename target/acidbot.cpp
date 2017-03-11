@@ -55,9 +55,9 @@ int main (int argc, char** argv) {
       LogThisAt(2,(n ? "Pre-composing" : "Starting") << " with transducer " << *iter << endl);
       const char* filename = (*iter).c_str();
       if (n++)
-	machine = Machine::compose (Machine::fromFile(filename), machine);
+	machine = Machine::compose (MachineLoader::fromFile(filename), machine);
       else
-	machine = Machine::fromFile(filename);
+	machine = MachineLoader::fromFile(filename);
     }
 
     // save transducer

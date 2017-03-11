@@ -107,9 +107,6 @@ StateIndex Machine::endState() const {
   return nStates() - 1;
 }
 
-Machine::Machine()
-{ }
-
 vguard<InputSymbol> Machine::inputAlphabet() const {
   set<InputSymbol> alph;
   for (const auto& ms: state)
@@ -157,19 +154,6 @@ void Machine::writeJson (ostream& out) const {
   out << endl << " ]" << endl << "}" << endl;
 }
 
-string Machine::toJsonString() const {
-  stringstream ss;
-  writeJson (ss);
-  return ss.str();
-}
-
-void Machine::readJson (istream& in) {
-  state.clear();
-  json pj;
-  in >> pj;
-  readJson(pj);
-}
-
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
   json jstate = pj.at("state");
@@ -213,19 +197,6 @@ void Machine::readJson (const json& pj) {
       }
     }
   }
-}
-
-Machine Machine::fromJson (istream& in) {
-  Machine machine;
-  machine.readJson (in);
-  return machine;
-}
-
-Machine Machine::fromFile (const char* filename) {
-  ifstream infile (filename);
-  if (!infile)
-    Fail ("File not found: %s", filename);
-  return fromJson (infile);
 }
 
 bool Machine::isErgodicMachine() const {
@@ -365,7 +336,7 @@ Machine Machine::ergodicMachine() const {
 
   Assert (em.isErgodicMachine(), "failed to create ergodic machine");
   LogThisAt(5,"Trimmed " << nStates() << "-state transducer into " << em.nStates() << "-state ergodic machine" << endl);
-  LogThisAt(7,em.toJsonString() << endl);
+  LogThisAt(7,MachineLoader::toJsonString(em) << endl);
 
   return em;
 }
@@ -402,7 +373,7 @@ Machine Machine::waitingMachine() const {
   }
   Assert (wm.isWaitingMachine(), "failed to create waiting machine");
   LogThisAt(5,"Converted " << nStates() << "-state transducer into " << wm.nStates() << "-state waiting machine" << endl);
-  LogThisAt(7,wm.toJsonString() << endl);
+  LogThisAt(7,MachineLoader::toJsonString(wm) << endl);
   return wm;
 }
 
@@ -474,7 +445,7 @@ Machine Machine::advancingMachine() const {
     }
     Assert (am.isAdvancingMachine(), "failed to create advancing machine");
     LogThisAt(5,"Converted " << nTransitions() << "-transition transducer into " << am.nTransitions() << "-transition advancing machine" << endl);
-    LogThisAt(7,am.toJsonString() << endl);
+    LogThisAt(7,MachineLoader::toJsonString(am) << endl);
   }
   return am;
 }

@@ -5,7 +5,7 @@
 #include <map>
 #include <set>
 #include <list>
-#include <json.hpp>
+#include "jsonio.h"
 #include "weight.h"
 #include "vguard.h"
 
@@ -52,19 +52,14 @@ struct MachineState {
 
 struct Machine {
   vguard<MachineState> state;
-  
-  Machine();
+
+  void writeJson (ostream& out) const;
+  void readJson (const json& json);
+
   StateIndex nStates() const;
   size_t nTransitions() const;
   StateIndex startState() const;
   StateIndex endState() const;
-
-  void writeJson (ostream& out) const;
-  string toJsonString() const;
-  void readJson (istream& in);
-  void readJson (const json& json);
-  static Machine fromJson (istream& in);
-  static Machine fromFile (const char* filename);
 
   vguard<InputSymbol> inputAlphabet() const;
   vguard<OutputSymbol> outputAlphabet() const;
@@ -81,6 +76,8 @@ struct Machine {
   Machine waitingMachine() const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
 };
+
+typedef JsonLoader<Machine> MachineLoader;
 
 struct TransAccumulator {
   map<StateIndex,map<InputSymbol,map<OutputSymbol,WeightExpr> > > t;

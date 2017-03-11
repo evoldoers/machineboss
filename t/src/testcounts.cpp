@@ -6,7 +6,7 @@ int main (int argc, char** argv) {
     cerr << "Usage: " << argv[0] << " machine.json params.json seqs.json" << endl;
     exit(1);
   }
-  Machine machine = Machine::fromFile (argv[1]);
+  Machine machine = MachineLoader::fromFile (argv[1]);
   Params params = Params::fromFile (argv[2]);
   SeqPair seqPair = SeqPair::fromFile (argv[3]);
   EvaluatedMachine evalMachine (machine, params);

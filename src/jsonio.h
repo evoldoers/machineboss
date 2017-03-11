@@ -33,17 +33,25 @@ struct JsonLoader : Base {
     return fromJson (infile);
   }
   
-  void toFile (const char* filename) {
+  static void toFile (const Base& obj, const char* filename) {
     std::ofstream outfile (filename);
     if (!outfile)
       Fail ("Couldn't open file: %s", filename);
-    Base::writeJson (outfile);
+    obj.writeJson (outfile);
+  }
+
+  void toFile (const char* filename) const {
+    toFile (*this, filename);
+  }
+
+  static std::string toJsonString (const Base& obj) {
+    std::ostringstream out;
+    obj.writeJson (out);
+    return out.str();
   }
 
   std::string toJsonString() const {
-    std::ostringstream out;
-    Base::writeJson (out);
-    return out.str();
+    toJsonString (this);
   }
 };
 
