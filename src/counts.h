@@ -14,14 +14,16 @@ struct MachineCounts {
 };
 
 // M-step
-struct MachineLagrangian {
+struct MachineObjective {
+  const Constraints& constraints;
   vguard<string> param;
   map<string,size_t> transformedParamIndex;
   ParamDefs paramTransform;
-  WeightExpr lagrangian, gradSquared;
+  WeightExpr objective;
   vguard<WeightExpr> deriv;
-  MachineLagrangian (const Machine&, const MachineCounts&, const Constraints&);
+  MachineObjective (const Machine&, const MachineCounts&, const Constraints&);
   Params optimize (const Params& seed) const;
+  string toString() const;
 };
 
 #endif /* COUNTS_INCLUDED */

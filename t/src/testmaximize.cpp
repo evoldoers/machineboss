@@ -12,8 +12,8 @@ int main (int argc, char** argv) {
   Constraints constraints = Constraints::fromFile (argv[4]);
   EvaluatedMachine evalMachine (machine, params);
   MachineCounts counts (evalMachine, seqPair);
-  MachineLagrangian lagrangian (machine, counts, constraints);
-  Params optParams = lagrangian.optimize (params);
+  MachineObjective objective (machine, counts, constraints);
+  Params optParams = objective.optimize (params);
   optParams.writeJson (cout);
   exit(0);
 }

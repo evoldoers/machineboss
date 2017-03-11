@@ -17,6 +17,7 @@ struct Params {
   void writeJson (ostream& out) const;
   static Params fromJson (istream& in);
   static Params fromFile (const char* filename);
+  string toJsonString() const;
 };
 
 #endif /* PARAMS_INCLUDED */

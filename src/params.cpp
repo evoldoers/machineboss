@@ -36,3 +36,9 @@ Params Params::fromFile (const char* filename) {
     Fail ("File not found: %s", filename);
   return fromJson (infile);
 }
+
+string Params::toJsonString() const {
+  ostringstream s;
+  writeJson (s);
+  return s.str();
+}
