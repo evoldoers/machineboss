@@ -1,18 +1,21 @@
 #ifndef FITTER_INCLUDED
 #define FITTER_INCLUDED
 
-#include "counts.h"
+#include "machine.h"
+#include "params.h"
+#include "constraints.h"
+#include "seqpair.h"
 #include "jsonio.h"
 
 struct MachineFitterBase {
-  Params seed;
+  Machine machine;
   Constraints constraints;
-  SeqPairList trainingSet;
-
+  Params seed;
+  
   void readJson (const json&);
-  void writeJson (ostream&);
+  void writeJson (ostream&) const;
 
-  Params fit (const Machine&) const;
+  Params fit (const SeqPairList& trainingSet) const;
 };
 
 typedef JsonLoader<MachineFitterBase> MachineFitter;
