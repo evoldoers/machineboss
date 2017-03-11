@@ -17,6 +17,7 @@ struct MachineCounts {
 struct MachineLagrangian {
   vguard<string> param, lagrangeMultiplier;
   TransWeight lagrangian;
+  vguard<TransWeight> paramDeriv, multiplierDeriv;
   MachineLagrangian (const Machine&, const MachineCounts&, const Constraints&);
   Params optimize (const Params& seed) const;
 };
