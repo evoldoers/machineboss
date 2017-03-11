@@ -155,9 +155,12 @@ test-bad-weight:
 	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.json -fail
 
 # Non-transducer I/O tests
-IO_TESTS = test-seqpair test-params test-constraints
+IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints
 test-seqpair: bin/testseqpair
 	@$(TEST) bin/testseqpair t/io/tiny.json -idem
+
+test-seqpairlist: bin/testseqpairlist
+	@$(TEST) bin/testseqpairlist t/io/seqpairlist.json -idem
 
 test-params: bin/testparams
 	@$(TEST) bin/testparams t/io/params.json -idem

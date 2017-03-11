@@ -1,0 +1,2 @@
+[{"input":{"name":"001","sequence":["0","0","1"]},"output":{"name":"101","sequence":["1","0","1"]}},
+ {"input":{"name":"01","sequence":["0","1"]},"output":{"name":"10","sequence":["1","0"]}}]

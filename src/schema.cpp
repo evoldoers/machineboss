@@ -10,12 +10,6 @@
 #include "schema.h"
 #include "util.h"
 
-#include "schema/constraints.h"
-#include "schema/expr.h"
-#include "schema/machine.h"
-#include "schema/params.h"
-#include "schema/seqpair.h"
-
 #define SchemaUrlPrefix "https://raw.githubusercontent.com/ihh/acidbot/master/schema/"
 #define SchemaUrlSuffix ".json"
 
@@ -36,22 +30,32 @@ struct SchemaCache {
   SchemaCache();
 };
 
+#include "schema/constraints.h"
+#include "schema/defs.h"
+#include "schema/expr.h"
+#include "schema/machine.h"
+#include "schema/params.h"
+#include "schema/seqpair.h"
+#include "schema/seqpairlist.h"
+
 #define addSchema(NAME) namedSchema[string(SchemaUrlPrefix #NAME SchemaUrlSuffix)] = string (schema_##NAME##_json, schema_##NAME##_json + schema_##NAME##_json_len);
 
 SchemaCache::SchemaCache() {
-  addSchema(expr);
   addSchema(constraints);
+  addSchema(defs);
+  addSchema(expr);
   addSchema(machine);
-  addSchema(seqpair);
   addSchema(params);
+  addSchema(seqpair);
+  addSchema(seqpairlist);
 }
-
-SchemaCache schemaCache;  // singleton
 
 json SchemaCache::getSchema (const string& name) const {
   const auto schemaText = namedSchema.at (string (name));
   return json::parse (schemaText);
 }
+
+SchemaCache schemaCache;  // singleton
 
 json* fetchSchema (const string& uri) {
   return new json (schemaCache.getSchema(uri));

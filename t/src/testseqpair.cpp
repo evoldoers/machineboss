@@ -7,5 +7,6 @@ int main (int argc, char** argv) {
   }
   SeqPair seqpair = SeqPair::fromFile (argv[1]);
   seqpair.writeJson (cout);
+  cout << endl;
   exit(0);
 }

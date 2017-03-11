@@ -3,13 +3,7 @@
 #include "schema.h"
 #include "util.h"
 
-void Constraints::readJson (istream& in) {
-  json pj;
-  in >> pj;
-  readJson(pj);
-}
-
-void Constraints::readJson (const json& pj) {
+void ConstraintsBase::readJson (const json& pj) {
   MachineSchema::validateOrDie ("constraints", pj);
   norm.clear();
   for (const auto& n: pj.at("norm")) {
@@ -20,7 +14,7 @@ void Constraints::readJson (const json& pj) {
   }
 }
 
-void Constraints::writeJson (ostream& out) const {
+void ConstraintsBase::writeJson (ostream& out) const {
   out << "{\"norm\":[";
   size_t n = 0;
   for (auto& c: norm) {
@@ -31,17 +25,4 @@ void Constraints::writeJson (ostream& out) const {
     out << "]";
   }
   out << "]}" << endl;
-}
-
-Constraints Constraints::fromJson (istream& in) {
-  Constraints c;
-  c.readJson (in);
-  return c;
-}
-
-Constraints Constraints::fromFile (const char* filename) {
-  ifstream infile (filename);
-  if (!infile)
-    Fail ("File not found: %s", filename);
-  return fromJson (infile);
 }

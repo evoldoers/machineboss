@@ -3,13 +3,7 @@
 #include "schema.h"
 #include "util.h"
 
-void SeqPair::readJson (istream& in) {
-  json pj;
-  in >> pj;
-  readJson(pj);
-}
-
-void SeqPair::readJson (const json& pj) {
+void SeqPairBase::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpair", pj);
   input.name = "input";
   output.name = "output";
@@ -17,23 +11,26 @@ void SeqPair::readJson (const json& pj) {
   output.readJson (pj.at("output"));
 }
 
-void SeqPair::writeJson (ostream& out) const {
+void SeqPairBase::writeJson (ostream& out) const {
   out << "{\"input\":";
   input.writeJson (out);
   out << ",\"output\":";
   output.writeJson (out);
-  out << "}" << endl;
+  out << "}";
 }
 
-SeqPair SeqPair::fromJson (istream& in) {
-  SeqPair sp;
-  sp.readJson (in);
-  return sp;
+void SeqPairListBase::readJson (const json& pj) {
+  MachineSchema::validateOrDie ("seqpairlist", pj);
+  for (const auto& j: pj)
+    seqPairs.push_back (SeqPair::fromJson(j));
 }
 
-SeqPair SeqPair::fromFile (const char* filename) {
-  ifstream infile (filename);
-  if (!infile)
-    Fail ("File not found: %s", filename);
-  return fromJson (infile);
+void SeqPairListBase::writeJson (ostream& out) const {
+  out << "[";
+  size_t n = 0;
+  for (const auto& sp: seqPairs) {
+    out << (n++ ? ",\n " : "");
+    sp.writeJson (out);
+  }
+  out << "]";
 }

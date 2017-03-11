@@ -7,5 +7,6 @@ int main (int argc, char** argv) {
   }
   Params params = Params::fromFile (argv[1]);
   params.writeJson (cout);
+  cout << endl;
   exit(0);
 }

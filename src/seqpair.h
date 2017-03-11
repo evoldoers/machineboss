@@ -2,7 +2,7 @@
 #define SEQPAIR_INCLUDED
 
 #include <string>
-#include <json.hpp>
+#include "jsonio.h"
 #include "trans.h"
 #include "vguard.h"
 
@@ -28,14 +28,19 @@ struct NamedSeq {
   }
 };
 
-struct SeqPair {
+struct SeqPairBase {
   NamedSeq<InputSymbol> input;
   NamedSeq<OutputSymbol> output;
-  void readJson (istream& in);
-  void readJson (const json& json);
-  void writeJson (ostream& out) const;
-  static SeqPair fromJson (istream& in);
-  static SeqPair fromFile (const char* filename);
+  void readJson (const json&);
+  void writeJson (ostream&) const;
 };
+typedef JsonLoader<SeqPairBase> SeqPair;
+
+struct SeqPairListBase {
+  list<SeqPair> seqPairs;
+  void readJson (const json&);
+  void writeJson (ostream&) const;
+};
+typedef JsonLoader<SeqPairListBase> SeqPairList;
 
 #endif /* SEQPAIR_INCLUDED */

@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/schema#",
   "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/params.json",
-  "description": "Acidbot parameter assignments schema",
+  "description": "Acidbot function definitions schema",
   "type": "object",
   "patternProperties": {
-    ".*": { "type": "number" }
+    ".*": { "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/expr.json" }
   }
 }
