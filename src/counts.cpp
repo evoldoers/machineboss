@@ -106,6 +106,7 @@ double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
 
   const double l = -WeightAlgebra::eval (ml.lagrangian, pv);  // introduce minus sign for minimizer because we want to maximize
 
+  pv.writeJson(cerr);
   const vguard<double> v_stl = gsl_vector_to_stl(v);
   cerr << "gsl_machine_lagrangian(" << to_string_join(v_stl) << ") = " << l << endl;
 
@@ -162,8 +163,12 @@ Params MachineLagrangian::optimize (const Params& seed) const {
   int status;
   do
     {
+      cerr << endl;
       iter++;
       status = gsl_multimin_fdfminimizer_iterate (s);
+
+      const vguard<double> x_stl = gsl_vector_to_stl(x);
+      cerr << "iteration #" << iter << ": x=(" << to_string_join(x_stl) << ")" << endl;
 
       if (status)
         break;
