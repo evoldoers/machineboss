@@ -90,10 +90,10 @@ MachineLagrangian::MachineLagrangian (const Machine& machine, const MachineCount
   for (const auto& p: param)
     deriv.push_back (WeightAlgebra::deriv (gradSquared, paramTransform, p));
 
-  cerr << "f = " << WeightAlgebra::toString(lagrangian,paramTransform) << endl;
-  cerr << "(grad f)^2 = " << WeightAlgebra::toString(gradSquared,paramTransform) << endl;
+  cerr << "L = " << WeightAlgebra::toString(lagrangian,paramTransform) << endl;
+  cerr << "(grad L)^2 = " << WeightAlgebra::toString(gradSquared,paramTransform) << endl;
   for (size_t n = 0; n < param.size(); ++n)
-    cerr << "d(grad f)^2/d" << param[n] << " = " << WeightAlgebra::toString(deriv[n],paramTransform) << endl;
+    cerr << "d(grad L)^2/d" << param[n] << " = " << WeightAlgebra::toString(deriv[n],paramTransform) << endl;
 }
 
 Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml) {
@@ -104,7 +104,7 @@ Params gsl_vector_to_params (const gsl_vector *v, const MachineLagrangian& ml) {
   return p;
 }
 
-double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
+double gsl_grad2_machine_lagrangian (const gsl_vector *v, void *voidML)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
   const Params pv = gsl_vector_to_params (v, ml);
@@ -113,12 +113,12 @@ double gsl_machine_lagrangian (const gsl_vector *v, void *voidML)
 
   pv.writeJson(cerr);
   const vguard<double> v_stl = gsl_vector_to_stl(v);
-  cerr << "gsl_machine_lagrangian(" << to_string_join(v_stl) << ") = " << g2 << endl;
+  cerr << "gsl_grad2_machine_lagrangian(" << to_string_join(v_stl) << ") = " << g2 << endl;
 
   return g2;
 }
 
-void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector *df)
+void gsl_grad2_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector *df)
 {
   const MachineLagrangian& ml (*((MachineLagrangian*)voidML));
   const Params pv = gsl_vector_to_params (v, ml);
@@ -127,22 +127,22 @@ void gsl_machine_lagrangian_deriv (const gsl_vector *v, void *voidML, gsl_vector
     gsl_vector_set (df, n, WeightAlgebra::eval (ml.deriv[n], pv.defs));
 
   const vguard<double> v_stl = gsl_vector_to_stl(v), df_stl = gsl_vector_to_stl(df);
-  cerr << "gsl_machine_lagrangian_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl;
+  cerr << "gsl_grad2_machine_lagrangian_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl;
 }
 
-void gsl_machine_lagrangian_with_deriv (const gsl_vector *x, void *voidML, double *f, gsl_vector *df)
+void gsl_grad2_machine_lagrangian_with_deriv (const gsl_vector *x, void *voidML, double *f, gsl_vector *df)
 {
-  *f = gsl_machine_lagrangian (x, voidML);
-  gsl_machine_lagrangian_deriv (x, voidML, df);
+  *f = gsl_grad2_machine_lagrangian (x, voidML);
+  gsl_grad2_machine_lagrangian_deriv (x, voidML, df);
 }
 
 Params MachineLagrangian::optimize (const Params& seed) const {
   gsl_vector *v;
   gsl_multimin_function_fdf func;
   func.n = param.size();
-  func.f = gsl_machine_lagrangian;
-  func.df = gsl_machine_lagrangian_deriv;
-  func.fdf = gsl_machine_lagrangian_with_deriv;
+  func.f = gsl_grad2_machine_lagrangian;
+  func.df = gsl_grad2_machine_lagrangian_deriv;
+  func.fdf = gsl_grad2_machine_lagrangian_with_deriv;
   func.params = (void*) this;
 
   gsl_vector* x = gsl_vector_alloc (func.n);
