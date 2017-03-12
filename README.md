@@ -7,7 +7,6 @@ Bioinformatics automata
 <pre><code>
 Allowed options:
   -h [ --help ]             display this help message
-  -n [ --null ]             create null transducer (default)
   -g [ --generate ] arg     create sequence generator
   -p [ --pipe ] arg         pipe (compose) machine(s)
   -c [ --concat ] arg       concatenate machine(s)
@@ -16,6 +15,7 @@ Allowed options:
   -k [ --kleene ]           make Kleene closure
   -l [ --loop ] arg         parameterize Kleene closure
   -a [ --accept ] arg       pipe to sequence acceptor
+  -n [ --null ]             create null transducer (default)
   -s [ --save ] arg         save machine
   -F [ --fit ]              Baum-Welch parameter fit
   -P [ --params ] arg       parameter file

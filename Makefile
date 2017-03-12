@@ -131,6 +131,26 @@ test-noise2:
 test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
+# Transducer construction tests
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-kleene test-concat test-null
+test-generator:
+	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
+
+test-acceptor:
+	@$(TEST) bin/$(MAIN) -a t/io/seq001.json t/expect/acceptor001.json
+
+test-union:
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -u t/expect/generator101.json -w p t/expect/generate-101-or-001.json
+
+test-kleene:
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -k -l q t/expect/generate-multiple-001.json
+
+test-concat:
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
+
+test-null:
+	@$(TEST) bin/$(MAIN) -n t/expect/null.json
+
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
 test-echo-valid:
@@ -205,7 +225,7 @@ test-align-stutter-noise:
 	@$(TEST) bin/$(MAIN) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 

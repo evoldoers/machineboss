@@ -22,12 +22,11 @@ namespace po = boost::program_options;
 int main (int argc, char** argv) {
 
   try {
-    
+
     // Declare the supported options.
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "display this help message")
-      ("null,n", "create null transducer (default)")
       ("generate,g", po::value<string>(), "create sequence generator")
       ("pipe,p", po::value<vector<string> >(), "pipe (compose) machine(s)")
       ("concat,c", po::value<vector<string> >(), "concatenate machine(s)")
@@ -36,6 +35,7 @@ int main (int argc, char** argv) {
       ("kleene,k", "make Kleene closure")
       ("loop,l", po::value<string>(), "parameterize Kleene closure")
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
+      ("null,n", "create null transducer (default)")
       ("save,s", po::value<string>(), "save machine")
       ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
@@ -65,27 +65,21 @@ int main (int argc, char** argv) {
     // create transducer
     Machine machine;
 
-    // Null
-    if (vm.count("null"))
-      machine = Machine::null();
-
-    // Compositions
-    if (vm.count("pipe")) {
-      const vector<string> machines = vm.at("pipe").as<vector<string> >();
-      for (auto iter = machines.rbegin(); iter != machines.rend(); ++iter) {
-	LogThisAt(2,"Loading transducer " << *iter << endl);
-	const char* filename = (*iter).c_str();
-	const Machine loaded = MachineLoader::fromFile(filename);
-	machine = machine.nStates() ? Machine::compose (loaded, machine) : loaded;
-      }
-    }
-
     // Generator
     if (vm.count("generate")) {
       const NamedInputSeq inSeq = NamedInputSeq::fromFile (vm.at("generate").as<string>());
       LogThisAt(2,"Creating generator for sequence " << inSeq.name << endl);
-      const Machine generator = Machine::generator (inSeq.name, inSeq.seq);
-      machine = machine.nStates() ? Machine::compose (generator, machine) : generator;
+      machine = Machine::generator (inSeq.name, inSeq.seq);
+    }
+
+    // Compositions
+    if (vm.count("pipe")) {
+      const vector<string> machines = vm.at("pipe").as<vector<string> >();
+      for (const auto& filename: machines) {
+	LogThisAt(2,"Loading transducer " << filename << endl);
+	const Machine loaded = MachineLoader::fromFile(filename);
+	machine = machine.nStates() ? Machine::compose (machine, loaded) : loaded;
+      }
     }
 
     // Concatenations
@@ -99,6 +93,7 @@ int main (int argc, char** argv) {
     }
 
     // Union
+    Require (!vm.count("weight") || vm.count("union"), "Can't specify --weight without --union");
     if (vm.count("union")) {
       const string filename = vm.at("union").as<string>();
       LogThisAt(2,"Taking union with transducer " << filename << endl);
@@ -109,7 +104,7 @@ int main (int argc, char** argv) {
     }
 
     // Kleene closure
-    if (vm.count("kleene")) {
+    if (vm.count("kleene") || vm.count("loop")) {
       LogThisAt(2,"Making Kleene closure" << endl);
       machine = vm.count("loop")
 	? machine.kleeneClosure (WeightExpr (vm.at("loop").as<string>()))
@@ -123,11 +118,13 @@ int main (int argc, char** argv) {
       const Machine acceptor = Machine::acceptor (outSeq.name, outSeq.seq);
       machine = machine.nStates() ? Machine::compose(machine,acceptor) : acceptor;
     }
-
-    // default to null
-    if (!machine.nStates())
-      machine = Machine::null();
     
+    // Null
+    if (!machine.nStates() || vm.count("null")) {
+      LogThisAt(2,"Creating null transducer" << endl);
+      machine = machine.nStates() ? Machine::compose (machine, Machine::null()) : Machine::null();
+    }
+
     // save transducer
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();
@@ -135,6 +132,11 @@ int main (int argc, char** argv) {
       machine.writeJson (out);
     } else if (!vm.count("fit") && !vm.count("align"))
       machine.writeJson (cout);
+
+    // do some syntax checking
+    Require (!vm.count("params") || (vm.count("fit") || vm.count("align")), "Can't specify --params without --fit or --align");
+    Require (!vm.count("data") || (vm.count("fit") || vm.count("align")), "Can't specify --data without --fit or --align");
+    Require (!vm.count("constraints") || vm.count("fit"), "Can't specify --constraints without --fit");
 
     // fit parameters
     Params params;
