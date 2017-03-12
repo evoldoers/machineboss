@@ -20,7 +20,7 @@ Allowed options:
   -F [ --fit ]              Baum-Welch parameter fit
   -P [ --params ] arg       parameter file
   -C [ --constraints ] arg  constraints file
-  -D [ --data ] arg         training sequence file
+  -D [ --data ] arg         sequence-pair file
   -A [ --align ]            Viterbi sequence alignment
   -v [ --verbose ] arg (=2) verbosity level
   --log arg                 log specified function

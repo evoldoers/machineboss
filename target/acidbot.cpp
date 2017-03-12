@@ -40,7 +40,7 @@ int main (int argc, char** argv) {
       ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
       ("constraints,C", po::value<string>(), "constraints file")
-      ("data,D", po::value<string>(), "training sequence file")
+      ("data,D", po::value<string>(), "sequence-pair file")
       ("align,A", "Viterbi sequence alignment")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log specified function")
