@@ -19,7 +19,7 @@ private:
 public:
   ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
   double logLike() const;
-  list<MachineTransition> trace (const Machine&) const;
+  MachinePath trace (const Machine&) const;
 };
 
 #endif /* VITERBI_INCLUDED */

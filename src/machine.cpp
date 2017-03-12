@@ -585,3 +585,16 @@ TransList TransAccumulator::transitions() const {
 	trans.push_back (MachineTransition (in_map.first, out_weight.first, dest_map.first, out_weight.second));
   return trans;
 }
+
+void MachinePath::writeJson (ostream& out) const {
+  out << "{\"start\":0," << endl
+      << " \"trans\":" << endl
+      << " [";
+  size_t n = 0;
+  for (const auto& t: trans)
+    out << (n++ ? ",  \n" : "")
+	<< "{\"to\":" << t.dest
+	<< ",\"in\":\"" << t.in << "\""
+	<< ",\"out\":\"" << t.out << "\"}";
+  out << "]}\n";
+}

@@ -27,8 +27,8 @@ double ViterbiMatrix::logLike() const {
   return cell (inLen, outLen, machine.endState());
 }
 
-list<MachineTransition> ViterbiMatrix::trace (const Machine& m) const {
-  list<MachineTransition> mt;
+MachinePath ViterbiMatrix::trace (const Machine& m) const {
+  MachinePath path;
   InputIndex inPos = inLen;
   OutputIndex outPos = outLen;
   StateIndex s = nStates - 1;
@@ -50,7 +50,7 @@ list<MachineTransition> ViterbiMatrix::trace (const Machine& m) const {
     if (!bestTrans.inputEmpty()) --inPos;
     if (!bestTrans.outputEmpty()) --outPos;
     s = bestSource;
-    mt.push_front (bestTrans);
+    path.trans.push_front (bestTrans);
   }
-  return mt;
+  return path;
 }

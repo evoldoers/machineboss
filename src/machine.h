@@ -35,6 +35,11 @@ struct MachineTransition {
 };
 typedef list<MachineTransition> TransList;
 
+struct MachinePath {
+  TransList trans;
+  void writeJson (ostream&) const;
+};
+
 struct MachineState {
   StateName name;
   TransList trans;
