@@ -1,5 +1,5 @@
-# acidbot
-Bioinformatics automata
+# bossmachine
+Bioinformatics Open Source sequence machine
 
 
 ## Command-line usage

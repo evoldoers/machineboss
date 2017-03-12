@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/machine.json",
-  "description": "Acidbot transducer schema",
+  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/machine.json",
+  "description": "BossMachine transducer schema",
   "type": "object",
   "required": ["state"],
   "properties": {
@@ -27,7 +27,7 @@
                 "to": {},
                 "in": { "type": "string" },
                 "out": { "type": "string" },
-                "weight": { "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/expr.json" }
+                "weight": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
               },
               "additionalProperties": false
             }

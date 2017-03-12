@@ -1,15 +1,15 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/seqpair.json",
-  "description": "Acidbot sequence-pair schema",
+  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/seqpair.json",
+  "description": "BossMachine sequence-pair schema",
   "type": "object",
   "required": ["input","output"],
   "properties": {
     "input": {
-      "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/namedsequence.json"
+      "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
     },
     "output": {
-      "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/namedsequence.json"
+      "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
     }
   },
   "additionalProperties": false,

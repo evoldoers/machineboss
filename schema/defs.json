@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/params.json",
-  "description": "Acidbot function definitions schema",
+  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/params.json",
+  "description": "BossMachine function definitions schema",
   "type": "object",
   "patternProperties": {
-    ".*": { "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/expr.json" }
+    ".*": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
   }
 }

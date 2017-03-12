@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/params.json",
-  "description": "Acidbot parameter assignments schema",
+  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/params.json",
+  "description": "BossMachine parameter assignments schema",
   "type": "object",
   "patternProperties": {
     ".*": { "type": "number" }

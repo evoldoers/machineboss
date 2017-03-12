@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/constraint.json",
-  "description": "Acidbot parameter constraints schema",
+  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/constraint.json",
+  "description": "BossMachine parameter constraints schema",
   "type": "object",
   "properties": {
     "norm": {

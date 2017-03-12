@@ -69,7 +69,7 @@ SH = /bin/sh
 
 # Targets
 
-MAIN = acidbot
+MAIN = bossmachine
 
 all: $(MAIN)
 
