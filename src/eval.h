@@ -36,17 +36,17 @@ typedef double LogWeight;
 struct EvaluatedMachineState {
   typedef size_t TransIndex;
   struct Trans {
-    StateIndex state;
     LogWeight logWeight;
     TransIndex transIndex;  // index of this transition in source state's TransList. Need to track this so we can map forward-backward counts back to MachineTransitions
-    void init (StateIndex, LogWeight, TransIndex);
+    void init (LogWeight, TransIndex);
   };
-  typedef map<OutputToken,Trans> OutTransMap;
-  typedef map<InputToken,OutTransMap> InOutTransMap;
+  typedef map<StateIndex,Trans> StateTransMap;
+  typedef map<OutputToken,StateTransMap> OutStateTransMap;
+  typedef map<InputToken,OutStateTransMap> InOutStateTransMap;
   
   StateName name;
   TransIndex nTransitions;
-  InOutTransMap incoming, outgoing;
+  InOutStateTransMap incoming, outgoing;
 };
 
 struct EvaluatedMachine {
@@ -54,6 +54,8 @@ struct EvaluatedMachine {
   OutputTokenizer outputTokenizer;
   vguard<EvaluatedMachineState> state;
   EvaluatedMachine (const Machine&, const Params&);
+  void writeJson (ostream&) const;
+  string toJsonString() const;
   StateIndex nStates() const;
   StateIndex startState() const;
   StateIndex endState() const;

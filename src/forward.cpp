@@ -1,4 +1,5 @@
 #include "forward.h"
+#include "logger.h"
 
 ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
@@ -21,6 +22,7 @@ ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& se
       }
     }
   }
+  LogThisAt(8,"Forward matrix:" << endl << toJsonString());
 }
 
 double ForwardMatrix::logLike() const {

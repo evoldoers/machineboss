@@ -1,4 +1,5 @@
 #include "backward.h"
+#include "logger.h"
 
 BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
@@ -24,6 +25,7 @@ BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& 
       }
     }
   }
+  LogThisAt(8,"Backward matrix:" << endl << toJsonString());
 }
 
 double BackwardMatrix::logLike() const {

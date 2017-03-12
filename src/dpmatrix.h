@@ -24,18 +24,19 @@ private:
   }
 
 protected:
-  inline void accumulate (double& ll, const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<double(double,double)> reduce) const {
+  inline void accumulate (double& ll, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<double(double,double)> reduce) const {
     auto visit = [&] (StateIndex, EvaluatedMachineState::TransIndex, double t) { ll = reduce(ll,t); };
-    iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
+    iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
-  inline void iterate (const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> visit) const {
-    if (inOutTransMap.count (inTok)) {
-      const EvaluatedMachineState::OutTransMap& outTransMap = inOutTransMap.at (inTok);
-      if (outTransMap.count (outTok)) {
-	const EvaluatedMachineState::Trans& trans = outTransMap.at (outTok);
-	visit (trans.state, trans.transIndex, cell(inPos,outPos,trans.state) + trans.logWeight);
-      }
+  inline void iterate (const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> visit) const {
+    if (inOutStateTransMap.count (inTok)) {
+      const EvaluatedMachineState::OutStateTransMap& outStateTransMap = inOutStateTransMap.at (inTok);
+      if (outStateTransMap.count (outTok))
+	for (const auto& st: outStateTransMap.at (outTok)) {
+	  const EvaluatedMachineState::Trans& trans = st.second;
+	  visit (st.first, trans.transIndex, cell(inPos,outPos,st.first) + trans.logWeight);
+	}
     }
   }
 
@@ -54,6 +55,7 @@ public:
   DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
 
   void writeJson (ostream& out) const;
+  string toJsonString() const;
   
   inline double& cell (InputIndex inPos, OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(inPos,outPos,state)]; }
   inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(inPos,outPos,state)]; }

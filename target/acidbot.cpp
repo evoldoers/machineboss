@@ -13,6 +13,7 @@
 #include "../src/constraints.h"
 #include "../src/params.h"
 #include "../src/fitter.h"
+#include "../src/viterbi.h"
 
 using namespace std;
 
@@ -36,10 +37,11 @@ int main (int argc, char** argv) {
       ("loop,l", po::value<string>(), "Kleene closure with probability parameter")
       ("accept,a", po::value<string>(), "create acceptor from sequence")
       ("save,s", po::value<string>(), "save machine")
-      ("fit,f", "fit parameters using Baum-Welch")
+      ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
       ("constraints,C", po::value<string>(), "constraints file")
-      ("data,d", po::value<string>(), "training sequence file")
+      ("data,D", po::value<string>(), "training sequence file")
+      ("align,A", "Viterbi sequence alignment")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log specified function")
       ("nocolor", "log in monochrome")
@@ -135,10 +137,12 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       machine.writeJson (out);
-    } else if (!vm.count("fit"))
+    } else if (!vm.count("fit") && !vm.count("align"))
       machine.writeJson (cout);
 
     // fit parameters
+    Params params;
+    SeqPairList data;
     if (vm.count("fit")) {
       Require (vm.count("constraints") && vm.count("data"),
 	       "To fit parameters, please specify a constraints file and a data file");
@@ -146,8 +150,29 @@ int main (int argc, char** argv) {
       fitter.machine = machine;
       fitter.constraints = Constraints::fromFile(vm.at("constraints").as<string>());
       fitter.seed = vm.count("params") ? Params::fromFile(vm.at("params").as<string>()) : fitter.constraints.defaultParams();
-      const SeqPairList data = SeqPairList::fromFile(vm.at("data").as<string>());
-      cout << fitter.fit(data).toJsonString() << endl;
+      data = SeqPairList::fromFile(vm.at("data").as<string>());
+      params = fitter.fit(data);
+      cout << params.toJsonString() << endl;
+    }
+
+    // align sequences
+    if (vm.count("align")) {
+      Require ((vm.count("data") && vm.count("params")) || vm.count("fit"),
+	       "To align sequences, please specify a data file and a parameter file (or fit with --fit)");
+      if (!vm.count("fit")) {
+	params = Params::fromFile(vm.at("params").as<string>());
+	data = SeqPairList::fromFile(vm.at("data").as<string>());
+      }
+      const EvaluatedMachine eval (machine, params);
+      cout << "[";
+      size_t n = 0;
+      for (const auto& seqPair: data.seqPairs) {
+	const ViterbiMatrix viterbi (eval, seqPair);
+	const MachinePath path = viterbi.trace (machine);
+	cout << (n++ ? ",\n " : "");
+	path.writeJson (cout);
+      }
+      cout << "]\n";
     }
     
   } catch (const std::exception& e) {

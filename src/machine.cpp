@@ -587,14 +587,16 @@ TransList TransAccumulator::transitions() const {
 }
 
 void MachinePath::writeJson (ostream& out) const {
-  out << "{\"start\":0," << endl
-      << " \"trans\":" << endl
-      << " [";
+  out << "{\"start\":0,\"trans\":[";
   size_t n = 0;
-  for (const auto& t: trans)
-    out << (n++ ? ",  \n" : "")
-	<< "{\"to\":" << t.dest
-	<< ",\"in\":\"" << t.in << "\""
-	<< ",\"out\":\"" << t.out << "\"}";
-  out << "]}\n";
+  for (const auto& t: trans) {
+    out << (n++ ? "," : "")
+	<< "{\"to\":" << t.dest;
+    if (!t.inputEmpty())
+      out << ",\"in\":\"" << t.in << "\"";
+    if (!t.outputEmpty())
+      out << ",\"out\":\"" << t.out;
+    out << "\"}";
+  }
+  out << "]}";
 }

@@ -1,4 +1,5 @@
 #include "viterbi.h"
+#include "logger.h"
 
 ViterbiMatrix::ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
@@ -21,6 +22,7 @@ ViterbiMatrix::ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& se
       }
     }
   }
+  LogThisAt(8,"Viterbi matrix:" << endl << toJsonString());
 }
 
 double ViterbiMatrix::logLike() const {
@@ -28,6 +30,7 @@ double ViterbiMatrix::logLike() const {
 }
 
 MachinePath ViterbiMatrix::trace (const Machine& m) const {
+  Assert (logLike() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   MachinePath path;
   InputIndex inPos = inLen;
   OutputIndex outPos = outLen;

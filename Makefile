@@ -199,7 +199,7 @@ test-max-bitnoise-params-tiny: bin/testmaximize
 	@$(TEST) t/roundfloats.pl 4 bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
-	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json -C t/io/pqcons.json -d t/io/seqpairlist.json -f t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -F t/expect/fit-bitnoise-seqpairlist.json
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)

@@ -1,5 +1,6 @@
 #include <iomanip>
 #include "dpmatrix.h"
+#include "logger.h"
 
 DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   machine (machine),
@@ -10,6 +11,8 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   outLen (output.size()),
   nStates (machine.nStates())
 {
+  LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
+  LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
   cellStorage.resize (nCells());
 }
 
@@ -26,4 +29,10 @@ void DPMatrix::writeJson (ostream& outs) const {
   outs << endl
        << " ]" << endl
        << "}" << endl;
+}
+
+string DPMatrix::toJsonString() const {
+  ostringstream outs;
+  writeJson (outs);
+  return outs.str();
 }

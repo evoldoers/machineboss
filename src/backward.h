@@ -6,9 +6,9 @@
 
 class BackwardMatrix : public DPMatrix {
 private:
-  inline void accumulateCounts (double logOddsRatio, vguard<double>& transCounts, const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
+  inline void accumulateCounts (double logOddsRatio, vguard<double>& transCounts, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
     auto visit = [&] (StateIndex, EvaluatedMachineState::TransIndex ti, double tll) { transCounts[ti] += exp (logOddsRatio + tll); };
-    iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
+    iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
 public:
