@@ -34,7 +34,7 @@ int main (int argc, char** argv) {
       ("union,u", po::value<string>(), "take union with machine")
       ("weight,w", po::value<string>(), "parameterize union with probability")
       ("kleene,k", "make Kleene closure")
-      ("loop,l", po::value<string>(), "Kleene closure with probability parameter")
+      ("loop,l", po::value<string>(), "parameterize Kleene closure with probability")
       ("accept,a", po::value<string>(), "create acceptor from sequence")
       ("save,s", po::value<string>(), "save machine")
       ("fit,F", "Baum-Welch parameter fit")
@@ -103,21 +103,17 @@ int main (int argc, char** argv) {
       const string filename = vm.at("union").as<string>();
       LogThisAt(2,"Taking union with transducer " << filename << endl);
       const Machine uni = MachineLoader::fromFile(filename);
-      if (vm.count("weight"))
-	machine = Machine::unionOf (uni, machine, WeightExpr(vm.at("weight").as<string>()));
-      else
-	machine = Machine::unionOf (uni, machine);
+      machine = vm.count("weight")
+	? Machine::unionOf (uni, machine, WeightExpr(vm.at("weight").as<string>()))
+	: machine = Machine::unionOf (uni, machine);
     }
 
     // Kleene closure
-    Require (!(vm.count("kleene") && vm.count("loop")), "Can't specify both --kleene and --loop");
     if (vm.count("kleene")) {
       LogThisAt(2,"Making Kleene closure" << endl);
-      machine = machine.kleeneClosure();
-    } else if (vm.count("loop")) {
-      const string geomParam = vm.at("loop").as<string>();
-      LogThisAt(2,"Making Kleene closure with loop parameter " << geomParam << endl);
-      machine = machine.kleeneClosure (WeightExpr(geomParam));
+      machine = vm.count("loop")
+	? machine.kleeneClosure (WeightExpr (vm.at("loop").as<string>()))
+	: machine.kleeneClosure();
     }
     
     // Acceptor
