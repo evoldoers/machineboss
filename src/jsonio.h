@@ -32,7 +32,11 @@ struct JsonLoader : Base {
       Fail ("File not found: %s", filename);
     return fromJson (infile);
   }
-  
+
+  static JsonLoader<Base> fromFile (const std::string& filename) {
+    return fromFile (filename.c_str());
+  }
+
   static void toFile (const Base& obj, const char* filename) {
     std::ofstream outfile (filename);
     if (!outfile)
@@ -40,8 +44,16 @@ struct JsonLoader : Base {
     obj.writeJson (outfile);
   }
 
+  static void toFile (const Base& obj, const std::string& filename) {
+    toFile (obj, filename.c_str());
+  }
+
   void toFile (const char* filename) const {
     toFile (*this, filename);
+  }
+
+  void toFile (const std::string& filename) const {
+    toFile (filename.c_str());
   }
 
   static std::string toJsonString (const Base& obj) {

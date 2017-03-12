@@ -14,16 +14,27 @@
 #define EpsilonAbsolute 1e-3
 #define MaxIterations 100
 
-MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPair& seqPair) :
-  count (machine.nStates())
+MachineCounts::MachineCounts (const EvaluatedMachine& machine) {
+  init (machine);
+}
+
+MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPair& seqPair)
 {
+  init (machine);
+  (void) add (machine, seqPair);
+}
+
+void MachineCounts::init (const EvaluatedMachine& machine) {
+  count = vguard<vguard<double> > (machine.nStates());
   for (StateIndex s = 0; s < machine.nStates(); ++s)
     count[s].resize (machine.state[s].nTransitions);
+}
 
+double MachineCounts::add (const EvaluatedMachine& machine, const SeqPair& seqPair) {
   const ForwardMatrix forward (machine, seqPair);
   const BackwardMatrix backward (machine, seqPair);
-
   backward.getCounts (forward, *this);
+  return forward.logLike();
 }
 
 MachineCounts& MachineCounts::operator+= (const MachineCounts& counts) {

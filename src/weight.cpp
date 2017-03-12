@@ -99,6 +99,8 @@ double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs) {
   if (op == "int" || op == "float") return w.get<double>();
   if (op == "param") {
     const string n = w.get<string>();
+    if (!defs.count(n))
+      throw runtime_error(string("Parameter ") + n + (" not defined"));
     return eval (defs.at(n), exclude(defs,n));
   }
   if (op == "log") return log (eval (w.at("log"), defs));

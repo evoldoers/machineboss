@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include "jsonio.h"
+#include "params.h"
 #include "vguard.h"
 
 using namespace std;
@@ -14,6 +15,8 @@ struct ConstraintsBase {
 
   void readJson (const json& json);
   void writeJson (ostream& out) const;
+
+  Params defaultParams() const;
 };
 typedef JsonLoader<ConstraintsBase> Constraints;
 

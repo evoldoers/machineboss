@@ -9,6 +9,10 @@
 #include "../src/logger.h"
 #include "../src/fastseq.h"
 #include "../src/trans.h"
+#include "../src/seqpair.h"
+#include "../src/constraints.h"
+#include "../src/params.h"
+#include "../src/fitter.h"
 
 using namespace std;
 
@@ -24,6 +28,10 @@ int main (int argc, char** argv) {
       ("help,h", "display this help message")
       ("load,l", po::value<vector<string> >(), "load machine from JSON file")
       ("save,s", po::value<string>(), "save machine to JSON file")
+      ("constraints,c", po::value<string>(), "JSON constraints file")
+      ("params,p", po::value<string>(), "JSON parameter file")
+      ("data,d", po::value<string>(), "JSON sequence-pair file")
+      ("fit,f", "fit using Baum-Welch and output JSON parameter file")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log everything in this function")
       ("nocolor", "log in monochrome")
@@ -65,9 +73,21 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       machine.writeJson (out);
-    } else
+    } else if (!vm.count("fit"))
       machine.writeJson (cout);
 
+    // fit parameters
+    if (vm.count("fit")) {
+      Require (vm.count("constraints") && vm.count("data"),
+	       "To fit parameters, please specify a constraints file and a data file");
+      MachineFitter fitter;
+      fitter.machine = machine;
+      fitter.constraints = Constraints::fromFile(vm.at("constraints").as<string>());
+      fitter.seed = vm.count("params") ? Params::fromFile(vm.at("params").as<string>()) : fitter.constraints.defaultParams();
+      const SeqPairList data = SeqPairList::fromFile(vm.at("data").as<string>());
+      cout << fitter.fit(data).toJsonString() << endl;
+    }
+    
   } catch (const std::exception& e) {
     cerr << e.what() << endl;
     return EXIT_FAILURE;

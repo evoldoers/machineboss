@@ -26,3 +26,11 @@ void ConstraintsBase::writeJson (ostream& out) const {
   }
   out << "]}" << endl;
 }
+
+Params ConstraintsBase::defaultParams() const {
+  Params params;
+  for (auto& c: norm)
+    for (auto& cp: c)
+      params.defs[cp] = 1. / (double) c.size();
+  return params;
+}

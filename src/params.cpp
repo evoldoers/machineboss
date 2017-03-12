@@ -5,7 +5,6 @@
 
 void ParamsBase::readJson (const json& pj) {
   MachineSchema::validateOrDie ("params", pj);
-  defs.clear();
   for (auto iter = pj.begin(); iter != pj.end(); ++iter)
     defs[iter.key()] = iter.value();
 }
