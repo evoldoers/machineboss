@@ -1,5 +1,5 @@
-# bossmachine
-Bioinformatics Open Source sequence machine
+# Boss Machine
+Bioinformatics Open Source Sequence machine
 
 
 ## Command-line usage
