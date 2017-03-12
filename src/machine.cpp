@@ -558,6 +558,12 @@ Machine Machine::kleeneClosure (const WeightExpr& extend, const WeightExpr& end)
   return m;
 }
 
+Machine Machine::null() {
+  Machine n;
+  n.state.push_back (MachineState());
+  return n;
+}
+
 void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w) {
   if (t[dest][in].count(out))
     t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);

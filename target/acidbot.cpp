@@ -26,6 +26,7 @@ int main (int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "display this help message")
+      ("null,n", "create null transducer (default)")
       ("generate,g", po::value<string>(), "create generator from sequence")
       ("pipe,p", po::value<vector<string> >(), "pipe (compose) machine(s)")
       ("concat,c", po::value<vector<string> >(), "concatenate machine(s)")
@@ -60,10 +61,11 @@ int main (int argc, char** argv) {
     logger.parseLogArgs (vm);
 
     // create transducer
-    Require (vm.count("pipe") || vm.count("generate") || vm.count("accept") || vm.count("concat"),
-	     "Please load at least one machine");
-
     Machine machine;
+
+    // Null
+    if (vm.count("null"))
+      machine = Machine::null();
 
     // Compositions
     if (vm.count("pipe")) {
@@ -124,6 +126,10 @@ int main (int argc, char** argv) {
       machine = machine.nStates() ? Machine::compose(machine,acceptor) : acceptor;
     }
 
+    // default to null
+    if (!machine.nStates())
+      machine = Machine::null();
+    
     // save transducer
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();

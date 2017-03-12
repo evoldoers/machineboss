@@ -66,6 +66,8 @@ struct Machine {
 
   set<StateIndex> accessibleStates() const;
 
+  static Machine null();
+
   static Machine compose (const Machine& first, const Machine& second);
   static Machine concatenate (const Machine& left, const Machine& right);
   static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
