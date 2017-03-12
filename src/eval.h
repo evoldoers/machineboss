@@ -39,9 +39,9 @@ struct EvaluatedMachineState {
     StateIndex state;
     LogWeight logWeight;
     TransIndex transIndex;  // index of this transition in source state's TransList. Need to track this so we can map forward-backward counts back to MachineTransitions
-    Trans (StateIndex, LogWeight, TransIndex);
+    void init (StateIndex, LogWeight, TransIndex);
   };
-  typedef map<OutputToken,list<Trans> > OutTransMap;
+  typedef map<OutputToken,Trans> OutTransMap;
   typedef map<InputToken,OutTransMap> InOutTransMap;
   
   StateName name;

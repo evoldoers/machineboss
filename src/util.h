@@ -21,8 +21,6 @@
    but merely call exit().
    Test(...) does not exit or throw an exception,
    just prints a warning and returns false if the assertion fails.
-   Desire(...) is a macro wrapper for Test(...)
-   that returns false from the calling function if the test fails.
 */
 void Abort(const char* error, ...);
 void Warn(const char* warning, ...);
@@ -30,7 +28,6 @@ void Fail(const char* error, ...);
 #define Test(assertion,...) ((assertion) ? true : (Warn(__VA_ARGS__), false))
 #define Assert(assertion,...) do { if (!(assertion)) Abort("Assertion Failed: " __VA_ARGS__); } while (0)
 #define Require(assertion,...) do { if (!(assertion)) Fail(__VA_ARGS__); } while (0)
-#define Desire(...) do { if (!Test(__VA_ARGS__)) return false; } while (0)
 
 void CheckGsl (int gslErrorCode);
 

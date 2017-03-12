@@ -4,6 +4,7 @@
 #include <string>
 #include "jsonio.h"
 #include "machine.h"
+#include "schema.h"
 #include "vguard.h"
 
 using namespace std;
@@ -14,6 +15,7 @@ struct NamedSeq {
   string name;
   vguard<Symbol> seq;
   void readJson (const json& json) {
+    MachineSchema::validateOrDie ("namedsequence", json);
     if (json.count("name"))
       name = json.at("name").get<string>();
     seq.clear();
@@ -28,9 +30,12 @@ struct NamedSeq {
   }
 };
 
+typedef JsonLoader<NamedSeq<InputSymbol> > NamedInputSeq;
+typedef JsonLoader<NamedSeq<OutputSymbol> > NamedOutputSeq;
+
 struct SeqPairBase {
-  NamedSeq<InputSymbol> input;
-  NamedSeq<OutputSymbol> output;
+  NamedInputSeq input;
+  NamedOutputSeq output;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };

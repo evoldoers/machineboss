@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "id": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/namedsequence.json",
+  "description": "Acidbot named sequence schema",
+  "type": "object",
+  "required": ["sequence"],
+  "properties": {
+    "sequence": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "name": { "type": "string" }
+  },
+  "additionalProperties": false
+}

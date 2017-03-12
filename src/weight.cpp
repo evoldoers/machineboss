@@ -3,8 +3,16 @@
 #include "logsumexp.h"
 #include "util.h"
 
+WeightExpr WeightAlgebra::negate (const WeightExpr& p) {
+  return WeightExpr::object ({{"-", WeightExpr::array ({true, p})}});
+}
+
+WeightExpr WeightAlgebra::reciprocal (const WeightExpr& p) {
+  return WeightExpr::object ({{"/", WeightExpr::array ({true, p})}});
+}
+
 WeightExpr WeightAlgebra::geometricSum (const WeightExpr& p) {
-  return WeightExpr::object ({{"/", WeightExpr::array ({true, WeightExpr::object ({{"-", WeightExpr::array ({true, p})}})})}});
+  return WeightAlgebra::reciprocal (WeightAlgebra::negate (p));
 }
 
 WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {

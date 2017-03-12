@@ -34,6 +34,7 @@ struct SchemaCache {
 #include "schema/defs.h"
 #include "schema/expr.h"
 #include "schema/machine.h"
+#include "schema/namedsequence.h"
 #include "schema/params.h"
 #include "schema/seqpair.h"
 #include "schema/seqpairlist.h"
@@ -45,6 +46,7 @@ SchemaCache::SchemaCache() {
   addSchema(defs);
   addSchema(expr);
   addSchema(machine);
+  addSchema(namedsequence);
   addSchema(params);
   addSchema(seqpair);
   addSchema(seqpairlist);

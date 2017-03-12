@@ -8,6 +8,10 @@
 
 template<class Base>
 struct JsonLoader : Base {
+  void readJson (const nlohmann::json& j) {
+    Base::readJson(j);
+  }
+
   void readJson (std::istream& in) {
     nlohmann::json j;
     in >> j;
@@ -35,6 +39,10 @@ struct JsonLoader : Base {
 
   static JsonLoader<Base> fromFile (const std::string& filename) {
     return fromFile (filename.c_str());
+  }
+
+  void writeJson (std::ostream& out) const {
+    Base::writeJson(out);
   }
 
   static void toFile (const Base& obj, const char* filename) {

@@ -32,3 +32,5 @@ bin/*
 # Temporary files
 schema/*.nourl
 
+# Emacs save files
+*~

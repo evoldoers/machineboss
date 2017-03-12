@@ -6,10 +6,10 @@
   "required": ["input","output"],
   "properties": {
     "input": {
-      "$ref": "#/definitions/namedsequence"
+      "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/namedsequence.json"
     },
     "output": {
-      "$ref": "#/definitions/namedsequence"
+      "$ref": "https://raw.githubusercontent.com/ihh/acidbot/master/schema/namedsequence.json"
     }
   },
   "additionalProperties": false,

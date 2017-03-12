@@ -4,6 +4,7 @@
 #include <json.hpp>
 
 #include "machine.h"
+#include "fastseq.h"
 #include "logger.h"
 #include "schema.h"
 
@@ -323,6 +324,8 @@ Machine Machine::ergodicMachine() const {
     if (keep[oldIdx] && nullEquiv.count(oldIdx))
       old2new[oldIdx] = old2new[nullEquiv.at(oldIdx)];
 
+  Assert (ns > 0, "Machine has no accessible states");
+
   Machine em;
   em.state.reserve (ns);
   for (StateIndex oldIdx = 0; oldIdx < nStates(); ++oldIdx)
@@ -448,6 +451,111 @@ Machine Machine::advancingMachine() const {
     LogThisAt(7,MachineLoader::toJsonString(am) << endl);
   }
   return am;
+}
+
+bool Machine::isAligningMachine() const {
+  for (StateIndex s = 0; s < nStates(); ++s) {
+    const MachineState& ms = state[s];
+    map<StateIndex,map<InputSymbol,set<OutputSymbol> > > t;
+    for (const auto& trans: ms.trans) {
+      if (t[trans.dest][trans.in].count(trans.out))
+	return false;
+      t[trans.dest][trans.in].insert(trans.out);
+    }
+  }
+  return true;
+}
+
+Machine Machine::generator (const string& name, const vguard<OutputSymbol>& seq) {
+  Machine m;
+  m.state.resize (seq.size() + 1);
+  for (SeqIdx pos = 0; pos <= seq.size(); ++pos)
+    m.state[pos].name = json::array ({string(name), pos});
+  for (SeqIdx pos = 0; pos < seq.size(); ++pos)
+    m.state[pos].trans.push_back (MachineTransition (string(), seq[pos], pos + 1, WeightExpr(true)));
+  return m;
+}
+
+Machine Machine::acceptor (const string& name, const vguard<InputSymbol>& seq) {
+  Machine m;
+  m.state.resize (seq.size() + 1);
+  for (SeqIdx pos = 0; pos <= seq.size(); ++pos)
+    m.state[pos].name = json::array ({string(name), pos});
+  for (SeqIdx pos = 0; pos < seq.size(); ++pos)
+    m.state[pos].trans.push_back (MachineTransition (seq[pos], string(), pos + 1, WeightExpr(true)));
+  return m;
+}
+
+Machine Machine::concatenate (const Machine& left, const Machine& right) {
+  Assert (left.nStates() && right.nStates(), "Attempt to compose transducer with uninitialized transducer");
+  Machine m (left);
+  for (auto& ms: m.state)
+    if (!ms.name.is_null())
+      ms.name = json::array ({"concat-l", ms.name});
+  m.state.insert (m.state.end(), right.state.begin(), right.state.end());
+  for (StateIndex s = left.state.size(); s < m.nStates(); ++s) {
+    MachineState& ms = m.state[s];
+    if (!ms.name.is_null())
+      ms.name = json::array ({"concat-r", m.state[s].name});
+    for (auto& t: ms.trans)
+      t.dest += left.state.size();
+  }
+  m.state[left.endState()].trans.push_back (MachineTransition (string(), string(), right.startState() + left.state.size(), WeightExpr(true)));
+  return m;
+}
+
+Machine Machine::unionOf (const Machine& first, const Machine& second) {
+  return unionOf (first, second, WeightExpr(true), WeightExpr(true));
+}
+
+Machine Machine::unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst) {
+  return unionOf (first, second, pFirst, WeightAlgebra::negate(pFirst));
+}
+
+Machine Machine::unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond) {
+  Assert (first.nStates() && second.nStates(), "Attempt to find union of transducer with uninitialized transducer");
+  Machine m;
+  m.state.reserve (first.nStates() + second.nStates() + 2);
+  m.state.push_back (MachineState());
+  m.state.insert (m.state.end(), first.state.begin(), first.state.end());
+  m.state.insert (m.state.end(), second.state.begin(), second.state.end());
+  m.state.push_back (MachineState());
+  for (StateIndex s = 0; s < first.nStates(); ++s) {
+    MachineState& ms = m.state[s+1];
+    if (!ms.name.is_null())
+      ms.name = json::array ({"union-1", ms.name});
+    for (auto& t: ms.trans)
+      ++t.dest;
+  }
+  for (StateIndex s = 0; s < second.nStates(); ++s) {
+    MachineState& ms = m.state[s+1+first.nStates()];
+    if (!ms.name.is_null())
+      ms.name = json::array ({"union-2", ms.name});
+    for (auto& t: ms.trans)
+      t.dest += 1 + first.nStates();
+  }
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 1, pFirst));
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 1 + first.nStates(), pSecond));
+  m.state[1 + first.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
+  m.state[1 + first.nStates() + second.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
+  return m;
+}
+
+Machine Machine::kleeneClosure() const {
+  return kleeneClosure (WeightExpr(true), WeightExpr(true));
+}
+
+Machine Machine::kleeneClosure (const WeightExpr& extend) const {
+  return kleeneClosure (extend, WeightAlgebra::negate(extend));
+}
+
+Machine Machine::kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const {
+  Assert (nStates(), "Attempt to find Kleene closure of uninitialized transducer");
+  Machine m (*this);
+  m.state.push_back (MachineState());
+  m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), extend));
+  m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), end));
+  return m;
 }
 
 void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w) {

@@ -67,10 +67,22 @@ struct Machine {
   set<StateIndex> accessibleStates() const;
 
   static Machine compose (const Machine& first, const Machine& second);
+  static Machine concatenate (const Machine& left, const Machine& right);
+  static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
+  static Machine acceptor (const string& name, const vguard<InputSymbol>& seq);
 
+  static Machine unionOf (const Machine& first, const Machine& second);
+  static Machine unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst);
+  static Machine unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond);
+
+  Machine kleeneClosure() const;
+  Machine kleeneClosure (const WeightExpr& extend) const;
+  Machine kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const;
+  
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
   bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
+  bool isAligningMachine() const;  // at most i->j transition with given input & output labels
 
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine() const;  // convert to waiting machine

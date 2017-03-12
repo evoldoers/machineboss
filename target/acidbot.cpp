@@ -26,19 +26,26 @@ int main (int argc, char** argv) {
     po::options_description desc("Allowed options");
     desc.add_options()
       ("help,h", "display this help message")
-      ("load,l", po::value<vector<string> >(), "load machine from JSON file")
-      ("save,s", po::value<string>(), "save machine to JSON file")
-      ("constraints,c", po::value<string>(), "JSON constraints file")
-      ("params,p", po::value<string>(), "JSON parameter file")
-      ("data,d", po::value<string>(), "JSON sequence-pair file")
-      ("fit,f", "fit using Baum-Welch and output JSON parameter file")
+      ("generate,g", po::value<string>(), "create generator from sequence")
+      ("pipe,p", po::value<vector<string> >(), "pipe (compose) machine(s)")
+      ("concat,c", po::value<vector<string> >(), "concatenate machine(s)")
+      ("union,u", po::value<string>(), "take union with machine")
+      ("weight,w", po::value<string>(), "parameterize union with probability")
+      ("kleene,k", "make Kleene closure")
+      ("loop,l", po::value<string>(), "Kleene closure with probability parameter")
+      ("accept,a", po::value<string>(), "create acceptor from sequence")
+      ("save,s", po::value<string>(), "save machine")
+      ("fit,f", "fit parameters using Baum-Welch")
+      ("params,P", po::value<string>(), "parameter file")
+      ("constraints,C", po::value<string>(), "constraints file")
+      ("data,d", po::value<string>(), "training sequence file")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log everything in this function")
       ("nocolor", "log in monochrome")
       ;
 
     po::positional_options_description p;
-    p.add("load", -1);
+    p.add("pipe", -1);
 
     po::variables_map vm;
     po::store (po::command_line_parser(argc,argv).options(desc).positional(p).run(), vm);
@@ -52,20 +59,69 @@ int main (int argc, char** argv) {
 
     logger.parseLogArgs (vm);
 
-    // load transducers
-    if (!vm.count("load"))
-      throw runtime_error ("Please load at least one machine");
+    // create transducer
+    Require (vm.count("pipe") || vm.count("generate") || vm.count("accept") || vm.count("concat"),
+	     "Please load at least one machine");
 
-    const vector<string> machines = vm.at("load").as<vector<string> >();
     Machine machine;
-    int n = 0;
-    for (auto iter = machines.rbegin(); iter != machines.rend(); ++iter) {
-      LogThisAt(2,(n ? "Pre-composing" : "Starting") << " with transducer " << *iter << endl);
-      const char* filename = (*iter).c_str();
-      if (n++)
-	machine = Machine::compose (MachineLoader::fromFile(filename), machine);
+
+    // Compositions
+    if (vm.count("pipe")) {
+      const vector<string> machines = vm.at("pipe").as<vector<string> >();
+      for (auto iter = machines.rbegin(); iter != machines.rend(); ++iter) {
+	LogThisAt(2,"Loading transducer " << *iter << endl);
+	const char* filename = (*iter).c_str();
+	const Machine loaded = MachineLoader::fromFile(filename);
+	machine = machine.nStates() ? Machine::compose (loaded, machine) : loaded;
+      }
+    }
+
+    // Generator
+    if (vm.count("generate")) {
+      const NamedInputSeq inSeq = NamedInputSeq::fromFile (vm.at("generate").as<string>());
+      LogThisAt(2,"Creating generator for sequence " << inSeq.name << endl);
+      const Machine generator = Machine::generator (inSeq.name, inSeq.seq);
+      machine = machine.nStates() ? Machine::compose (generator, machine) : generator;
+    }
+
+    // Concatenations
+    if (vm.count("concat")) {
+      const vector<string> machines = vm.at("concat").as<vector<string> >();
+      for (const auto& filename: machines) {
+	LogThisAt(2,"Concatenating transducer " << filename << endl);
+	const Machine concat = MachineLoader::fromFile(filename);
+	machine = machine.nStates() ? Machine::concatenate (machine, concat) : concat;
+      }
+    }
+
+    // Union
+    if (vm.count("union")) {
+      const string filename = vm.at("union").as<string>();
+      LogThisAt(2,"Taking union with transducer " << filename << endl);
+      const Machine uni = MachineLoader::fromFile(filename);
+      if (vm.count("weight"))
+	machine = Machine::unionOf (uni, machine, WeightExpr(vm.at("weight").as<string>()));
       else
-	machine = MachineLoader::fromFile(filename);
+	machine = Machine::unionOf (uni, machine);
+    }
+
+    // Kleene closure
+    Require (!(vm.count("kleene") && vm.count("loop")), "Can't specify both --kleene and --loop");
+    if (vm.count("kleene")) {
+      LogThisAt(2,"Making Kleene closure" << endl);
+      machine = machine.kleeneClosure();
+    } else if (vm.count("loop")) {
+      const string geomParam = vm.at("loop").as<string>();
+      LogThisAt(2,"Making Kleene closure with loop parameter " << geomParam << endl);
+      machine = machine.kleeneClosure (WeightExpr(geomParam));
+    }
+    
+    // Acceptor
+    if (vm.count("accept")) {
+      const NamedOutputSeq outSeq = NamedInputSeq::fromFile (vm.at("accept").as<string>());
+      LogThisAt(2,"Creating acceptor for sequence " << outSeq.name << endl);
+      const Machine acceptor = Machine::acceptor (outSeq.name, outSeq.seq);
+      machine = machine.nStates() ? Machine::compose(machine,acceptor) : acceptor;
     }
 
     // save transducer

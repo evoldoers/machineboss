@@ -18,6 +18,9 @@ struct WeightAlgebra {
   static WeightExpr power (const WeightExpr& a, const WeightExpr& b);  // a^b
   static WeightExpr logOf (const WeightExpr& p);  // log(p)
   static WeightExpr expOf (const WeightExpr& p);  // exp(p)
+
+  static WeightExpr negate (const WeightExpr& p);
+  static WeightExpr reciprocal (const WeightExpr& p);
   static WeightExpr geometricSum (const WeightExpr& p);
 
   static bool isZero (const WeightExpr& w);

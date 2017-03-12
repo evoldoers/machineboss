@@ -37,9 +37,10 @@ protected:
   inline void iterate (const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(EvaluatedMachineState::TransIndex,double)> visit) const {
     if (inOutTransMap.count (inTok)) {
       const EvaluatedMachineState::OutTransMap& outTransMap = inOutTransMap.at (inTok);
-      if (outTransMap.count (outTok))
-	for (const auto& trans: outTransMap.at (outTok))
-	  visit (trans.transIndex, cell(inPos,outPos,trans.state) + trans.logWeight);
+      if (outTransMap.count (outTok)) {
+	const EvaluatedMachineState::Trans& trans = outTransMap.at (outTok);
+	visit (trans.transIndex, cell(inPos,outPos,trans.state) + trans.logWeight);
+      }
     }
   }
 

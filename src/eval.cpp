@@ -2,9 +2,11 @@
 #include "weight.h"
 #include "util.h"
 
-EvaluatedMachineState::Trans::Trans (StateIndex s, LogWeight lw, TransIndex ti) :
-  state (s), logWeight (lw), transIndex (ti)
-{ }
+void EvaluatedMachineState::Trans::init (StateIndex s, LogWeight lw, TransIndex ti) {
+  state = s;
+  logWeight = lw;
+  transIndex = ti;
+}
 
 EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params) :
   inputTokenizer (machine.inputAlphabet()),
@@ -12,6 +14,7 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
   state (machine.nStates())
 {
   Assert (machine.isAdvancingMachine(), "Machine is not topologically sorted");
+  Assert (machine.isAligningMachine(), "Machine has ambiguous transitions");
   for (StateIndex s = 0; s < nStates(); ++s) {
     state[s].name = machine.state[s].name;
     EvaluatedMachineState::TransIndex ti = 0;
@@ -20,8 +23,8 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
       const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params.defs));
-      state[s].outgoing[in][out].push_back (EvaluatedMachineState::Trans (d, lw, ti));
-      state[d].incoming[in][out].push_back (EvaluatedMachineState::Trans (s, lw, ti));
+      state[s].outgoing[in][out].init (d, lw, ti);
+      state[d].incoming[in][out].init (s, lw, ti);
       ++ti;
     }
     state[s].nTransitions = ti;
