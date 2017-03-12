@@ -41,7 +41,7 @@ int main (int argc, char** argv) {
       ("constraints,C", po::value<string>(), "constraints file")
       ("data,d", po::value<string>(), "training sequence file")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
-      ("log", po::value<vector<string> >(), "log everything in this function")
+      ("log", po::value<vector<string> >(), "log specified function")
       ("nocolor", "log in monochrome")
       ;
 

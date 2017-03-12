@@ -39,6 +39,7 @@ struct MachineState {
   StateName name;
   TransList trans;
   MachineState();
+  MachineTransition getTransition (size_t) const;
   bool exitsWithInput() const;  // true if this has an input transition
   bool exitsWithoutInput() const;  // true if this has a non-input transition
   bool exitsWithIO() const;  // true if this has any transitions with input and/or output

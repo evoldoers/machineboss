@@ -43,6 +43,12 @@ bool MachineState::terminates() const {
   return trans.empty();
 }
 
+MachineTransition MachineState::getTransition (size_t n) const {
+  auto iter = trans.begin();
+  while (n) { ++iter; --n; }
+  return *iter;
+}
+
 bool MachineState::exitsWithInput() const {
   for (const auto& t: trans)
     if (!t.inputEmpty())

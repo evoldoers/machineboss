@@ -25,21 +25,16 @@ private:
 
 protected:
   inline void accumulate (double& ll, const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<double(double,double)> reduce) const {
-    auto visit = [&] (EvaluatedMachineState::TransIndex, double t) { ll = reduce(ll,t); };
+    auto visit = [&] (StateIndex, EvaluatedMachineState::TransIndex, double t) { ll = reduce(ll,t); };
     iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
-  inline void accumulateCounts (double logOddsRatio, vguard<double>& transCounts, const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
-    auto visit = [&] (EvaluatedMachineState::TransIndex ti, double tll) { transCounts[ti] += exp (logOddsRatio + tll); };
-    iterate (inOutTransMap, inTok, outTok, inPos, outPos, visit);
-  }
-
-  inline void iterate (const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(EvaluatedMachineState::TransIndex,double)> visit) const {
+  inline void iterate (const EvaluatedMachineState::InOutTransMap& inOutTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> visit) const {
     if (inOutTransMap.count (inTok)) {
       const EvaluatedMachineState::OutTransMap& outTransMap = inOutTransMap.at (inTok);
       if (outTransMap.count (outTok)) {
 	const EvaluatedMachineState::Trans& trans = outTransMap.at (outTok);
-	visit (trans.transIndex, cell(inPos,outPos,trans.state) + trans.logWeight);
+	visit (trans.state, trans.transIndex, cell(inPos,outPos,trans.state) + trans.logWeight);
       }
     }
   }
