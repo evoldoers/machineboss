@@ -2,7 +2,7 @@
 #define EVAL_INCLUDED
 
 #include <algorithm>
-#include "trans.h"
+#include "machine.h"
 #include "params.h"
 
 template<typename Symbol,typename Token>

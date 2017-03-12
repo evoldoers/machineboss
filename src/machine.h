@@ -1,5 +1,5 @@
-#ifndef TRANSDUCER_INCLUDED
-#define TRANSDUCER_INCLUDED
+#ifndef MACHINE_INCLUDED
+#define MACHINE_INCLUDED
 
 #include <string>
 #include <map>
@@ -85,4 +85,4 @@ struct TransAccumulator {
   TransList transitions() const;
 };
 
-#endif /* TRANSDUCER_INCLUDED */
+#endif /* MACHINE_INCLUDED */

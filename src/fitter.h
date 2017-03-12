@@ -1,7 +1,7 @@
 #ifndef FITTER_INCLUDED
 #define FITTER_INCLUDED
 
-#include "trans.h"
+#include "machine.h"
 #include "params.h"
 #include "constraints.h"
 #include "seqpair.h"

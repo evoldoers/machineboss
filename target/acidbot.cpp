@@ -8,7 +8,7 @@
 #include "../src/vguard.h"
 #include "../src/logger.h"
 #include "../src/fastseq.h"
-#include "../src/trans.h"
+#include "../src/machine.h"
 #include "../src/seqpair.h"
 #include "../src/constraints.h"
 #include "../src/params.h"

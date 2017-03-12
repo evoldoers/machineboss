@@ -3,7 +3,7 @@
 #include <set>
 #include <json.hpp>
 
-#include "trans.h"
+#include "machine.h"
 #include "logger.h"
 #include "schema.h"
 

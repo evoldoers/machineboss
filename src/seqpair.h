@@ -3,7 +3,7 @@
 
 #include <string>
 #include "jsonio.h"
-#include "trans.h"
+#include "machine.h"
 #include "vguard.h"
 
 using namespace std;
