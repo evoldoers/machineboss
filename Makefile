@@ -103,11 +103,13 @@ debug: all
 
 # Schema
 # valijson doesn't like the URLs, but other validators demand them, so strip them out for xxd
-src/schema/%.h: schema/%.nourl.json
+src/schema/%.h: schema/%.json.nourl
 	xxd -i $< | sed 's/.nourl//' >$@
 
-schema/%.nourl.json: schema/%.json
+schema/%.json.nourl: schema/%.json
 	grep -v '"id": "http' $< >$@
+
+schemas: $(patsubst schema/%.json,src/schema/%.h,$(wildcard schema/*.json))
 
 # Transducer composition tests
 COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
