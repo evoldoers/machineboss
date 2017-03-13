@@ -11,7 +11,7 @@ Examples of JSON file formats:
 - [individual sequence](https://github.com/ihh/bossmachine/blob/master/t/io/seqAGC.json) for constructing generators and acceptors
 - [list of sequence-pairs](https://github.com/ihh/bossmachine/blob/master/t/io/seqpairlist.json) for model-fitting and alignment
 - [constraints](https://github.com/ihh/bossmachine/blob/master/t/io/constraints.json) for model fitting. This file specifies the constraints `a+b=1` and `x+y+z=1`
-	- see also [this file](https://github.com/ihh/bossmachine/blob/master/t/io/pqcons.json) whose constraints can be used to fit the binary symmetric channel, above
+	- see also [this file](https://github.com/ihh/bossmachine/blob/master/t/io/pqcons.json) whose constraint `p+q=1` can be used to fit the binary symmetric channel, above
 
 ## Command-line usage
 
