@@ -32,10 +32,10 @@ int main (int argc, char** argv) {
       ("concat,c", po::value<vector<string> >(), "concatenate machine(s)")
       ("union,u", po::value<string>(), "take union with machine")
       ("weight,w", po::value<string>(), "parameterize union")
+      ("reverse,r", "reverse direction")
       ("kleene,k", "make Kleene closure")
       ("loop,l", po::value<string>(), "parameterize Kleene closure")
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
-      ("reverse,r", "reverse direction")
       ("flip,f", "flip input/output")
       ("null,n", "pipe to null transducer")
       ("save,s", po::value<string>(), "save machine")
@@ -105,6 +105,10 @@ int main (int argc, char** argv) {
 	: machine = Machine::unionOf (uni, machine);
     }
 
+    // Reverse
+    if (vm.count("reverse"))
+      machine = machine.reverse();
+
     // Kleene closure
     if (vm.count("kleene") || vm.count("loop")) {
       LogThisAt(2,"Making Kleene closure" << endl);
@@ -120,10 +124,6 @@ int main (int argc, char** argv) {
       const Machine acceptor = Machine::acceptor (outSeq.name, outSeq.seq);
       machine = machine.nStates() ? Machine::compose(machine,acceptor) : acceptor;
     }
-
-    // Reverse
-    if (vm.count("reverse"))
-      machine = machine.reverse();
 
     // Flip
     if (vm.count("flip"))

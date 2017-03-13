@@ -12,10 +12,10 @@ Allowed options:
   -c [ --concat ] arg       concatenate machine(s)
   -u [ --union ] arg        take union with machine
   -w [ --weight ] arg       parameterize union
+  -r [ --reverse ]          reverse direction
   -k [ --kleene ]           make Kleene closure
   -l [ --loop ] arg         parameterize Kleene closure
   -a [ --accept ] arg       pipe to sequence acceptor
-  -r [ --reverse ]          reverse direction
   -f [ --flip ]             flip input/output
   -n [ --null ]             pipe to null transducer
   -s [ --save ] arg         save machine
