@@ -137,9 +137,10 @@ int main (int argc, char** argv) {
 	  m = Machine::acceptor (outSeq.name, outSeq.seq);
 	} else if (command == "--union" || command == "-u")
 	  m = Machine::unionOf (popMachine(), popMachine());
-	else if (command == "--weighted-union" || command == "-w")
-	  m = Machine::unionOf (popMachine(), popMachine(), getArg());
-	else if (command == "--or")
+	else if (command == "--weighted-union" || command == "-w") {
+	  const Machine r = popMachine(), l = popMachine();
+	  m = Machine::unionOf (l, r, getArg());
+	} else if (command == "--or")
 	  m = Machine::unionOf (popMachine(), nextMachine(command));
 	else if (command == "--flip" || command == "-f")
 	  m = popMachine().flipInOut();
