@@ -16,6 +16,7 @@
 #include "../src/params.h"
 #include "../src/fitter.h"
 #include "../src/viterbi.h"
+#include "../src/util.h"
 
 using namespace std;
 
@@ -46,7 +47,7 @@ int main (int argc, char** argv) {
 
     po::options_description transOpts("Transducer manipulation");
     transOpts.add_options()
-      ("preset", po::value<string>(), (string ("preset transducer (") + MachinePresets::presetNames() + ")").c_str())
+      ("preset", po::value<string>(), (string ("preset transducer (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator")
       ("accept,a", po::value<string>(), "sequence acceptor")
       ("pipe,p", po::value<string>(), "pipe (compose) machine")

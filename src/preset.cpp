@@ -29,6 +29,6 @@ Machine MachinePresets::makePreset (const char* presetName) {
   return makePreset (string (presetName));
 }
 
-string MachinePresets::presetNames() {
-  return join (extract_keys (presetCache.namedPreset), ",");
+vector<string> MachinePresets::presetNames() {
+  return extract_keys (presetCache.namedPreset);
 }
