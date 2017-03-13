@@ -75,13 +75,14 @@ struct Machine {
   static Machine null();
 
   static Machine compose (const Machine& first, const Machine& second);
+  static Machine intersect (const Machine& first, const Machine& second);
   static Machine concatenate (const Machine& left, const Machine& right);
   static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
   static Machine acceptor (const string& name, const vguard<InputSymbol>& seq);
 
-  static Machine unionOf (const Machine& first, const Machine& second);
-  static Machine unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst);
-  static Machine unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond);
+  static Machine takeUnion (const Machine& first, const Machine& second);
+  static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst);
+  static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond);
 
   Machine kleeneClosure() const;
   Machine kleeneClosure (const WeightExpr& extend) const;

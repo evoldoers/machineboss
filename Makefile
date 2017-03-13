@@ -138,7 +138,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-kleene test-concat test-reverse test-revcomp test-flip test-null
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-kleene test-concat test-reverse test-revcomp test-flip test-null
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -146,7 +146,10 @@ test-acceptor:
 	@$(TEST) bin/$(MAIN) -a t/io/seq001.json t/expect/acceptor001.json
 
 test-union:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json t/expect/generator101.json -w p t/expect/generate-101-or-001.json
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json t/expect/generator101.json -W p t/expect/generate-101-or-001.json
+
+test-intersection:
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -M -a t/io/seq101.json -I t/expect/noise-001-and-101.json
 
 test-kleene:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -l q t/expect/generate-multiple-001.json
@@ -155,7 +158,7 @@ test-concat:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
 
 test-reverse:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -R t/expect/generator001-reversed.json
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -e t/expect/generator001-reversed.json
 
 test-revcomp:
 	@$(TEST) bin/$(MAIN) -g t/io/seqAGC.json -r t/expect/generatorAGC-revcomp.json

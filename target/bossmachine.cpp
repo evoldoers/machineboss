@@ -31,8 +31,8 @@ int main (int argc, char** argv) {
     generalOpts.add_options()
       ("help,h", "display this help message")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
-      ("log", po::value<vector<string> >(), "log specified function")
-      ("nocolor", "log in monochrome")
+      ("log,L", po::value<vector<string> >(), "log specified function")
+      ("nocolor,N", "log in monochrome")
       ;
 
     po::options_description appOpts("Transducer application");
@@ -47,19 +47,21 @@ int main (int argc, char** argv) {
 
     po::options_description transOpts("Transducer manipulation");
     transOpts.add_options()
-      ("preset", po::value<string>(), (string ("preset transducer (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
+      ("preset,t", po::value<string>(), (string ("preset transducer (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator")
       ("accept,a", po::value<string>(), "sequence acceptor")
       ("pipe,p", po::value<string>(), "pipe (compose) machine")
-      ("compose", "compose last two machines")
+      ("compose,M", "compose last two machines")
+      ("and,i", po::value<string>(), "intersect machine")
+      ("intersect,I", "intersect last two machines")
       ("concat,c", po::value<string>(), "concatenate machine")
-      ("append", "concatenate last two machines")
-      ("or", po::value<string>(), "take union with machine")
-      ("union,u", "union of last two machines")
-      ("weight,w", po::value<string>(), "weighted union of last two machines")
+      ("append,E", "concatenate last two machines")
+      ("or,o", po::value<string>(), "take union with machine")
+      ("union,O", "union of last two machines")
+      ("weight,W", po::value<string>(), "weighted union of last two machines")
       ("kleene,k", "Kleene closure")
       ("loop,l", po::value<string>(), "weighted Kleene closure")
-      ("reverse,R", "reverse")
+      ("reverse,e", "reverse")
       ("revcomp,r", "reverse complement")
       ("flip,f", "flip input/output")
       ("null,n", "null transducer")
@@ -121,30 +123,38 @@ int main (int argc, char** argv) {
 	  m = MachineLoader::fromFile (getArg());
 	else if (command == "--preset")   // undocumented...
 	  m = MachinePresets::makePreset (getArg().c_str());
-	else if (command == "--compose")
-	  m = Machine::compose (popMachine(), popMachine());
-	else if (command == "--append")
-	  m = Machine::concatenate (popMachine(), popMachine());
-	else if (command == "--concat" || command == "-c")
-	  m = Machine::concatenate (popMachine(), nextMachine(command));
-	else if (command == "--pipe" || command == "-p")
-	  m = Machine::compose (popMachine(), nextMachine(command));
 	else if (command == "--generate" || command == "-g") {
 	  const NamedInputSeq inSeq = NamedInputSeq::fromFile (getArg());
 	  m = Machine::generator (inSeq.name, inSeq.seq);
 	} else if (command == "--accept" || command == "-a") {
 	  const NamedOutputSeq outSeq = NamedOutputSeq::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.name, outSeq.seq);
-	} else if (command == "--union" || command == "-u")
-	  m = Machine::unionOf (popMachine(), popMachine());
-	else if (command == "--weighted-union" || command == "-w") {
+	} else if (command == "--pipe" || command == "-p")
+	  m = Machine::compose (popMachine(), nextMachine(command));
+	else if (command == "--compose" || command == "-M") {
 	  const Machine r = popMachine(), l = popMachine();
-	  m = Machine::unionOf (l, r, getArg());
-	} else if (command == "--or")
-	  m = Machine::unionOf (popMachine(), nextMachine(command));
-	else if (command == "--flip" || command == "-f")
-	  m = popMachine().flipInOut();
-	else if (command == "--reverse" || command == "-R")
+	  m = Machine::compose (l, r);
+	} else if (command == "--and" || command == "-i")
+	  m = Machine::intersect (popMachine(), nextMachine(command));
+	else if (command == "--intersect" || command == "-I")
+	  m = Machine::intersect (popMachine(), popMachine());
+	else if (command == "--concat" || command == "-c")
+	  m = Machine::concatenate (popMachine(), nextMachine(command));
+	else if (command == "--append" || command == "-E") {
+	  const Machine r = popMachine(), l = popMachine();
+	  m = Machine::concatenate (l, r);
+	} else if (command == "--or" || command == "-o")
+	  m = Machine::takeUnion (popMachine(), nextMachine(command));
+	else if (command == "--union" || command == "-O")
+	  m = Machine::takeUnion (popMachine(), popMachine());
+	else if (command == "--weight" || command == "-W") {
+	  const Machine r = popMachine(), l = popMachine();
+	  m = Machine::takeUnion (l, r, getArg());
+	} else if (command == "--kleene" || command == "-k")
+	  m = popMachine().kleeneClosure();
+	else if (command == "--loop" || command == "-l")
+	  m = popMachine().kleeneClosure (getArg());
+	else if (command == "--reverse" || command == "-e")
 	  m = popMachine().reverse();
 	else if (command == "--revcomp" || command == "-r") {
 	  const Machine r = popMachine();
@@ -154,10 +164,8 @@ int main (int argc, char** argv) {
 				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
 							    ? "comprna"
 							    : "compdna"));
-	} else if (command == "--kleene" || command == "-k")
-	  m = popMachine().kleeneClosure();
-	else if (command == "--loop" || command == "-l")
-	  m = popMachine().kleeneClosure (getArg());
+	} else if (command == "--flip" || command == "-f")
+	  m = popMachine().flipInOut();
 	else if (command == "--null" || command == "-n")
 	  m = Machine::null();
 	else {

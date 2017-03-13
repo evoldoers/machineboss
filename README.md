@@ -9,23 +9,25 @@ Bioinformatics Open Source Sequence machine
 General options:
   -h [ --help ]              display this help message
   -v [ --verbose ] arg (=2)  verbosity level
-  --log arg                  log specified function
-  --nocolor                  log in monochrome
+  -L [ --log ] arg           log specified function
+  -N [ --nocolor ]           log in monochrome
 
 Transducer manipulation:
-  --preset arg               preset transducer (compdna, comprna)
+  -t [ --preset ] arg        preset transducer (compdna, comprna)
   -g [ --generate ] arg      sequence generator
   -a [ --accept ] arg        sequence acceptor
   -p [ --pipe ] arg          pipe (compose) machine
-  --compose                  compose last two machines
+  -M [ --compose ]           compose last two machines
+  -i [ --and ] arg           intersect machine
+  -I [ --intersect ]         intersect last two machines
   -c [ --concat ] arg        concatenate machine
-  --append                   concatenate last two machines
-  --or arg                   take union with machine
-  -u [ --union ]             union of last two machines
-  -w [ --weight ] arg        weighted union of last two machines
+  -E [ --append ]            concatenate last two machines
+  -o [ --or ] arg            take union with machine
+  -O [ --union ]             union of last two machines
+  -W [ --weight ] arg        weighted union of last two machines
   -k [ --kleene ]            Kleene closure
   -l [ --loop ] arg          weighted Kleene closure
-  -R [ --reverse ]           reverse
+  -e [ --reverse ]           reverse
   -r [ --revcomp ]           reverse complement
   -f [ --flip ]              flip input/output
   -n [ --null ]              null transducer

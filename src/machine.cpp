@@ -266,6 +266,47 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   return compMachine.ergodicMachine().advancingMachine();
 }
 
+Machine Machine::intersect (const Machine& first, const Machine& origSecond) {
+  LogThisAt(3,"Intersecting " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
+  Assert (first.outputAlphabet().empty() && origSecond.outputAlphabet().empty(), "Attempt to intersect transducers A&B with nonempty output alphabets");
+  const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
+  Assert (second.isWaitingMachine(), "Attempt to intersect transducers A&B where B is not a waiting machine");
+
+  Machine interMachine;
+  vguard<MachineState>& inter = interMachine.state;
+  inter = vguard<MachineState> (first.nStates() * second.nStates());
+
+  auto interState = [&](StateIndex i,StateIndex j) -> StateIndex {
+    return i * second.nStates() + j;
+  };
+  for (StateIndex i = 0; i < first.nStates(); ++i)
+    for (StateIndex j = 0; j < second.nStates(); ++j) {
+      MachineState& ms = inter[interState(i,j)];
+      ms.name = StateName ({first.state[i].name, second.state[j].name});
+    }
+
+  for (StateIndex i = 0; i < first.nStates(); ++i)
+    for (StateIndex j = 0; j < second.nStates(); ++j) {
+      MachineState& ms = inter[interState(i,j)];
+      const MachineState& msi = first.state[i];
+      const MachineState& msj = second.state[j];
+      if (msj.waits() || msj.terminates()) {
+	for (const auto& it: msi.trans)
+	  if (it.inputEmpty())
+	    ms.trans.push_back (MachineTransition (it.in, string(), interState(it.dest,j), it.weight));
+	  else
+	    for (const auto& jt: msj.trans)
+	      if (it.in == jt.in)
+		ms.trans.push_back (MachineTransition (it.in, string(), interState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight)));
+      } else
+	for (const auto& jt: msj.trans)
+	  ms.trans.push_back (MachineTransition (string(), string(), interState(i,jt.dest), jt.weight));
+    }
+
+  LogThisAt(3,"Transducer intersection yielded " << interMachine.nStates() << "-state machine" << endl);
+  return interMachine.ergodicMachine().advancingMachine();
+}
+
 set<StateIndex> Machine::accessibleStates() const {
   vguard<bool> reachableFromStart (nStates(), false);
   deque<StateIndex> fwdQueue;
@@ -493,7 +534,7 @@ Machine Machine::acceptor (const string& name, const vguard<InputSymbol>& seq) {
 }
 
 Machine Machine::concatenate (const Machine& left, const Machine& right) {
-  Assert (left.nStates() && right.nStates(), "Attempt to compose transducer with uninitialized transducer");
+  Assert (left.nStates() && right.nStates(), "Attempt to concatenate transducer with uninitialized transducer");
   Machine m (left);
   for (auto& ms: m.state)
     if (!ms.name.is_null())
@@ -510,15 +551,15 @@ Machine Machine::concatenate (const Machine& left, const Machine& right) {
   return m;
 }
 
-Machine Machine::unionOf (const Machine& first, const Machine& second) {
-  return unionOf (first, second, WeightExpr(true), WeightExpr(true));
+Machine Machine::takeUnion (const Machine& first, const Machine& second) {
+  return takeUnion (first, second, WeightExpr(true), WeightExpr(true));
 }
 
-Machine Machine::unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst) {
-  return unionOf (first, second, pFirst, WeightAlgebra::negate(pFirst));
+Machine Machine::takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst) {
+  return takeUnion (first, second, pFirst, WeightAlgebra::negate(pFirst));
 }
 
-Machine Machine::unionOf (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond) {
+Machine Machine::takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond) {
   Assert (first.nStates() && second.nStates(), "Attempt to find union of transducer with uninitialized transducer");
   Machine m;
   m.state.reserve (first.nStates() + second.nStates() + 2);
