@@ -44,7 +44,7 @@ Transducer manipulation:
   -r [ --revcomp ]            reverse complement
   -f [ --flip ]               flip input/output
   -n [ --null ]               null transducer
-  -w [ --weight ]             single weighted transition
+  -w [ --weight ] arg         single weighted transition
   -B [ --begin ]              left bracket '('
   -E [ --end ]                right bracket ')'
 

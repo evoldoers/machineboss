@@ -67,7 +67,7 @@ int main (int argc, char** argv) {
       ("revcomp,r", "reverse complement")
       ("flip,f", "flip input/output")
       ("null,n", "null transducer")
-      ("weight,w", "single weighted transition")
+      ("weight,w", po::value<string>(), "single weighted transition")
       ("begin,B", "left bracket '('")
       ("end,E", "right bracket ')'")
       ;
