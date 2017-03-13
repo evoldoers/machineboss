@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iomanip>
 #include <random>
+#include <deque>
 #include <boost/program_options.hpp>
 
 #include "../src/vguard.h"
@@ -25,21 +26,9 @@ int main (int argc, char** argv) {
   try {
 
     // Declare the supported options.
-    po::options_description desc("Allowed options");
-    desc.add_options()
+    po::options_description generalOpts("General options");
+    generalOpts.add_options()
       ("help,h", "display this help message")
-      ("generate,g", po::value<string>(), "create sequence generator")
-      ("pipe,p", po::value<vector<string> >(), "pipe (compose) machine(s)")
-      ("concat,c", po::value<vector<string> >(), "concatenate machine(s)")
-      ("union,u", po::value<string>(), "take union with machine")
-      ("weight,w", po::value<string>(), "parameterize union")
-      ("reverse,R", "reverse")
-      ("revcomp,r", "reverse complement")
-      ("kleene,k", "make Kleene closure")
-      ("loop,l", po::value<string>(), "parameterize Kleene closure")
-      ("accept,a", po::value<string>(), "pipe to sequence acceptor")
-      ("flip,f", "flip input/output")
-      ("null,n", "pipe to null transducer")
       ("save,s", po::value<string>(), "save machine")
       ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
@@ -51,104 +40,122 @@ int main (int argc, char** argv) {
       ("nocolor", "log in monochrome")
       ;
 
-    po::positional_options_description p;
-    p.add("pipe", -1);
+    po::options_description transOpts("Transducer manipulation");
+    transOpts.add_options()
+      ("generate,g", po::value<string>(), "sequence generator")
+      ("accept,a", po::value<string>(), "sequence acceptor")
+      ("pipe,p", po::value<string>(), "pipe (compose) machine")
+      ("compose", "compose last two machines")
+      ("concat,c", po::value<string>(), "concatenate machine")
+      ("append", "concatenate last two machines")
+      ("or", po::value<string>(), "take union with machine")
+      ("union,u", "union of last two machines")
+      ("weight,w", po::value<string>(), "weighted union of last two machines")
+      ("kleene,k", "Kleene closure")
+      ("loop,l", po::value<string>(), "weighted Kleene closure")
+      ("reverse,R", "reverse")
+      ("revcomp,r", "reverse complement")
+      ("flip,f", "flip input/output")
+      ("null,n", "null transducer")
+      ;
 
+    po::options_description helpOpts("");
+    helpOpts.add(generalOpts).add(transOpts);
+    
     po::variables_map vm;
-    po::store (po::command_line_parser(argc,argv).options(desc).positional(p).run(), vm);
+    po::parsed_options parsed = po::command_line_parser(argc,argv).options(generalOpts).allow_unregistered().run();
+    po::store (parsed, vm);
     po::notify(vm);    
-
+      
     // parse args
     if (vm.count("help")) {
-      cout << desc << "\n";
+      cout << helpOpts << endl;
       return 1;
     }
-
     logger.parseLogArgs (vm);
 
     // create transducer
-    Machine machine;
-
-    // Generator
-    if (vm.count("generate")) {
-      const NamedInputSeq inSeq = NamedInputSeq::fromFile (vm.at("generate").as<string>());
-      LogThisAt(2,"Creating generator for sequence " << inSeq.name << endl);
-      machine = Machine::generator (inSeq.name, inSeq.seq);
-    }
-
-    // Compositions
-    if (vm.count("pipe")) {
-      const vector<string> machines = vm.at("pipe").as<vector<string> >();
-      for (const auto& filename: machines) {
-	LogThisAt(2,"Loading transducer " << filename << endl);
-	const Machine loaded = MachineLoader::fromFile(filename);
-	machine = machine.nStates() ? Machine::compose (machine, loaded) : loaded;
+    list<Machine> machines;
+    const vector<string> commandVec = po::collect_unrecognized (parsed.options, po::include_positional);
+    deque<string> commands (commandVec.begin(), commandVec.end());
+    while (!commands.empty()) {
+      const string command = commands.front();
+      commands.pop_front();
+      auto getArg = [&] () -> string {
+	if (commands.empty()) {
+	  cout << helpOpts << endl;
+	  throw runtime_error (string("Missing argument for ") + command);
+	}
+	const string arg = commands.front();
+	commands.pop_front();
+	return arg;
+      };
+      auto getMachine = [&] () -> Machine {
+	if (machines.empty()) {
+	  cout << helpOpts << endl;
+	  throw runtime_error (string("Missing machine for ") + command);
+	}
+	const Machine m = machines.back();
+	machines.pop_back();
+	return m;
+      };
+      if (command[0] != '-')
+	machines.push_back (MachineLoader::fromFile (command));
+      else if (command == "--load")
+	machines.push_back (MachineLoader::fromFile (getArg()));
+      else if (command == "--compose")
+	machines.push_back (Machine::compose (getMachine(), getMachine()));
+      else if (command == "--append")
+	machines.push_back (Machine::concatenate (getMachine(), getMachine()));
+      else if (command == "--concat" || command == "-c")
+	machines.push_back (Machine::concatenate (getMachine(), MachineLoader::fromFile (getArg())));
+      else if (command == "--pipe" || command == "-p")
+	machines.push_back (Machine::compose (getMachine(), MachineLoader::fromFile (getArg())));
+      else if (command == "--generate" || command == "-g") {
+	const NamedInputSeq inSeq = NamedInputSeq::fromFile (getArg());
+	machines.push_back (Machine::generator (inSeq.name, inSeq.seq));
+      } else if (command == "--accept" || command == "-a") {
+	const NamedOutputSeq outSeq = NamedOutputSeq::fromFile (getArg());
+	machines.push_back (Machine::acceptor (outSeq.name, outSeq.seq));
+      } else if (command == "--union" || command == "-u")
+	machines.push_back (Machine::unionOf (getMachine(), getMachine()));
+      else if (command == "--weighted-union" || command == "-w")
+	machines.push_back (Machine::unionOf (getMachine(), getMachine(), getArg()));
+      else if (command == "--or")
+	machines.push_back (Machine::unionOf (getMachine(), MachineLoader::fromFile (getArg())));
+      else if (command == "--flip" || command == "-f")
+	machines.push_back (getMachine().flipInOut());
+      else if (command == "--reverse" || command == "-R")
+	machines.push_back (getMachine().reverse());
+      else if (command == "--revcomp" || command == "-r") {
+	const Machine m = getMachine();
+	const vguard<OutputSymbol> outAlph = m.outputAlphabet();
+	const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
+	machines.push_back (Machine::compose (m.reverse(),
+					      MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
+									  ? "comprna"
+									  : "compdna")));
+      } else if (command == "--kleene" || command == "-k")
+	machines.push_back (getMachine().kleeneClosure());
+      else if (command == "--loop" || command == "-l")
+	machines.push_back (getMachine().kleeneClosure (getArg()));
+      else if (command == "--null" || command == "-n")
+	machines.push_back (Machine::null());
+      else {
+	cout << helpOpts << endl;
+	cout << "Unknown option: " << command << endl;
+	return 1;
       }
     }
 
-    // Concatenations
-    if (vm.count("concat")) {
-      const vector<string> machines = vm.at("concat").as<vector<string> >();
-      for (const auto& filename: machines) {
-	LogThisAt(2,"Concatenating transducer " << filename << endl);
-	const Machine concat = MachineLoader::fromFile(filename);
-	machine = machine.nStates() ? Machine::concatenate (machine, concat) : concat;
-      }
-    }
-
-    // Union
-    Require (!vm.count("weight") || vm.count("union"), "Can't specify --weight without --union");
-    if (vm.count("union")) {
-      const string filename = vm.at("union").as<string>();
-      LogThisAt(2,"Taking union with transducer " << filename << endl);
-      const Machine uni = MachineLoader::fromFile(filename);
-      machine = vm.count("weight")
-	? Machine::unionOf (uni, machine, WeightExpr(vm.at("weight").as<string>()))
-	: machine = Machine::unionOf (uni, machine);
-    }
-
-    // Reverse
-    if (vm.count("reverse"))
-      machine = machine.reverse();
-
-    // Reverse complement
-    if (vm.count("revcomp")) {
-      const vguard<OutputSymbol> outAlph = machine.outputAlphabet();
-      const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
-      machine = Machine::compose (machine.reverse(),
-				  MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
-							      ? "comprna"
-							      : "compdna"));
-    }
-
-    // Kleene closure
-    if (vm.count("kleene") || vm.count("loop")) {
-      LogThisAt(2,"Making Kleene closure" << endl);
-      machine = vm.count("loop")
-	? machine.kleeneClosure (WeightExpr (vm.at("loop").as<string>()))
-	: machine.kleeneClosure();
-    }
-    
-    // Acceptor
-    if (vm.count("accept")) {
-      const NamedOutputSeq outSeq = NamedInputSeq::fromFile (vm.at("accept").as<string>());
-      LogThisAt(2,"Creating acceptor for sequence " << outSeq.name << endl);
-      const Machine acceptor = Machine::acceptor (outSeq.name, outSeq.seq);
-      machine = machine.nStates() ? Machine::compose(machine,acceptor) : acceptor;
-    }
-
-    // Flip
-    if (vm.count("flip"))
-      machine = machine.flipInOut();
-    
-    // Null
-    if (vm.count("null")) {
-      LogThisAt(2,"Creating null transducer" << endl);
-      machine = machine.nStates() ? Machine::compose (machine, Machine::null()) : Machine::null();
-    }
-
-    // no transducer yet?
-    Require (machine.nStates(), "Please specify a transducer (-h for options)");
+    // compose remaining transducers
+    Require (machines.size(), "Please specify a transducer (-h for options)");
+    Machine machine = machines.back();
+    do {
+      machines.pop_back();
+      if (machines.size())
+	machine = Machine::compose (machines.back(), machine);
+    } while (machines.size());
     
     // save transducer
     if (vm.count("save")) {
