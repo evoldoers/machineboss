@@ -1,0 +1,14 @@
+{"state":
+ [{"n":0,
+   "id":[["AGC",3],"CompDNA"],
+   "trans":[{"to":1,"out":"G"}]},
+  {"n":1,
+   "id":[["AGC",2],"CompDNA"],
+   "trans":[{"to":2,"out":"C"}]},
+  {"n":2,
+   "id":[["AGC",1],"CompDNA"],
+   "trans":[{"to":3,"out":"T"}]},
+  {"n":3,
+   "id":[["AGC",0],"CompDNA"]}
+ ]
+}

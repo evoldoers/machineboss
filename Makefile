@@ -101,15 +101,21 @@ clean:
 
 debug: all
 
-# Schemas (uses biomake multiple-wildcard syntax)
-# valijson doesn't like the URLs, but other validators demand them, so strip them out for xxd
-src/$(DIR)/$(FILE).h: $(DIR)/$(FILE).json.nourl
+# Schemas & presets
+# Targets are generate-schemas and generate-presets (biomake required)
+# Get biomake here: https://github.com/evoldoers/biomake
+generate-$(CATEGORY)s: $(patsubst $(CATEGORY)/%.json,src/$(CATEGORY)/%.h,$(wildcard $(CATEGORY)/*.json))
+	touch src/$(CATEGORY).cpp
+
+src/preset/$(FILE).h: preset/$(FILE).json
+	xxd -i $< >$@
+
+# valijson doesn't like the URLs, but other schema validators demand them, so strip them out for xxd
+src/schema/$(FILE).h: schema/$(FILE).json.nourl
 	xxd -i $< | sed 's/.nourl//' >$@
 
-$(DIR)/$(FILE).json.nourl: $(DIR)/$(FILE).json
+schema/$(FILE).json.nourl: schema/$(FILE).json
 	grep -v '"id": "http' $< >$@
-
-schemas: $(patsubst schema/%.json,src/schema/%.h,$(wildcard schema/*.json))
 
 # Transducer composition tests
 COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
@@ -132,7 +138,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-kleene test-concat test-reverse test-flip test-null
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-kleene test-concat test-reverse test-revcomp test-flip test-null
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -149,7 +155,10 @@ test-concat:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
 
 test-reverse:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -r t/expect/generator001-reversed.json
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -R t/expect/generator001-reversed.json
+
+test-revcomp:
+	@$(TEST) bin/$(MAIN) -g t/io/seqAGC.json -r t/expect/generatorAGC-revcomp.json
 
 test-flip:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -f t/expect/acceptor001.json

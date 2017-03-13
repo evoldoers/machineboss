@@ -9,6 +9,7 @@
 #include "../src/logger.h"
 #include "../src/fastseq.h"
 #include "../src/machine.h"
+#include "../src/preset.h"
 #include "../src/seqpair.h"
 #include "../src/constraints.h"
 #include "../src/params.h"
@@ -32,7 +33,8 @@ int main (int argc, char** argv) {
       ("concat,c", po::value<vector<string> >(), "concatenate machine(s)")
       ("union,u", po::value<string>(), "take union with machine")
       ("weight,w", po::value<string>(), "parameterize union")
-      ("reverse,r", "reverse direction")
+      ("reverse,R", "reverse")
+      ("revcomp,r", "reverse complement")
       ("kleene,k", "make Kleene closure")
       ("loop,l", po::value<string>(), "parameterize Kleene closure")
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
@@ -108,6 +110,16 @@ int main (int argc, char** argv) {
     // Reverse
     if (vm.count("reverse"))
       machine = machine.reverse();
+
+    // Reverse complement
+    if (vm.count("revcomp")) {
+      const vguard<OutputSymbol> outAlph = machine.outputAlphabet();
+      const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
+      machine = Machine::compose (machine.reverse(),
+				  MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
+							      ? "comprna"
+							      : "compdna"));
+    }
 
     // Kleene closure
     if (vm.count("kleene") || vm.count("loop")) {
