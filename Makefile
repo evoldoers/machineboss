@@ -101,12 +101,12 @@ clean:
 
 debug: all
 
-# Schema
+# Schemas (uses biomake multiple-wildcard syntax)
 # valijson doesn't like the URLs, but other validators demand them, so strip them out for xxd
-src/schema/%.h: schema/%.json.nourl
+src/$(DIR)/$(FILE).h: $(DIR)/$(FILE).json.nourl
 	xxd -i $< | sed 's/.nourl//' >$@
 
-schema/%.json.nourl: schema/%.json
+$(DIR)/$(FILE).json.nourl: $(DIR)/$(FILE).json
 	grep -v '"id": "http' $< >$@
 
 schemas: $(patsubst schema/%.json,src/schema/%.h,$(wildcard schema/*.json))
