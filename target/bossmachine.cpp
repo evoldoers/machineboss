@@ -86,73 +86,82 @@ int main (int argc, char** argv) {
     const vector<string> commandVec = po::collect_unrecognized (parsed.options, po::include_positional);
     deque<string> commands (commandVec.begin(), commandVec.end());
     while (!commands.empty()) {
-      const string command = commands.front();
-      commands.pop_front();
-      auto getArg = [&] () -> string {
+      function<Machine(const string&)> nextMachine;
+      nextMachine = [&] (const string& lastCommand) -> Machine {
 	if (commands.empty()) {
 	  cout << helpOpts << endl;
-	  throw runtime_error (string("Missing argument for ") + command);
+	  throw runtime_error (lastCommand.size() ? (string("Missing argument for ") + lastCommand) : string("Missing command"));
 	}
-	const string arg = commands.front();
+	const string command = commands.front();
 	commands.pop_front();
-	return arg;
-      };
-      auto getMachine = [&] () -> Machine {
-	if (machines.empty()) {
+	auto getArg = [&] () -> string {
+	  if (commands.empty()) {
+	    cout << helpOpts << endl;
+	    throw runtime_error (string("Missing argument for ") + command);
+	  }
+	  const string arg = commands.front();
+	  commands.pop_front();
+	  return arg;
+	};
+	auto popMachine = [&] () -> Machine {
+	  if (machines.empty()) {
+	    cout << helpOpts << endl;
+	    throw runtime_error (string("Missing machine for ") + command);
+	  }
+	  const Machine m = machines.back();
+	  machines.pop_back();
+	  return m;
+	};
+	Machine m;
+	if (command[0] != '-')
+	  m = MachineLoader::fromFile (command);
+	else if (command == "--load")
+	  m = MachineLoader::fromFile (getArg());
+	else if (command == "--compose")
+	  m = Machine::compose (popMachine(), popMachine());
+	else if (command == "--append")
+	  m = Machine::concatenate (popMachine(), popMachine());
+	else if (command == "--concat" || command == "-c")
+	  m = Machine::concatenate (popMachine(), nextMachine(command));
+	else if (command == "--pipe" || command == "-p")
+	  m = Machine::compose (popMachine(), nextMachine(command));
+	else if (command == "--generate" || command == "-g") {
+	  const NamedInputSeq inSeq = NamedInputSeq::fromFile (getArg());
+	  m = Machine::generator (inSeq.name, inSeq.seq);
+	} else if (command == "--accept" || command == "-a") {
+	  const NamedOutputSeq outSeq = NamedOutputSeq::fromFile (getArg());
+	  m = Machine::acceptor (outSeq.name, outSeq.seq);
+	} else if (command == "--union" || command == "-u")
+	  m = Machine::unionOf (popMachine(), popMachine());
+	else if (command == "--weighted-union" || command == "-w")
+	  m = Machine::unionOf (popMachine(), popMachine(), getArg());
+	else if (command == "--or")
+	  m = Machine::unionOf (popMachine(), nextMachine(command));
+	else if (command == "--flip" || command == "-f")
+	  m = popMachine().flipInOut();
+	else if (command == "--reverse" || command == "-R")
+	  m = popMachine().reverse();
+	else if (command == "--revcomp" || command == "-r") {
+	  const Machine r = popMachine();
+	  const vguard<OutputSymbol> outAlph = m.outputAlphabet();
+	  const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
+	  m = Machine::compose (r.reverse(),
+				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
+							    ? "comprna"
+							    : "compdna"));
+	} else if (command == "--kleene" || command == "-k")
+	  m = popMachine().kleeneClosure();
+	else if (command == "--loop" || command == "-l")
+	  m = popMachine().kleeneClosure (getArg());
+	else if (command == "--null" || command == "-n")
+	  m = Machine::null();
+	else {
 	  cout << helpOpts << endl;
-	  throw runtime_error (string("Missing machine for ") + command);
+	  throw runtime_error (string ("Unknown option: ") + command);
 	}
-	const Machine m = machines.back();
-	machines.pop_back();
 	return m;
       };
-      if (command[0] != '-')
-	machines.push_back (MachineLoader::fromFile (command));
-      else if (command == "--load")
-	machines.push_back (MachineLoader::fromFile (getArg()));
-      else if (command == "--compose")
-	machines.push_back (Machine::compose (getMachine(), getMachine()));
-      else if (command == "--append")
-	machines.push_back (Machine::concatenate (getMachine(), getMachine()));
-      else if (command == "--concat" || command == "-c")
-	machines.push_back (Machine::concatenate (getMachine(), MachineLoader::fromFile (getArg())));
-      else if (command == "--pipe" || command == "-p")
-	machines.push_back (Machine::compose (getMachine(), MachineLoader::fromFile (getArg())));
-      else if (command == "--generate" || command == "-g") {
-	const NamedInputSeq inSeq = NamedInputSeq::fromFile (getArg());
-	machines.push_back (Machine::generator (inSeq.name, inSeq.seq));
-      } else if (command == "--accept" || command == "-a") {
-	const NamedOutputSeq outSeq = NamedOutputSeq::fromFile (getArg());
-	machines.push_back (Machine::acceptor (outSeq.name, outSeq.seq));
-      } else if (command == "--union" || command == "-u")
-	machines.push_back (Machine::unionOf (getMachine(), getMachine()));
-      else if (command == "--weighted-union" || command == "-w")
-	machines.push_back (Machine::unionOf (getMachine(), getMachine(), getArg()));
-      else if (command == "--or")
-	machines.push_back (Machine::unionOf (getMachine(), MachineLoader::fromFile (getArg())));
-      else if (command == "--flip" || command == "-f")
-	machines.push_back (getMachine().flipInOut());
-      else if (command == "--reverse" || command == "-R")
-	machines.push_back (getMachine().reverse());
-      else if (command == "--revcomp" || command == "-r") {
-	const Machine m = getMachine();
-	const vguard<OutputSymbol> outAlph = m.outputAlphabet();
-	const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
-	machines.push_back (Machine::compose (m.reverse(),
-					      MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
-									  ? "comprna"
-									  : "compdna")));
-      } else if (command == "--kleene" || command == "-k")
-	machines.push_back (getMachine().kleeneClosure());
-      else if (command == "--loop" || command == "-l")
-	machines.push_back (getMachine().kleeneClosure (getArg()));
-      else if (command == "--null" || command == "-n")
-	machines.push_back (Machine::null());
-      else {
-	cout << helpOpts << endl;
-	cout << "Unknown option: " << command << endl;
-	return 1;
-      }
+      machines.push_back (nextMachine(string()));
     }
 
     // compose remaining transducers
