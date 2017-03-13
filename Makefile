@@ -146,10 +146,10 @@ test-acceptor:
 	@$(TEST) bin/$(MAIN) -a t/io/seq001.json t/expect/acceptor001.json
 
 test-union:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json t/expect/generator101.json -W p t/expect/generate-101-or-001.json
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
 
 test-intersection:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -M -a t/io/seq101.json -I t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -p -a t/io/seq001.json -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-brackets:
 	@$(TEST) bin/$(MAIN) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
@@ -167,13 +167,13 @@ test-concat:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
 
 test-reverse:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -e t/expect/generator001-reversed.json
+	@$(TEST) bin/$(MAIN) -e -g t/io/seq001.json t/expect/generator001-reversed.json
 
 test-revcomp:
-	@$(TEST) bin/$(MAIN) -g t/io/seqAGC.json -r t/expect/generatorAGC-revcomp.json
+	@$(TEST) bin/$(MAIN) -r -g t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
 
 test-flip:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -f t/expect/acceptor001.json
+	@$(TEST) bin/$(MAIN) -f -g t/io/seq001.json t/expect/acceptor001.json
 
 test-null:
 	@$(TEST) bin/$(MAIN) -n t/expect/null.json

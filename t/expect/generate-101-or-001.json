@@ -1,7 +1,7 @@
 {"state":
  [{"n":0,
-   "trans":[{"to":1,"weight":"p"},
-            {"to":5,"weight":{"-":[true,"p"]}}]},
+   "trans":[{"to":1},
+            {"to":5}]},
   {"n":1,
    "id":["union-1",["001",0]],
    "trans":[{"to":2,"out":"0"}]},

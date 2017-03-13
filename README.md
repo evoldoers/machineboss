@@ -29,20 +29,15 @@ Transducer manipulation:
   -g [ --generate ] arg       sequence generator
   -a [ --accept ] arg         sequence acceptor
   -p [ --pipe ] arg           pipe (compose) machine
-  -M [ --compose ]            compose last two machines
-  -i [ --and ] arg            intersect machine
-  -I [ --intersect ]          intersect last two machines
-  -c [ --concat ] arg         concatenate machine
-  -N [ --append ]             concatenate last two machines
-  -o [ --or ] arg             take union with machine
-  -O [ --union ]              union of last two machines
-  -W [ --union-weight ] arg   weighted union of last two machines
-  -k [ --kleene ]             Kleene closure
+  -i [ --and ] arg            intersect machine '&'
+  -u [ --or ] arg             take union with machine '|'
+  -c [ --concat ] arg         concatenate machine '+'
+  -k [ --kleene ]             Kleene closure (postfix)
   -K [ --kleene-weight ] arg  weighted Kleene closure
   -l [ --kleene-loop ] arg    Kleene closure via loop machine
-  -e [ --reverse ]            reverse
-  -r [ --revcomp ]            reverse complement
-  -f [ --flip ]               flip input/output
+  -e [ --reverse ] arg        reverse
+  -r [ --revcomp ] arg        reverse-complement
+  -f [ --flip ] arg           flip input/output
   -n [ --null ]               null transducer
   -w [ --weight ] arg         single weighted transition
   -B [ --begin ]              left bracket '('
