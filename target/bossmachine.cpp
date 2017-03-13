@@ -138,6 +138,14 @@ int main (int argc, char** argv) {
 	  return nextMachineForCommand (command);
 	};
 
+	if (command[0] == '-' || command == "(") {
+	  const po::option_description* opt = transOpts.find_nothrow (command == "(" ? string("--begin") : command, false);
+	  if (opt)
+	    LogThisAt(3,"Command " << command << " ==> " << opt->description() << endl);
+	  else
+	    LogThisAt(3,"Warning: unrecognized command " << command << endl);
+	}
+
 	Machine m;
 	if (command[0] != '-' && command != "(")
 	  m = MachineLoader::fromFile (command);
