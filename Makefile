@@ -185,7 +185,7 @@ test-shorthand:
 	@$(TEST) bin/$(MAIN) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&&' '>' t/io/seq001.json '.' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
 
 # Invalid transducer construction tests
-INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect
+INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
 test-unmatched-begin:
 	@$(TEST) bin/$(MAIN) --begin -fail
 
@@ -194,6 +194,9 @@ test-unmatched-end:
 
 test-empty-brackets:
 	@$(TEST) bin/$(MAIN) --begin --end -fail
+
+test-missing-machine:
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -p -p t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
 	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -i -a t/io/seq101.json -fail

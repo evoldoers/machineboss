@@ -139,7 +139,7 @@ int main (int argc, char** argv) {
 	  return arg;
 	};
 	auto popMachine = [&] () -> Machine {
-	  if (machines.empty()) {
+	  if (machines.empty() || !lastCommand.empty()) {
 	    cout << helpOpts << endl;
 	    throw runtime_error (string("Missing machine for ") + arg);
 	  }
