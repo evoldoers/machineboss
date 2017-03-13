@@ -564,6 +564,19 @@ Machine Machine::kleeneClosure (const WeightExpr& extend, const WeightExpr& end)
   return m;
 }
 
+Machine Machine::reverse() const {
+  Machine m;
+  m.state.resize (nStates());
+  for (StateIndex s = 0; s < nStates(); ++s) {
+    const StateIndex r = nStates() - 1 - s;
+    const MachineState& ms = state[s];
+    m.state[r].name = ms.name;
+    for (const auto& t: ms.trans)
+      m.state[nStates() - 1 - t.dest].trans.push_back (MachineTransition (t.in, t.out, r, t.weight));
+  }
+  return m;
+}
+
 Machine Machine::null() {
   Machine n;
   n.state.push_back (MachineState());

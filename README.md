@@ -15,7 +15,8 @@ Allowed options:
   -k [ --kleene ]           make Kleene closure
   -l [ --loop ] arg         parameterize Kleene closure
   -a [ --accept ] arg       pipe to sequence acceptor
-  -n [ --null ]             create null transducer (default)
+  -r [ --reverse ]          reverse direction
+  -n [ --null ]             create null transducer
   -s [ --save ] arg         save machine
   -F [ --fit ]              Baum-Welch parameter fit
   -P [ --params ] arg       parameter file

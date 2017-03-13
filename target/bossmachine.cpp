@@ -35,7 +35,8 @@ int main (int argc, char** argv) {
       ("kleene,k", "make Kleene closure")
       ("loop,l", po::value<string>(), "parameterize Kleene closure")
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
-      ("null,n", "create null transducer (default)")
+      ("reverse,r", "reverse direction")
+      ("null,n", "create null transducer")
       ("save,s", po::value<string>(), "save machine")
       ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
@@ -118,13 +119,20 @@ int main (int argc, char** argv) {
       const Machine acceptor = Machine::acceptor (outSeq.name, outSeq.seq);
       machine = machine.nStates() ? Machine::compose(machine,acceptor) : acceptor;
     }
+
+    // Reverse
+    if (vm.count("reverse"))
+      machine = machine.reverse();
     
     // Null
-    if (!machine.nStates() || vm.count("null")) {
+    if (vm.count("null")) {
       LogThisAt(2,"Creating null transducer" << endl);
       machine = machine.nStates() ? Machine::compose (machine, Machine::null()) : Machine::null();
     }
 
+    // no transducer yet?
+    Require (machine.nStates(), "Please specify a transducer (-h for options)");
+    
     // save transducer
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();
