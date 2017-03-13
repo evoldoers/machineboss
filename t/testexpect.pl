@@ -15,7 +15,7 @@ my $fnameOut = $fhOut->filename;
 my $fhErr = File::Temp->new();
 my $fnameErr = $fhErr->filename;
 
-my $status = system "@args >$fnameOut 2>$fnameErr";
+my $status = system (join(" ",$args[0],map("'$_'", @args[1..$#args])) . " >$fnameOut 2>$fnameErr");
 
 my $idem;
 if ($expected eq '-idem') {

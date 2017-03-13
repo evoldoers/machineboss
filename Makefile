@@ -138,7 +138,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-null test-weight
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-null test-weight test-shorthand
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -180,6 +180,9 @@ test-null:
 
 test-weight:
 	@$(TEST) bin/$(MAIN) -w p t/expect/null-p.json
+
+test-shorthand:
+	@$(TEST) bin/$(MAIN) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&' '>' t/io/seq001.json '+' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect

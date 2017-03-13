@@ -357,7 +357,7 @@ Machine Machine::ergodicMachine() const {
   for (StateIndex s = 0; s < nStates(); ++s)
     if (keep[s]) {
       StateIndex d = s;
-      while (state[d].trans.size() == 1 && state[d].trans.front().isSilent())
+      while (state[d].trans.size() == 1 && state[d].trans.front().isSilent() && WeightAlgebra::isOne(state[d].trans.front().weight))
 	d = state[d].trans.front().dest;
       if (d != s)
 	nullEquiv[s] = d;
@@ -660,6 +660,8 @@ Machine Machine::singleTransition (const WeightExpr& weight) {
   n.state.push_back (MachineState());
   n.state.push_back (MachineState());
   n.state[0].trans.push_back (MachineTransition (string(), string(), 1, weight));
+  n.state[0].name = json("trans-start");
+  n.state[1].name = json("trans-end");
   return n;
 }
 

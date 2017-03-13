@@ -49,8 +49,8 @@ int main (int argc, char** argv) {
     transOpts.add_options()
       ("load,d", po::value<string>(), "load machine from file")
       ("preset,t", po::value<string>(), (string ("preset machine (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
-      ("generate,g", po::value<string>(), "sequence generator")
-      ("accept,a", po::value<string>(), "sequence acceptor")
+      ("generate,g", po::value<string>(), "sequence generator '<'")
+      ("accept,a", po::value<string>(), "sequence acceptor '>'")
       ("pipe,p", po::value<string>(), "pipe (compose) machine")
       ("and,i", po::value<string>(), "intersect machine '&'")
       ("or,u", po::value<string>(), "take union with machine '|'")
@@ -68,6 +68,8 @@ int main (int argc, char** argv) {
       ;
 
     map<string,string> alias;
+    alias[string("<")] = "--generate";
+    alias[string(">")] = "--accept";
     alias[string("(")] = "--begin";
     alias[string(")")] = "--end";
     alias[string("&")] = "--and";
@@ -145,10 +147,12 @@ int main (int argc, char** argv) {
 	const po::option_description* desc = NULL;
 	if (aliasedArg[0] == '-') {
 	  desc = transOpts.find_nothrow (aliasedArg, false);
+	  if (!desc && aliasedArg.size() > 1 && aliasedArg[1] == '-')
+	    desc = transOpts.find_nothrow (aliasedArg.substr(2), false);
 	  if (desc)
-	    LogThisAt(3,"Command " << arg << " ==> " << desc->description() << endl);
+	    LogThisAt(3,"Command '" << arg << "' ==> " << desc->description() << endl);
 	  else
-	    LogThisAt(3,"Warning: unrecognized command " << arg << endl);
+	    LogThisAt(3,"Warning: unrecognized command '" << arg << "'" << endl);
 	}
 	const string command = desc ? (string("--") + desc->long_name()) : arg;
 

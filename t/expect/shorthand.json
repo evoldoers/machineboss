@@ -1,0 +1,26 @@
+{"state":
+ [{"n":0,
+   "id":[["concat-l",{"001":0,"S":["101",0]}],"trans-start"],
+   "trans":[{"to":1,"weight":"x"}]},
+  {"n":1,
+   "id":[["concat-l",{"001":0,"S":["101",0]}],"trans-end"],
+   "trans":[{"to":2,"in":"0","weight":"q"}]},
+  {"n":2,
+   "id":[["concat-l",{"001":1,"S":["101",1]}],"trans-end"],
+   "trans":[{"to":3,"in":"0","weight":"p"}]},
+  {"n":3,
+   "id":[["concat-l",{"001":2,"S":["101",2]}],"trans-end"],
+   "trans":[{"to":4,"in":"1","weight":"p"}]},
+  {"n":4,
+   "id":[["concat-r",["AGC",0]],"trans-end"],
+   "trans":[{"to":5,"in":"A"}]},
+  {"n":5,
+   "id":[["concat-r",["AGC",1]],"trans-end"],
+   "trans":[{"to":6,"in":"G"}]},
+  {"n":6,
+   "id":[["concat-r",["AGC",2]],"trans-end"],
+   "trans":[{"to":7,"in":"C"}]},
+  {"n":7,
+   "id":[["concat-r",["AGC",3]],"trans-end"]}
+ ]
+}
