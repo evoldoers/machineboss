@@ -17,7 +17,7 @@ Allowed options:
   -a [ --accept ] arg       pipe to sequence acceptor
   -r [ --reverse ]          reverse direction
   -f [ --flip ]             flip input/output
-  -n [ --null ]             create null transducer
+  -n [ --null ]             pipe to null transducer
   -s [ --save ] arg         save machine
   -F [ --fit ]              Baum-Welch parameter fit
   -P [ --params ] arg       parameter file

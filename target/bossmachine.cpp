@@ -37,7 +37,7 @@ int main (int argc, char** argv) {
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
       ("reverse,r", "reverse direction")
       ("flip,f", "flip input/output")
-      ("null,n", "create null transducer")
+      ("null,n", "pipe to null transducer")
       ("save,s", po::value<string>(), "save machine")
       ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
