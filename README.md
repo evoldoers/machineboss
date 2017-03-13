@@ -12,7 +12,8 @@ Allowed options:
   -c [ --concat ] arg       concatenate machine(s)
   -u [ --union ] arg        take union with machine
   -w [ --weight ] arg       parameterize union
-  -r [ --reverse ]          reverse direction
+  -R [ --reverse ]          reverse
+  -r [ --revcomp ]          reverse complement
   -k [ --kleene ]           make Kleene closure
   -l [ --loop ] arg         parameterize Kleene closure
   -a [ --accept ] arg       pipe to sequence acceptor
