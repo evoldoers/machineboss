@@ -132,7 +132,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-kleene test-concat test-reverse test-null
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-kleene test-concat test-reverse test-flip test-null
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -150,6 +150,9 @@ test-concat:
 
 test-reverse:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -r t/expect/generator001-reversed.json
+
+test-flip:
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -f t/expect/acceptor001.json
 
 test-null:
 	@$(TEST) bin/$(MAIN) -n t/expect/null.json

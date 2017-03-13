@@ -36,6 +36,7 @@ int main (int argc, char** argv) {
       ("loop,l", po::value<string>(), "parameterize Kleene closure")
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
       ("reverse,r", "reverse direction")
+      ("flip,f", "flip input/output")
       ("null,n", "create null transducer")
       ("save,s", po::value<string>(), "save machine")
       ("fit,F", "Baum-Welch parameter fit")
@@ -123,6 +124,10 @@ int main (int argc, char** argv) {
     // Reverse
     if (vm.count("reverse"))
       machine = machine.reverse();
+
+    // Flip
+    if (vm.count("flip"))
+      machine = machine.flipInOut();
     
     // Null
     if (vm.count("null")) {

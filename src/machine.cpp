@@ -577,6 +577,14 @@ Machine Machine::reverse() const {
   return m;
 }
 
+Machine Machine::flipInOut() const {
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      swap (t.in, t.out);
+  return m;
+}
+
 Machine Machine::null() {
   Machine n;
   n.state.push_back (MachineState());

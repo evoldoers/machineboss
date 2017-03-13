@@ -88,6 +88,7 @@ struct Machine {
   Machine kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const;
 
   Machine reverse() const;
+  Machine flipInOut() const;
   
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
