@@ -18,39 +18,42 @@ Examples of JSON file formats:
 <pre><code>
 
 General options:
-  -h [ --help ]              display this help message
-  -v [ --verbose ] arg (=2)  verbosity level
-  -L [ --log ] arg           log specified function
-  -N [ --nocolor ]           log in monochrome
+  -h [ --help ]               display this help message
+  -v [ --verbose ] arg (=2)   verbosity level
+  -L [ --log ] arg            log specified function
+  -N [ --nocolor ]            log in monochrome
 
 Transducer manipulation:
-  -t [ --preset ] arg        preset transducer (compdna, comprna)
-  -g [ --generate ] arg      sequence generator
-  -a [ --accept ] arg        sequence acceptor
-  -p [ --pipe ] arg          pipe (compose) machine
-  -M [ --compose ]           compose last two machines
-  -i [ --and ] arg           intersect machine
-  -I [ --intersect ]         intersect last two machines
-  -c [ --concat ] arg        concatenate machine
-  -N [ --append ]            concatenate last two machines
-  -o [ --or ] arg            take union with machine
-  -O [ --union ]             union of last two machines
-  -W [ --weight ] arg        weighted union of last two machines
-  -k [ --kleene ]            Kleene closure
-  -l [ --loop ] arg          weighted Kleene closure
-  -e [ --reverse ]           reverse
-  -r [ --revcomp ]           reverse complement
-  -f [ --flip ]              flip input/output
-  -n [ --null ]              null transducer
-  -B [ --begin ]             left bracket '('
-  -E [ --end ]               right bracket ')'
+  -d [ --load ] arg           load machine from file
+  -t [ --preset ] arg         preset machine (compdna, comprna)
+  -g [ --generate ] arg       sequence generator
+  -a [ --accept ] arg         sequence acceptor
+  -p [ --pipe ] arg           pipe (compose) machine
+  -M [ --compose ]            compose last two machines
+  -i [ --and ] arg            intersect machine
+  -I [ --intersect ]          intersect last two machines
+  -c [ --concat ] arg         concatenate machine
+  -N [ --append ]             concatenate last two machines
+  -o [ --or ] arg             take union with machine
+  -O [ --union ]              union of last two machines
+  -W [ --union-weight ] arg   weighted union of last two machines
+  -k [ --kleene ]             Kleene closure
+  -K [ --kleene-weight ] arg  weighted Kleene closure
+  -l [ --kleene-loop ] arg    Kleene closure via loop machine
+  -e [ --reverse ]            reverse
+  -r [ --revcomp ]            reverse complement
+  -f [ --flip ]               flip input/output
+  -n [ --null ]               null transducer
+  -w [ --weight ]             single weighted transition
+  -B [ --begin ]              left bracket '('
+  -E [ --end ]                right bracket ')'
 
 Transducer application:
-  -S [ --save ] arg          save machine
-  -P [ --params ] arg        load parameter file
-  -C [ --constraints ] arg   load constraints file
-  -D [ --data ] arg          load sequence-pairs file
-  -F [ --fit ]               Baum-Welch parameter fit
-  -A [ --align ]             Viterbi sequence alignment
+  -S [ --save ] arg           save machine
+  -P [ --params ] arg         load parameter file
+  -C [ --constraints ] arg    load constraints file
+  -D [ --data ] arg           load sequence-pairs file
+  -F [ --fit ]                Baum-Welch parameter fit
+  -A [ --align ]              Viterbi sequence alignment
 
 </code></pre>

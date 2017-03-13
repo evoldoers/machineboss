@@ -138,7 +138,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-concat test-reverse test-revcomp test-flip test-null
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-null test-weight
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -155,7 +155,13 @@ test-brackets:
 	@$(TEST) bin/$(MAIN) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-kleene:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -l q t/expect/generate-multiple-001.json
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -K q t/expect/generate-multiple-001.json
+
+test-loop:
+	@$(TEST) bin/$(MAIN) -a t/io/seq101.json -l -a t/io/seq001.json t/expect/101-loop-001.json
+
+test-noisy-loop:
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq101.json -l -a t/io/seq001.json t/expect/noisy-101-loop-001.json
 
 test-concat:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
@@ -171,6 +177,9 @@ test-flip:
 
 test-null:
 	@$(TEST) bin/$(MAIN) -n t/expect/null.json
+
+test-weight:
+	@$(TEST) bin/$(MAIN) -w p t/expect/null-p.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect

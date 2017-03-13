@@ -597,11 +597,34 @@ Machine Machine::kleeneClosure (const WeightExpr& extend) const {
 }
 
 Machine Machine::kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const {
-  Assert (nStates(), "Attempt to find Kleene closure of uninitialized transducer");
+  Assert (nStates(), "Attempt to form Kleene closure of uninitialized transducer");
   Machine m (*this);
   m.state.push_back (MachineState());
   m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), extend));
   m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), end));
+  return m;
+}
+
+Machine Machine::kleeneClosure (const Machine& loop) const {
+  Assert (nStates(), "Attempt to form Kleene closure of uninitialized transducer");
+  Assert (loop.nStates(), "Attempt to form Kleene closure with uninitialized loop transducer");
+  Machine m (*this);
+  m.state.reserve (nStates() + loop.nStates() + 1);
+  for (auto& ms: m.state)
+    if (!ms.name.is_null())
+      ms.name = json::array ({"kleene-main", ms.name});
+  m.state.insert (m.state.end(), loop.state.begin(), loop.state.end());
+  for (StateIndex s = state.size(); s < m.nStates(); ++s) {
+    MachineState& ms = m.state[s];
+    if (!ms.name.is_null())
+      ms.name = json::array ({"kleene-loop", m.state[s].name});
+    for (auto& t: ms.trans)
+      t.dest += state.size();
+  }
+  m.state.push_back (MachineState());
+  m.state[endState()].trans.push_back (MachineTransition (string(), string(), loop.startState() + state.size(), WeightExpr(true)));
+  m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
+  m.state[state.size() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightExpr(true)));
   return m;
 }
 
@@ -629,6 +652,14 @@ Machine Machine::flipInOut() const {
 Machine Machine::null() {
   Machine n;
   n.state.push_back (MachineState());
+  return n;
+}
+
+Machine Machine::singleTransition (const WeightExpr& weight) {
+  Machine n;
+  n.state.push_back (MachineState());
+  n.state.push_back (MachineState());
+  n.state[0].trans.push_back (MachineTransition (string(), string(), 1, weight));
   return n;
 }
 

@@ -73,6 +73,7 @@ struct Machine {
   set<StateIndex> accessibleStates() const;
 
   static Machine null();
+  static Machine singleTransition (const WeightExpr& weight);
 
   static Machine compose (const Machine& first, const Machine& second);
   static Machine intersect (const Machine& first, const Machine& second);
@@ -87,6 +88,7 @@ struct Machine {
   Machine kleeneClosure() const;
   Machine kleeneClosure (const WeightExpr& extend) const;
   Machine kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const;
+  Machine kleeneClosure (const Machine& loop) const;
 
   Machine reverse() const;
   Machine flipInOut() const;
