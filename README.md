@@ -17,11 +17,11 @@ Allowed options:
   -a [ --accept ] arg       pipe to sequence acceptor
   -n [ --null ]             create null transducer (default)
   -s [ --save ] arg         save machine
-  -B [ --baum-welch ]       fit parameters
+  -F [ --fit ]              Baum-Welch parameter fit
   -P [ --params ] arg       parameter file
   -C [ --constraints ] arg  constraints file
   -D [ --data ] arg         sequence-pair file
-  -V [ --viterbi ]          align sequences
+  -A [ --align ]            Viterbi sequence alignment
   -v [ --verbose ] arg (=2) verbosity level
   --log arg                 log specified function
   --nocolor                 log in monochrome

@@ -37,11 +37,11 @@ int main (int argc, char** argv) {
       ("accept,a", po::value<string>(), "pipe to sequence acceptor")
       ("null,n", "create null transducer (default)")
       ("save,s", po::value<string>(), "save machine")
-      ("baum-welch,B", "fit parameters")
+      ("fit,F", "Baum-Welch parameter fit")
       ("params,P", po::value<string>(), "parameter file")
       ("constraints,C", po::value<string>(), "constraints file")
       ("data,D", po::value<string>(), "sequence-pair file")
-      ("viterbi,V", "align sequences")
+      ("align,A", "Viterbi sequence alignment")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log specified function")
       ("nocolor", "log in monochrome")
@@ -130,18 +130,18 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       machine.writeJson (out);
-    } else if (!vm.count("baum-welch") && !vm.count("viterbi"))
+    } else if (!vm.count("fit") && !vm.count("align"))
       machine.writeJson (cout);
 
     // do some syntax checking
-    Require (!vm.count("params") || (vm.count("baum-welch") || vm.count("viterbi")), "Can't specify --params without --fit or --align");
-    Require (!vm.count("data") || (vm.count("baum-welch") || vm.count("viterbi")), "Can't specify --data without --fit or --align");
-    Require (!vm.count("constraints") || vm.count("baum-welch"), "Can't specify --constraints without --fit");
+    Require (!vm.count("params") || (vm.count("fit") || vm.count("align")), "Can't specify --params without --fit or --align");
+    Require (!vm.count("data") || (vm.count("fit") || vm.count("align")), "Can't specify --data without --fit or --align");
+    Require (!vm.count("constraints") || vm.count("fit"), "Can't specify --constraints without --fit");
 
     // fit parameters
     Params params;
     SeqPairList data;
-    if (vm.count("baum-welch")) {
+    if (vm.count("fit")) {
       Require (vm.count("constraints") && vm.count("data"),
 	       "To fit parameters, please specify a constraints file and a data file");
       MachineFitter fitter;
@@ -154,10 +154,10 @@ int main (int argc, char** argv) {
     }
 
     // align sequences
-    if (vm.count("viterbi")) {
-      Require ((vm.count("data") && vm.count("params")) || vm.count("baum-welch"),
+    if (vm.count("align")) {
+      Require ((vm.count("data") && vm.count("params")) || vm.count("fit"),
 	       "To align sequences, please specify a data file and a parameter file (or fit with --fit)");
-      if (!vm.count("baum-welch")) {
+      if (!vm.count("fit")) {
 	params = Params::fromFile(vm.at("params").as<string>());
 	data = SeqPairList::fromFile(vm.at("data").as<string>());
       }
