@@ -1,6 +1,17 @@
 # Boss Machine
-Bioinformatics Open Source Sequence machine
+*Bioinformatics Open Source Sequence Machine*
 
+- Construct [weighted finite-state transducers](https://en.wikipedia.org/wiki/Finite-state_transducer) using operations like composition, intersection, union, and Kleene closure.
+- Fit to data using [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) and [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) algorithms.
+
+Examples of JSON file formats:
+
+- [transducer](https://github.com/ihh/bossmachine/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel)
+- [parameters](https://github.com/ihh/bossmachine/blob/master/t/io/params.json)
+- [individual sequence](https://github.com/ihh/bossmachine/blob/master/t/io/seqAGC.json) for constructing generators and acceptors
+- [list of sequence-pairs](https://github.com/ihh/bossmachine/blob/master/t/io/seqpairlist.json) for model-fitting and alignment
+- [constraints](https://github.com/ihh/bossmachine/blob/master/t/io/constraints.json) for model fitting. This file specifies the constraints `a+b=1` and `x+y+z=1`
+	- see also [this file](https://github.com/ihh/bossmachine/blob/master/t/io/pqcons.json) whose constraints can be used to fit the binary symmetric channel, above
 
 ## Command-line usage
 
@@ -21,7 +32,7 @@ Transducer manipulation:
   -i [ --and ] arg           intersect machine
   -I [ --intersect ]         intersect last two machines
   -c [ --concat ] arg        concatenate machine
-  -E [ --append ]            concatenate last two machines
+  -N [ --append ]            concatenate last two machines
   -o [ --or ] arg            take union with machine
   -O [ --union ]             union of last two machines
   -W [ --weight ] arg        weighted union of last two machines
@@ -31,6 +42,8 @@ Transducer manipulation:
   -r [ --revcomp ]           reverse complement
   -f [ --flip ]              flip input/output
   -n [ --null ]              null transducer
+  -B [ --begin ]             left bracket '('
+  -E [ --end ]               right bracket ')'
 
 Transducer application:
   -S [ --save ] arg          save machine

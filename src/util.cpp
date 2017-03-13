@@ -41,7 +41,7 @@ void Abort(const char* error, ...) {
   fprintf(stderr,"\n");
   va_end (argptr);
   printStackTrace();
-  throw;
+  throw runtime_error("Abort");
 }
 
 void Fail(const char* error, ...) {

@@ -138,7 +138,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-kleene test-concat test-reverse test-revcomp test-flip test-null
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-concat test-reverse test-revcomp test-flip test-null
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -150,6 +150,9 @@ test-union:
 
 test-intersection:
 	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -M -a t/io/seq101.json -I t/expect/noise-001-and-101.json
+
+test-brackets:
+	@$(TEST) bin/$(MAIN) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-kleene:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -l q t/expect/generate-multiple-001.json
@@ -168,6 +171,20 @@ test-flip:
 
 test-null:
 	@$(TEST) bin/$(MAIN) -n t/expect/null.json
+
+# Invalid transducer construction tests
+INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect
+test-unmatched-begin:
+	@$(TEST) bin/$(MAIN) --begin -fail
+
+test-unmatched-end:
+	@$(TEST) bin/$(MAIN) --end -fail
+
+test-empty-brackets:
+	@$(TEST) bin/$(MAIN) --begin --end -fail
+
+test-impossible-intersect:
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -i -a t/io/seq101.json -fail
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
@@ -243,7 +260,7 @@ test-align-stutter-noise:
 	@$(TEST) bin/$(MAIN) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 

@@ -55,7 +55,7 @@ int main (int argc, char** argv) {
       ("and,i", po::value<string>(), "intersect machine")
       ("intersect,I", "intersect last two machines")
       ("concat,c", po::value<string>(), "concatenate machine")
-      ("append,E", "concatenate last two machines")
+      ("append,N", "concatenate last two machines")
       ("or,o", po::value<string>(), "take union with machine")
       ("union,O", "union of last two machines")
       ("weight,W", po::value<string>(), "weighted union of last two machines")
@@ -65,6 +65,8 @@ int main (int argc, char** argv) {
       ("revcomp,r", "reverse complement")
       ("flip,f", "flip input/output")
       ("null,n", "null transducer")
+      ("begin,B", "left bracket '('")
+      ("end,E", "right bracket ')'")
       ;
 
     po::options_description helpOpts("");
@@ -87,10 +89,23 @@ int main (int argc, char** argv) {
 
     // create transducer
     list<Machine> machines;
+    auto reduceMachines = [&]() -> Machine {
+      Machine machine = machines.back();
+      do {
+	machines.pop_back();
+	if (machines.size())
+	  machine = Machine::compose (machines.back(), machine);
+      } while (machines.size());
+      return machine;
+    };
+
     const vector<string> commandVec = po::collect_unrecognized (parsed.options, po::include_positional);
     deque<string> commands (commandVec.begin(), commandVec.end());
     while (!commands.empty()) {
       function<Machine(const string&)> nextMachine;
+      auto pushNextMachine = [&]() {
+	machines.push_back (nextMachine(string()));
+      };
       nextMachine = [&] (const string& lastCommand) -> Machine {
 	if (commands.empty()) {
 	  cout << helpOpts << endl;
@@ -117,7 +132,7 @@ int main (int argc, char** argv) {
 	  return m;
 	};
 	Machine m;
-	if (command[0] != '-')
+	if (command[0] != '-' && command != "(")
 	  m = MachineLoader::fromFile (command);
 	else if (command == "--load")
 	  m = MachineLoader::fromFile (getArg());
@@ -140,7 +155,7 @@ int main (int argc, char** argv) {
 	  m = Machine::intersect (popMachine(), popMachine());
 	else if (command == "--concat" || command == "-c")
 	  m = Machine::concatenate (popMachine(), nextMachine(command));
-	else if (command == "--append" || command == "-E") {
+	else if (command == "--append" || command == "-N") {
 	  const Machine r = popMachine(), l = popMachine();
 	  m = Machine::concatenate (l, r);
 	} else if (command == "--or" || command == "-o")
@@ -168,13 +183,30 @@ int main (int argc, char** argv) {
 	  m = popMachine().flipInOut();
 	else if (command == "--null" || command == "-n")
 	  m = Machine::null();
+	else if (command == "--begin" || command == "-B" || command == "(") {
+	  list<Machine> pushedMachines;
+	  swap (pushedMachines, machines);
+	  while (true) {
+	    if (commands.empty())
+	      throw runtime_error (string("Unmatched '") + command + "'");
+	    if (commands.front() == "--end" || command == "-E" || commands.front() == ")")
+	      break;
+	    pushNextMachine();
+	  }
+	  const string endCommand = getArg();
+	  if (machines.empty())
+	    throw runtime_error (string("Empty '") + command + "' ... '" + endCommand + "'");
+	  m = reduceMachines();
+	  swap (pushedMachines, machines);
+	} else if (command == "--end" || command == "-E" || command == ")")
+	  throw runtime_error (string("Unmatched '") + command + "'");
 	else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + command);
 	}
 	return m;
       };
-      machines.push_back (nextMachine(string()));
+      pushNextMachine();
     }
 
     // compose remaining transducers
@@ -183,13 +215,7 @@ int main (int argc, char** argv) {
       cout << "Please specify a transducer" << endl;
       return 1;
     }
-    
-    Machine machine = machines.back();
-    do {
-      machines.pop_back();
-      if (machines.size())
-	machine = Machine::compose (machines.back(), machine);
-    } while (machines.size());
+    const Machine machine = reduceMachines();
     
     // save transducer
     if (vm.count("save")) {
