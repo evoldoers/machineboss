@@ -3,13 +3,8 @@
 #include <stdarg.h>
 #include <math.h>
 #include "logger.h"
-#include "regexmacros.h"
 
 Logger logger;
-
-// POSIX basic regular expressions
-const regex all_v ("-" RE_PLUS("v"), regex_constants::basic);
-const regex numeric_v ("-v" RE_NUMERIC_GROUP, regex_constants::basic);
 
 // functions
 string ansiEscape (int code) {

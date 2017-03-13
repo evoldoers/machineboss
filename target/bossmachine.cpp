@@ -17,6 +17,7 @@
 #include "../src/fitter.h"
 #include "../src/viterbi.h"
 #include "../src/util.h"
+#include "../src/schema.h"
 
 using namespace std;
 
@@ -63,7 +64,7 @@ int main (int argc, char** argv) {
       ("revcomp,r", po::value<string>(), "reverse-complement '~'")
       ("flip,f", po::value<string>(), "flip input/output")
       ("null,n", "null transducer")
-      ("weight,w", po::value<string>(), "single weighted transition '#'")
+      ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("begin,B", "left bracket '('")
       ("end,E", "right bracket ')'")
       ;
@@ -206,9 +207,18 @@ int main (int argc, char** argv) {
 	  m = nextMachine().flipInOut();
 	else if (command == "--null")
 	  m = Machine::null();
-	else if (command == "--weight")
-	  m = Machine::singleTransition (getArg());
-	else if (command == "--begin") {
+	else if (command == "--weight") {
+	  const string wArg = getArg();
+	  WeightExpr w;
+	  try {
+	    w = json::parse(wArg);
+	    if (!MachineSchema::validate ("expr", w))
+	      w = WeightExpr(wArg);
+	  } catch (...) {
+	    w = WeightExpr(wArg);
+	  }
+	  m = Machine::singleTransition (w);
+	} else if (command == "--begin") {
 	  list<Machine> pushedMachines;
 	  swap (pushedMachines, machines);
 	  while (true) {
