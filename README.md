@@ -13,6 +13,7 @@ General options:
   --nocolor                  log in monochrome
 
 Transducer manipulation:
+  --preset arg               preset transducer (compdna,comprna)
   -g [ --generate ] arg      sequence generator
   -a [ --accept ] arg        sequence acceptor
   -p [ --pipe ] arg          pipe (compose) machine

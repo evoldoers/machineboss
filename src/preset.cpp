@@ -1,4 +1,5 @@
 #include "preset.h"
+#include "util.h"
 
 struct PresetCache {
   map<string,string> namedPreset;
@@ -17,7 +18,17 @@ PresetCache::PresetCache() {
 
 PresetCache presetCache;  // singleton
 
-Machine MachinePresets::makePreset (const char* presetName) {
-  const auto presetText = presetCache.namedPreset.at (string (presetName));
+Machine MachinePresets::makePreset (const string& presetName) {
+  if (!presetCache.namedPreset.count(presetName))
+    throw runtime_error (string("Preset ") + presetName + " not found");
+  const auto presetText = presetCache.namedPreset.at (presetName);
   return MachineLoader::fromJson (json::parse (presetText));
+}
+
+Machine MachinePresets::makePreset (const char* presetName) {
+  return makePreset (string (presetName));
+}
+
+string MachinePresets::presetNames() {
+  return join (extract_keys (presetCache.namedPreset), ",");
 }

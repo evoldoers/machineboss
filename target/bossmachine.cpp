@@ -46,6 +46,7 @@ int main (int argc, char** argv) {
 
     po::options_description transOpts("Transducer manipulation");
     transOpts.add_options()
+      ("preset", po::value<string>(), (string ("preset transducer (") + MachinePresets::presetNames() + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator")
       ("accept,a", po::value<string>(), "sequence acceptor")
       ("pipe,p", po::value<string>(), "pipe (compose) machine")
@@ -117,6 +118,8 @@ int main (int argc, char** argv) {
 	  m = MachineLoader::fromFile (command);
 	else if (command == "--load")
 	  m = MachineLoader::fromFile (getArg());
+	else if (command == "--preset")   // undocumented...
+	  m = MachinePresets::makePreset (getArg().c_str());
 	else if (command == "--compose")
 	  m = Machine::compose (popMachine(), popMachine());
 	else if (command == "--append")
