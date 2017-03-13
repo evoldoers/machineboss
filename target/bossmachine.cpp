@@ -29,15 +29,19 @@ int main (int argc, char** argv) {
     po::options_description generalOpts("General options");
     generalOpts.add_options()
       ("help,h", "display this help message")
-      ("save,s", po::value<string>(), "save machine")
-      ("fit,F", "Baum-Welch parameter fit")
-      ("params,P", po::value<string>(), "parameter file")
-      ("constraints,C", po::value<string>(), "constraints file")
-      ("data,D", po::value<string>(), "sequence-pair file")
-      ("align,A", "Viterbi sequence alignment")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log", po::value<vector<string> >(), "log specified function")
       ("nocolor", "log in monochrome")
+      ;
+
+    po::options_description appOpts("Transducer application");
+    appOpts.add_options()
+      ("save,S", po::value<string>(), "save machine")
+      ("params,P", po::value<string>(), "load parameter file")
+      ("constraints,C", po::value<string>(), "load constraints file")
+      ("data,D", po::value<string>(), "load sequence-pairs file")
+      ("fit,F", "Baum-Welch parameter fit")
+      ("align,A", "Viterbi sequence alignment")
       ;
 
     po::options_description transOpts("Transducer manipulation");
@@ -60,10 +64,13 @@ int main (int argc, char** argv) {
       ;
 
     po::options_description helpOpts("");
-    helpOpts.add(generalOpts).add(transOpts);
-    
+    helpOpts.add(generalOpts).add(transOpts).add(appOpts);
+
+    po::options_description parseOpts("");
+    parseOpts.add(generalOpts).add(appOpts);
+
     po::variables_map vm;
-    po::parsed_options parsed = po::command_line_parser(argc,argv).options(generalOpts).allow_unregistered().run();
+    po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).allow_unregistered().run();
     po::store (parsed, vm);
     po::notify(vm);    
       
@@ -149,7 +156,12 @@ int main (int argc, char** argv) {
     }
 
     // compose remaining transducers
-    Require (machines.size(), "Please specify a transducer (-h for options)");
+    if (machines.empty()) {
+      cout << helpOpts << endl;
+      cout << "Please specify a transducer" << endl;
+      return 1;
+    }
+    
     Machine machine = machines.back();
     do {
       machines.pop_back();

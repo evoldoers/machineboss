@@ -8,12 +8,6 @@ Bioinformatics Open Source Sequence machine
 
 General options:
   -h [ --help ]              display this help message
-  -s [ --save ] arg          save machine
-  -F [ --fit ]               Baum-Welch parameter fit
-  -P [ --params ] arg        parameter file
-  -C [ --constraints ] arg   constraints file
-  -D [ --data ] arg          sequence-pair file
-  -A [ --align ]             Viterbi sequence alignment
   -v [ --verbose ] arg (=2)  verbosity level
   --log arg                  log specified function
   --nocolor                  log in monochrome
@@ -34,5 +28,13 @@ Transducer manipulation:
   -r [ --revcomp ]           reverse complement
   -f [ --flip ]              flip input/output
   -n [ --null ]              null transducer
+
+Transducer application:
+  -S [ --save ] arg          save machine
+  -P [ --params ] arg        load parameter file
+  -C [ --constraints ] arg   load constraints file
+  -D [ --data ] arg          load sequence-pairs file
+  -F [ --fit ]               Baum-Welch parameter fit
+  -A [ --align ]             Viterbi sequence alignment
 
 </code></pre>
