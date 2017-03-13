@@ -18,37 +18,38 @@ Examples of JSON file formats:
 <pre><code>
 
 General options:
-  -h [ --help ]               display this help message
-  -v [ --verbose ] arg (=2)   verbosity level
-  -L [ --log ] arg            log specified function
-  -N [ --nocolor ]            log in monochrome
+  -h [ --help ]              display this help message
+  -v [ --verbose ] arg (=2)  verbosity level
+  -L [ --log ] arg           log specified function
+  -m [ --monochrome ]        log in monochrome
 
 Transducer manipulation:
-  -d [ --load ] arg           load machine from file
-  -t [ --preset ] arg         preset machine (compdna, comprna)
-  -g [ --generate ] arg       sequence generator
-  -a [ --accept ] arg         sequence acceptor
-  -p [ --pipe ] arg           pipe (compose) machine
-  -i [ --and ] arg            intersect machine '&'
-  -u [ --or ] arg             take union with machine '|'
-  -c [ --concat ] arg         concatenate machine '+'
-  -k [ --kleene ]             Kleene closure (postfix)
-  -K [ --kleene-weight ] arg  weighted Kleene closure
-  -l [ --kleene-loop ] arg    Kleene closure via loop machine
-  -e [ --reverse ] arg        reverse
-  -r [ --revcomp ] arg        reverse-complement
-  -f [ --flip ] arg           flip input/output
-  -n [ --null ]               null transducer
-  -w [ --weight ] arg         single weighted transition
-  -B [ --begin ]              left bracket '('
-  -E [ --end ]                right bracket ')'
+  -d [ --load ] arg          load machine from file
+  -t [ --preset ] arg        preset machine (compdna, comprna)
+  -g [ --generate ] arg      sequence generator '&lt;'
+  -a [ --accept ] arg        sequence acceptor '&gt;'
+  -p [ --compose ] arg       compose machine '=&gt;'
+  -c [ --concat ] arg        concatenate machine '.'
+  -i [ --and ] arg           intersect machine '&&'
+  -u [ --or ] arg            take union with machine '||'
+  -z [ --zero-or-one ]       union with null '?'
+  -k [ --kleene-star ]       Kleene closure '*'
+  -K [ --kleene-plus ]       Kleene closure '+'
+  -l [ --kleene-loop ] arg   Kleene closure: x '?+' y = x(y.x)*
+  -e [ --reverse ] arg       reverse
+  -r [ --revcomp ] arg       reverse-complement '~'
+  -f [ --flip ] arg          flip input/output
+  -n [ --null ]              null transducer
+  -w [ --weight ] arg        single weighted transition '#'
+  -B [ --begin ]             left bracket '('
+  -E [ --end ]               right bracket ')'
 
 Transducer application:
-  -S [ --save ] arg           save machine
-  -P [ --params ] arg         load parameter file
-  -C [ --constraints ] arg    load constraints file
-  -D [ --data ] arg           load sequence-pairs file
-  -F [ --fit ]                Baum-Welch parameter fit
-  -A [ --align ]              Viterbi sequence alignment
+  -S [ --save ] arg          save machine
+  -P [ --params ] arg        load parameter file
+  -C [ --constraints ] arg   load constraints file
+  -D [ --data ] arg          load sequence-pairs file
+  -F [ --fit ]               Baum-Welch parameter fit
+  -A [ --align ]             Viterbi sequence alignment
 
 </code></pre>

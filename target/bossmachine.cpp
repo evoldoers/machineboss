@@ -32,7 +32,7 @@ int main (int argc, char** argv) {
       ("help,h", "display this help message")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
       ("log,L", po::value<vector<string> >(), "log specified function")
-      ("nocolor,N", "log in monochrome")
+      ("monochrome,m", "log in monochrome")
       ;
 
     po::options_description appOpts("Transducer application");
@@ -51,18 +51,19 @@ int main (int argc, char** argv) {
       ("preset,t", po::value<string>(), (string ("preset machine (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator '<'")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
-      ("pipe,p", po::value<string>(), "pipe (compose) machine")
-      ("and,i", po::value<string>(), "intersect machine '&'")
-      ("or,u", po::value<string>(), "take union with machine '|'")
-      ("concat,c", po::value<string>(), "concatenate machine '+'")
-      ("kleene,k", "Kleene closure (postfix)")
-      ("kleene-weight,K", po::value<string>(), "weighted Kleene closure")
-      ("kleene-loop,l", po::value<string>(), "Kleene closure via loop machine")
+      ("compose,p", po::value<string>(), "compose machine '=>'")
+      ("concat,c", po::value<string>(), "concatenate machine '.'")
+      ("and,i", po::value<string>(), "intersect machine '&&'")
+      ("or,u", po::value<string>(), "take union with machine '||'")
+      ("zero-or-one,z", "union with null '?'")
+      ("kleene-star,k", "Kleene closure '*'")
+      ("kleene-plus,K", "Kleene closure '+'")
+      ("kleene-loop,l", po::value<string>(), "Kleene closure: x '?+' y = x(y.x)*")
       ("reverse,e", po::value<string>(), "reverse")
-      ("revcomp,r", po::value<string>(), "reverse-complement")
+      ("revcomp,r", po::value<string>(), "reverse-complement '~'")
       ("flip,f", po::value<string>(), "flip input/output")
       ("null,n", "null transducer")
-      ("weight,w", po::value<string>(), "single weighted transition")
+      ("weight,w", po::value<string>(), "single weighted transition '#'")
       ("begin,B", "left bracket '('")
       ("end,E", "right bracket ')'")
       ;
@@ -70,12 +71,18 @@ int main (int argc, char** argv) {
     map<string,string> alias;
     alias[string("<")] = "--generate";
     alias[string(">")] = "--accept";
+    alias[string("=>")] = "--compose";
+    alias[string(".")] = "--concat";
+    alias[string("&&")] = "--and";
+    alias[string("||")] = "--or";
+    alias[string("?")] = "--zero-or-one";
+    alias[string("*")] = "--kleene-star";
+    alias[string("+")] = "--kleene-plus";
+    alias[string("?+")] = "--kleene-loop";
+    alias[string("#")] = "--weight";
+    alias[string("~")] = "--revcomp";
     alias[string("(")] = "--begin";
     alias[string(")")] = "--end";
-    alias[string("&")] = "--and";
-    alias[string("|")] = "--or";
-    alias[string("+")] = "--concat";
-    alias[string("#")] = "--weight";
 
     po::options_description helpOpts("");
     helpOpts.add(generalOpts).add(transOpts).add(appOpts);
@@ -169,22 +176,22 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept") {
 	  const NamedOutputSeq outSeq = NamedOutputSeq::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.name, outSeq.seq);
-	} else if (command == "--pipe")
+	} else if (command == "--compose")
 	  m = Machine::compose (popMachine(), nextMachine());
+	else if (command == "--concat")
+	  m = Machine::concatenate (popMachine(), nextMachine());
 	else if (command == "--and")
 	  m = Machine::intersect (popMachine(), nextMachine());
 	else if (command == "--or")
 	  m = Machine::takeUnion (popMachine(), nextMachine());
-	else if (command == "--concat")
-	  m = Machine::concatenate (popMachine(), nextMachine());
-	else if (command == "--union")
-	  m = Machine::takeUnion (popMachine(), popMachine());
-	else if (command == "--kleene")
-	  m = popMachine().kleeneClosure();
-	else if (command == "--kleene-weight")
-	  m = popMachine().kleeneClosure (getArg());
+	else if (command == "--zero-or-one")
+	  m = Machine::zeroOrOne (popMachine());
+	else if (command == "--kleene-star")
+	  m = Machine::kleeneStar (popMachine());
+	else if (command == "--kleene-plus")
+	  m = Machine::kleenePlus (popMachine());
 	else if (command == "--kleene-loop")
-	  m = popMachine().kleeneClosure (nextMachine());
+	  m = Machine::kleeneLoop (popMachine(), nextMachine());
 	else if (command == "--reverse")
 	  m = nextMachine().reverse();
 	else if (command == "--revcomp") {

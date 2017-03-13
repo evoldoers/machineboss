@@ -85,10 +85,10 @@ struct Machine {
   static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst);
   static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond);
 
-  Machine kleeneClosure() const;
-  Machine kleeneClosure (const WeightExpr& extend) const;
-  Machine kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const;
-  Machine kleeneClosure (const Machine& loop) const;
+  static Machine zeroOrOne (const Machine&);
+  static Machine kleeneStar (const Machine&);
+  static Machine kleenePlus (const Machine&);
+  static Machine kleeneLoop (const Machine&, const Machine&);
 
   Machine reverse() const;
   Machine flipInOut() const;

@@ -155,7 +155,7 @@ test-brackets:
 	@$(TEST) bin/$(MAIN) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-kleene:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -K q t/expect/generate-multiple-001.json
+	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -K t/expect/generate-multiple-001.json
 
 test-loop:
 	@$(TEST) bin/$(MAIN) -a t/io/seq101.json -l -a t/io/seq001.json t/expect/101-loop-001.json
@@ -182,7 +182,7 @@ test-weight:
 	@$(TEST) bin/$(MAIN) -w p t/expect/null-p.json
 
 test-shorthand:
-	@$(TEST) bin/$(MAIN) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&' '>' t/io/seq001.json '+' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
+	@$(TEST) bin/$(MAIN) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&&' '>' t/io/seq001.json '.' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect

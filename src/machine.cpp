@@ -588,43 +588,52 @@ Machine Machine::takeUnion (const Machine& first, const Machine& second, const W
   return m;
 }
 
-Machine Machine::kleeneClosure() const {
-  return kleeneClosure (WeightExpr(true), WeightExpr(true));
-}
-
-Machine Machine::kleeneClosure (const WeightExpr& extend) const {
-  return kleeneClosure (extend, WeightAlgebra::negate(extend));
-}
-
-Machine Machine::kleeneClosure (const WeightExpr& extend, const WeightExpr& end) const {
-  Assert (nStates(), "Attempt to form Kleene closure of uninitialized transducer");
-  Machine m (*this);
-  m.state.push_back (MachineState());
-  m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), extend));
-  m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), end));
+Machine Machine::zeroOrOne (const Machine& q) {
+  Assert (q.nStates(), "Attempt to quantify uninitialized transducer");
+  Machine m (q);
+  if (!m.state.back().terminates()) {
+    for (auto& ms: m.state)
+      if (!ms.name.is_null())
+	ms.name = json::array ({"quant-main", ms.name});
+    m.state.push_back (MachineState());
+    m.state.back().name = json::array ({"quant-end"});
+  }
+  m.state[m.startState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
   return m;
 }
 
-Machine Machine::kleeneClosure (const Machine& loop) const {
-  Assert (nStates(), "Attempt to form Kleene closure of uninitialized transducer");
+Machine Machine::kleenePlus (const Machine& k) {
+  Assert (k.nStates(), "Attempt to form Kleene closure of uninitialized transducer");
+  Machine m (k);
+  m.state[k.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightExpr(true)));
+  return m;
+}
+
+Machine Machine::kleeneStar (const Machine& k) {
+  return zeroOrOne (kleenePlus (k));
+}
+
+Machine Machine::kleeneLoop (const Machine& main, const Machine& loop) {
+  Assert (main.nStates(), "Attempt to form Kleene closure of uninitialized transducer");
   Assert (loop.nStates(), "Attempt to form Kleene closure with uninitialized loop transducer");
-  Machine m (*this);
-  m.state.reserve (nStates() + loop.nStates() + 1);
+  Machine m (main);
+  m.state.reserve (main.nStates() + loop.nStates() + 1);
   for (auto& ms: m.state)
     if (!ms.name.is_null())
-      ms.name = json::array ({"kleene-main", ms.name});
+      ms.name = json::array ({"loop-main", ms.name});
   m.state.insert (m.state.end(), loop.state.begin(), loop.state.end());
-  for (StateIndex s = state.size(); s < m.nStates(); ++s) {
+  for (StateIndex s = main.nStates(); s < m.nStates(); ++s) {
     MachineState& ms = m.state[s];
     if (!ms.name.is_null())
-      ms.name = json::array ({"kleene-loop", m.state[s].name});
+      ms.name = json::array ({"loop-continue", m.state[s].name});
     for (auto& t: ms.trans)
-      t.dest += state.size();
+      t.dest += main.nStates();
   }
   m.state.push_back (MachineState());
-  m.state[endState()].trans.push_back (MachineTransition (string(), string(), loop.startState() + state.size(), WeightExpr(true)));
-  m.state[endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
-  m.state[state.size() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightExpr(true)));
+  m.state.back().name = json::array ({"loop-end"});
+  m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), main.nStates() + loop.startState(), WeightExpr(true)));
+  m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
+  m.state[main.nStates() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightExpr(true)));
   return m;
 }
 

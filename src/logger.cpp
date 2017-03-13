@@ -49,7 +49,7 @@ void Logger::parseLogArgs (boost::program_options::variables_map& vm) {
     for (const auto& x: vm.at("log").as<vector<string> >())
       addTag (x);
 
-  if (vm.count("nocolor"))
+  if (vm.count("monochrome"))
     useAnsiColor = false;
 }
 
