@@ -25,7 +25,7 @@ General options:
 
 Transducer construction:
   -d [ --load ] arg          load machine from file
-  -t [ --preset ] arg        select preset (compdna, comprna)
+  -p [ --preset ] arg        select preset (compdna, comprna)
   -g [ --generate ] arg      sequence generator '&lt;'
   -a [ --accept ] arg        sequence acceptor '&gt;'
   -n [ --null ]              null transducer
@@ -42,7 +42,7 @@ Postfix operations:
   -K [ --kleene-plus ]       Kleene plus '+'
 
 Infix operations:
-  -p [ --compose ]           compose '=&gt;'
+  -m [ --compose ]           compose '=&gt;'
   -c [ --concat ]            concatenate '.'
   -i [ --and ]               intersect '&&'
   -u [ --or ]                take union '||'

@@ -149,7 +149,7 @@ test-union:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
 
 test-intersection:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -p -a t/io/seq001.json -i -a t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -m -a t/io/seq001.json -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-brackets:
 	@$(TEST) bin/$(MAIN) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
@@ -196,7 +196,7 @@ test-empty-brackets:
 	@$(TEST) bin/$(MAIN) --begin --end -fail
 
 test-missing-machine:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -p -p t/machine/bitnoise.json t/machine/bitnoise.json -fail
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
 	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -i -a t/io/seq101.json -fail

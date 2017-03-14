@@ -39,7 +39,7 @@ int main (int argc, char** argv) {
     po::options_description createOpts("Transducer construction");
     createOpts.add_options()
       ("load,d", po::value<string>(), "load machine from file")
-      ("preset,t", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
+      ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator '<'")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
       ("null,n", "null transducer")
@@ -62,7 +62,7 @@ int main (int argc, char** argv) {
 
     po::options_description infixOpts("Infix operations");
     infixOpts.add_options()
-      ("compose,p", "compose '=>'")
+      ("compose,m", "compose '=>'")
       ("concat,c", "concatenate '.'")
       ("and,i", "intersect '&&'")
       ("or,u", "take union '||'")
