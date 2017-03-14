@@ -46,21 +46,21 @@ int main (int argc, char** argv) {
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ;
 
-    po::options_description prefixOpts("Prefix operations");
+    po::options_description prefixOpts("Prefix operators");
     prefixOpts.add_options()
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("flip,f", "flip input/output")
       ;
 
-    po::options_description postfixOpts("Postfix operations");
+    po::options_description postfixOpts("Postfix operators");
     postfixOpts.add_options()
       ("zero-or-one,z", "union with null '?'")
       ("kleene-star,k", "Kleene star '*'")
       ("kleene-plus,K", "Kleene plus '+'")
       ;
 
-    po::options_description infixOpts("Infix operations");
+    po::options_description infixOpts("Infix operators");
     infixOpts.add_options()
       ("compose,m", "compose '=>'")
       ("concat,c", "concatenate '.'")

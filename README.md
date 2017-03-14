@@ -31,17 +31,17 @@ Transducer construction:
   -n [ --null ]              null transducer
   -w [ --weight ] arg        weighted null transition '#'
 
-Prefix operations:
+Prefix operators:
   -e [ --reverse ]           reverse
   -r [ --revcomp ]           reverse-complement '~'
   -f [ --flip ]              flip input/output
 
-Postfix operations:
+Postfix operators:
   -z [ --zero-or-one ]       union with null '?'
   -k [ --kleene-star ]       Kleene star '*'
   -K [ --kleene-plus ]       Kleene plus '+'
 
-Infix operations:
+Infix operators:
   -m [ --compose ]           compose '=&gt;'
   -c [ --concat ]            concatenate '.'
   -i [ --and ]               intersect '&&'
