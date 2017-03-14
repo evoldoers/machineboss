@@ -32,13 +32,13 @@ int main (int argc, char** argv) {
     generalOpts.add_options()
       ("help,h", "display this help message")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
-      ("log,L", po::value<vector<string> >(), "log specified function")
-      ("monochrome,m", "log in monochrome")
+      ("debug,d", po::value<vector<string> >(), "log specified function")
+      ("monochrome,b", "log in black & white")
       ;
 
     po::options_description createOpts("Transducer construction");
     createOpts.add_options()
-      ("load,d", po::value<string>(), "load machine from file")
+      ("load,l", po::value<string>(), "load machine from file")
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator '<'")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
@@ -65,8 +65,8 @@ int main (int argc, char** argv) {
       ("compose,m", "compose '=>'")
       ("concat,c", "concatenate '.'")
       ("and,i", "intersect '&&'")
-      ("or,u", "take union '||'")
-      ("kleene-loop,l", "Kleene with loop: x '?+' y = x(y.x)*")
+      ("or,u", "union '||'")
+      ("loop,o", "loop: x '?+' y = x(y.x)*")
       ;
 
     po::options_description miscOpts("Miscellaneous");
@@ -104,7 +104,7 @@ int main (int argc, char** argv) {
     alias[string("?")] = "--zero-or-one";
     alias[string("*")] = "--kleene-star";
     alias[string("+")] = "--kleene-plus";
-    alias[string("?+")] = "--kleene-loop";
+    alias[string("?+")] = "--loop";
     alias[string("#")] = "--weight";
     alias[string("~")] = "--revcomp";
     alias[string("(")] = "--begin";
@@ -210,7 +210,7 @@ int main (int argc, char** argv) {
 	  m = Machine::kleeneStar (popMachine());
 	else if (command == "--kleene-plus")
 	  m = Machine::kleenePlus (popMachine());
-	else if (command == "--kleene-loop")
+	else if (command == "--loop")
 	  m = Machine::kleeneLoop (popMachine(), nextMachine());
 	else if (command == "--reverse")
 	  m = nextMachine().reverse();

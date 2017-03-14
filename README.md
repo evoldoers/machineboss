@@ -20,11 +20,11 @@ Examples of JSON file formats:
 General options:
   -h [ --help ]              display this help message
   -v [ --verbose ] arg (=2)  verbosity level
-  -L [ --log ] arg           log specified function
-  -m [ --monochrome ]        log in monochrome
+  -d [ --debug ] arg         log specified function
+  -b [ --monochrome ]        log in black & white
 
 Transducer construction:
-  -d [ --load ] arg          load machine from file
+  -l [ --load ] arg          load machine from file
   -p [ --preset ] arg        select preset (compdna, comprna)
   -g [ --generate ] arg      sequence generator '&lt;'
   -a [ --accept ] arg        sequence acceptor '&gt;'
@@ -45,8 +45,8 @@ Infix operations:
   -m [ --compose ]           compose '=&gt;'
   -c [ --concat ]            concatenate '.'
   -i [ --and ]               intersect '&&'
-  -u [ --or ]                take union '||'
-  -l [ --kleene-loop ]       Kleene with loop: x '?+' y = x(y.x)*
+  -u [ --or ]                union '||'
+  -o [ --loop ]              loop: x '?+' y = x(y.x)*
 
 Miscellaneous:
   -B [ --begin ]             left bracket '('

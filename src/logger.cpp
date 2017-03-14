@@ -40,8 +40,8 @@ void Logger::colorOff() {
 
 void Logger::parseLogArgs (boost::program_options::variables_map& vm) {
   setVerbose (vm.at("verbose").as<int>());
-  if (vm.count("log"))
-    for (const auto& x: vm.at("log").as<vector<string> >())
+  if (vm.count("debug"))
+    for (const auto& x: vm.at("debug").as<vector<string> >())
       addTag (x);
 
   if (vm.count("monochrome"))

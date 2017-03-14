@@ -158,10 +158,10 @@ test-kleene:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -K t/expect/generate-multiple-001.json
 
 test-loop:
-	@$(TEST) bin/$(MAIN) -a t/io/seq101.json -l -a t/io/seq001.json t/expect/101-loop-001.json
+	@$(TEST) bin/$(MAIN) -a t/io/seq101.json -o -a t/io/seq001.json t/expect/101-loop-001.json
 
 test-noisy-loop:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq101.json -l -a t/io/seq001.json t/expect/noisy-101-loop-001.json
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq101.json -o -a t/io/seq001.json t/expect/noisy-101-loop-001.json
 
 test-concat:
 	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
