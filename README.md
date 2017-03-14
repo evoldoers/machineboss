@@ -23,24 +23,32 @@ General options:
   -L [ --log ] arg           log specified function
   -m [ --monochrome ]        log in monochrome
 
-Transducer manipulation:
+Transducer construction:
   -d [ --load ] arg          load machine from file
-  -t [ --preset ] arg        preset machine (compdna, comprna)
+  -t [ --preset ] arg        select preset (compdna, comprna)
   -g [ --generate ] arg      sequence generator '&lt;'
   -a [ --accept ] arg        sequence acceptor '&gt;'
-  -p [ --compose ] arg       compose machine '=&gt;'
-  -c [ --concat ] arg        concatenate machine '.'
-  -i [ --and ] arg           intersect machine '&&'
-  -u [ --or ] arg            take union with machine '||'
-  -z [ --zero-or-one ]       union with null '?'
-  -k [ --kleene-star ]       Kleene closure '*'
-  -K [ --kleene-plus ]       Kleene closure '+'
-  -l [ --kleene-loop ] arg   Kleene closure: x '?+' y = x(y.x)*
-  -e [ --reverse ] arg       reverse
-  -r [ --revcomp ] arg       reverse-complement '~'
-  -f [ --flip ] arg          flip input/output
   -n [ --null ]              null transducer
   -w [ --weight ] arg        weighted null transition '#'
+
+Prefix operations:
+  -e [ --reverse ]           reverse
+  -r [ --revcomp ]           reverse-complement '~'
+  -f [ --flip ]              flip input/output
+
+Postfix operations:
+  -z [ --zero-or-one ]       union with null '?'
+  -k [ --kleene-star ]       Kleene star '*'
+  -K [ --kleene-plus ]       Kleene plus '+'
+
+Infix operations:
+  -p [ --compose ]           compose '=&gt;'
+  -c [ --concat ]            concatenate '.'
+  -i [ --and ]               intersect '&&'
+  -u [ --or ]                take union '||'
+  -l [ --kleene-loop ]       Kleene with loop: x '?+' y = x(y.x)*
+
+Miscellaneous:
   -B [ --begin ]             left bracket '('
   -E [ --end ]               right bracket ')'
 

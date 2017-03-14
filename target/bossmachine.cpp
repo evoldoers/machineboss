@@ -36,6 +36,45 @@ int main (int argc, char** argv) {
       ("monochrome,m", "log in monochrome")
       ;
 
+    po::options_description createOpts("Transducer construction");
+    createOpts.add_options()
+      ("load,d", po::value<string>(), "load machine from file")
+      ("preset,t", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
+      ("generate,g", po::value<string>(), "sequence generator '<'")
+      ("accept,a", po::value<string>(), "sequence acceptor '>'")
+      ("null,n", "null transducer")
+      ("weight,w", po::value<string>(), "weighted null transition '#'")
+      ;
+
+    po::options_description prefixOpts("Prefix operations");
+    prefixOpts.add_options()
+      ("reverse,e", "reverse")
+      ("revcomp,r", "reverse-complement '~'")
+      ("flip,f", "flip input/output")
+      ;
+
+    po::options_description postfixOpts("Postfix operations");
+    postfixOpts.add_options()
+      ("zero-or-one,z", "union with null '?'")
+      ("kleene-star,k", "Kleene star '*'")
+      ("kleene-plus,K", "Kleene plus '+'")
+      ;
+
+    po::options_description infixOpts("Infix operations");
+    infixOpts.add_options()
+      ("compose,p", "compose '=>'")
+      ("concat,c", "concatenate '.'")
+      ("and,i", "intersect '&&'")
+      ("or,u", "take union '||'")
+      ("kleene-loop,l", "Kleene with loop: x '?+' y = x(y.x)*")
+      ;
+
+    po::options_description miscOpts("Miscellaneous");
+    miscOpts.add_options()
+      ("begin,B", "left bracket '('")
+      ("end,E", "right bracket ')'")
+      ;
+
     po::options_description appOpts("Transducer application");
     appOpts.add_options()
       ("save,S", po::value<string>(), "save machine")
@@ -46,28 +85,14 @@ int main (int argc, char** argv) {
       ("align,A", "Viterbi sequence alignment")
       ;
 
-    po::options_description transOpts("Transducer manipulation");
-    transOpts.add_options()
-      ("load,d", po::value<string>(), "load machine from file")
-      ("preset,t", po::value<string>(), (string ("preset machine (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
-      ("generate,g", po::value<string>(), "sequence generator '<'")
-      ("accept,a", po::value<string>(), "sequence acceptor '>'")
-      ("compose,p", po::value<string>(), "compose machine '=>'")
-      ("concat,c", po::value<string>(), "concatenate machine '.'")
-      ("and,i", po::value<string>(), "intersect machine '&&'")
-      ("or,u", po::value<string>(), "take union with machine '||'")
-      ("zero-or-one,z", "union with null '?'")
-      ("kleene-star,k", "Kleene closure '*'")
-      ("kleene-plus,K", "Kleene closure '+'")
-      ("kleene-loop,l", po::value<string>(), "Kleene closure: x '?+' y = x(y.x)*")
-      ("reverse,e", po::value<string>(), "reverse")
-      ("revcomp,r", po::value<string>(), "reverse-complement '~'")
-      ("flip,f", po::value<string>(), "flip input/output")
-      ("null,n", "null transducer")
-      ("weight,w", po::value<string>(), "weighted null transition '#'")
-      ("begin,B", "left bracket '('")
-      ("end,E", "right bracket ')'")
-      ;
+    po::options_description transOpts("");
+    transOpts.add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts);
+
+    po::options_description helpOpts("");
+    helpOpts.add(generalOpts).add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts).add(appOpts);
+
+    po::options_description parseOpts("");
+    parseOpts.add(generalOpts).add(appOpts);
 
     map<string,string> alias;
     alias[string("<")] = "--generate";
@@ -84,12 +109,6 @@ int main (int argc, char** argv) {
     alias[string("~")] = "--revcomp";
     alias[string("(")] = "--begin";
     alias[string(")")] = "--end";
-
-    po::options_description helpOpts("");
-    helpOpts.add(generalOpts).add(transOpts).add(appOpts);
-
-    po::options_description parseOpts("");
-    parseOpts.add(generalOpts).add(appOpts);
 
     po::variables_map vm;
     po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).allow_unregistered().run();
