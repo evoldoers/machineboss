@@ -86,8 +86,8 @@ obj/%.o: target/%.cpp
 	@test -e obj || mkdir obj
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
-bin/%: $(OBJFILES) obj/%.o t/src/%.cpp
-	@test -e bin || mkdir bin
+t/bin/%: $(OBJFILES) obj/%.o t/src/%.cpp
+	@test -e t/bin || mkdir t/bin
 	@$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
 
 obj/%.o: t/src/%.cpp
@@ -228,45 +228,45 @@ test-bad-weight:
 
 # Non-transducer I/O tests
 IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints
-test-seqpair: bin/testseqpair
-	@$(TEST) bin/testseqpair t/io/tiny.json -idem
+test-seqpair: t/bin/testseqpair
+	@$(TEST) t/bin/testseqpair t/io/tiny.json -idem
 
-test-seqpairlist: bin/testseqpairlist
-	@$(TEST) bin/testseqpairlist t/io/seqpairlist.json -idem
+test-seqpairlist: t/bin/testseqpairlist
+	@$(TEST) t/bin/testseqpairlist t/io/seqpairlist.json -idem
 
-test-params: bin/testparams
-	@$(TEST) bin/testparams t/io/params.json -idem
+test-params: t/bin/testparams
+	@$(TEST) t/bin/testparams t/io/params.json -idem
 
-test-constraints: bin/testconstraints
-	@$(TEST) bin/testconstraints t/io/constraints.json -idem
+test-constraints: t/bin/testconstraints
+	@$(TEST) t/bin/testconstraints t/io/constraints.json -idem
 
 # Symbolic algebra tests
 ALGEBRA_TESTS = test-list-params test-deriv-xplusy-x test-deriv-xy-x test-eval-1plus2
-test-list-params: bin/testlistparams
-	@$(TEST) bin/testlistparams t/algebra/x_plus_y.json t/expect/xy_params.txt
+test-list-params: t/bin/testlistparams
+	@$(TEST) t/bin/testlistparams t/algebra/x_plus_y.json t/expect/xy_params.txt
 
-test-deriv-xplusy-x: bin/testderiv
-	@$(TEST) bin/testderiv t/algebra/x_plus_y.json x t/expect/dxplusy_dx.json
+test-deriv-xplusy-x: t/bin/testderiv
+	@$(TEST) t/bin/testderiv t/algebra/x_plus_y.json x t/expect/dxplusy_dx.json
 
-test-deriv-xy-x: bin/testderiv
-	@$(TEST) bin/testderiv t/algebra/x_times_y.json x t/expect/dxy_dx.json
+test-deriv-xy-x: t/bin/testderiv
+	@$(TEST) t/bin/testderiv t/algebra/x_times_y.json x t/expect/dxy_dx.json
 
-test-eval-1plus2: bin/testeval
-	@$(TEST) bin/testeval t/algebra/x_plus_y.json t/algebra/params.json t/expect/1_plus_2.json
+test-eval-1plus2: t/bin/testeval
+	@$(TEST) t/bin/testeval t/algebra/x_plus_y.json t/algebra/params.json t/expect/1_plus_2.json
 
 # Dynamic programming tests
 DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-align-stutter-noise
-test-fwd-bitnoise-params-tiny: bin/testforward
-	@$(TEST) bin/testforward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwd-bitnoise-params-tiny.json
+test-fwd-bitnoise-params-tiny: t/bin/testforward
+	@$(TEST) t/bin/testforward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwd-bitnoise-params-tiny.json
 
-test-back-bitnoise-params-tiny: bin/testbackward
-	@$(TEST) bin/testbackward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/back-bitnoise-params-tiny.json
+test-back-bitnoise-params-tiny: t/bin/testbackward
+	@$(TEST) t/bin/testbackward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/back-bitnoise-params-tiny.json
 
-test-fb-bitnoise-params-tiny: bin/testcounts
-	@$(TEST) bin/testcounts t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwdback-bitnoise-params-tiny.json
+test-fb-bitnoise-params-tiny: t/bin/testcounts
+	@$(TEST) t/bin/testcounts t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwdback-bitnoise-params-tiny.json
 
-test-max-bitnoise-params-tiny: bin/testmaximize
-	@$(TEST) t/roundfloats.pl 4 bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
+test-max-bitnoise-params-tiny: t/bin/testmaximize
+	@$(TEST) t/roundfloats.pl 4 t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
 	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -F t/expect/fit-bitnoise-seqpairlist.json
