@@ -9,12 +9,21 @@
 using namespace std;
 using json = nlohmann::json;
 
-struct ParamsBase {
+class Params {
+public:
   ParamDefs defs;
-
-  void readJson (const json& json);
-  void writeJson (ostream& out) const;
+  void writeJson (ostream&) const;
+  Params combine (const Params&) const;
+protected:
+  void readJsonWithSchema (const json&, const char* schemaName);
 };
-typedef JsonLoader<ParamsBase> Params;
+
+struct ParamAssign : Params {
+  void readJson (const json& json);
+};
+
+struct ParamFuncs : Params {
+  void readJson (const json& json);
+};
 
 #endif /* PARAMS_INCLUDED */

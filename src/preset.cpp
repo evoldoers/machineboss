@@ -10,10 +10,12 @@ struct PresetCache {
 
 #include "preset/compdna.h"
 #include "preset/comprna.h"
+#include "preset/null.h"
 
 PresetCache::PresetCache() {
   addPreset(compdna);
   addPreset(comprna);
+  addPreset(null);
 }
 
 PresetCache presetCache;  // singleton

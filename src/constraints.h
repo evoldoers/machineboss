@@ -10,7 +10,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-struct ConstraintsBase {
+struct Constraints {
   vguard<vguard<string> > norm;
 
   void readJson (const json& json);
@@ -18,6 +18,5 @@ struct ConstraintsBase {
 
   Params defaultParams() const;
 };
-typedef JsonLoader<ConstraintsBase> Constraints;
 
 #endif /* CONSTRAINTS_INCLUDED */

@@ -3,9 +3,8 @@
 #include "schema.h"
 #include "util.h"
 
-void ConstraintsBase::readJson (const json& pj) {
+void Constraints::readJson (const json& pj) {
   MachineSchema::validateOrDie ("constraints", pj);
-  norm.clear();
   for (const auto& n: pj.at("norm")) {
     vguard<string> cons;
     for (const auto& p: n)
@@ -14,7 +13,7 @@ void ConstraintsBase::readJson (const json& pj) {
   }
 }
 
-void ConstraintsBase::writeJson (ostream& out) const {
+void Constraints::writeJson (ostream& out) const {
   out << "{\"norm\":[";
   size_t n = 0;
   for (auto& c: norm) {
@@ -27,7 +26,7 @@ void ConstraintsBase::writeJson (ostream& out) const {
   out << "]}" << endl;
 }
 
-Params ConstraintsBase::defaultParams() const {
+Params Constraints::defaultParams() const {
   Params params;
   for (auto& c: norm)
     for (auto& cp: c)

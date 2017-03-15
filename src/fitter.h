@@ -9,7 +9,7 @@
 struct MachineFitter {
   Machine machine;
   Constraints constraints;
-  Params seed;
+  Params seed, constants;
 
   Params fit (const SeqPairList& trainingSet) const;
 };

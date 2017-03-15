@@ -5,7 +5,7 @@ int main (int argc, char** argv) {
     cerr << "Usage: " << argv[0] << " constraints.json" << endl;
     exit(1);
   }
-  Constraints cons = Constraints::fromFile (argv[1]);
+  Constraints cons = JsonLoader<Constraints>::fromFile (argv[1]);
   cons.writeJson (cout);
   exit(0);
 }

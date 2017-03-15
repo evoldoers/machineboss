@@ -30,22 +30,20 @@ struct NamedSeq {
   }
 };
 
-typedef JsonLoader<NamedSeq<InputSymbol> > NamedInputSeq;
-typedef JsonLoader<NamedSeq<OutputSymbol> > NamedOutputSeq;
+typedef NamedSeq<InputSymbol> NamedInputSeq;
+typedef NamedSeq<OutputSymbol> NamedOutputSeq;
 
-struct SeqPairBase {
+struct SeqPair {
   NamedInputSeq input;
   NamedOutputSeq output;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };
-typedef JsonLoader<SeqPairBase> SeqPair;
 
-struct SeqPairListBase {
+struct SeqPairList {
   list<SeqPair> seqPairs;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };
-typedef JsonLoader<SeqPairListBase> SeqPairList;
 
 #endif /* SEQPAIR_INCLUDED */

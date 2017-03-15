@@ -19,12 +19,12 @@ struct MachineCounts {
 // M-step
 struct MachineObjective {
   const Constraints& constraints;
-  vguard<string> param;
+  vguard<string> transformedParam;
   map<string,size_t> transformedParamIndex;
-  ParamDefs paramTransform;
+  ParamDefs constantDefs, paramTransformDefs, allDefs;
   WeightExpr objective;
   vguard<WeightExpr> deriv;
-  MachineObjective (const Machine&, const MachineCounts&, const Constraints&);
+  MachineObjective (const Machine&, const MachineCounts&, const Constraints&, const Params&);
   Params optimize (const Params& seed) const;
   string toString() const;
 };

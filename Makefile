@@ -97,7 +97,7 @@ obj/%.o: t/src/%.cpp
 $(MAIN): bin/$(MAIN)
 
 clean:
-	rm -rf bin/$(MAIN) obj/*
+	rm -rf bin/* t/bin/* obj/*
 
 debug: all
 
@@ -138,7 +138,7 @@ test-unitindel2:
 	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-null test-weight test-shorthand
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-weight test-shorthand
 test-generator:
 	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
 
@@ -174,9 +174,6 @@ test-revcomp:
 
 test-flip:
 	@$(TEST) bin/$(MAIN) -f -g t/io/seq001.json t/expect/acceptor001.json
-
-test-null:
-	@$(TEST) bin/$(MAIN) -n t/expect/null.json
 
 test-weight:
 	@$(TEST) bin/$(MAIN) -w p t/expect/null-p.json
@@ -255,7 +252,7 @@ test-eval-1plus2: t/bin/testeval
 	@$(TEST) t/bin/testeval t/algebra/x_plus_y.json t/algebra/params.json t/expect/1_plus_2.json
 
 # Dynamic programming tests
-DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-align-stutter-noise
+DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-funcs test-align-stutter-noise
 test-fwd-bitnoise-params-tiny: t/bin/testforward
 	@$(TEST) t/bin/testforward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwd-bitnoise-params-tiny.json
 
@@ -269,7 +266,10 @@ test-max-bitnoise-params-tiny: t/bin/testmaximize
 	@$(TEST) t/roundfloats.pl 4 t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
-	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -F t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
+
+test-funcs:
+	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) -F t/io/r.json -F t/io/s.json t/machine/bitnoise.json t/machine/noise2.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
 
 test-align-stutter-noise:
 	@$(TEST) bin/$(MAIN) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json

@@ -3,7 +3,7 @@
 #include "schema.h"
 #include "util.h"
 
-void SeqPairBase::readJson (const json& pj) {
+void SeqPair::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpair", pj);
   input.name = "input";
   output.name = "output";
@@ -11,7 +11,7 @@ void SeqPairBase::readJson (const json& pj) {
   output.readJson (pj.at("output"));
 }
 
-void SeqPairBase::writeJson (ostream& out) const {
+void SeqPair::writeJson (ostream& out) const {
   out << "{\"input\":";
   input.writeJson (out);
   out << ",\"output\":";
@@ -19,13 +19,13 @@ void SeqPairBase::writeJson (ostream& out) const {
   out << "}";
 }
 
-void SeqPairListBase::readJson (const json& pj) {
+void SeqPairList::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpairlist", pj);
   for (const auto& j: pj)
-    seqPairs.push_back (SeqPair::fromJson(j));
+    seqPairs.push_back (JsonLoader<SeqPair>::fromJson(j));
 }
 
-void SeqPairListBase::writeJson (ostream& out) const {
+void SeqPairList::writeJson (ostream& out) const {
   out << "[";
   size_t n = 0;
   for (const auto& sp: seqPairs) {

@@ -42,7 +42,6 @@ int main (int argc, char** argv) {
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator '<'")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
-      ("null,n", "null transducer")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ;
 
@@ -78,10 +77,11 @@ int main (int argc, char** argv) {
     po::options_description appOpts("Transducer application");
     appOpts.add_options()
       ("save,S", po::value<string>(), "save machine")
-      ("params,P", po::value<string>(), "load parameter file")
-      ("constraints,C", po::value<string>(), "load constraints file")
-      ("data,D", po::value<string>(), "load sequence-pairs file")
-      ("fit,F", "Baum-Welch parameter fit")
+      ("params,P", po::value<vector<string> >(), "load parameters")
+      ("functions,F", po::value<vector<string> >(), "load functions & constants")
+      ("constraints,C", po::value<vector<string> >(), "load constraints")
+      ("data,D", po::value<vector<string> >(), "load sequence-pairs")
+      ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
       ;
 
@@ -191,10 +191,10 @@ int main (int argc, char** argv) {
 	else if (command == "--preset")
 	  m = MachinePresets::makePreset (getArg().c_str());
 	else if (command == "--generate") {
-	  const NamedInputSeq inSeq = NamedInputSeq::fromFile (getArg());
+	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
 	  m = Machine::generator (inSeq.name, inSeq.seq);
 	} else if (command == "--accept") {
-	  const NamedOutputSeq outSeq = NamedOutputSeq::fromFile (getArg());
+	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.name, outSeq.seq);
 	} else if (command == "--compose")
 	  m = Machine::compose (popMachine(), nextMachine());
@@ -224,8 +224,6 @@ int main (int argc, char** argv) {
 							    : "compdna"));
 	} else if (command == "--flip")
 	  m = nextMachine().flipInOut();
-	else if (command == "--null")
-	  m = Machine::null();
 	else if (command == "--weight") {
 	  const string wArg = getArg();
 	  WeightExpr w;
@@ -277,37 +275,46 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       machine.writeJson (out);
-    } else if (!vm.count("fit") && !vm.count("align"))
+    } else if (!vm.count("train") && !vm.count("align"))
       machine.writeJson (cout);
 
     // do some syntax checking
-    Require (!vm.count("params") || (vm.count("fit") || vm.count("align")), "Can't specify --params without --fit or --align");
-    Require (!vm.count("data") || (vm.count("fit") || vm.count("align")), "Can't specify --data without --fit or --align");
-    Require (!vm.count("constraints") || vm.count("fit"), "Can't specify --constraints without --fit");
+    Require (!vm.count("params") || (vm.count("train") || vm.count("align")), "Can't specify --params without --train or --align");
+    Require (!vm.count("data") || (vm.count("train") || vm.count("align")), "Can't specify --data without --train or --align");
+    Require (!vm.count("constraints") || vm.count("train"), "Can't specify --constraints without --train");
 
     // fit parameters
-    Params params;
+    ParamAssign seed;
+    if (vm.count("params"))
+      JsonLoader<ParamAssign>::readFiles (seed, vm.at("params").as<vector<string> >());
+
+    ParamFuncs funcs;
+    if (vm.count("functions"))
+      JsonLoader<ParamFuncs>::readFiles (funcs, vm.at("functions").as<vector<string> >());
+
     SeqPairList data;
-    if (vm.count("fit")) {
+    if (vm.count("data"))
+      JsonLoader<SeqPairList>::readFiles (data, vm.at("data").as<vector<string> >());
+    
+    Params params;
+    if (vm.count("train")) {
       Require (vm.count("constraints") && vm.count("data"),
 	       "To fit parameters, please specify a constraints file and a data file");
       MachineFitter fitter;
       fitter.machine = machine;
-      fitter.constraints = Constraints::fromFile(vm.at("constraints").as<string>());
-      fitter.seed = vm.count("params") ? Params::fromFile(vm.at("params").as<string>()) : fitter.constraints.defaultParams();
-      data = SeqPairList::fromFile(vm.at("data").as<string>());
+      fitter.constraints = JsonLoader<Constraints>::fromFiles(vm.at("constraints").as<vector<string> >());
+      fitter.constants = funcs;
+      fitter.seed = vm.count("params") ? seed : fitter.constraints.defaultParams();
       params = fitter.fit(data);
-      cout << params.toJsonString() << endl;
+      cout << JsonLoader<Params>::toJsonString(params) << endl;
     }
 
     // align sequences
     if (vm.count("align")) {
-      Require ((vm.count("data") && vm.count("params")) || vm.count("fit"),
-	       "To align sequences, please specify a data file and a parameter file (or fit with --fit)");
-      if (!vm.count("fit")) {
-	params = Params::fromFile(vm.at("params").as<string>());
-	data = SeqPairList::fromFile(vm.at("data").as<string>());
-      }
+      Require ((vm.count("data") && vm.count("params")) || vm.count("train"),
+	       "To align sequences, please specify a data file and a parameter file (or fit with --train)");
+      if (!vm.count("train"))
+	params = funcs.combine (seed);
       const EvaluatedMachine eval (machine, params);
       cout << "[";
       size_t n = 0;

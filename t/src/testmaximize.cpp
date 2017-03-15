@@ -7,12 +7,12 @@ int main (int argc, char** argv) {
     exit(1);
   }
   Machine machine = MachineLoader::fromFile (argv[1]);
-  Params params = Params::fromFile (argv[2]);
-  SeqPair seqPair = SeqPair::fromFile (argv[3]);
-  Constraints constraints = Constraints::fromFile (argv[4]);
+  Params params = JsonLoader<ParamAssign>::fromFile (argv[2]);
+  SeqPair seqPair = JsonLoader<SeqPair>::fromFile (argv[3]);
+  Constraints constraints = JsonLoader<Constraints>::fromFile (argv[4]);
   EvaluatedMachine evalMachine (machine, params);
   MachineCounts counts (evalMachine, seqPair);
-  MachineObjective objective (machine, counts, constraints);
+  MachineObjective objective (machine, counts, constraints, Params());
   Params optParams = objective.optimize (params);
   optParams.writeJson (cout);
   exit(0);

@@ -7,8 +7,8 @@ int main (int argc, char** argv) {
     exit(1);
   }
   Machine machine = MachineLoader::fromFile (argv[1]);
-  Params params = Params::fromFile (argv[2]);
-  SeqPair seqpair = SeqPair::fromFile (argv[3]);
+  Params params = JsonLoader<ParamAssign>::fromFile (argv[2]);
+  SeqPair seqpair = JsonLoader<SeqPair>::fromFile (argv[3]);
   EvaluatedMachine evalMachine (machine, params);
   BackwardMatrix backward (evalMachine, seqpair);
   backward.writeJson (cout);

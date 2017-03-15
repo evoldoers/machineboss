@@ -5,7 +5,7 @@ int main (int argc, char** argv) {
     cerr << "Usage: " << argv[0] << " seqpair.json" << endl;
     exit(1);
   }
-  SeqPair seqpair = SeqPair::fromFile (argv[1]);
+  SeqPair seqpair = JsonLoader<SeqPair>::fromFile (argv[1]);
   seqpair.writeJson (cout);
   cout << endl;
   exit(0);

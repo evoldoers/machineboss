@@ -7,8 +7,8 @@ int main (int argc, char** argv) {
     exit(1);
   }
   Machine machine = MachineLoader::fromFile (argv[1]);
-  Params params = Params::fromFile (argv[2]);
-  SeqPair seqPair = SeqPair::fromFile (argv[3]);
+  Params params = JsonLoader<ParamAssign>::fromFile (argv[2]);
+  SeqPair seqPair = JsonLoader<SeqPair>::fromFile (argv[3]);
   EvaluatedMachine evalMachine (machine, params);
   MachineCounts counts (evalMachine, seqPair);
   counts.writeJson (cout);

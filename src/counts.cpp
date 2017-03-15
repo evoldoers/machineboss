@@ -51,8 +51,8 @@ void MachineCounts::writeJson (ostream& outs) const {
   outs << "[" << join (s, ",\n ") << "]" << endl;
 }
 
-MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& constraints) :
-  constraints (constraints)
+MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& constraints, const Params& constants) :
+  constraints (constraints), constantDefs (constants.defs)
 {
   for (StateIndex s = 0; s < machine.state.size(); ++s) {
     EvaluatedMachineState::TransIndex t = 0;
@@ -71,44 +71,47 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
     for (size_t n = 0; n < c.size(); ++n) {
       const string& cParam = c[n];
       if (n == c.size() - 1)
-	paramTransform[cParam] = notPrev;
+	paramTransformDefs[cParam] = notPrev;
       else {
 	string trParam;
 	do
 	  trParam = string(TransformedParamPrefix) + to_string(++trIdx);
 	while (p.count(trParam));
 
-	transformedParamIndex[cParam] = param.size();
-	param.push_back (trParam);
+	transformedParamIndex[cParam] = transformedParam.size();
+	transformedParam.push_back (trParam);
 	WeightExpr notThis = WeightAlgebra::expOf (WeightAlgebra::multiply (-1,
 									    WeightAlgebra::multiply (WeightExpr(trParam),
 												     WeightExpr(trParam))));
-	paramTransform[cParam] = WeightAlgebra::multiply (notPrev,
-							  WeightAlgebra::subtract (WeightExpr(true), notThis));
+	paramTransformDefs[cParam] = WeightAlgebra::multiply (notPrev,
+							      WeightAlgebra::subtract (WeightExpr(true), notThis));
 	notPrev = WeightAlgebra::multiply (notPrev, notThis);
       }
     }
   }
 
-  deriv.reserve (param.size());
-  for (const auto& p: param)
-    deriv.push_back (WeightAlgebra::deriv (objective, paramTransform, p));
+  allDefs = constantDefs;
+  allDefs.insert (paramTransformDefs.begin(), paramTransformDefs.end());
+
+  deriv.reserve (transformedParam.size());
+  for (const auto& p: transformedParam)
+    deriv.push_back (WeightAlgebra::deriv (objective, allDefs, p));
 
   LogThisAt (5, toString());
 }
 
 string MachineObjective::toString() const {
-  string s = string("E = ") + WeightAlgebra::toString(objective,paramTransform) + "\n";
-  for (size_t n = 0; n < param.size(); ++n)
-    s += "dE/d" + param[n] + " = " + WeightAlgebra::toString(deriv[n],paramTransform) + "\n";
+  string s = string("E = ") + WeightAlgebra::toString(objective,allDefs) + "\n";
+  for (size_t n = 0; n < transformedParam.size(); ++n)
+    s += "dE/d" + transformedParam[n] + " = " + WeightAlgebra::toString(deriv[n],allDefs) + "\n";
   return s;
 }
 
 Params gsl_vector_to_params (const gsl_vector *v, const MachineObjective& ml) {
   Params p;
-  p.defs = ml.paramTransform;
-  for (size_t n = 0; n < ml.param.size(); ++n)
-    p.defs[ml.param[n]] = WeightExpr (gsl_vector_get (v, n));
+  p.defs = ml.allDefs;
+  for (size_t n = 0; n < ml.transformedParam.size(); ++n)
+    p.defs[ml.transformedParam[n]] = WeightExpr (gsl_vector_get (v, n));
   return p;
 }
 
@@ -119,7 +122,7 @@ double gsl_machine_objective (const gsl_vector *v, void *voidML)
 
   const double f = WeightAlgebra::eval (ml.objective, pv.defs);
 
-  LogThisAt (4, pv.toJsonString() << endl);
+  LogThisAt (4, JsonLoader<Params>::toJsonString(pv) << endl);
   LogThisAt (5, "gsl_machine_objective(" << to_string_join(gsl_vector_to_stl(v)) << ") = " << f << endl);
 
   return f;
@@ -130,7 +133,7 @@ void gsl_machine_objective_deriv (const gsl_vector *v, void *voidML, gsl_vector 
   const MachineObjective& ml (*((MachineObjective*)voidML));
   const Params pv = gsl_vector_to_params (v, ml);
 
-  for (size_t n = 0; n < ml.param.size(); ++n)
+  for (size_t n = 0; n < ml.transformedParam.size(); ++n)
     gsl_vector_set (df, n, WeightAlgebra::eval (ml.deriv[n], pv.defs));
 
   const vguard<double> v_stl = gsl_vector_to_stl(v), df_stl = gsl_vector_to_stl(df);
@@ -146,7 +149,7 @@ void gsl_machine_objective_with_deriv (const gsl_vector *x, void *voidML, double
 Params MachineObjective::optimize (const Params& seed) const {
   gsl_vector *v;
   gsl_multimin_function_fdf func;
-  func.n = param.size();
+  func.n = transformedParam.size();
   func.f = gsl_machine_objective;
   func.df = gsl_machine_objective_deriv;
   func.fdf = gsl_machine_objective_with_deriv;
@@ -193,8 +196,8 @@ Params MachineObjective::optimize (const Params& seed) const {
 
   const Params finalTransformedParams = gsl_vector_to_params (s->x, *this);
   Params finalParams = seed;
-  for (const auto& paramFunc: paramTransform)
-    finalParams.defs[paramFunc.first] = WeightAlgebra::eval (paramFunc.second, finalTransformedParams.defs);
+  for (const auto& pt: paramTransformDefs)
+    finalParams.defs[pt.first] = WeightAlgebra::eval (pt.second, finalTransformedParams.defs);
   
   gsl_multimin_fdfminimizer_free (s);
   gsl_vector_free (x);
