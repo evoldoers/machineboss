@@ -49,7 +49,7 @@ function makeParam (aa, codon) {
 var machine =
     { state:
       [{id:'S',
-	trans: codons.map ((cod) => { return { in: codon2aa[cod], out: cod.charAt(0), to: cod.substr(1), weight: makeParam (codon2aa[cod], cod) } })
+	trans: codons.map ((cod) => { return { in: codon2aa[cod], out: cod.charAt(0), to: cod.substr(1), weight: aa2codons[codon2aa[cod]].length == 1 ? undefined : makeParam (codon2aa[cod], cod) } })
 	.concat ([{in:'base',out:'base',to:'S'},
 		  {in:'intron',out:'intron',to:'S'},
 		  {to:'E'}]) }]
@@ -57,12 +57,13 @@ var machine =
       .concat (Object.keys(cod3).sort().map ((c3) => { return { id: c3, trans: [ { out: c3, to: 'S' } ] } }))
       .concat ([{id:'E'}]) }
 
-var cons = { norm: Object.keys(aa2codons).sort().map ((aa) => { return aa2codons[aa].map ((c) => { return makeParam (aa, c) }) }) }
+var cons = { norm: Object.keys(aa2codons).sort().filter((aa) => (aa2codons[aa].length > 1)).map ((aa) => { return aa2codons[aa].map ((c) => { return makeParam (aa, c) }) }) }
 var param = {};
 Object.keys(aa2codons).sort().map ((aa) => {
-    aa2codons[aa].forEach ((c) => {
-	param[makeParam(aa,c)] = codonFreq[c]
-    })
+    if (aa2codons[aa].length > 1)
+	aa2codons[aa].forEach ((c) => {
+	    param[makeParam(aa,c)] = codonFreq[c]
+	})
 })
 
 fs.writeFileSync ('preset/'+name+'.json', JSON.stringify (machine))
