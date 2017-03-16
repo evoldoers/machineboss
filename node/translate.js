@@ -5,7 +5,7 @@ var path = require('path')
 var Getopt = require('node-getopt')
 
 var defaultCodonPath = path.resolve(__dirname, '../data/codon-usage.txt')
-var defaultName = "translator"
+var defaultName = "translate"
 
 var getopt = Getopt.create([
     ['c' , 'codon=PATH'    , 'codon translation & relative frequency table (default is "' + defaultCodonPath + '")'],
