@@ -5,7 +5,7 @@ var fs = require('fs'),
 
 var getopt = Getopt.create([
     ['a' , 'alphabet=STRING'  , 'alphabet'],
-    ['c' , 'constraints'      , 'make constraints file'],
+    ['n' , 'name=STRING'      , 'name'],
     ['p' , 'pretty'],
     ['h' , 'help'             , 'display this help message']
 ])              // create Getopt instance
@@ -19,7 +19,9 @@ function inputError(err) {
 }
 
 opt.options.alphabet || inputError ("Please specify an alphabet")
+opt.options.name || inputError ("Please specify a model name")
 var alph = opt.options.alphabet.split("")
+var name = opt.options.name
 
 function transitions (inLabel, outLabel, dest) {
     return alph.map (function (c) {
@@ -63,4 +65,5 @@ var machine = { state: [{id: "S",
 var constraints = [{prob:["gapOpen","gapExtend"],
 		    norm:alph.map((c) => alph.map((d)=>"sub"+c+d))}]
 
-console.log (JSON.stringify (opt.options.constraints ? constraints : machine, null, opt.options.pretty ? 2 : null))
+fs.writeFileSync ("preset/"+name+".json", JSON.stringify (machine, null, opt.options.pretty ? 2 : null))
+fs.writeFileSync ("constraints/"+name+".json", JSON.stringify (constraints, null, opt.options.pretty ? 2 : null))
