@@ -3,12 +3,12 @@
 var prot = "ACDEFGHIKLMNPQRSTVWY".split("")
 
 var machine = { state: [{ id: "S",
-                          trans: prot.reduce ((t,c) => [
+                          trans: prot.reduce ((t,c) => t.concat([
                             { in: c, out: c, to: "S", weight: {"-":[true,"intron"]} },
                             { in: c, to: "IBB", weight: {"/":["intron",3]} },
                             { in: c, to: "BIB", weight: {"/":["intron",3]} },
                             { in: c, to: "BBI", weight: {"/":["intron",3]} }
-                          ]) },
+                          ]), []) },
                         { id: "IBB", trans: [{ out: "intron", to: "BB" }] },
                         { id: "BB", trans: [{ out: "base", to: "B" }] },
                         { id: "B", trans: [{ out: "base", to: "S" }] },
