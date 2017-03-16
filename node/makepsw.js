@@ -40,27 +40,27 @@ function times (expr1,expr2) {
     return {"*":[expr1,expr2]}
 }
 
-var machine = { state: [{id: "S",
-			 trans: [{to: "I", weight: "gapOpen"},
-				 {to: "W", weight: not("gapOpen")}]},
-			{id: "I",
-			 trans: alph.map ((c) => {return { out: c, to: "J", weight: "eqm"+c } })},
-			{id: "J",
-			 trans: [{to: "I", weight: "gapExtend"},
-				 {to: "W", weight: not("gapExtend")}]},
-			{id: "W",
-			 trans: [{to: "M", weight: "gapOpen"},
-				 {to: "D", weight: not("gapOpen")}]},
-			{id: "M",
-			 trans: [{to: "E"}]
-			 .concat (alph.reduce ((t,c) => t.concat (alph.map ((d) => {return { in: c, out: d, to: "S", weight: "sub"+c+d }})), []))},
-			{id: "D",
-			 trans: [{to: "E"}]
-			 .concat (alph.map ((c) => {return { in: c, to: "X" }}))},
-			{id: "X",
-			 trans: [{to: "D", weight: "gapExtend"},
-				 {to: "M", weight: not("gapExtend")}]},
-		       {id: "E"} ] }
+var machine = { state: [{id: name+"-S",
+			 trans: [{to: name+"-I", weight: "gapOpen"},
+				 {to: name+"-W", weight: not("gapOpen")}]},
+			{id: name+"-I",
+			 trans: alph.map ((c) => {return { out: c, to: name+"-J", weight: "eqm"+c } })},
+			{id: name+"-J",
+			 trans: [{to: name+"-I", weight: "gapExtend"},
+				 {to: name+"-W", weight: not("gapExtend")}]},
+			{id: name+"-W",
+			 trans: [{to: name+"-M", weight: "gapOpen"},
+				 {to: name+"-D", weight: not("gapOpen")}]},
+			{id: name+"-M",
+			 trans: [{to: name+"-E"}]
+			 .concat (alph.reduce ((t,c) => t.concat (alph.map ((d) => {return { in: c, out: d, to: name+"-S", weight: "sub"+c+d }})), []))},
+			{id: name+"-D",
+			 trans: [{to: name+"-E"}]
+			 .concat (alph.map ((c) => {return { in: c, to: name+"-X" }}))},
+			{id: name+"-X",
+			 trans: [{to: name+"-D", weight: "gapExtend"},
+				 {to: name+"-M", weight: not("gapExtend")}]},
+		       {id: name+"-E"} ] }
 
 var constraints = [{prob:["gapOpen","gapExtend"],
 		    norm:alph.map((c) => alph.map((d)=>"sub"+c+d))}]

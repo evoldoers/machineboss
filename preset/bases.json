@@ -1,10 +1,10 @@
 {"state":
- [{"id":"S",
-   "trans":[{"in":"A","out":"A","to":"S"},
-	    {"in":"C","out":"A","to":"S"},
-	    {"in":"G","out":"A","to":"S"},
-	    {"in":"T","out":"A","to":"S"},
-	    {"in":"base","out":"A","to":"S","weight":"pA"},
-	    {"in":"base","out":"C","to":"S","weight":"pC"},
-	    {"in":"base","out":"G","to":"S","weight":"pG"},
-	    {"in":"base","out":"T","to":"S","weight":"pT"}]}]}
+ [{"id":"bases",
+   "trans":[{"in":"A","out":"A","to":"bases"},
+	    {"in":"C","out":"A","to":"bases"},
+	    {"in":"G","out":"A","to":"bases"},
+	    {"in":"T","out":"A","to":"bases"},
+	    {"in":"base","out":"A","to":"bases","weight":"pA"},
+	    {"in":"base","out":"C","to":"bases","weight":"pC"},
+	    {"in":"base","out":"G","to":"bases","weight":"pG"},
+	    {"in":"base","out":"T","to":"bases","weight":"pT"}]}]}

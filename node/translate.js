@@ -48,14 +48,14 @@ function makeParam (aa, codon) {
 
 var machine =
     { state:
-      [{id:'S',
+      [{id:name+'-S',
 	trans: codons.map ((cod) => { return { in: codon2aa[cod], out: cod.charAt(0), to: cod.substr(1), weight: aa2codons[codon2aa[cod]].length == 1 ? undefined : makeParam (codon2aa[cod], cod) } })
-	.concat ([{in:'base',out:'base',to:'S'},
-		  {in:'intron',out:'intron',to:'S'},
-		  {to:'E'}]) }]
+	.concat ([{in:'base',out:'base',to:name+'-S'},
+		  {in:'intron',out:'intron',to:name+'-S'},
+		  {to:name+'-E'}]) }]
       .concat (Object.keys(cod23).sort().map ((c23) => { return { id: c23, trans: [ { out: c23.charAt(0), to: c23.substr(1) } ] } }))
-      .concat (Object.keys(cod3).sort().map ((c3) => { return { id: c3, trans: [ { out: c3, to: 'S' } ] } }))
-      .concat ([{id:'E'}]) }
+      .concat (Object.keys(cod3).sort().map ((c3) => { return { id: c3, trans: [ { out: c3, to: name+'-S' } ] } }))
+      .concat ([{id:name+'-E'}]) }
 
 var cons = { norm: Object.keys(aa2codons).sort().filter((aa) => (aa2codons[aa].length > 1)).map ((aa) => { return aa2codons[aa].map ((c) => { return makeParam (aa, c) }) }) }
 var param = {};
