@@ -119,6 +119,9 @@ constraints/protpsw.json: node/makepsw.js
 preset/dnapsw.json: node/makepsw.js
 	node/makepsw.js -a ACGT >$@
 
+preset/%.json: node/%.js
+	node $< >$@
+
 constraints/dnapsw.json: node/makepsw.js
 	node/makepsw.js -a ACGT -c >$@
 
