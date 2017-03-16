@@ -1,0 +1,10 @@
+{"state":
+ [{"id":"S",
+   "trans":[{"in":"A","out":"A","to":"S"},
+	    {"in":"C","out":"A","to":"S"},
+	    {"in":"G","out":"A","to":"S"},
+	    {"in":"T","out":"A","to":"S"},
+	    {"in":"base","out":"A","to":"S","weight":"pA"},
+	    {"in":"base","out":"C","to":"S","weight":"pC"},
+	    {"in":"base","out":"G","to":"S","weight":"pG"},
+	    {"in":"base","out":"T","to":"S","weight":"pT"}]}]}
