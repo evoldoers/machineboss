@@ -66,6 +66,20 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
   // p_i = (1 - exp(-x_i^2)) \prod_{k=1}^{i-1} exp(-x_k^2)
   const set<string> p = WeightAlgebra::params (objective, ParamDefs());
   int trIdx = 0;
+  auto makeTransformedParamName = [&] (const string& param) -> string {
+    string trParam;
+    do
+      trParam = string(TransformedParamPrefix) + to_string(++trIdx);
+    while (p.count(trParam));
+    transformedParamIndex[param] = transformedParam.size();
+    transformedParam.push_back (trParam);
+    return trParam;
+  };
+  auto makeExpFunc = [&] (const string& trParam) -> WeightExpr {
+    return WeightAlgebra::expOf (WeightAlgebra::multiply (-1,
+							  WeightAlgebra::multiply (WeightExpr(trParam),
+										   WeightExpr(trParam))));
+  };
   for (const auto& c: constraints.norm) {
     WeightExpr notPrev (true);
     for (size_t n = 0; n < c.size(); ++n) {
@@ -73,22 +87,15 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
       if (n == c.size() - 1)
 	paramTransformDefs[cParam] = notPrev;
       else {
-	string trParam;
-	do
-	  trParam = string(TransformedParamPrefix) + to_string(++trIdx);
-	while (p.count(trParam));
-
-	transformedParamIndex[cParam] = transformedParam.size();
-	transformedParam.push_back (trParam);
-	WeightExpr notThis = WeightAlgebra::expOf (WeightAlgebra::multiply (-1,
-									    WeightAlgebra::multiply (WeightExpr(trParam),
-												     WeightExpr(trParam))));
-	paramTransformDefs[cParam] = WeightAlgebra::multiply (notPrev,
-							      WeightAlgebra::subtract (WeightExpr(true), notThis));
+	const string trParam = makeTransformedParamName (cParam);
+	WeightExpr notThis = makeExpFunc (trParam);
+	paramTransformDefs[cParam] = WeightAlgebra::multiply (notPrev, WeightAlgebra::negate (notThis));
 	notPrev = WeightAlgebra::multiply (notPrev, notThis);
       }
     }
   }
+  for (const auto& pParam: constraints.prob)
+    paramTransformDefs[pParam] = makeExpFunc (makeTransformedParamName (pParam));
 
   allDefs = constantDefs;
   allDefs.insert (paramTransformDefs.begin(), paramTransformDefs.end());
@@ -170,6 +177,10 @@ Params MachineObjective::optimize (const Params& seed) const {
       pSum += p;
       gsl_vector_set (x, transformedParamIndex.at(cParam), sqrt (-log (z)));
     }
+  }
+  for (const auto& pParam: constraints.prob) {
+      const double p = seed.defs.at(pParam).get<double>();
+      gsl_vector_set (x, transformedParamIndex.at(pParam), sqrt (-log (1 - p)));
   }
 
   const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_vector_bfgs2;

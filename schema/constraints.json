@@ -4,6 +4,12 @@
   "description": "BossMachine parameter constraints schema",
   "type": "object",
   "properties": {
+    "prob": {
+      "type": "array",
+	"items": {
+	    "type": "string"
+	}
+    },
     "norm": {
       "type": "array",
       "items": {

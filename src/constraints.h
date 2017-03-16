@@ -11,6 +11,7 @@ using namespace std;
 using json = nlohmann::json;
 
 struct Constraints {
+  vguard<string> prob;
   vguard<vguard<string> > norm;
 
   void readJson (const json& json);
