@@ -110,6 +110,18 @@ generate-$(CATEGORY)s: $(patsubst $(CATEGORY)/%.json,src/$(CATEGORY)/%.h,$(wildc
 src/preset/$(FILE).h: preset/$(FILE).json
 	xxd -i $< >$@
 
+preset/protpsw.json: node/makepsw.js
+	node/makepsw.js -a ACDEFGHIKLMNPQRSTVWY >$@
+
+constraints/protpsw.json: node/makepsw.js
+	node/makepsw.js -a ACDEFGHIKLMNPQRSTVWY -c >$@
+
+preset/dnapsw.json: node/makepsw.js
+	node/makepsw.js -a ACGT >$@
+
+constraints/dnapsw.json: node/makepsw.js
+	node/makepsw.js -a ACGT -c >$@
+
 # valijson doesn't like the URLs, but other schema validators demand them, so strip them out for xxd
 src/schema/$(FILE).h: schema/$(FILE).json.nourl
 	xxd -i $< | sed 's/.nourl//' >$@

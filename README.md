@@ -25,7 +25,8 @@ General options:
 
 Transducer construction:
   -l [ --load ] arg          load machine from file
-  -p [ --preset ] arg        select preset (compdna, comprna, null)
+  -p [ --preset ] arg        select preset (compdna, comprna, dnapsw, null, 
+                             protpsw)
   -g [ --generate ] arg      sequence generator '&lt;'
   -a [ --accept ] arg        sequence acceptor '&gt;'
   -w [ --weight ] arg        weighted null transition '#'
@@ -54,7 +55,7 @@ Miscellaneous:
 Transducer application:
   -S [ --save ] arg          save machine
   -P [ --params ] arg        load parameters
-  -F [ --functions ] arg     load function definitions
+  -F [ --functions ] arg     load functions & constants
   -C [ --constraints ] arg   load constraints
   -D [ --data ] arg          load sequence-pairs
   -T [ --train ]             Baum-Welch parameter fit

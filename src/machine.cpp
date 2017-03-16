@@ -192,9 +192,13 @@ void Machine::readJson (const json& pj) {
       for (const json& jt : jtrans) {
 	MachineTransition t;
 	const json& dest = jt.at("to");
-	t.dest = dest.is_number()
-	  ? dest.get<StateIndex>()
-	  : id2n.at (dest.dump());
+	if (dest.is_number())
+	  t.dest = dest.get<StateIndex>();
+	else {
+	  const string dstr = dest.dump();
+	  Require (id2n.count(dstr), "No such state in \"to\": %s", dstr.c_str());
+	  t.dest = id2n.at (dstr);
+	}
 	if (jt.count("in"))
 	  t.in = jt.at("in").get<string>();
 	if (jt.count("out"))
