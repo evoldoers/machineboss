@@ -1,0 +1,5 @@
+{"state":
+ [{"id":"flank",
+   "trans":[{"out":"base","to":"flank","weight":"flankExtend"},
+            {"to":"flank-end","weight":{"-":[true,"flankExtend"]}}]},
+  {"id":"flank-end"}]}
