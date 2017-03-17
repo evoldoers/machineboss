@@ -1,9 +1,9 @@
 {"state":
  [{"id":"bases",
    "trans":[{"in":"A","out":"A","to":"bases"},
-	    {"in":"C","out":"A","to":"bases"},
-	    {"in":"G","out":"A","to":"bases"},
-	    {"in":"T","out":"A","to":"bases"},
+	    {"in":"C","out":"C","to":"bases"},
+	    {"in":"G","out":"G","to":"bases"},
+	    {"in":"T","out":"T","to":"bases"},
 	    {"in":"base","out":"A","to":"bases","weight":"pA"},
 	    {"in":"base","out":"C","to":"bases","weight":"pC"},
 	    {"in":"base","out":"G","to":"bases","weight":"pG"},

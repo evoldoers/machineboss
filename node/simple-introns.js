@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var prot = "ACDEFGHIKLMNPQRSTVWY".split("")
+var prot = "ACGT".split("")
 
 var machine = { state: [{ id: "si-S",
                           trans: prot.map ((c) => { return { in: c, out: c, to: "si-S" } })

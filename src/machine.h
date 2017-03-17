@@ -101,6 +101,9 @@ struct Machine {
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine() const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
+
+  size_t nSilentBackTransitions() const;
+  Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
 };
 
 typedef JsonLoader<Machine> MachineLoader;

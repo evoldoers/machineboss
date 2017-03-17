@@ -14,7 +14,7 @@
   {"n":3,
    "id":["S",["loop-main",["101",3]]],
    "trans":[{"to":4},
-            {"to":7}]},
+            {"to":8}]},
   {"n":4,
    "id":["S",["loop-continue",["001",0]]],
    "trans":[{"to":5,"in":"0","weight":"p"},
@@ -25,9 +25,13 @@
             {"to":6,"in":"1","weight":"q"}]},
   {"n":6,
    "id":["S",["loop-continue",["001",2]]],
-   "trans":[{"to":0,"in":"0","weight":"q"},
-            {"to":0,"in":"1","weight":"p"}]},
+   "trans":[{"to":7,"in":"0","weight":"q"},
+            {"to":7,"in":"1","weight":"p"}]},
   {"n":7,
+   "id":["S",["loop-continue",["001",3]]],
+   "trans":[{"to":1,"in":"0","weight":"q"},
+            {"to":1,"in":"1","weight":"p"}]},
+  {"n":8,
    "id":["S",["loop-end"]]}
  ]
 }

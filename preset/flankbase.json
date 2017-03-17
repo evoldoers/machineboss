@@ -1,5 +1,5 @@
 {"state":
- [{"id":"flank",
-   "trans":[{"out":"base","to":"flank","weight":"flankExtend"},
-            {"to":"flank-end","weight":{"-":[true,"flankExtend"]}}]},
+ [{"id":"flank-start","trans":[{"to":"flank-emit","weight":"flankExtend"},
+                               {"to":"flank-end","weight":{"-":[true,"flankExtend"]}}]},
+  {"id":"flank-emit","trans":[{"out":"base","to":"flank-start"}]},
   {"id":"flank-end"}]}
