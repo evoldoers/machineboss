@@ -192,12 +192,35 @@ string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs, int 
   if (op == "log" || op == "exp") return op + "(" + toString(w.at(op),defs) + ")";
   const json& args = operands(w);
   if (op == "pow") return string("pow(") + toString(args[0],defs) + "," + toString(args[1],defs) + ")";
-  const int precedence = (op == "*" ? 3 : (op == "/" ? 2 : (op == "+" ? 1 : 0)));
-  return string(parentPrecedence > precedence ? "(" : "")
-    + toString(args[0],defs,precedence)
+
+  // Precedence rules
+
+  // a*b: rank 2
+  // a needs () if it's anything except a multiplication or division [parent rank 2]
+  // b needs () if it's anything except a multiplication or division [parent rank 2]
+
+  // a/b: rank 2
+  // a needs () if it's anything except a multiplication or division [parent rank 2]
+  // b needs () if it's anything except a constant/function [parent rank 3]
+
+  // a-b: rank 1
+  // a never needs () [parent rank 0]
+  // b needs () if it's anything except a multiplication or division [parent rank 2]
+
+  // a+b: rank 1
+  // a never needs () [parent rank 0]
+  // b never needs () [parent rank 0]
+
+  int p, l, r;
+  if (op == "*") p = l = r = 2;
+  else if (op == "/") { p = l = 2; r = 3; }
+  else if (op == "-") { p = 1; l = 0; r = 2; }
+  else if (op == "+") { p = 1; l = r = 0; }
+  return string(parentPrecedence > p ? "(" : "")
+    + toString(args[0],defs,l)
     + op
-    + toString(args[1],defs,precedence)
-    + (parentPrecedence > precedence ? ")" : "");
+    + toString(args[1],defs,r)
+    + (parentPrecedence > p ? ")" : "");
 }
 
 ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
