@@ -236,7 +236,7 @@ test-bad-weight:
 	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.json -fail
 
 # Non-transducer I/O tests
-IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints
+IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints test-dot
 test-seqpair: t/bin/testseqpair
 	@$(TEST) t/bin/testseqpair t/io/tiny.json -idem
 
@@ -248,6 +248,10 @@ test-params: t/bin/testparams
 
 test-constraints: t/bin/testconstraints
 	@$(TEST) t/bin/testconstraints t/io/constraints.json -idem
+
+test-dot:
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json --graphviz t/expect/bitnoise.dot
+	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json t/machine/bitnoise.json --graphviz t/expect/bitnoise2.dot
 
 # Symbolic algebra tests
 ALGEBRA_TESTS = test-list-params test-deriv-xplusy-x test-deriv-xy-x test-eval-1plus2

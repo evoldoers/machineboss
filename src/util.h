@@ -89,8 +89,7 @@ std::string toupper (const std::string& s);
    http://stackoverflow.com/questions/2417588/escaping-a-c-string
  */
 template<class OutIter>
-OutIter write_quoted_escaped(std::string const& s, OutIter out) {
-  *out++ = '"';
+OutIter write_escaped(std::string const& s, OutIter out) {
   for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
     unsigned char c = *i;
     if (' ' <= c and c <= '~' and c != '\\' and c != '"') {
@@ -112,9 +111,10 @@ OutIter write_quoted_escaped(std::string const& s, OutIter out) {
       }
     }
   }
-  *out++ = '"';
   return out;
 }
+
+std::string escaped_str (std::string const& s);
 
 /* random_double */
 template<class Generator>

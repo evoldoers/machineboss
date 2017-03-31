@@ -179,7 +179,7 @@ set<string> WeightAlgebra::params (const WeightExpr& w, const ParamDefs& defs) {
   return p;
 }
 
-string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs) {
+string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence) {
   const string op = opcode(w);
   if (op == "null") return string("0");
   if (op == "boolean") return to_string (w.get<bool>() ? 1 : 0);
@@ -192,7 +192,12 @@ string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs) {
   if (op == "log" || op == "exp") return op + "(" + toString(w.at(op),defs) + ")";
   const json& args = operands(w);
   if (op == "pow") return string("pow(") + toString(args[0],defs) + "," + toString(args[1],defs) + ")";
-  return string("(") + toString(args[0],defs) + op + toString(args[1],defs) + ")";
+  const int precedence = (op == "*" ? 3 : (op == "/" ? 2 : (op == "+" ? 1 : 0)));
+  return string(parentPrecedence > precedence ? "(" : "")
+    + toString(args[0],defs,precedence)
+    + op
+    + toString(args[1],defs,precedence)
+    + (parentPrecedence > precedence ? ")" : "");
 }
 
 ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {

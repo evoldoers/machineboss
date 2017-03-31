@@ -54,6 +54,7 @@ Miscellaneous:
 
 Transducer application:
   -S [ --save ] arg          save machine
+  -G [ --graphviz ]          output in Graphviz DOT format
   -P [ --params ] arg        load parameters
   -F [ --functions ] arg     load functions & constants
   -C [ --constraints ] arg   load constraints

@@ -1,0 +1,9 @@
+digraph G {
+ 0 [label="S"];
+
+ 0 -> 0 [headlabel="0/0",taillabel="p"];
+ 0 -> 0 [headlabel="0/1",taillabel="q"];
+ 0 -> 0 [headlabel="1/1",taillabel="p"];
+ 0 -> 0 [headlabel="1/0",taillabel="q"];
+
+}

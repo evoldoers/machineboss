@@ -32,7 +32,8 @@ struct WeightAlgebra {
   static double eval (const WeightExpr& w, const ParamDefs& defs);
   static WeightExpr deriv (const WeightExpr& w, const ParamDefs& defs, const string& param);
   static set<string> params (const WeightExpr& w, const ParamDefs& defs);
-  static string toString (const WeightExpr& w, const ParamDefs& defs);
+
+  static string toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence = 0);
 
   static ParamDefs exclude (const ParamDefs& defs, const string& param);
 };

@@ -88,3 +88,9 @@ std::string toupper (const std::string& s) {
     r[n] = toupper (r[n]);
   return r;
 }
+
+std::string escaped_str (std::string const& s) {
+  std::string outs;
+  write_escaped (s, back_inserter (outs));
+  return outs;
+}

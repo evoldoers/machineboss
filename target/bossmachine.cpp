@@ -76,7 +76,8 @@ int main (int argc, char** argv) {
 
     po::options_description appOpts("Transducer application");
     appOpts.add_options()
-      ("save,S", po::value<string>(), "save machine")
+      ("save,S", po::value<string>(), "save machine to file")
+      ("graphviz,G", "write machine in Graphviz DOT format")
       ("params,P", po::value<vector<string> >(), "load parameters")
       ("functions,F", po::value<vector<string> >(), "load functions & constants")
       ("constraints,C", po::value<vector<string> >(), "load constraints")
@@ -274,9 +275,16 @@ int main (int argc, char** argv) {
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
-      machine.writeJson (out);
-    } else if (!vm.count("train") && !vm.count("align"))
-      machine.writeJson (cout);
+      if (vm.count("graphviz"))
+	machine.writeDot (out);
+      else
+	machine.writeJson (out);
+    } else if (!vm.count("train") && !vm.count("align")) {
+      if (vm.count("graphviz"))
+	machine.writeDot (cout);
+      else
+	machine.writeJson (cout);
+    }
 
     // do some syntax checking
     Require (!vm.count("params") || (vm.count("train") || vm.count("align")), "Can't specify --params without --train or --align");

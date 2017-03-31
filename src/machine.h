@@ -61,6 +61,7 @@ struct Machine {
 
   void writeJson (ostream& out) const;
   void readJson (const json& json);
+  void writeDot (ostream& out, const char* emptyLabelText = "&epsilon;") const;
 
   StateIndex nStates() const;
   size_t nTransitions() const;

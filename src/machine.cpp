@@ -210,6 +210,30 @@ void Machine::readJson (const json& pj) {
   }
 }
 
+void Machine::writeDot (ostream& out, const char* emptyLabelText) const {
+  out << "digraph G {\n";
+  for (StateIndex s = 0; s < nStates(); ++s) {
+    const auto& n = state[s].name;
+    out << " " << s << " [label=\""
+	<< escaped_str (n.is_string() ? n.get<string>() : n.dump())
+	<< "\"];" << endl;
+  }
+  out << endl;
+  for (StateIndex s = 0; s < nStates(); ++s) {
+    const MachineState& ms = state[s];
+    for (const auto& t: ms.trans)
+      out << " " << s << " -> " << t.dest << " [headlabel=\""
+	  << escaped_str (t.in.empty() ? emptyLabelText : t.in.c_str())
+	  << "/"
+	  << escaped_str (t.out.empty() ? emptyLabelText : t.out.c_str())
+	  << "\",taillabel=\""
+	  << WeightAlgebra::toString (t.weight, ParamDefs())
+	  << "\"];" << endl;
+    out << endl;
+  }
+  out << "}" << endl;
+}
+
 bool Machine::isErgodicMachine() const {
   return accessibleStates().size() == nStates();
 }
