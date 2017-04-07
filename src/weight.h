@@ -8,7 +8,7 @@ using namespace std;
 using json = nlohmann::json;
 
 typedef json WeightExpr;
-typedef map<string,json> ParamDefs;
+typedef map<string,WeightExpr> ParamDefs;
 
 struct WeightAlgebra {
   static WeightExpr multiply (const WeightExpr& l, const WeightExpr& r);  // l*r
@@ -29,6 +29,8 @@ struct WeightAlgebra {
   static string opcode (const WeightExpr& w);
   static const json& operands (const WeightExpr& w);
 
+  static WeightExpr expand (const WeightExpr& w, const ParamDefs& defs);
+  
   static double eval (const WeightExpr& w, const ParamDefs& defs);
   static WeightExpr deriv (const WeightExpr& w, const ParamDefs& defs, const string& param);
   static set<string> params (const WeightExpr& w, const ParamDefs& defs);
