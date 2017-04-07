@@ -1,4 +1,4 @@
-#include "gaussian.h"
+#include "obj_gaussian.h"
 
 GaussianOutputAdapter::GaussianOutputAdapter()
   : meanParam("mu"),

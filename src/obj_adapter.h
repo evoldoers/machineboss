@@ -1,5 +1,5 @@
-#ifndef OUTPUT_INCLUDED_INCLUDED
-#define OUTPUT_INCLUDED_INCLUDED
+#ifndef OBJ_ADAPTER_INCLUDED
+#define OBJ_ADAPTER_INCLUDED
 
 #include "machine.h"
 
@@ -25,5 +25,5 @@ struct OutputMap {
   void writeJson (ostream& out) const;
 };
 
-#endif /* OUTPUT_INCLUDED_INCLUDED */
+#endif /* OBJ_ADAPTER_INCLUDED */
 

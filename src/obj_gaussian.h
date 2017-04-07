@@ -1,7 +1,7 @@
-#ifndef GAUSSIAN_INCLUDED
-#define GAUSSIAN_INCLUDED
+#ifndef OBJ_GAUSSIAN_INCLUDED
+#define OBJ_GAUSSIAN_INCLUDED
 
-#include "output.h"
+#include "obj_adapter.h"
 
 struct GaussianOutputAdapter : OutputAdapter {
   string meanParam, sdParam;  // symbol parameters
@@ -11,4 +11,4 @@ struct GaussianOutputAdapter : OutputAdapter {
   SummaryStats summaryStats (const OutputObject& outputUnit) const;
 };
 
-#endif /* GAUSSIAN_INCLUDED */
+#endif /* OBJ_GAUSSIAN_INCLUDED */

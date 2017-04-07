@@ -1,7 +1,7 @@
-#ifndef DUMMY_INCLUDED_INCLUDED
-#define DUMMY_INCLUDED_INCLUDED
+#ifndef OBJ_DUMMY_INCLUDED
+#define OBJ_DUMMY_INCLUDED
 
-#include "output.h"
+#include "obj_adapter.h"
 
 struct DummyOutputAdapter : OutputAdapter {
   vguard<OutputSymbol> outputAlphabet;
@@ -11,5 +11,5 @@ struct DummyOutputAdapter : OutputAdapter {
   SummaryStats summaryStats (const OutputObject& outputUnit) const;
 };
 
-#endif /* DUMMY_INCLUDED_INCLUDED */
+#endif /* OBJ_DUMMY_INCLUDED */
 

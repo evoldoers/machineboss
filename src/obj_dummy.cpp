@@ -1,4 +1,4 @@
-#include "dummy.h"
+#include "obj_dummy.h"
 
 DummyOutputAdapter::DummyOutputAdapter (const Machine& machine, const char* indicatorPrefix, const char* selectorPrefix)
   : outputAlphabet (machine.outputAlphabet()),

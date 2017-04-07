@@ -1,4 +1,4 @@
-#include "output.h"
+#include "obj_adapter.h"
 #include "util.h"
 
 vguard<string> OutputAdapter::summaryStatParams() const {
