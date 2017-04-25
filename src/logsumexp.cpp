@@ -48,8 +48,9 @@ double log_sum_exp_unary_slow (double x) {
   return log (1. + exp(-x));
 }
 
-void log_accum_exp_slow (double& a, double b) {
+double log_accum_exp_slow (double& a, double b) {
   a = log_sum_exp_slow (a, b);
+  return a;
 }
 
 vguard<LogProb> log_vector (const vguard<double>& v) {
@@ -112,4 +113,8 @@ double logDirichletPdf (const vguard<double>& prob, const vguard<double>& count)
   for (auto& c : countPlusOne)
     ++c;
   return log (gsl_ran_dirichlet_pdf (prob.size(), countPlusOne.data(), prob.data()));
+}
+
+double logGaussianPdf (double x, double mu, double sigma) {
+  return log (gsl_ran_gaussian_pdf (x - mu, sigma));
 }

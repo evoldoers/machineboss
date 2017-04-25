@@ -91,8 +91,9 @@ inline double log_sum_exp (double a, double b, double c, double d) {
     return log_sum_exp (log_sum_exp (log_sum_exp (a, b), c), d);
 }
 
-inline void log_accum_exp (double& a, double b) {
+inline double log_accum_exp (double& a, double b) {
   a = log_sum_exp (a, b);
+  return a;
 }
 
 inline double log_sum_exp (double a, double b, double c, double d, double e) {
@@ -102,14 +103,14 @@ inline double log_sum_exp (double a, double b, double c, double d, double e) {
 inline double log_sum_exp (const vguard<double>& v) {
   double lpTot = -numeric_limits<double>::infinity();
   for (auto lp : v)
-    log_accum_exp (lpTot, lp);
+    (void) log_accum_exp (lpTot, lp);
   return lpTot;
 }
 
 inline double log_sum_exp (const vguard<vguard<double> >& v) {
   double lpTot = -numeric_limits<double>::infinity();
   for (auto lp : v)
-    log_accum_exp (lpTot, log_sum_exp (lp));
+    (void) log_accum_exp (lpTot, log_sum_exp (lp));
   return lpTot;
 }
 
@@ -117,7 +118,7 @@ double log_sum_exp_slow (double a, double b);  /* does not use lookup table */
 double log_sum_exp_slow (double a, double b, double c);
 double log_sum_exp_slow (double a, double b, double c, double d);
 
-void log_accum_exp_slow (double& a, double b);
+double log_accum_exp_slow (double& a, double b);
 
 inline double log_subtract_exp (double a, double b) {
   if (a < b) {
@@ -158,8 +159,9 @@ inline LogProb logInnerProduct (const vguard<vguard<LogProb> >& v1, const vguard
   return lip;
 }
 
-double logBetaPdf (double prob, double yesCount, double noCount);
-double logGammaPdf (double rate, double eventCount, double waitTime);
-double logDirichletPdf (const vguard<double>& prob, const vguard<double>& count);
+double logBetaPdf (double prob, double yesCount, double noCount);  // alpha = yesCount+1, beta = noCount+1
+double logGammaPdf (double rate, double eventCount, double waitTime);  // alpha = shape = eventCount+1, beta = rate = 1/scale = 1/theta = waitTime
+double logDirichletPdf (const vguard<double>& prob, const vguard<double>& count);  // alpha[n] = count[n] + 1
+double logGaussianPdf (double x, double mu, double sigma);
 
 #endif /* LOGSUMEXP_INCLUDED */

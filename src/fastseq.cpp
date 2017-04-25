@@ -79,6 +79,11 @@ string kmerToString (Kmer kmer, SeqIdx k, const string& alphabet) {
   return string (rev.rbegin(), rev.rend());
 }
 
+Kmer stringToKmer (const string& s, const string& alphabet) {
+  const TokSeq tok = validTokenize (s, alphabet);
+  return makeKmer (tok.size(), tok.begin(), alphabet.size());
+}
+
 void FastSeq::writeFasta (ostream& out) const {
   out << '>' << name;
   if (comment.size())
