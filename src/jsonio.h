@@ -34,7 +34,12 @@ struct JsonReader : Base {
     in >> j;
     obj.readJson(j);
   }
-  
+
+  static Base fromJsonString (const std::string& str) {
+    std::istringstream in (str);
+    return fromJson (in);
+  }
+
   static Base fromJson (const nlohmann::json& json) {
     Base obj;
     obj.readJson (json);
@@ -64,11 +69,16 @@ struct JsonReader : Base {
     return obj;
   }
 
+  static void readFile (Base& obj, const string& filename) {
+    std::ifstream infile (filename);
+    if (!infile)
+      Fail ("File not found: %s", filename.c_str());
+    readJson (obj, infile);
+  }
+
   static void readFiles (Base& obj, const std::vector<std::string>& filenames) {
-    for (const auto& filename: filenames) {
-      std::ifstream infile (filename);
-      readJson (obj, infile);
-    }
+    for (const auto& filename: filenames)
+      readFile (obj, filename);
   }
 };
 

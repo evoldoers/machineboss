@@ -38,6 +38,8 @@ struct WeightAlgebra {
   static string toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence = 0);
 
   static ParamDefs exclude (const ParamDefs& defs, const string& param);
+
+  static string toJsonString (const ParamDefs& defs);
 };
 
 #endif /* WEIGHT_INCLUDED */

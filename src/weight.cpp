@@ -247,3 +247,13 @@ ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
   defsCopy.erase (param);
   return defsCopy;
 }
+
+string WeightAlgebra::toJsonString (const ParamDefs& defs) {
+  ostringstream out;
+  out << "{";
+  size_t n = 0;
+  for (const auto& def: defs)
+    out << (n++ ? "," : "") << "\"" << escaped_str(def.first) << "\":" << def.second;
+  out << "}";
+  return out.str();
+}
