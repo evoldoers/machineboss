@@ -1,5 +1,13 @@
 #include "dptrace.h"
 
+void TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t, StateIndex s, StateIndex d, InputToken i)
+{
+  init (t.logWeight, t.transIndex);
+  src = s;
+  dest = d;
+  in = i;
+}
+
 TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
   eval (eval),
   modelParams (modelParams),
@@ -8,11 +16,21 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   moments (trace),
   coeffs (modelParams, traceParams, eval.outputTokenizer),
   outLen (trace.sample.size()),
-  nStates (eval.nStates())
+  nStates (eval.nStates()),
+  nOutToks (eval.outputTokenizer.tok2sym.size())
 {
   LogThisAt(7,"Creating " << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << eval.toJsonString() << endl);
-  cellStorage.resize (nCells());
+
+  Assert (eval.isOutputAdvancingMachine(), "Machine is not topologically sorted when input-blind");
+  transByOut.resize (nOutToks);
+  for (StateIndex dest = 0; dest < nStates; ++dest)
+    for (const auto& inTok_outStateTransMap: eval.state[dest].incoming)
+      for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second)
+	for (const auto& src_trans: outTok_stateTransMap.second)
+	  transByOut[outTok_stateTransMap.first].push_back (IndexedTrans (src_trans.second, src_trans.first, dest, inTok_outStateTransMap.first));
+
+  cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
 }
 
 void TraceDPMatrix::writeJson (ostream& outs) const {

@@ -13,7 +13,7 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
 {
   LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
-  cellStorage.resize (nCells());
+  cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
 }
 
 void DPMatrix::writeJson (ostream& outs) const {

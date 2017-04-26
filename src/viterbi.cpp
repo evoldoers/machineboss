@@ -35,7 +35,7 @@ MachinePath ViterbiMatrix::path (const Machine& m) const {
   InputIndex inPos = inLen;
   OutputIndex outPos = outLen;
   StateIndex s = nStates - 1;
-  while (inPos > 0 || outPos || 0 || s != 0) {
+  while (inPos > 0 || outPos > 0 || s != 0) {
     const EvaluatedMachineState& state = machine.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
     StateIndex bestSource;

@@ -9,10 +9,17 @@ class TraceDPMatrix {
 public:
   typedef long OutputIndex;
 
+  struct IndexedTrans : EvaluatedMachineState::Trans {
+    StateIndex src, dest;
+    InputToken in;
+    IndexedTrans (const EvaluatedMachineState::Trans&, StateIndex, StateIndex, InputToken);
+  };
+
 private:
   typedef long long CellIndex;
   typedef long long EmitIndex;
 
+  vguard<vguard<IndexedTrans> > transByOut;  // indexed by output token
   vguard<double> cellStorage;
 
   inline CellIndex nCells() const {
@@ -20,9 +27,11 @@ private:
   }
 
   inline CellIndex cellIndex (OutputIndex outPos, StateIndex state) const {
-    return outPos * nGaussians + state;
+    return outPos * nStates + state;
   }
 
+  inline const vguard<IndexedTrans>& nullTrans() const { return transByOut.front(); }
+  
 public:
   const EvaluatedMachine& eval;
   const GaussianModelParams& modelParams;
@@ -32,7 +41,7 @@ public:
   const GaussianModelCoefficients coeffs;
   const OutputIndex outLen;
   const StateIndex nStates;
-  const GaussianIndex nGaussians;
+  const OutputToken nOutToks;
   
 public:
   TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
@@ -43,8 +52,8 @@ public:
   inline double& cell (OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(outPos,state)]; }
   inline const double cell (OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(outPos,state)]; }
 
-  inline double logEmitProb (OutputIndex outPos, GaussianIndex gaussian) {
-    return coeffs.gauss[gaussian].logEmitProb (moments.sample[outPos-1]);
+  inline double logEmitProb (OutputIndex outPos, OutputToken outTok) {
+    return coeffs.gauss[outTok-1].logEmitProb (moments.sample[outPos-1]);
   }
 };
 

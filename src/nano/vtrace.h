@@ -3,21 +3,18 @@
 
 #include "dptrace.h"
 
-class TraceViterbiMatrix : public TraceDPMatrix {
+class ViterbiTraceMatrix : public TraceDPMatrix {
 private:
-  inline void pathIterate (double& bestLogLike, StateIndex& bestSource, EvaluatedMachineState::TransIndex& bestTransIndex, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
-    auto visit = [&] (StateIndex src, EvaluatedMachineState::TransIndex ti, double tll) {
-      if (tll > bestLogLike) {
-	bestLogLike = tll;
-	bestSource = src;
-	bestTransIndex = ti;
-      }
-    };
-    iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
+  inline void pathIterate (double& bestLogLike, StateIndex& bestSource, EvaluatedMachineState::TransIndex& bestTransIndex, const EvaluatedMachineState::InOutStateTransMap& incoming, OutputIndex outPos) const {
+  }
+
+  inline void update (OutputIndex outPos, StateIndex state, double newLogLike, InputToken inTok) {
+    double& ll = cell(outPos,state);
+    ll = inTok ? max(ll,newLogLike) : log_sum_exp(ll,newLogLike);
   }
 
 public:
-  ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
+  ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
   double logLike() const;
   MachinePath path (const Machine&) const;
 };

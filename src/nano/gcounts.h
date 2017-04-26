@@ -7,6 +7,7 @@
 struct GaussianCounts {
   double m0, m1, m2;
   GaussianCounts();
+  void inc (const SampleMoments& sampleMoments, const double postProb);
 };
 
 struct GaussianModelCounts {

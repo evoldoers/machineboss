@@ -40,20 +40,13 @@ struct EvaluatedMachineState {
     TransIndex transIndex;  // index of this transition in source state's TransList. Need to track this so we can map forward-backward counts back to MachineTransitions
     void init (LogWeight, TransIndex);
   };
-  struct IndexedTrans : Trans {
-    StateIndex src, dest;
-    InputToken inTok;
-    OutputToken outTok;
-    IndexedTrans (LogWeight, TransIndex, StateIndex, StateIndex, InputToken, OutputToken);
-  };
   typedef map<StateIndex,Trans> StateTransMap;
   typedef map<OutputToken,StateTransMap> OutStateTransMap;
   typedef map<InputToken,OutStateTransMap> InOutStateTransMap;
   
   StateName name;
   TransIndex nTransitions;
-  InOutStateTransMap incoming, outgoing;  // sorted by input symbol, output symbol, and state. These are used by regular (token-valued I/O) models
-  vguard<IndexedTrans> incomingWithOutput, outgoingWithOutput, incomingWithoutOutput, outgoingWithoutOutput;  // these are used by Gaussian (real-valued output) models
+  InOutStateTransMap incoming, outgoing;  // indexed by input token, output token, and (source or destination) state
 };
 
 struct EvaluatedMachine {
@@ -66,6 +59,7 @@ struct EvaluatedMachine {
   StateIndex nStates() const;
   StateIndex startState() const;
   StateIndex endState() const;
+  bool isOutputAdvancingMachine() const;  // no non-outputting i->j transitions where j<i
 };
 
 #endif /* EVAL_INCLUDED */
