@@ -7,6 +7,14 @@ void EvaluatedMachineState::Trans::init (LogWeight lw, TransIndex ti) {
   transIndex = ti;
 }
 
+void EvaluatedMachineState::IndexedTrans::IndexedTrans (LogWeight lw, TransIndex ti, StateIndex s, StateIndex d, InputToken i, OutputToken o) {
+  init (lw, ti);
+  src = s;
+  dest = d;
+  inTok = i;
+  outTok = o;
+}
+
 EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params) :
   inputTokenizer (machine.inputAlphabet()),
   outputTokenizer (machine.outputAlphabet()),
@@ -22,8 +30,11 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
       const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params.defs));
-      state[s].outgoing[in][out][d].init (lw, ti);
-      state[d].incoming[in][out][s].init (lw, ti);
+      state[s].outgoing[in][out][d].init (lw, ti, s, d, in, out);
+      state[d].incoming[in][out][s].init (lw, ti, s, d, in, out);
+      const IndexedTrans it (lw, ti, s, d, in, out);
+      (out ? state[s].outgoingWithOutput : state[s].outgoingWithoutOutput).push_back (it);
+      (out ? state[d].incomingWithOutput : state[d].incomingWithoutOutput).push_back (it);
       ++ti;
     }
     state[s].nTransitions = ti;

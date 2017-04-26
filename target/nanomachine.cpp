@@ -1,0 +1,132 @@
+#include <cstdlib>
+#include <stdexcept>
+#include <fstream>
+#include <iomanip>
+#include <random>
+#include <deque>
+#include <boost/program_options.hpp>
+
+#include "../src/vguard.h"
+#include "../src/logger.h"
+#include "../src/util.h"
+#include "../src/jsonio.h"
+#include "../src/fastseq.h"
+#include "../src/nano/trace.h"
+#include "../src/nano/model.h"
+#include "../src/nano/gaussian.h"
+#include "../src/nano/gtrainer.h"
+
+using namespace std;
+
+namespace po = boost::program_options;
+
+int main (int argc, char** argv) {
+
+  try {
+
+    // Declare the supported options.
+    po::options_description generalOpts("General options");
+    generalOpts.add_options()
+      ("help,h", "display this help message")
+      ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
+      ("debug,d", po::value<vector<string> >(), "log specified function")
+      ("monochrome,b", "log in black & white")
+      ;
+
+    po::options_description modelOpts("Model options");
+    modelOpts.add_options()
+      ("alphabet,a", po::value<string>()->default_value("acgt"), "alphabet")
+      ("kmerlen,k", po::value<int>()->default_value(6), "kmer length")
+      ("components,c", po::value<int>()->default_value(1), "# of mixture components in length distributions")
+      ;
+
+    po::options_description appOpts("Data options");
+    appOpts.add_options()
+      ("fast5,D", po::value<vector<string> >(), "load trace data from FAST5 file(s)")
+      ("text,T", po::value<vector<string> >(), "load trace from text file(s) e.g. from f5dump")
+      ("model,M", po::value<string>(), "load model parameters from file")
+      ("fasta,F", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
+      ("save,S", po::value<string>(), "save trained model parameters to file")
+      ("call,C", "base-call using Viterbi decoding, first fitting scaling parameters using EM")
+      ;
+
+    po::positional_options_description posOpts;
+    posOpts.add("data", -1);
+
+    po::options_description parseOpts("");
+    parseOpts.add(generalOpts).add(modelOpts).add(appOpts);
+
+    // parse args
+    po::variables_map vm;
+    po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).positional(posOpts).run();
+    po::store (parsed, vm);
+
+    // handle help
+    if (vm.count("help")) {
+      cout << parseOpts << endl;
+      return 1;
+    }
+
+    // test option validity
+    po::notify(vm);
+
+    // set logging options
+    logger.parseLogArgs (vm);
+
+    // load parameters
+    LogThisAt(2,"Initializing model" << endl);
+    Model initModel;
+    if (vm.count("model"))
+      JsonReader<Model>::readFile (initModel, vm.at("model").as<string>());
+    else
+      initModel.init (vm.at("alphabet").as<string>(),
+		      vm.at("kmerlen").as<int>(),
+		      vm.at("components").as<int>());
+
+    // read data
+    Require (vm.count("fast5") || vm.count("text"), "Please specify at least one data file");
+    LogThisAt(2,"Reading trace data" << endl);
+    TraceList traceList;
+    if (vm.count("fast5"))
+      for (const auto& fast5Filename: vm.at("fast5").as<vector<string> >())
+	traceList.readFast5 (fast5Filename);
+    if (vm.count("text"))
+      for (const auto& textFilename: vm.at("text").as<vector<string> >())
+	traceList.readText (textFilename);
+
+    // train model
+    Model trainedModel;
+    if (vm.count("fasta")) {
+      LogThisAt(2,"Reading sequence data" << endl);
+      vguard<FastSeq> trainSeqs;
+      for (const auto& seqFilename: vm.at("fasta").as<vector<string> >())
+	readFastSeqs (seqFilename.c_str(), trainSeqs);
+
+      ModelFitter fitter;
+      fitter.init (initModel, traceList, trainSeqs);
+      fitter.fit();
+
+      trainedModel = fitter.model;
+    } else
+      trainedModel = initModel;
+    
+    // save parameters
+    if (vm.count("save"))
+      JsonWriter<Model>::toFile (trainedModel, vm.at("save").as<string>());
+    else if (!vm.count("call"))
+      trainedModel.writeJson (cout);
+
+    // do basecalling
+    if (vm.count("call")) {
+      BaseCaller caller;
+      caller.init (trainedModel, traceList);
+      writeFastaSeqs (cout, caller.call());
+    }
+
+  } catch (const std::exception& e) {
+    cerr << e.what() << endl;
+    return EXIT_FAILURE;
+  }
+  
+  return EXIT_SUCCESS;
+}

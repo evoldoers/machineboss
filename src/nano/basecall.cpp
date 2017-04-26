@@ -26,6 +26,11 @@ string BaseCallingParamNamer::cptName (int cpt) {
 }
 
 BaseCallingParams::init (const string& alph, SeqIndex len, int cpts) {
+  alphabet = alph;
+  kmerLen = len;
+  components = cpts;
+  params.gauss.clear();
+  params.prob.clear();
   const Kmer nk = numberOfKmers (len, alph.size());
   for (KmerIndex kmer = 0; kmer < nk; ++kmer) {
     const string kmerStr = kmerToString (kmer, len, alph);
@@ -33,13 +38,28 @@ BaseCallingParams::init (const string& alph, SeqIndex len, int cpts) {
     const char suffix = kmerStr[kmerLen-1];
     GaussianParams emit;
     for (int cpt = 0; cpt < cpts; ++cpt) {
-      prob[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
-      prob[cptExtendLabel (kmerStr, cpt)] = .5;
-      prob[cptEndLabel (kmerStr, cpt)] = .5;
+      params.prob[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
+      params.prob[cptExtendLabel (kmerStr, cpt)] = .5;
+      params.prob[cptEndLabel (kmerStr, cpt)] = .5;
     }
-    prob[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
-    gauss[emitLabel (kmerStr)] = GaussianParams();
+    params.prob[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
+    params.gauss[emitLabel (kmerStr)] = GaussianParams();
   }
+}
+
+json BaseCallingParams::asJson() const {
+  return json::object ({ { "alphabet", alphabet }, { "kmerlen", kmerLen }, { "components", components }, { "params", params.asJson() } });
+}
+
+void BaseCallingParams::writeJson (ostream& out) const {
+  out << asJson();
+}
+
+void BaseCallingParams::readJson (const json& j) {
+  alphabet = j["alphabet"].get<string>();
+  kmerLen = j["kmerlen"].get<int>();
+  components = j["components"].get<int>();
+  params.readJson (j["params"]);
 }
 
 BaseCallingPrior::BaseCallingPrior()

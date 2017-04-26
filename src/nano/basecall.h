@@ -1,5 +1,5 @@
-#ifndef MODEL_INCLUDED
-#define MODEL_INCLUDED
+#ifndef BASECALL_INCLUDED
+#define BASECALL_INCLUDED
 
 #include "../machine.h"
 #include "gaussian.h"
@@ -13,8 +13,15 @@ struct BaseCallingParamNamer {
   static string cptName (int cpt);
 };
 
-struct BaseCallingParams : GaussianModelParams, BaseCallingParamNamer {
+struct BaseCallingParams : BaseCallingParamNamer {
+  string alphabet;
+  SeqIndex kmerLen;
+  int components;
+  GaussianModelParams params;
   void init (const string& alph, SeqIndex kmerLen, int components);
+  json asJson() const;
+  void writeJson (ostream& out) const;
+  void readJson (const json& json);
 };
 
 struct BaseCallingPrior : BaseCallingParamNamer {
@@ -32,4 +39,4 @@ struct BaseCallingMachine : Machine, BaseCallingParamNamer {
   void init (const string& alph, SeqIndex kmerLen, int components);
 };
 
-#endif /* MODEL_INCLUDED */
+#endif /* BASECALL_INCLUDED */

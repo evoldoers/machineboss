@@ -11,15 +11,16 @@ public:
 
 private:
   typedef long long CellIndex;
+  typedef long long EmitIndex;
 
-  vguard<double> cellStorage, logEmit;
+  vguard<double> cellStorage;
 
   inline CellIndex nCells() const {
     return nStates * (outLen + 1);
   }
 
   inline CellIndex cellIndex (OutputIndex outPos, StateIndex state) const {
-    return outPos * nStates + state;
+    return outPos * nGaussians + state;
   }
 
 public:
@@ -31,6 +32,7 @@ public:
   const GaussianModelCoefficients coeffs;
   const OutputIndex outLen;
   const StateIndex nStates;
+  const GaussianIndex nGaussians;
   
 public:
   TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
@@ -40,6 +42,10 @@ public:
   
   inline double& cell (OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(outPos,state)]; }
   inline const double cell (OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(outPos,state)]; }
+
+  inline double logEmitProb (OutputIndex outPos, GaussianIndex gaussian) {
+    return coeffs.gauss[gaussian].logEmitProb (moments.sample[outPos-1]);
+  }
 };
 
 #endif /* DPTRACE_INCLUDED */

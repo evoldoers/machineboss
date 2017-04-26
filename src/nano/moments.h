@@ -5,6 +5,8 @@
 #include "gaussian.h"
 #include "trace.h"
 
+typedef unsigned long long GaussianIndex;
+
 struct SampleMoments {
   double m0, m1, m2;
 };

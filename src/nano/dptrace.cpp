@@ -13,7 +13,6 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   LogThisAt(7,"Creating " << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << eval.toJsonString() << endl);
   cellStorage.resize (nCells());
-  logEmit.resize (coeffs.gauss.size());
 }
 
 void TraceDPMatrix::writeJson (ostream& outs) const {

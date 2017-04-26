@@ -25,6 +25,13 @@ struct JsonWriter {
     obj.writeJson (out);
     return out.str();
   }
+
+  static nlohmann::json toJson (const Base& obj) {
+    const std::string s = toJsonString (obj);
+    json j;
+    j << s;
+    return j;
+  }
 };
 
 template<class Base>
