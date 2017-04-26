@@ -13,6 +13,7 @@ using json = nlohmann::json;
 typedef long TraceIndex;
 
 struct Trace {
+  string name;
   vguard<double> sample;
   
   void writeJson (ostream& out) const;
@@ -24,7 +25,6 @@ struct Trace {
 
 struct TraceList {
   list<Trace> trace;
-  list<string> filename;
   
   inline size_t size() const { return trace.size(); }
   void readJson (const string& filename);

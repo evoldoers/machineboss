@@ -5,7 +5,7 @@
 
 class ViterbiMatrix : public DPMatrix {
 private:
-  inline void traceIterate (double& bestLogLike, StateIndex& bestSource, EvaluatedMachineState::TransIndex& bestTransIndex, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
+  inline void pathIterate (double& bestLogLike, StateIndex& bestSource, EvaluatedMachineState::TransIndex& bestTransIndex, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
     auto visit = [&] (StateIndex src, EvaluatedMachineState::TransIndex ti, double tll) {
       if (tll > bestLogLike) {
 	bestLogLike = tll;
@@ -19,7 +19,7 @@ private:
 public:
   ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
   double logLike() const;
-  MachinePath trace (const Machine&) const;
+  MachinePath path (const Machine&) const;
 };
 
 #endif /* VITERBI_INCLUDED */

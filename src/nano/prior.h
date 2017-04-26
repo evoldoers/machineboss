@@ -17,7 +17,7 @@ struct Prior {
 struct TraceParamsPrior : Prior {
   double scale, scaleCount;
   double shift, shiftCount;
-  WeightExpr logSeqExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const;
+  WeightExpr logTraceExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const;
   double logProb (const TraceListParams& traceListParams) const;
 };
 
@@ -25,7 +25,7 @@ struct GaussianPrior {
   double mu0, n_mu, tau0, n_tau;
 };
 
-struct ModelPrior : TraceParamsPrior {
+struct GaussianModelPrior : TraceParamsPrior {
   map<string,GaussianPrior> gauss;  // hyperparameters for Normal-Gamma priors
   ParamAssign count;  // pseudocounts for Dirichlet & Beta priors
   Constraints cons;  // normalization constraints

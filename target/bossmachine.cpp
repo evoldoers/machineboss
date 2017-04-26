@@ -328,7 +328,7 @@ int main (int argc, char** argv) {
       size_t n = 0;
       for (const auto& seqPair: data.seqPairs) {
 	const ViterbiMatrix viterbi (eval, seqPair);
-	const MachinePath path = viterbi.trace (machine);
+	const MachinePath path = viterbi.path (machine);
 	cout << (n++ ? ",\n " : "");
 	path.writeJson (cout);
       }

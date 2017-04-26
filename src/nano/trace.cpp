@@ -27,6 +27,7 @@ void Trace::readText (istream& in) {
 }
 
 void Trace::readFast5 (const string& filename) {
+  name = filename;
   sample.clear();
   fast5::File f;
   f.open(filename);
@@ -38,15 +39,15 @@ void Trace::readFast5 (const string& filename) {
 
 void TraceList::readJson (const string& fn) {
   trace.push_back (JsonReader<Trace>::fromFile (fn));
-  filename.push_back (fn);
+  trace.back().name = fn;
 }
 
 void TraceList::readText (const string& fn) {
   ifstream in (fn);
   Trace t;
+  t.name = fn;
   t.readText (in);
   trace.push_back (t);
-  filename.push_back (fn);
 }
 
 void TraceList::readFast5 (const string& fn) {

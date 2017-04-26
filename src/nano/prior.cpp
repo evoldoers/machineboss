@@ -2,11 +2,6 @@
 #include "../logsumexp.h"
 #include "prior.h"
 
-TraceParamsPrior::TraceParamsPrior()
-  : scale(1), scaleCount(2),
-    shift(0), shiftCount(1)
-{ }
-
 double Prior::logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau) {
   const double alpha = n_tau / 2, beta = (n_tau - 1) / (2*tau0);
   return logGammaPdf (tau, alpha - 1, beta)
@@ -37,6 +32,15 @@ WeightExpr Prior::logNormalInvSquareGammaExpr (const WeightExpr& muParam, const 
   return logNormalGammaExpr (muParam, divide(1,multiply(sigmaParam,sigmaParam)), mu0, n_mu, 1/(sigma0*sigma0), n_sigma);
 }
 
+TraceParamsPrior::TraceParamsPrior()
+  : scale(1), scaleCount(2),
+    shift(0), shiftCount(1)
+{ }
+
+WeightExpr TraceParamsPrior::logTraceExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const {
+  return logNormalInvSquareGammaExpr (shiftParam, scaleParam, shift, shiftCount, scale, scaleCount);
+}
+
 double TraceParamsPrior::logProb (const TraceListParams& traceListParams) const {
   double lp = 0;
   for (const auto& tp: traceListParams.params)
@@ -44,7 +48,7 @@ double TraceParamsPrior::logProb (const TraceListParams& traceListParams) const 
   return lp;
 }
 
-double ModelPrior::logProb (const GaussianModelParams& modelParams, const TraceListParams& traceListParams) const {
+double GaussianModelPrior::logProb (const GaussianModelParams& modelParams, const TraceListParams& traceListParams) const {
   double lp = TraceParamsPrior::logProb (traceListParams);
   for (const auto& g: gauss) {
     const auto& m = model.gauss[g.first];
@@ -64,12 +68,4 @@ double ModelPrior::logProb (const GaussianModelParams& modelParams, const TraceL
     lp += logDirichletPdf (m, c);
   }
   return lp;
-}
-
-WeightExpr Prior::logModelExpr (const WeightExpr& muParam, const WeightExpr& tauParam) const {
-  return logNormalGammaExpr (muParam, tauParam, mu, muCount, tau, tauCount);
-}
-
-WeightExpr Prior::logSeqExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const {
-  return logNormalInvSquareGammaExpr (shiftParam, scaleParam, shift, shiftCount, scale, scaleCount);
 }

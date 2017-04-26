@@ -29,7 +29,7 @@ double ViterbiMatrix::logLike() const {
   return cell (inLen, outLen, machine.endState());
 }
 
-MachinePath ViterbiMatrix::trace (const Machine& m) const {
+MachinePath ViterbiMatrix::path (const Machine& m) const {
   Assert (logLike() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   MachinePath path;
   InputIndex inPos = inLen;
@@ -43,12 +43,12 @@ MachinePath ViterbiMatrix::trace (const Machine& m) const {
     const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     if (inPos && outPos)
-      traceIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, outTok, inPos - 1, outPos - 1);
+      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, outTok, inPos - 1, outPos - 1);
     if (inPos)
-      traceIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, OutputTokenizer::emptyToken(), inPos - 1, outPos);
+      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, OutputTokenizer::emptyToken(), inPos - 1, outPos);
     if (outPos)
-      traceIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), outTok, inPos, outPos - 1);
-    traceIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
+      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), outTok, inPos, outPos - 1);
+    pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
     const MachineTransition& bestTrans = m.state[bestSource].getTransition (bestTransIndex);
     if (!bestTrans.inputEmpty()) --inPos;
     if (!bestTrans.outputEmpty()) --outPos;

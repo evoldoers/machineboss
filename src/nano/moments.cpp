@@ -15,14 +15,14 @@ TraceMoments::TraceMoments (const Trace& trace)
 }
 
 GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams& modelParams, const TraceParams& traceParams, const OutputTokenizer& outputTokenizer)
-  : gaussCoeffs (outputTokenizer.tok2sym.size())
+  : gauss (outputTokenizer.tok2sym.size())
 {
   const double log_sqrt_2pi = log(2*M_PI)/2;
   const double shift = traceParams.shift, scale = traceParams.scale;
   for (OutputToken outTok = 0; outTok < outputTokenizer.tok2sym.size(); ++outTok) {
     const auto& outSym = outputTokenizer.tok2sym[outTok];
-    const GaussianParams& p = modelParams.gaussian[outSym];
-    GaussianCoefficients& e = gaussCoeffs[outTok];
+    const GaussianParams& p = modelParams.gaussian.at(outSym);
+    GaussianCoefficients& e = gauss[outTok];
     const double mu_plus_shift = p.mu + shift;
     e.m0coeff = log(p.tau)/2 - log(scale) - log_sqrt_2pi - (p.tau/2)*mu_plus_shift*mu_plus_shift;
     e.m1coeff = (p.tau/scale) * mu_plus_shift;

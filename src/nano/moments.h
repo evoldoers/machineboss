@@ -22,7 +22,7 @@ struct GaussianCoefficients {
 };
 
 struct GaussianModelCoefficients {
-  vguard<GaussianCoefficients> gaussCoeffs;
+  vguard<GaussianCoefficients> gauss;
   GaussianModelCoefficients (const GaussianModelParams& modelParams, const TraceParams& traceParams, const OutputTokenizer& outputTokenizer);
 };
 
