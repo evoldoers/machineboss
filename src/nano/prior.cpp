@@ -49,14 +49,13 @@ double TraceParamsPrior::logProb (const TraceListParams& traceListParams) const 
 }
 
 double GaussianModelPrior::logProb (const GaussianModelParams& modelParams, const TraceListParams& traceListParams) const {
+  Assert (cons.prob.size() == 0, "No free probability parameters allowed!");
   double lp = TraceParamsPrior::logProb (traceListParams);
   for (const auto& g: gauss) {
     const auto& m = model.gauss[g.first];
     const auto& p = g.second;
     lp += logNormalGammaProb (m.mu, m.tau, p.mu0, p.n_mu, p.tau0, p.n_tau);
   }
-  for (const auto& p: cons.prob)
-    lp += logBetaPdf (model.prob[p], count[p], 1.);
   for (const auto& n: cons.norm) {
     vguard<double> c, m;
     c.reserve (n.size());

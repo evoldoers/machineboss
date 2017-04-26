@@ -31,7 +31,7 @@ private:
   }
 
   inline const vguard<IndexedTrans>& nullTrans() const { return transByOut.front(); }
-  
+
 public:
   const EvaluatedMachine& eval;
   const GaussianModelParams& modelParams;
@@ -42,8 +42,7 @@ public:
   const OutputIndex outLen;
   const StateIndex nStates;
   const OutputToken nOutToks;
-  
-public:
+
   TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
 
   void writeJson (ostream& out) const;

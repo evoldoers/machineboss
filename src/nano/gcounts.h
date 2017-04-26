@@ -15,9 +15,10 @@ struct GaussianModelCounts {
   vguard<GaussianCounts> gauss;
   void init (const EvaluatedMachine&);
   double add (const EvaluatedMachine&, const GaussianModelParams&, const Trace&, const TraceParams&);  // returns log-likelihood
-  void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&) const;
-  void optimizeTraceParams (TraceParams&, const GaussianModelParams&, const GaussianModelPrior&) const;
-  double expectedLogEmit (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&) const;
+  void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
+  GaussianModelCounts& operator+= (const GaussianModelCounts&);
+  static void optimizeModelParams (GaussianModelParams&, const Machine&, const EvaluatedMachine&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
+  static double expectedLogEmit (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
 };
 
 #endif /* GAUSSCOUNTS_INCLUDED */
