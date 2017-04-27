@@ -19,7 +19,7 @@ GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams&
 {
   const double log_sqrt_2pi = log(2*M_PI)/2;
   const double shift = traceParams.shift, scale = traceParams.scale;
-  for (OutputToken outTok = 1; outTok <= outputTokenizer.tok2sym.size(); ++outTok) {
+  for (OutputToken outTok = 1; outTok < outputTokenizer.tok2sym.size(); ++outTok) {
     const auto& outSym = outputTokenizer.tok2sym[outTok];
     const GaussianParams& p = modelParams.gauss.at(outSym);
     GaussianCoefficients& e = gauss[outTok-1];

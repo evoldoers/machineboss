@@ -91,7 +91,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
   auto add = WeightAlgebra::add, multiply = WeightAlgebra::multiply, subtract = WeightAlgebra::subtract, divide = WeightAlgebra::divide;
   auto logOf = WeightAlgebra::logOf;
 
-  const string shiftParam("shift"), sqrtScaleParam("scale");
+  const string shiftParam("shift"), sqrtScaleParam("sqrtScale");
   const WeightExpr scaleParam = multiply (sqrtScaleParam, sqrtScaleParam);
   
   WeightExpr objective = add (add (add (multiply (coeff_log_scale, logOf (scaleParam)),
