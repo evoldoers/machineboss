@@ -12,7 +12,7 @@
 #include "../src/jsonio.h"
 #include "../src/fastseq.h"
 #include "../src/nano/trace.h"
-#include "../src/nano/basecall.h"
+#include "../src/nano/caller.h"
 #include "../src/nano/gtrainer.h"
 
 using namespace std;

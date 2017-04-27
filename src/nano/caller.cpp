@@ -1,4 +1,4 @@
-#include "basecall.h"
+#include "caller.h"
 #include "../logger.h"
 
 string BaseCallingParamNamer::emitLabel (const string& kmerStr) {
