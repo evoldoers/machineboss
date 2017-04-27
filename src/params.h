@@ -14,6 +14,7 @@ public:
   ParamDefs defs;
   void writeJson (ostream&) const;
   Params combine (const Params&) const;
+  void clear();
 protected:
   void readJsonWithSchema (const json&, const char* schemaName);
 };

@@ -1,10 +1,10 @@
 #ifndef PRIOR_INCLUDED
 #define PRIOR_INCLUDED
 
-#include "trace.h"
-#include "gaussian.h"
 #include "../weight.h"
 #include "../constraints.h"
+#include "trace.h"
+#include "gaussian.h"
 
 struct Prior {
   static double logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau);

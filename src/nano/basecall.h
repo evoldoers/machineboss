@@ -2,7 +2,8 @@
 #define BASECALL_INCLUDED
 
 #include "../machine.h"
-#include "gaussian.h"
+#include "../fastseq.h"
+#include "prior.h"
 
 struct BaseCallingParamNamer {
   static string emitLabel (const string& kmerStr);
@@ -15,10 +16,10 @@ struct BaseCallingParamNamer {
 
 struct BaseCallingParams : BaseCallingParamNamer {
   string alphabet;
-  SeqIndex kmerLen;
+  SeqIdx kmerLen;
   int components;
   GaussianModelParams params;
-  void init (const string& alph, SeqIndex kmerLen, int components);
+  void init (const string& alph, SeqIdx kmerLen, int components);
   json asJson() const;
   void writeJson (ostream& out) const;
   void readJson (const json& json);
@@ -31,12 +32,13 @@ struct BaseCallingPrior : BaseCallingParamNamer {
 
   BaseCallingPrior();
   
-  GaussianModelPrior modelPrior (const string& alph, SeqIndex kmerLen, int components) const;
+  GaussianModelPrior modelPrior (const string& alph, SeqIdx kmerLen, int components) const;
 };
 
 struct BaseCallingMachine : Machine, BaseCallingParamNamer {
+  int components;
   inline StateIndex kmerStart (Kmer kmer) const { return kmer * (components + 2) + 1; }
-  void init (const string& alph, SeqIndex kmerLen, int components);
+  void init (const string& alph, SeqIdx kmerLen, int components);
 };
 
 #endif /* BASECALL_INCLUDED */

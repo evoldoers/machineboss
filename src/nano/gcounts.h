@@ -3,6 +3,7 @@
 
 #include "../counts.h"
 #include "moments.h"
+#include "prior.h"
 
 struct GaussianCounts {
   double m0, m1, m2;

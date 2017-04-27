@@ -3,7 +3,7 @@
 
 #include "../eval.h"
 #include "../logsumexp.h"
-#include "trace.h"
+#include "moments.h"
 
 class TraceDPMatrix {
 public:
@@ -19,7 +19,6 @@ private:
   typedef long long CellIndex;
   typedef long long EmitIndex;
 
-  vguard<vguard<IndexedTrans> > transByOut;  // indexed by output token
   vguard<double> cellStorage;
 
   inline CellIndex nCells() const {
@@ -30,6 +29,8 @@ private:
     return outPos * nStates + state;
   }
 
+protected:
+  vguard<vguard<IndexedTrans> > transByOut;  // indexed by output token
   inline const vguard<IndexedTrans>& nullTrans() const { return transByOut.front(); }
 
 public:
@@ -51,7 +52,7 @@ public:
   inline double& cell (OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(outPos,state)]; }
   inline const double cell (OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(outPos,state)]; }
 
-  inline double logEmitProb (OutputIndex outPos, OutputToken outTok) {
+  inline double logEmitProb (OutputIndex outPos, OutputToken outTok) const {
     return coeffs.gauss[outTok-1].logEmitProb (moments.sample[outPos-1]);
   }
 };
