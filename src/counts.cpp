@@ -14,6 +14,9 @@
 #define EpsilonAbsolute 1e-3
 #define MaxIterations 100
 
+MachineCounts::MachineCounts()
+{ }
+
 MachineCounts::MachineCounts (const EvaluatedMachine& machine) {
   init (machine);
 }

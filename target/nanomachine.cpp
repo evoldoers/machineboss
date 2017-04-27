@@ -101,7 +101,7 @@ int main (int argc, char** argv) {
     const GaussianModelPrior modelPrior = bcPrior.modelPrior (initParams.alphabet, initParams.kmerLen, initParams.components);
     
     // train model
-    GaussianModelParams trainedParams = initParams;
+    BaseCallingParams trainedParams = initParams;
     if (vm.count("fasta")) {
       LogThisAt(2,"Reading sequence data" << endl);
       vguard<FastSeq> trainSeqs;

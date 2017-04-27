@@ -12,6 +12,9 @@ void GaussianCounts::inc (const SampleMoments& sampleMoments, const double postP
   m2 += sampleMoments.m2 * postProb;
 }
 
+GaussianModelCounts::GaussianModelCounts()
+{ }
+
 void GaussianModelCounts::init (const EvaluatedMachine& m) {
   machine.init(m);
   gauss = vguard<GaussianCounts> (m.outputTokenizer.tok2sym.size() - 1);
@@ -135,4 +138,18 @@ double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelPar
     }
   }
   return lp;
+}
+
+json GaussianModelCounts::asJson() const {
+  json j;
+  j["machine"] = JsonWriter<MachineCounts>::toJson (machine);
+  json jg = json::array();
+  for (auto& g: gauss)
+    jg.push_back (json::array ({ g.m0, g.m1, g.m2 }));
+  j["gaussian"] = jg;
+  return j;
+}
+
+void GaussianModelCounts::writeJson (ostream& out) const {
+  out << asJson();
 }

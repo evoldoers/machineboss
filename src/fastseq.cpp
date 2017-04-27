@@ -125,9 +125,7 @@ void initFastSeq (FastSeq& seq, kseq_t* ks) {
     seq.qual = string(ks->qual.s);
 }
 
-vguard<FastSeq> readFastSeqs (const char* filename) {
-  vguard<FastSeq> seqs;
-
+void readFastSeqs (const char* filename, vguard<FastSeq>& seqs) {
   gzFile fp = gzopen(filename, "r");
   Require (fp != Z_NULL, "Couldn't open %s", filename);
 
@@ -148,7 +146,11 @@ vguard<FastSeq> readFastSeqs (const char* filename) {
   
   if (seqs.empty())
     Warn ("Couldn't read any sequences from %s", filename);
-  
+}
+
+vguard<FastSeq> readFastSeqs (const char* filename) {
+  vguard<FastSeq> seqs;
+  readFastSeqs (filename, seqs);
   return seqs;
 }
 

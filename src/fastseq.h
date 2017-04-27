@@ -52,7 +52,9 @@ struct FastSeq {
   void writeFastq (ostream& out) const;
 };
 
+void readFastSeqs (const char* filename, vguard<FastSeq>&);
 vguard<FastSeq> readFastSeqs (const char* filename);
+
 void writeFastaSeqs (ostream& out, const vguard<FastSeq>& fastSeqs);
 void writeFastqSeqs (ostream& out, const vguard<FastSeq>& fastSeqs);
 

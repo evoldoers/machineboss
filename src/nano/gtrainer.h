@@ -1,7 +1,8 @@
 #ifndef GAUSSTRAINER_INCLUDED
 #define GAUSSTRAINER_INCLUDED
 
-#include "prior.h"
+#include "../fastseq.h"
+#include "gcounts.h"
 
 struct GaussianTrainer {
   Machine machine;

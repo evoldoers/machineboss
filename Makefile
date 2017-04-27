@@ -40,6 +40,14 @@ BOOSTFLAGS := -I$(BOOSTPREFIX)/include
 BOOSTLIBS := -L$(BOOSTPREFIX)/lib -lboost_regex -lboost_program_options
 endif
 
+# HDF5
+HDF5_DIR ?= /usr/local
+HDF5_INCLUDE_DIR ?= $(HDF5_DIR)/include
+HDF5_LIB_DIR ?= $(HDF5_DIR)/lib
+HDF5_LIB ?= hdf5
+HDF5_FLAGS = -isystem $(HDF5_INCLUDE_DIR)
+HDF5_LIBS = -L$(HDF5_LIB_DIR) -l$(HDF5_LIB)
+
 # install dir
 PREFIX = /usr/local
 
@@ -52,8 +60,11 @@ endif
 CPPFLAGS += -Iext -Iext/nlohmann_json
 LIBFLAGS = -lstdc++ -lz $(GSLLIBS) $(BOOSTLIBS)
 
-CPPFILES = $(wildcard src/*.cpp) $(wildcard src/nano/*.cpp)
+CPPFILES = $(wildcard src/*.cpp)
 OBJFILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPPFILES)))
+
+CPPFILES_NANO = $(wildcard src/nano/*.cpp)
+OBJFILES_NANO = $(subst src/,obj/,$(subst .cpp,.o,$(CPPFILES_NANO)))
 
 # try clang++, fall back to g++
 CPP = clang++
@@ -73,6 +84,15 @@ BOSS = bossmachine
 NANO = nanomachine
 
 all: $(BOSS) $(NANO)
+
+# Nanomachine build rules
+obj/nano/%.o: src/nano/%.cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	$(CPP) $(CPPFLAGS) $(HDF5_FLAGS) -c -o $@ $<
+
+bin/$(NANO): $(OBJFILES) $(OBJFILES_NANO) obj/$(NANO).o target/$(NANO).cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	$(CPP) $(LIBFLAGS) $(HDF5_LIBS) -o $@ obj/$(NANO).o $(OBJFILES) $(OBJFILES_NANO)
 
 # Main build rules
 bin/%: $(OBJFILES) obj/%.o target/%.cpp

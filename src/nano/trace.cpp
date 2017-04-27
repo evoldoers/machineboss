@@ -54,7 +54,6 @@ void TraceList::readFast5 (const string& fn) {
   Trace t;
   t.readFast5 (fn);
   trace.push_back (t);
-  filename.push_back (fn);
 }
 
 TraceParams::TraceParams() :

@@ -21,7 +21,7 @@ GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams&
   const double shift = traceParams.shift, scale = traceParams.scale;
   for (OutputToken outTok = 1; outTok <= outputTokenizer.tok2sym.size(); ++outTok) {
     const auto& outSym = outputTokenizer.tok2sym[outTok];
-    const GaussianParams& p = modelParams.gaussian.at(outSym);
+    const GaussianParams& p = modelParams.gauss.at(outSym);
     GaussianCoefficients& e = gauss[outTok-1];
     const double mu_plus_shift = p.mu + shift;
     e.m0coeff = log(p.tau)/2 - log(scale) - log_sqrt_2pi - (p.tau/2)*mu_plus_shift*mu_plus_shift;

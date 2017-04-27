@@ -2,6 +2,7 @@
 #include "fwdtrace.h"
 #include "backtrace.h"
 #include "vtrace.h"
+#include "../logger.h"
 
 #define MaxEMIterations 1000
 #define MinEMImprovement .001
@@ -15,7 +16,7 @@ void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, con
 }
 
 void GaussianTrainer::reset() {
-  LogThisAt(5,"Model parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<Model>::toJsonString(model));
+  LogThisAt(5,"Model parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<GaussianModelParams>::toJsonString(modelParams));
   LogThisAt(5,"Training set parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<TraceListParams>::toJsonString(traceListParams));
   logPrior = prior.logProb (modelParams, traceListParams);
   logLike = logPrior;
@@ -46,7 +47,7 @@ double GaussianTrainer::expectedLogEmit() const {
 }
 
 void GaussianModelFitter::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceList& tl, const vguard<FastSeq>& s) {
-  GaussianTrainer::fit (m, mp, pr, tl);
+  GaussianTrainer::init (m, mp, pr, tl);
   seqs = s;
   inputConditionedMachine.clear();
   for (auto& fs: seqs) {
@@ -109,9 +110,9 @@ vguard<FastSeq> GaussianDecoder::decode() {
     ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams);
     FastSeq fs;
     fs.name = trace.name;
-    for (const auto& trans: viterbi.path().trans)
-      if (trans.in)
-	fs.seq.push_back (trans.in);
+    for (const auto& trans: viterbi.path(machine).trans)
+      if (!trans.inputEmpty())
+	fs.seq.append (trans.in);
     result.push_back (fs);
     ++m;
   }

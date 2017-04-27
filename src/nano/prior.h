@@ -17,6 +17,7 @@ struct Prior {
 struct TraceParamsPrior : Prior {
   double scale, scaleCount;
   double shift, shiftCount;
+  TraceParamsPrior();
   WeightExpr logTraceExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const;
   double logProb (const TraceListParams& traceListParams) const;
 };

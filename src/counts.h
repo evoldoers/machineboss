@@ -8,6 +8,7 @@
 // E-step
 struct MachineCounts {
   vguard<vguard<double> > count;  // indexed: count[state][nTrans]
+  MachineCounts();
   MachineCounts (const EvaluatedMachine&);
   MachineCounts (const EvaluatedMachine&, const SeqPair&);
   void init (const EvaluatedMachine&);

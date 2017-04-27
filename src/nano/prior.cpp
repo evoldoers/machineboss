@@ -52,7 +52,7 @@ double GaussianModelPrior::logProb (const GaussianModelParams& modelParams, cons
   Assert (cons.prob.size() == 0, "No free probability parameters allowed!");
   double lp = TraceParamsPrior::logProb (traceListParams);
   for (const auto& g: gauss) {
-    const auto& m = model.gauss[g.first];
+    const auto& m = modelParams.gauss.at(g.first);
     const auto& p = g.second;
     lp += logNormalGammaProb (m.mu, m.tau, p.mu0, p.n_mu, p.tau0, p.n_tau);
   }
@@ -61,8 +61,8 @@ double GaussianModelPrior::logProb (const GaussianModelParams& modelParams, cons
     c.reserve (n.size());
     m.reserve (n.size());
     for (const auto& p: n) {
-      c.push_back (count[p]);
-      m.push_back (model.prob[p]);
+      c.push_back (count.defs.at(p));
+      m.push_back (modelParams.prob.defs.at(p));
     }
     lp += logDirichletPdf (m, c);
   }
