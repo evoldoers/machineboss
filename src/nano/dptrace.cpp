@@ -1,6 +1,7 @@
 #include "dptrace.h"
+#include "../logger.h"
 
-void TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t, StateIndex s, StateIndex d, InputToken i)
+TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t, StateIndex s, StateIndex d, InputToken i)
 {
   init (t.logWeight, t.transIndex);
   src = s;
@@ -41,7 +42,7 @@ void TraceDPMatrix::writeJson (ostream& outs) const {
     for (StateIndex s = 0; s < nStates; ++s)
       outs << ((o || s) ? "," : "") << endl
 	   << "  { \"outPos\": " << o
-	   << ", \"state\": " << machine.state[s].name
+	   << ", \"state\": " << eval.state[s].name
 	   << ", \"logLike\": " << setprecision(5) << cell(o,s)
 	   << " }";
   outs << endl

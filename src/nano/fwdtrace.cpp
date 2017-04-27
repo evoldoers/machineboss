@@ -1,5 +1,5 @@
 #include "fwdtrace.h"
-#include "logger.h"
+#include "../logger.h"
 
 ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
   TraceDPMatrix (eval, modelParams, trace, traceParams)
@@ -9,9 +9,9 @@ ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const Gaus
     log_accum_exp (cell(0,it.dest), cell(0,it.src) + it.logWeight);
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
-    for (OutputToken out = 1; out < nOutToks; ++out) {
+    for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
-      for (const auto& it: transByOut[out])
+      for (const auto& it: transByOut[outTok])
 	log_accum_exp (cell(outPos,it.dest), cell(outPos-1,it.src) + it.logWeight + llEmit);
     }
 
@@ -21,6 +21,6 @@ ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const Gaus
   LogThisAt(8,"Forward matrix:" << endl << toJsonString());
 }
 
-double ForwardMatrix::logLike() const {
-  return cell (outLen, machine.endState());
+double ForwardTraceMatrix::logLike() const {
+  return cell (outLen, eval.endState());
 }

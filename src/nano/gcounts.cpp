@@ -1,5 +1,7 @@
 #include "gcounts.h"
 #include "minimize.h"
+#include "backtrace.h"
+#include "../logger.h"
 
 GaussianCounts::GaussianCounts() : m0(0), m1(0), m2(0)
 { }
@@ -24,26 +26,27 @@ double GaussianModelCounts::add (const EvaluatedMachine& m, const GaussianModelP
 
 void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<Machine>& machine, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {
   LogThisAt(5,"Optimizing model parameters" << endl);
-  const size_t nSym = modelParams.gauss.size();
+  const auto gaussSymbol = extract_keys (modelParams.gauss);
+  const size_t nSym = gaussSymbol.size();
   for (size_t n = 0; n < nSym; ++n) {
-    const OutputSymbol& outSym = eval.outputTokenizer.tok2sym[n+1];
-    GaussianParams& params = modelParams.gauss[outSym];
-    const GaussianPrior& prior = modelPrior.gauss[outSym];
+    const OutputSymbol& outSym = gaussSymbol[n];
+    const GaussianPrior& prior = modelPrior.gauss.at(outSym);
+    GaussianParams& params = modelParams.gauss.at(outSym);
     double coeff_log_tau = 0, coeff_tau_mu = 0, coeff_tau_mu2 = 0, coeff_tau = 0;
     auto countsIter = modelCountsList.begin();
     for (size_t m = 0; m < modelCountsList.size(); ++m) {
-      const TraceParams& trace = traceListParams.params[m];
       const GaussianModelCounts& modelCounts = *(countsIter++);
+      const TraceParams& trace = traceListParams.params[m];
       const GaussianCounts& counts = modelCounts.gauss[n];
       coeff_log_tau += counts.m0 / 2;
       coeff_tau_mu += counts.m1 / trace.scale - counts.m0 * trace.shift;
       coeff_tau_mu2 -= counts.m0 / 2;
       coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 * trace.scale * trace.scale / 2;
     }
-    coeff_log_tau += (prior.tauCount - 1) / 2;
-    coeff_tau_mu += prior.muCount * prior.mu;
-    coeff_tau_mu2 -= prior.muCount / 2;
-    coeff_tau -= prior.muCount * prior.mu * prior.mu / 2 + (prior.tauCount - 1) / (2 * prior.tau);
+    coeff_log_tau += (prior.n_tau - 1) / 2;
+    coeff_tau_mu += prior.n_mu * prior.mu0;
+    coeff_tau_mu2 -= prior.n_mu / 2;
+    coeff_tau -= prior.n_mu * prior.mu0 * prior.mu0 / 2 + (prior.n_tau - 1) / (2 * prior.tau0);
     
     params.mu = -coeff_tau_mu / (2 * coeff_tau_mu2);
     params.tau = coeff_log_tau / (coeff_tau_mu * coeff_tau_mu / (4 * coeff_tau_mu2) - coeff_tau);
@@ -51,9 +54,9 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
   }
 
   map<string,double> paramCount;
-  auto machineIter = inputConditionedMachine.begin();
+  auto machineIter = machine.begin();
   for (auto& modelCounts: modelCountsList) {
-    const auto pc = modelCounts.paramCounts (*(machineIter++), modelParams.prob);
+    const auto pc = modelCounts.machine.paramCounts (*(machineIter++), modelParams.prob);
     for (auto p_c: pc)
       paramCount[p_c.first] += p_c.second;
   }
@@ -61,9 +64,9 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
   for (auto& norm: modelPrior.cons.norm) {
     double sum = 0;
     for (auto& p: norm)
-      sum += (paramCount[p] += modelPrior.count.at(p).get<double>());
+      sum += (paramCount[p] += modelPrior.count.defs.at(p).get<double>());
     for (auto& p: norm)
-      modelParams.prob[p] = paramCount[p] / sum;
+      modelParams.prob.defs[p] = paramCount[p] / sum;
   }
 }
 
@@ -72,8 +75,8 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
   for (size_t n = 0; n < gauss.size(); ++n) {
     const GaussianCounts& counts = gauss[n];
     const OutputSymbol& outSym = eval.outputTokenizer.tok2sym[n+1];
-    const GaussianPrior& prior = modelPrior.gauss[outSym];
-    GaussianParams& params = modelParams.gauss[outSym];
+    const GaussianPrior& prior = modelPrior.gauss.at(outSym);
+    const GaussianParams& params = modelParams.gauss.at(outSym);
     coeff_log_scale -= counts.m0;
     coeff_1_over_scale += counts.m1 * params.tau * params.mu;
     coeff_scale2 -= counts.m2 * params.tau / 2;
@@ -94,7 +97,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
 					multiply (coeff_shift, shiftParam))),
 			      add (add (multiply (coeff_shift2, multiply (shiftParam, shiftParam)),
 					multiply (coeff_shift_over_scale, divide (shiftParam, scaleParam))),
-				   prior.logSeqExpr (shiftParam, scaleParam)));
+				   modelPrior.logTraceExpr (shiftParam, scaleParam)));
 
   LogThisAt(5,"Optimizing scaling parameters" << endl);
   LogThisAt(7,"Objective function for trace scaling: " << WeightAlgebra::toString(objective,ParamDefs()) << endl);
@@ -111,11 +114,14 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
 }
 
 double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
+  const auto gaussSymbol = extract_keys (modelParams.gauss);
   double lp = modelPrior.logProb (modelParams, traceListParams);
   // expected log-likelihood = sum_kmers sum_reads m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
   const double log_sqrt_2pi = log(2*M_PI)/2;
-  for (size_t n = 0; n < gauss.size(); ++n) {
-    const GaussianParams& params = modelParams.gauss[n];
+  for (size_t n = 0; n < gaussSymbol.size(); ++n) {
+    const OutputSymbol& outSym = gaussSymbol[n];
+    const GaussianPrior& prior = modelPrior.gauss.at(outSym);
+    const GaussianParams& params = modelParams.gauss.at(outSym);
     auto countsIter = modelCountsList.begin();
     for (size_t m = 0; m < traceListParams.params.size(); ++m) {
       const TraceParams& traceParams = traceListParams.params[m];

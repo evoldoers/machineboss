@@ -12,7 +12,7 @@ json GaussianModelParams::asJson() const {
   return json::object ({ { "gauss", jg }, { "prob", JsonWriter<ParamAssign>::toJson(prob) } });
 }
 
-void GaussianModelParams::toJson (ostream& out) const {
+void GaussianModelParams::writeJson (ostream& out) const {
   out << asJson();
 }
 
@@ -20,11 +20,11 @@ void GaussianModelParams::readJson (const json& j) {
   gauss.clear();
   prob.clear();
   const json& jg = j["gauss"];
-  for (json::iterator gaussIter = jg.begin(); gaussIter != jg.end(); ++gaussIter) {
+  for (json::const_iterator gaussIter = jg.begin(); gaussIter != jg.end(); ++gaussIter) {
     GaussianParams gp;
     gp.mu = gaussIter.value()["mu"].get<double>();
     gp.tau = gaussIter.value()["tau"].get<double>();
-    gauss[gaussIter.key().get<string>()] = gp;
+    gauss[gaussIter.key()] = gp;
   }
   prob.readJson (j["prob"]);
 }
