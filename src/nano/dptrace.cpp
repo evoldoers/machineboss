@@ -28,7 +28,7 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
     for (const auto& inTok_outStateTransMap: eval.state[dest].incoming)
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second)
 	for (const auto& src_trans: outTok_stateTransMap.second) {
-	  Assert (!outTok_stateTransMap.first || (src_trans.first <= dest), "Input-blinded machine is not topologically sorted");
+	  Assert (outTok_stateTransMap.first || (src_trans.first <= dest), "Input-blinded machine is not topologically sorted (transition from %d to %d has no output)", src_trans.first, dest);
 	  transByOut[outTok_stateTransMap.first].push_back (IndexedTrans (src_trans.second, src_trans.first, dest, inTok_outStateTransMap.first));
 	}
 

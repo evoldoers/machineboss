@@ -53,7 +53,7 @@ void GaussianModelFitter::init (const Machine& m, const GaussianModelParams& mp,
   for (auto& fs: seqs) {
     vguard<OutputSymbol> seq (fs.length());
     for (SeqIdx pos = 0; pos < fs.length(); ++pos)
-      seq[pos] = string (1, fs.seq[pos]);
+      seq[pos] = string (1, tolower (fs.seq[pos]));
     inputConditionedMachine.push_back (Machine::compose (Machine::generator (fs.name, seq), machine));
   }
 }
