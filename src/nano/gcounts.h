@@ -12,16 +12,16 @@ struct GaussianCounts {
 };
 
 struct GaussianModelCounts {
-  MachineCounts machine;
+  map<string,double> prob;
   vguard<GaussianCounts> gauss;
+  vguard<OutputSymbol> gaussSymbol;
   GaussianModelCounts();
   void init (const EvaluatedMachine&);
-  double add (const EvaluatedMachine&, const GaussianModelParams&, const Trace&, const TraceParams&);  // returns log-likelihood
+  double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const Trace&, const TraceParams&);  // returns log-likelihood
   void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
-  GaussianModelCounts& operator+= (const GaussianModelCounts&);
   json asJson() const;
   void writeJson (ostream& out) const;
-  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<Machine>&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
+  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
   static double expectedLogEmit (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
 };
 

@@ -16,18 +16,26 @@ GaussianModelCounts::GaussianModelCounts()
 { }
 
 void GaussianModelCounts::init (const EvaluatedMachine& m) {
-  machine.init(m);
+  prob.clear();
   gauss = vguard<GaussianCounts> (m.outputTokenizer.tok2sym.size() - 1);
+  gaussSymbol = vguard<OutputSymbol> (m.outputTokenizer.tok2sym.begin() + 1, m.outputTokenizer.tok2sym.end());
 }
 
-double GaussianModelCounts::add (const EvaluatedMachine& m, const GaussianModelParams& mp, const Trace& t, const TraceParams& tp) {
+double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const Trace& t, const TraceParams& tp) {
   const ForwardTraceMatrix forward (m, mp, t, tp);
   const BackwardTraceMatrix backward (m, mp, t, tp);
-  backward.getCounts (forward, *this);
+  backward.getGaussianCounts (forward, gauss);
+
+  MachineCounts mc(m);
+  backward.getMachineCounts (forward, mc);
+  const auto pc = mc.paramCounts (machine, mp.prob);
+  for (auto p_c: pc)
+    prob[p_c.first] += p_c.second;
+
   return forward.logLike();
 }
 
-void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<Machine>& machine, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {
+void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {
   LogThisAt(5,"Optimizing model parameters" << endl);
   const auto gaussSymbol = extract_keys (modelParams.gauss);
   const size_t nSym = gaussSymbol.size();
@@ -57,12 +65,9 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
   }
 
   map<string,double> paramCount;
-  auto machineIter = machine.begin();
-  for (auto& modelCounts: modelCountsList) {
-    const auto pc = modelCounts.machine.paramCounts (*(machineIter++), modelParams.prob);
-    for (auto p_c: pc)
+  for (auto& modelCounts: modelCountsList)
+    for (auto p_c: modelCounts.prob)
       paramCount[p_c.first] += p_c.second;
-  }
 
   for (auto& norm: modelPrior.cons.norm) {
     double sum = 0;
@@ -141,13 +146,15 @@ double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelPar
 }
 
 json GaussianModelCounts::asJson() const {
-  json j;
-  j["machine"] = JsonWriter<MachineCounts>::toJson (machine);
-  json jg = json::array();
-  for (auto& g: gauss)
-    jg.push_back (json::array ({ g.m0, g.m1, g.m2 }));
-  j["gaussian"] = jg;
-  return j;
+  json jp = json::object();
+  for (auto& p_v: prob)
+    jp[p_v.first] = p_v.second;
+
+  json jg = json::object();
+  for (size_t n = 0; n < gauss.size(); ++n)
+    jg[gaussSymbol[n]] = json::array ({ gauss[n].m0, gauss[n].m1, gauss[n].m2 });
+
+  return json::object ({ { "gaussian", jg }, { "prob", jp } });
 }
 
 void GaussianModelCounts::writeJson (ostream& out) const {

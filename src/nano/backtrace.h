@@ -12,7 +12,6 @@ public:
   
   void getMachineCounts (const ForwardTraceMatrix&, MachineCounts&) const;
   void getGaussianCounts (const ForwardTraceMatrix&, vguard<GaussianCounts>&) const;
-  void getCounts (const ForwardTraceMatrix&, GaussianModelCounts&) const;
   double logLike() const;
 };
 

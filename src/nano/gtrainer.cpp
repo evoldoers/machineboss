@@ -66,10 +66,11 @@ void GaussianModelFitter::fit() {
     auto machineIter = inputConditionedMachine.begin();
     for (const auto& trace: traceList.trace) {
       const TraceParams& traceParams = traceListParams.params[m];
-      const EvaluatedMachine eval (*(machineIter++), modelParams.prob);
+      const Machine& machine = *(machineIter++);
+      const EvaluatedMachine eval (machine, modelParams.prob);
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (eval, modelParams, trace, traceParams);
+      logLike += c.add (machine, eval, modelParams, trace, traceParams);
       counts.push_back (c);
       evalMachine.push_back (eval);
       LogThisAt(6,"Counts for trace #" << m << ", iteration #" << (iter+1) << ":" << endl << JsonWriter<GaussianModelCounts>::toJsonString(c) << endl);
@@ -84,7 +85,7 @@ void GaussianModelFitter::fit() {
       (*(countIter++)).optimizeTraceParams (traceParams, *(evalIter++), modelParams, prior);
     LogThisAt(4,"Expected log-likelihood (emissions) after optimizing trace parameters: " << expectedLogEmit() << endl);
 
-    GaussianModelCounts::optimizeModelParams (modelParams, traceListParams, prior, inputConditionedMachine, evalMachine, counts);
+    GaussianModelCounts::optimizeModelParams (modelParams, traceListParams, prior, evalMachine, counts);
     LogThisAt(4,"Expected log-likelihood (emissions) after optimizing model parameters: " << expectedLogEmit() << endl);
   }
 }
@@ -100,7 +101,7 @@ vguard<FastSeq> GaussianDecoder::decode() {
       reset();
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (eval, modelParams, trace, traceParams);
+      logLike += c.add (machine, eval, modelParams, trace, traceParams);
       counts.push_back (c);
       if (testFinished())
 	break;

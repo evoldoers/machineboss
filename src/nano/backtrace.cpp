@@ -56,8 +56,3 @@ void BackwardTraceMatrix::getGaussianCounts (const ForwardTraceMatrix& fwd, vgua
 	counts[outTok-1].inc (sample, exp (fwd.cell(outPos-1,it.src) + it.logWeight + llEmit + cell(outPos,it.dest) - llFinal));
     }
 }
-
-void BackwardTraceMatrix::getCounts (const ForwardTraceMatrix& fwd, GaussianModelCounts& modelCounts) const {
-  getMachineCounts (fwd, modelCounts.machine);
-  getGaussianCounts (fwd, modelCounts.gauss);
-}
