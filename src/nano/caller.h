@@ -36,9 +36,12 @@ struct BaseCallingPrior : BaseCallingParamNamer {
 };
 
 struct BaseCallingMachine : Machine, BaseCallingParamNamer {
-  int components;
-  inline StateIndex kmerStart (Kmer kmer) const { return kmer * (components + 2) + 1; }
+  int components, nKmers;
   void init (const string& alph, SeqIdx kmerLen, int components);
+  // State indices are organized so that the only backward transitions (i->j where j<i) are output emissions
+  inline StateIndex kmerEmit (Kmer kmer, int component) const { return 1 + component * nKmers + kmer; }
+  inline StateIndex kmerEnd (Kmer kmer) const { return 1 + components * nKmers + kmer; }
+  inline StateIndex kmerStart (Kmer kmer) const { return 1 + (components + 1) * nKmers + kmer; }
 };
 
 #endif /* BASECALL_INCLUDED */

@@ -42,9 +42,9 @@ int main (int argc, char** argv) {
     po::options_description appOpts("Data options");
     appOpts.add_options()
       ("fast5,D", po::value<vector<string> >(), "load trace data from FAST5 file(s)")
-      ("text,T", po::value<vector<string> >(), "load trace from text file(s) e.g. from f5dump")
+      ("raw,R", po::value<vector<string> >(), "load trace from text file(s) e.g. from 'f5dump --rw' in fast5")
       ("model,M", po::value<string>(), "load model parameters from file")
-      ("fasta,F", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
+      ("fasta,T", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
       ("save,S", po::value<string>(), "save trained model parameters to file")
       ("call,C", "base-call using Viterbi decoding, first fitting scaling parameters using EM")
       ;
@@ -83,14 +83,14 @@ int main (int argc, char** argv) {
 		       vm.at("components").as<int>());
 
     // read data
-    Require (vm.count("fast5") || vm.count("text"), "Please specify at least one data file");
+    Require (vm.count("fast5") || vm.count("raw"), "Please specify at least one data file");
     LogThisAt(2,"Reading trace data" << endl);
     TraceList traceList;
     if (vm.count("fast5"))
       for (const auto& fast5Filename: vm.at("fast5").as<vector<string> >())
 	traceList.readFast5 (fast5Filename);
-    if (vm.count("text"))
-      for (const auto& textFilename: vm.at("text").as<vector<string> >())
+    if (vm.count("raw"))
+      for (const auto& textFilename: vm.at("raw").as<vector<string> >())
 	traceList.readText (textFilename);
 
     // initialize machine & prior

@@ -110,28 +110,27 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
 
 void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
   components = cpts;
-  const Kmer nk = numberOfKmers (len, alph.size());
-  state = vguard<MachineState> (nk * (cpts + 2) + 2);
+  nKmers = numberOfKmers (len, alph.size());
+  state = vguard<MachineState> (nKmers * (components + 2) + 2);
   state[startState()].name = "start";
   state[endState()].name = "end";
-  for (Kmer kmer = 0; kmer < nk; ++kmer) {
-    const StateIndex si = kmerStart (kmer);
+  for (Kmer kmer = 0; kmer < nKmers; ++kmer) {
     const string kmerStr = kmerToString (kmer, len, alph);
     const string suffix = kmerStr.substr(1);
-    MachineState& start (state[si]);
-    MachineState& end (state[si + cpts + 1]);
+    MachineState& start (state[kmerStart(kmer)]);
+    MachineState& end (state[kmerEnd(kmer)]);
     start.name = kmerStr + "_start";
     end.name = kmerStr + "_end";
     for (int cpt = 0; cpt < cpts; ++cpt) {
-      MachineState& sc = state[si + cpt + 1];
+      MachineState& sc = state[kmerEmit(kmer,cpt)];
       sc.name = kmerStr + "_" + cptName(cpt);
-      start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), si + cpt + 1, WeightExpr (cptWeightLabel (kmerStr, cpt))));
-      sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), si + cpt + 1, WeightExpr (cptExtendLabel (kmerStr, cpt))));
-      sc.trans.push_back (MachineTransition (string(), string(), si + cpts + 1, WeightExpr (cptEndLabel (kmerStr, cpt))));
+      start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptWeightLabel (kmerStr, cpt))));
+      sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptExtendLabel (kmerStr, cpt))));
+      sc.trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr (cptEndLabel (kmerStr, cpt))));
     }
     for (auto c: alph)
-      end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart (stringToKmer (suffix + c, alph)), WeightExpr (condFreqLabel (suffix, c))));
-    state[startState()].trans.push_back (MachineTransition (string(), string(), si + cpts + 1, WeightExpr(1. / (double) nk)));
-    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr(1.)));
+      end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (condFreqLabel (suffix, c))));
+    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerStart(kmer), WeightExpr(1. / (double) nKmers)));
+    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr(true)));
   }
 }
