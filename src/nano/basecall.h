@@ -31,7 +31,7 @@ struct BaseCallingPrior : BaseCallingParamNamer {
 
   BaseCallingPrior();
   
-  ModelPrior modelPrior (const string& alph, SeqIndex kmerLen, int components) const;
+  GaussianModelPrior modelPrior (const string& alph, SeqIndex kmerLen, int components) const;
 };
 
 struct BaseCallingMachine : Machine, BaseCallingParamNamer {

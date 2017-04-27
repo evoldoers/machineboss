@@ -59,7 +59,6 @@ struct EvaluatedMachine {
   StateIndex nStates() const;
   StateIndex startState() const;
   StateIndex endState() const;
-  bool isOutputAdvancingMachine() const;  // no non-outputting i->j transitions where j<i
 };
 
 #endif /* EVAL_INCLUDED */

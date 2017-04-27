@@ -1,8 +1,8 @@
 #ifndef BACKTRACE_INCLUDED
 #define BACKTRACE_INCLUDED
 
-#include "forward.h"
-#include "counts.h"
+#include "fwdtrace.h"
+#include "gcounts.h"
 
 class BackwardTraceMatrix : public TraceDPMatrix {
 private:

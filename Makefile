@@ -52,7 +52,7 @@ endif
 CPPFLAGS += -Iext -Iext/nlohmann_json
 LIBFLAGS = -lstdc++ -lz $(GSLLIBS) $(BOOSTLIBS)
 
-CPPFILES = $(wildcard src/*.cpp)
+CPPFILES = $(wildcard src/*.cpp) $(wildcard src/nano/*.cpp)
 OBJFILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPPFILES)))
 
 # try clang++, fall back to g++
@@ -69,32 +69,35 @@ SH = /bin/sh
 
 # Targets
 
-MAIN = bossmachine
+BOSS = bossmachine
+NANO = nanomachine
 
-all: $(MAIN)
+all: $(BOSS) $(NANO)
 
 # Main build rules
 bin/%: $(OBJFILES) obj/%.o target/%.cpp
-	@test -e bin || mkdir bin
+	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
 
 obj/%.o: src/%.cpp
-	@test -e obj || mkdir obj
+	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 obj/%.o: target/%.cpp
-	@test -e obj || mkdir obj
+	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPPFLAGS) -c -o $@ $<
 
 t/bin/%: $(OBJFILES) obj/%.o t/src/%.cpp
-	@test -e t/bin || mkdir t/bin
+	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
 
 obj/%.o: t/src/%.cpp
-	@test -e obj || mkdir obj
+	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@$(CPP) $(CPPFLAGS) -c -o $@ $<
 
-$(MAIN): bin/$(MAIN)
+$(BOSS): bin/$(BOSS)
+
+$(NANO): bin/$(NANO)
 
 clean:
 	rm -rf bin/* t/bin/* obj/*
@@ -120,7 +123,7 @@ preset/%.json: node/%.js
 	node $< >$@
 
 preset/prot2dna.json:
-	bin/$(MAIN) -v6 preset/flankbase.json '.' '(' preset/pswint.json '=>' preset/translate.json '=>' preset/simple-introns.json ')' '.' preset/flankbase.json '=>' preset/base2acgt.json >$@
+	bin/$(BOSS) -v6 preset/flankbase.json '.' '(' preset/pswint.json '=>' preset/translate.json '=>' preset/simple-introns.json ')' '.' preset/flankbase.json '=>' preset/base2acgt.json >$@
 
 # valijson doesn't like the URLs, but other schema validators demand them, so strip them out for xxd
 src/schema/$(FILE).h: schema/$(FILE).json.nourl
@@ -132,108 +135,108 @@ schema/$(FILE).json.nourl: schema/$(FILE).json
 # Transducer composition tests
 COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
 test-echo:
-	@$(TEST) bin/$(MAIN) t/machine/bitecho.json t/expect/bitecho.json
+	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/expect/bitecho.json
 
 test-echo2:
-	@$(TEST) bin/$(MAIN) t/machine/bitecho.json t/machine/bitecho.json t/expect/bitecho-bitecho.json
+	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/machine/bitecho.json t/expect/bitecho-bitecho.json
 
 test-echo-stutter:
-	@$(TEST) bin/$(MAIN) t/machine/bitecho.json t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
+	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
 
 test-stutter2:
-	@$(TEST) bin/$(MAIN) t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
+	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
 
 test-noise2:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json t/machine/bitnoise.json t/expect/bitnoise-bitnoise.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json t/machine/bitnoise.json t/expect/bitnoise-bitnoise.json
 
 test-unitindel2:
-	@$(TEST) bin/$(MAIN) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
+	@$(TEST) bin/$(BOSS) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
 CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-weight test-shorthand
 test-generator:
-	@$(TEST) bin/$(MAIN) -g t/io/seq101.json t/expect/generator101.json
+	@$(TEST) bin/$(BOSS) -g t/io/seq101.json t/expect/generator101.json
 
 test-acceptor:
-	@$(TEST) bin/$(MAIN) -a t/io/seq001.json t/expect/acceptor001.json
+	@$(TEST) bin/$(BOSS) -a t/io/seq001.json t/expect/acceptor001.json
 
 test-union:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
+	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
 
 test-intersection:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -m -a t/io/seq001.json -i -a t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m -a t/io/seq001.json -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-brackets:
-	@$(TEST) bin/$(MAIN) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(BOSS) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-kleene:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -K t/expect/generate-multiple-001.json
+	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -K t/expect/generate-multiple-001.json
 
 test-loop:
-	@$(TEST) bin/$(MAIN) -a t/io/seq101.json -o -a t/io/seq001.json t/expect/101-loop-001.json
+	@$(TEST) bin/$(BOSS) -a t/io/seq101.json -o -a t/io/seq001.json t/expect/101-loop-001.json
 
 test-noisy-loop:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq101.json -o -a t/io/seq001.json t/expect/noisy-101-loop-001.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -a t/io/seq101.json -o -a t/io/seq001.json t/expect/noisy-101-loop-001.json
 
 test-concat:
-	@$(TEST) bin/$(MAIN) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
+	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
 
 test-reverse:
-	@$(TEST) bin/$(MAIN) -e -g t/io/seq001.json t/expect/generator001-reversed.json
+	@$(TEST) bin/$(BOSS) -e -g t/io/seq001.json t/expect/generator001-reversed.json
 
 test-revcomp:
-	@$(TEST) bin/$(MAIN) -r -g t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
+	@$(TEST) bin/$(BOSS) -r -g t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
 
 test-flip:
-	@$(TEST) bin/$(MAIN) -f -g t/io/seq001.json t/expect/acceptor001.json
+	@$(TEST) bin/$(BOSS) -f -g t/io/seq001.json t/expect/acceptor001.json
 
 test-weight:
-	@$(TEST) bin/$(MAIN) -w p t/expect/null-p.json
+	@$(TEST) bin/$(BOSS) -w p t/expect/null-p.json
 
 test-shorthand:
-	@$(TEST) bin/$(MAIN) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&&' '>' t/io/seq001.json '.' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
+	@$(TEST) bin/$(BOSS) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&&' '>' t/io/seq001.json '.' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
 test-unmatched-begin:
-	@$(TEST) bin/$(MAIN) --begin -fail
+	@$(TEST) bin/$(BOSS) --begin -fail
 
 test-unmatched-end:
-	@$(TEST) bin/$(MAIN) --end -fail
+	@$(TEST) bin/$(BOSS) --end -fail
 
 test-empty-brackets:
-	@$(TEST) bin/$(MAIN) --begin --end -fail
+	@$(TEST) bin/$(BOSS) --begin --end -fail
 
 test-missing-machine:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json -a t/io/seq001.json -i -a t/io/seq101.json -fail
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -a t/io/seq001.json -i -a t/io/seq101.json -fail
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
 test-echo-valid:
-	@$(TEST) bin/$(MAIN) t/expect/bitecho.json -idem
+	@$(TEST) bin/$(BOSS) t/expect/bitecho.json -idem
 
 test-unitindel2-valid:
-	@$(TEST) bin/$(MAIN) t/expect/unitindel-unitindel.json -idem
+	@$(TEST) bin/$(BOSS) t/expect/unitindel-unitindel.json -idem
 
 # Schema validation failure tests
 INVALID_SCHEMA_TESTS = test-not-json test-no-state test-bad-state test-bad-trans test-bad-weight
 test-not-json:
-	@$(TEST) bin/$(MAIN) t/invalid/not_json.txt -fail
+	@$(TEST) bin/$(BOSS) t/invalid/not_json.txt -fail
 
 test-no-state:
-	@$(TEST) bin/$(MAIN) t/invalid/no_state.json -fail
+	@$(TEST) bin/$(BOSS) t/invalid/no_state.json -fail
 
 test-bad-state:
-	@$(TEST) bin/$(MAIN) t/invalid/bad_state.json -fail
+	@$(TEST) bin/$(BOSS) t/invalid/bad_state.json -fail
 
 test-bad-trans:
-	@$(TEST) bin/$(MAIN) t/invalid/bad_trans.json -fail
+	@$(TEST) bin/$(BOSS) t/invalid/bad_trans.json -fail
 
 test-bad-weight:
-	@$(TEST) bin/$(MAIN) t/invalid/bad_weight.json -fail
+	@$(TEST) bin/$(BOSS) t/invalid/bad_weight.json -fail
 
 # Non-transducer I/O tests
 IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints test-dot
@@ -250,8 +253,8 @@ test-constraints: t/bin/testconstraints
 	@$(TEST) t/bin/testconstraints t/io/constraints.json -idem
 
 test-dot:
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json --graphviz t/expect/bitnoise.dot
-	@$(TEST) bin/$(MAIN) t/machine/bitnoise.json t/machine/bitnoise.json --graphviz t/expect/bitnoise2.dot
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --graphviz t/expect/bitnoise.dot
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json t/machine/bitnoise.json --graphviz t/expect/bitnoise2.dot
 
 # Symbolic algebra tests
 ALGEBRA_TESTS = test-list-params test-deriv-xplusy-x test-deriv-xy-x test-eval-1plus2
@@ -282,23 +285,23 @@ test-max-bitnoise-params-tiny: t/bin/testmaximize
 	@$(TEST) t/roundfloats.pl 4 t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
-	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
 
 test-funcs:
-	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
 
 test-single-param:
-	@$(TEST) t/roundfloats.pl 4 bin/$(MAIN) t/machine/bitnoise.json t/machine/bsc.json -C t/io/econs.json -D t/io/seqpairlist.json -T -F t/io/params.json t/expect/single-param.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json t/machine/bsc.json -C t/io/econs.json -D t/io/seqpairlist.json -T -F t/io/params.json t/expect/single-param.json
 
 test-align-stutter-noise:
-	@$(TEST) bin/$(MAIN) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
+	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 
-test: $(MAIN) $(TESTS)
+test: $(BOSS) $(TESTS)
 
 # Schema validator
 ajv:
@@ -308,6 +311,6 @@ validate-$D-$F:
 	ajv -s schema/machine.json -r schema/expr.json -d t/$D/$F.json
 
 # README
-README.md: bin/$(MAIN)
-	bin/$(MAIN) -h | perl -pe 's/</&lt;/g;s/>/&gt;/g;' | perl -e 'open FILE,"<README.md";while(<FILE>){last if/<pre>/;print}close FILE;print"<pre><code>\n";while(<>){print};print"</code></pre>\n"' >temp.md
+README.md: bin/$(BOSS)
+	bin/$(BOSS) -h | perl -pe 's/</&lt;/g;s/>/&gt;/g;' | perl -e 'open FILE,"<README.md";while(<FILE>){last if/<pre>/;print}close FILE;print"<pre><code>\n";while(<>){print};print"</code></pre>\n"' >temp.md
 	mv temp.md $@

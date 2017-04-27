@@ -22,13 +22,14 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   LogThisAt(7,"Creating " << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << eval.toJsonString() << endl);
 
-  Assert (eval.isOutputAdvancingMachine(), "Machine is not topologically sorted when input-blind");
   transByOut.resize (nOutToks);
   for (StateIndex dest = 0; dest < nStates; ++dest)
     for (const auto& inTok_outStateTransMap: eval.state[dest].incoming)
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second)
-	for (const auto& src_trans: outTok_stateTransMap.second)
+	for (const auto& src_trans: outTok_stateTransMap.second) {
+	  Assert (!outTok_stateTransMap.first || (src_trans.first <= dest), "Input-blinded machine is not topologically sorted");
 	  transByOut[outTok_stateTransMap.first].push_back (IndexedTrans (src_trans.second, src_trans.first, dest, inTok_outStateTransMap.first));
+	}
 
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
 }

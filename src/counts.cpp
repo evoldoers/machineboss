@@ -58,10 +58,10 @@ map<string,double> MachineCounts::paramCounts (const Machine& machine, const Par
     for (auto& c: count[s]) {
       auto& trans = *(transIter++);
       const auto transParams = WeightAlgebra::params (trans.weight, ParamDefs());
-      const double w = WeightAlgebra::eval (trans.weight, prob);
+      const double w = WeightAlgebra::eval (trans.weight, prob.defs);
       for (auto& p: transParams) {
 	const auto deriv = WeightAlgebra::deriv (trans.weight, ParamDefs(), p);
-	paramCount[p] += WeightAlgebra::eval (deriv, prob) * prob.at(p).get<double>() / w;
+	paramCount[p] += WeightAlgebra::eval (deriv, prob.defs) * prob.defs.at(p).get<double>() / w;
       }
     }
   }

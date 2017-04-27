@@ -12,8 +12,7 @@
 #include "../src/jsonio.h"
 #include "../src/fastseq.h"
 #include "../src/nano/trace.h"
-#include "../src/nano/model.h"
-#include "../src/nano/gaussian.h"
+#include "../src/nano/basecall.h"
 #include "../src/nano/gtrainer.h"
 
 using namespace std;
@@ -75,13 +74,13 @@ int main (int argc, char** argv) {
 
     // load parameters
     LogThisAt(2,"Initializing model" << endl);
-    Model initModel;
+    BaseCallingParams initParams;
     if (vm.count("model"))
-      JsonReader<Model>::readFile (initModel, vm.at("model").as<string>());
+      JsonReader<BaseCallingParams>::readFile (initParams, vm.at("model").as<string>());
     else
-      initModel.init (vm.at("alphabet").as<string>(),
-		      vm.at("kmerlen").as<int>(),
-		      vm.at("components").as<int>());
+      initParams.init (vm.at("alphabet").as<string>(),
+		       vm.at("kmerlen").as<int>(),
+		       vm.at("components").as<int>());
 
     // read data
     Require (vm.count("fast5") || vm.count("text"), "Please specify at least one data file");
@@ -94,33 +93,39 @@ int main (int argc, char** argv) {
       for (const auto& textFilename: vm.at("text").as<vector<string> >())
 	traceList.readText (textFilename);
 
+    // initialize machine & prior
+    BaseCallingMachine machine;
+    machine.init (initParams.alphabet, initParams.kmerLen, initParams.components);
+
+    BaseCallingPrior bcPrior;
+    const GaussianModelPrior modelPrior = bcPrior.modelPrior (initParams.alphabet, initParams.kmerLen, initParams.components);
+    
     // train model
-    Model trainedModel;
+    GaussianModelParams trainedParams = initParams;
     if (vm.count("fasta")) {
       LogThisAt(2,"Reading sequence data" << endl);
       vguard<FastSeq> trainSeqs;
       for (const auto& seqFilename: vm.at("fasta").as<vector<string> >())
 	readFastSeqs (seqFilename.c_str(), trainSeqs);
 
-      ModelFitter fitter;
-      fitter.init (initModel, traceList, trainSeqs);
+      GaussianModelFitter fitter;
+      fitter.init (machine, initParams.params, modelPrior, traceList, trainSeqs);
       fitter.fit();
 
-      trainedModel = fitter.model;
-    } else
-      trainedModel = initModel;
+      trainedParams.params = fitter.modelParams;
+    }
     
     // save parameters
     if (vm.count("save"))
-      JsonWriter<Model>::toFile (trainedModel, vm.at("save").as<string>());
+      JsonWriter<BaseCallingParams>::toFile (trainedParams, vm.at("save").as<string>());
     else if (!vm.count("call"))
-      trainedModel.writeJson (cout);
+      trainedParams.writeJson (cout);
 
     // do basecalling
     if (vm.count("call")) {
-      BaseCaller caller;
-      caller.init (trainedModel, traceList);
-      writeFastaSeqs (cout, caller.call());
+      GaussianDecoder decoder;
+      decoder.init (machine, trainedParams.params, modelPrior, traceList);
+      writeFastaSeqs (cout, decoder.decode());
     }
 
   } catch (const std::exception& e) {

@@ -97,11 +97,3 @@ string EvaluatedMachine::toJsonString() const {
   writeJson (outs);
   return outs.str();
 }
-
-bool EvaluatedMachine::isOutputAdvancingMachine() const {
-  for (StateIndex s = 1; s < nStates(); ++s)
-    for (const auto& t: state[s].incomingWithoutOutput)
-      if (t.src > s)
-	return false;
-  return true;
-}

@@ -71,8 +71,8 @@ BaseCallingPrior::BaseCallingPrior()
     tau(1), tauCount(2)
 { }
 
-ModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIndex kmerLen, int components) const {
-  ModelPrior prior;
+GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIndex kmerLen, int components) const {
+  GaussianModelPrior prior;
   
   GaussianPrior emitPrior;
   emitPrior.mu0 = mu;
