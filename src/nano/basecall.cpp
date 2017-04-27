@@ -131,7 +131,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
     }
     for (auto c: alph)
       end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart (stringToKmer (suffix + c, alph)), WeightExpr (condFreqLabel (suffix, c))));
-    state[startState()].trans.push_back (MachineTransition (string(), string(), si, WeightExpr(1. / (double) nk)));
+    state[startState()].trans.push_back (MachineTransition (string(), string(), si + cpts + 1, WeightExpr(1. / (double) nk)));
     end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr(1.)));
   }
 }
