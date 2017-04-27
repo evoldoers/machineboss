@@ -22,7 +22,7 @@ double GaussianModelCounts::add (const EvaluatedMachine& m, const GaussianModelP
   return forward.logLike();
 }
 
-void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const Machine& machine, const EvaluatedMachine& eval, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
+void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<Machine>& machine, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {
   LogThisAt(5,"Optimizing model parameters" << endl);
   const size_t nSym = modelParams.gauss.size();
   for (size_t n = 0; n < nSym; ++n) {
@@ -50,25 +50,14 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
 
   }
 
-  MachineCounts totalMachineCounts;
-  totalCounts.init (eval);
-  for (auto& modelCounts: modelCountsList)
-    totalMachineCounts += modelCounts.machine;
-
-  const auto probParams = extract_keys (modelParams.prob);
   map<string,double> paramCount;
-  for (StateIndex s = 0; s < machine.nStates(); ++s) {
-    auto transIter = machine.state[s].trans.begin();
-    for (auto& c: totalMachineCounts.count[s]) {
-      auto& trans = *(transIter++);
-      const auto transParams = WeightAlgebra::params (trans.weight, ParamDefs());
-      const double w = WeightAlgebra::eval (trans.weight, modelParams.prob);
-      for (auto& p: transParams) {
-	const auto deriv = WeightAlgebra::deriv (trans.weight, ParamDefs(), p);
-	paramCount[p] += WeightAlgebra::eval (deriv, modelParams.prob) * modelParams.prob.at(p).get<double>() / w;
-      }
-    }
+  auto machineIter = inputConditionedMachine.begin();
+  for (auto& modelCounts: modelCountsList) {
+    const auto pc = modelCounts.paramCounts (*(machineIter++), modelParams.prob);
+    for (auto p_c: pc)
+      paramCount[p_c.first] += p_c.second;
   }
+
   for (auto& norm: modelPrior.cons.norm) {
     double sum = 0;
     for (auto& p: norm)

@@ -17,7 +17,7 @@ struct GaussianModelCounts {
   double add (const EvaluatedMachine&, const GaussianModelParams&, const Trace&, const TraceParams&);  // returns log-likelihood
   void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
   GaussianModelCounts& operator+= (const GaussianModelCounts&);
-  static void optimizeModelParams (GaussianModelParams&, const Machine&, const EvaluatedMachine&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
+  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<Machine>&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
   static double expectedLogEmit (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
 };
 

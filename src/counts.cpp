@@ -27,7 +27,7 @@ MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPair& se
 void MachineCounts::init (const EvaluatedMachine& machine) {
   count = vguard<vguard<double> > (machine.nStates());
   for (StateIndex s = 0; s < machine.nStates(); ++s)
-    count[s].resize (machine.state[s].nTransitions);
+    count[s].resize (machine.state[s].nTransitions, 0.);
 }
 
 double MachineCounts::add (const EvaluatedMachine& machine, const SeqPair& seqPair) {
@@ -49,6 +49,23 @@ void MachineCounts::writeJson (ostream& outs) const {
   for (const auto& c: count)
     s.push_back (string("[") + to_string_join (c, ",") + "]");
   outs << "[" << join (s, ",\n ") << "]" << endl;
+}
+
+map<string,double> MachineCounts::paramCounts (const Machine& machine, const ParamAssign& prob) const {
+  map<string,double> paramCount;
+  for (StateIndex s = 0; s < machine.nStates(); ++s) {
+    auto transIter = machine.state[s].trans.begin();
+    for (auto& c: count[s]) {
+      auto& trans = *(transIter++);
+      const auto transParams = WeightAlgebra::params (trans.weight, ParamDefs());
+      const double w = WeightAlgebra::eval (trans.weight, prob);
+      for (auto& p: transParams) {
+	const auto deriv = WeightAlgebra::deriv (trans.weight, ParamDefs(), p);
+	paramCount[p] += WeightAlgebra::eval (deriv, prob) * prob.at(p).get<double>() / w;
+      }
+    }
+  }
+  return paramCount;
 }
 
 MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& constraints, const Params& constants) :
