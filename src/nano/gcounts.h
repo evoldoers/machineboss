@@ -14,7 +14,7 @@ struct GaussianCounts {
 struct GaussianModelCounts {
   map<string,double> prob;
   vguard<GaussianCounts> gauss;
-  vguard<OutputSymbol> gaussSymbol;
+  map<OutputSymbol,size_t> gaussIndex;
   GaussianModelCounts();
   void init (const EvaluatedMachine&);
   double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const Trace&, const TraceParams&);  // returns log-likelihood

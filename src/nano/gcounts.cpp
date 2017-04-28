@@ -17,8 +17,10 @@ GaussianModelCounts::GaussianModelCounts()
 
 void GaussianModelCounts::init (const EvaluatedMachine& m) {
   prob.clear();
+  gaussIndex.clear();
   gauss = vguard<GaussianCounts> (m.outputTokenizer.tok2sym.size() - 1);
-  gaussSymbol = vguard<OutputSymbol> (m.outputTokenizer.tok2sym.begin() + 1, m.outputTokenizer.tok2sym.end());
+  for (size_t n = 1; n < m.outputTokenizer.tok2sym.size(); ++n)
+    gaussIndex[m.outputTokenizer.tok2sym[n]] = n - 1;
 }
 
 double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const Trace& t, const TraceParams& tp) {
@@ -47,12 +49,14 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
     auto countsIter = modelCountsList.begin();
     for (size_t m = 0; m < modelCountsList.size(); ++m) {
       const GaussianModelCounts& modelCounts = *(countsIter++);
-      const TraceParams& trace = traceListParams.params[m];
-      const GaussianCounts& counts = modelCounts.gauss[n];
-      coeff_log_tau += counts.m0 / 2;
-      coeff_tau_mu += counts.m1 / trace.scale - counts.m0 * trace.shift;
-      coeff_tau_mu2 -= counts.m0 / 2;
-      coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 * trace.scale * trace.scale / 2;
+      if (modelCounts.gaussIndex.count(outSym)) {
+	const GaussianCounts& counts = modelCounts.gauss[modelCounts.gaussIndex.at(outSym)];
+	const TraceParams& trace = traceListParams.params[m];
+	coeff_log_tau += counts.m0 / 2;
+	coeff_tau_mu += counts.m1 / trace.scale - counts.m0 * trace.shift;
+	coeff_tau_mu2 -= counts.m0 / 2;
+	coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 * trace.scale * trace.scale / 2;
+      }
     }
 
     coeff_log_tau += (prior.n_tau - 1) / 2;
@@ -131,14 +135,17 @@ double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelPar
     const GaussianParams& params = modelParams.gauss.at(outSym);
     auto countsIter = modelCountsList.begin();
     for (size_t m = 0; m < traceListParams.params.size(); ++m) {
-      const TraceParams& traceParams = traceListParams.params[m];
-      const GaussianCounts& counts = (*(countsIter++)).gauss[n];
-      const double m0 = counts.m0, m1 = counts.m1, m2 = counts.m2;
-      const double tau = params.tau, mu = params.mu;
-      const double shift = traceParams.shift, scale = traceParams.scale;
-      lp += m0*(-log(scale) + 0.5*log(tau) - log_sqrt_2pi - (tau/2)*(mu+shift)*(mu+shift))
-	+ m1*(tau/scale)*(mu+shift)
-	- m2*(tau/2)*scale*scale;
+      const GaussianModelCounts& modelCounts = *(countsIter++);
+      if (modelCounts.gaussIndex.count(outSym)) {
+	const GaussianCounts& counts = modelCounts.gauss[modelCounts.gaussIndex.at(outSym)];
+	const TraceParams& traceParams = traceListParams.params[m];
+	const double m0 = counts.m0, m1 = counts.m1, m2 = counts.m2;
+	const double tau = params.tau, mu = params.mu;
+	const double shift = traceParams.shift, scale = traceParams.scale;
+	lp += m0*(-log(scale) + 0.5*log(tau) - log_sqrt_2pi - (tau/2)*(mu+shift)*(mu+shift))
+	  + m1*(tau/scale)*(mu+shift)
+	  - m2*(tau/2)*scale*scale;
+      }
     }
   }
   return lp;
@@ -149,6 +156,7 @@ json GaussianModelCounts::asJson() const {
   for (auto& p_v: prob)
     jp[p_v.first] = p_v.second;
 
+  const auto gaussSymbol = extract_keys(gaussIndex);
   json jg = json::object();
   for (size_t n = 0; n < gauss.size(); ++n)
     jg[gaussSymbol[n]] = json::array ({ gauss[n].m0, gauss[n].m1, gauss[n].m2 });
