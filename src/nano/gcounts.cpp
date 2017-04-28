@@ -45,6 +45,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
     const OutputSymbol& outSym = gaussSymbol[n];
     const GaussianPrior& prior = modelPrior.gauss.at(outSym);
     GaussianParams& params = modelParams.gauss.at(outSym);
+    // expected log-likelihood = sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
     double coeff_log_tau = 0, coeff_tau_mu = 0, coeff_tau_mu2 = 0, coeff_tau = 0;
     auto countsIter = modelCountsList.begin();
     for (size_t m = 0; m < modelCountsList.size(); ++m) {
@@ -83,10 +84,12 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
 }
 
 void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
+  // expected log-likelihood = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
   double coeff_log_scale = 0, coeff_1_over_scale = 0, coeff_scale2 = 0, coeff_shift = 0, coeff_shift2 = 0, coeff_shift_over_scale = 0;
-  for (size_t n = 0; n < gauss.size(); ++n) {
+  for (auto& outSym_n: gaussIndex) {
+    const OutputSymbol& outSym = outSym_n.first;
+    const size_t n = outSym_n.second;
     const GaussianCounts& counts = gauss[n];
-    const OutputSymbol& outSym = eval.outputTokenizer.tok2sym[n+1];
     const GaussianPrior& prior = modelPrior.gauss.at(outSym);
     const GaussianParams& params = modelParams.gauss.at(outSym);
     coeff_log_scale -= counts.m0;
