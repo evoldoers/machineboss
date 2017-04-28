@@ -31,8 +31,7 @@ void DPMatrix::writeJson (ostream& outs) const {
        << "}" << endl;
 }
 
-string DPMatrix::toJsonString() const {
-  ostringstream outs;
-  writeJson (outs);
-  return outs.str();
+ostream& operator<< (ostream& out, const DPMatrix& m) {
+  m.writeJson (out);
+  return out;
 }

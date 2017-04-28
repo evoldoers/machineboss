@@ -120,8 +120,8 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
   const Minimizer minimizer (subtract (0, objective));  // we want to maximize objective, i.e. minimize (-objective)
   const ParamDefs optDefs = minimizer.minimize (defs);
 
-  traceParams.shift = defs[shiftParam].get<double>();
-  traceParams.scale = defs[sqrtScaleParam].get<double>() * defs[sqrtScaleParam].get<double>();
+  traceParams.shift = optDefs.at(shiftParam).get<double>();
+  traceParams.scale = optDefs.at(sqrtScaleParam).get<double>() * optDefs.at(sqrtScaleParam).get<double>();
 }
 
 double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {

@@ -55,7 +55,7 @@ public:
   DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
 
   void writeJson (ostream& out) const;
-  string toJsonString() const;
+  friend ostream& operator<< (ostream&, const DPMatrix&);
   
   inline double& cell (InputIndex inPos, OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(inPos,outPos,state)]; }
   inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(inPos,outPos,state)]; }

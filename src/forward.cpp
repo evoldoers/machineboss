@@ -22,7 +22,7 @@ ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& se
       }
     }
   }
-  LogThisAt(8,"Forward matrix:" << endl << toJsonString());
+  LogThisAt(8,"Forward matrix:" << endl << *this);
 }
 
 double ForwardMatrix::logLike() const {

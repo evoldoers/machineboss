@@ -25,7 +25,7 @@ BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& 
       }
     }
   }
-  LogThisAt(8,"Backward matrix:" << endl << toJsonString());
+  LogThisAt(8,"Backward matrix:" << endl << *this);
 }
 
 double BackwardMatrix::logLike() const {

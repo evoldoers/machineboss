@@ -22,7 +22,7 @@ ViterbiMatrix::ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& se
       }
     }
   }
-  LogThisAt(8,"Viterbi matrix:" << endl << toJsonString());
+  LogThisAt(8,"Viterbi matrix:" << endl << *this);
 }
 
 double ViterbiMatrix::logLike() const {
