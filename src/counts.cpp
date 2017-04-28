@@ -64,7 +64,7 @@ map<string,double> MachineCounts::paramCounts (const Machine& machine, const Par
       const double w = WeightAlgebra::eval (trans.weight, prob.defs);
       for (auto& p: transParams) {
 	const auto deriv = WeightAlgebra::deriv (trans.weight, ParamDefs(), p);
-	paramCount[p] += WeightAlgebra::eval (deriv, prob.defs) * prob.defs.at(p).get<double>() / w;
+	paramCount[p] += c * WeightAlgebra::eval (deriv, prob.defs) * prob.defs.at(p).get<double>() / w;
       }
     }
   }

@@ -56,7 +56,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
 	coeff_log_tau += counts.m0 / 2;
 	coeff_tau_mu += counts.m1 / trace.scale - counts.m0 * trace.shift;
 	coeff_tau_mu2 -= counts.m0 / 2;
-	coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 * 2 / (trace.scale * trace.scale);
+	coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 / (2 * trace.scale * trace.scale);
       }
     }
 
