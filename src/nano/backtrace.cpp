@@ -35,10 +35,14 @@ double BackwardTraceMatrix::logLike() const {
 void BackwardTraceMatrix::getMachineCounts (const ForwardTraceMatrix& fwd, MachineCounts& counts) const {
   const double llFinal = fwd.logLike();
 
+  ProgressLog(plog,3);
+  plog.initProgress ("Getting probability parameter update statistics (%ld samples, %u transitions)", outLen, nTrans);
+
   for (const auto& it: nullTrans())
     counts.count[it.src][it.transIndex] += exp (fwd.cell(0,it.src) + it.logWeight + cell(0,it.dest) - llFinal);
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
+    plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
       for (const auto& it: transByOut[outTok])
@@ -53,11 +57,16 @@ void BackwardTraceMatrix::getMachineCounts (const ForwardTraceMatrix& fwd, Machi
 void BackwardTraceMatrix::getGaussianCounts (const ForwardTraceMatrix& fwd, vguard<GaussianCounts>& counts) const {
   const double llFinal = fwd.logLike();
 
-  for (OutputIndex outPos = 1; outPos <= outLen; ++outPos)
+  ProgressLog(plog,3);
+  plog.initProgress ("Getting Gaussian update statistics (%ld samples, %u transitions)", outLen, nTrans);
+
+  for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
+    plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
       const auto& sample = moments.sample[outPos-1];
       for (const auto& it: transByOut[outTok])
 	counts[outTok-1].inc (sample, exp (fwd.cell(outPos-1,it.src) + it.logWeight + llEmit + cell(outPos,it.dest) - llFinal));
     }
+  }
 }

@@ -1,6 +1,7 @@
 #include "eval.h"
 #include "weight.h"
 #include "util.h"
+#include "logger.h"
 
 void EvaluatedMachineState::Trans::init (LogWeight lw, TransIndex ti) {
   logWeight = lw;
@@ -14,7 +15,12 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
 {
   Assert (machine.isAdvancingMachine(), "Machine is not topologically sorted");
   Assert (machine.isAligningMachine(), "Machine has ambiguous transitions");
+
+  ProgressLog(plog,6);
+  plog.initProgress ("Evaluating transition weights");
+
   for (StateIndex s = 0; s < nStates(); ++s) {
+    plog.logProgress (s / (double) nStates(), "state %lu/%lu", s, nStates());
     state[s].name = machine.state[s].name;
     EvaluatedMachineState::TransIndex ti = 0;
     for (const auto& trans: machine.state[s].trans) {
