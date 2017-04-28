@@ -13,7 +13,7 @@ json GaussianModelParams::asJson() const {
 }
 
 void GaussianModelParams::writeJson (ostream& out) const {
-  out << asJson();
+  out << asJson() << endl;
 }
 
 void GaussianModelParams::readJson (const json& j) {

@@ -32,7 +32,8 @@ private:
 protected:
   vguard<vguard<IndexedTrans> > transByOut;  // indexed by output token
   inline const vguard<IndexedTrans>& nullTrans() const { return transByOut.front(); }
-
+  size_t nTrans;
+  
 public:
   const EvaluatedMachine& eval;
   const GaussianModelParams& modelParams;

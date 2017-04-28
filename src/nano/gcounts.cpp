@@ -107,8 +107,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
 					multiply (coeff_shift_over_scale, divide (shiftParam, scaleParam))),
 				   modelPrior.logTraceExpr (shiftParam, scaleParam)));
 
-  LogThisAt(5,"Optimizing scaling parameters" << endl);
-  LogThisAt(7,"Objective function for trace scaling: " << WeightAlgebra::toString(objective,ParamDefs()) << endl);
+  LogThisAt(5,"Optimizing trace scaling parameters" << endl);
 
   ParamDefs defs;
   defs[shiftParam] = traceParams.shift;
@@ -158,5 +157,5 @@ json GaussianModelCounts::asJson() const {
 }
 
 void GaussianModelCounts::writeJson (ostream& out) const {
-  out << asJson();
+  out << asJson() << endl;
 }

@@ -17,10 +17,14 @@ Minimizer::Minimizer (const WeightExpr& f) :
   maxIterations (DefaultMaxIterations),
   func (f)
 {
+  LogThisAt(6,"Objective function: " << WeightAlgebra::toString(f,ParamDefs()) << endl);
   const auto p = WeightAlgebra::params (f, ParamDefs());
   paramName = vguard<string> (p.begin(), p.end());
-  for (const auto& n: paramName)
-    deriv.push_back (WeightAlgebra::deriv (func, ParamDefs(), n));
+  for (const auto& n: paramName) {
+    const auto d = WeightAlgebra::deriv (func, ParamDefs(), n);
+    LogThisAt(7,"d(Objective)/d(" << n << "): " << WeightAlgebra::toString(d,ParamDefs()) << endl);
+    deriv.push_back (d);
+  }
 }
 
 ParamDefs Minimizer::gsl_vector_to_params (const gsl_vector *v) const {
@@ -36,7 +40,7 @@ double Minimizer::gsl_objective (const gsl_vector *v, void* voidMin) {
 
   const double f = WeightAlgebra::eval (minimizer.func, p);
 
-  LogThisAt (7, WeightAlgebra::toJsonString(p) << endl);
+  LogThisAt (8, WeightAlgebra::toJsonString(p) << endl);
   LogThisAt (7, "gsl_objective(" << to_string_join(gsl_vector_to_stl(v)) << ") = " << f << endl);
 
   return f;

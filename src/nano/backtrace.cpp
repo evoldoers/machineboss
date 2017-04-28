@@ -6,11 +6,15 @@ BackwardTraceMatrix::BackwardTraceMatrix (const EvaluatedMachine& eval, const Ga
   nullTrans_rbegin (nullTrans().rbegin()),
   nullTrans_rend (nullTrans().rend())
 {
+  ProgressLog(plog,3);
+  plog.initProgress ("Backward algorithm (%ld samples, %u transitions)", outLen, nTrans);
+
   cell(outLen,eval.endState()) = 0;
   for (auto iter = nullTrans_rbegin; iter != nullTrans_rend; ++iter)
     log_accum_exp (cell(outLen,(*iter).src), cell(outLen,(*iter).dest) + (*iter).logWeight);
 
   for (OutputIndex outPos = outLen - 1; outPos >= 0; --outPos) {
+    plog.logProgress ((outLen - outPos) / (double) outLen, "sample %ld/%ld", outPos, outLen);
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos+1,outTok);
       for (const auto& it: transByOut[outTok])
@@ -20,6 +24,7 @@ BackwardTraceMatrix::BackwardTraceMatrix (const EvaluatedMachine& eval, const Ga
     for (auto iter = nullTrans_rbegin; iter != nullTrans_rend; ++iter)
       log_accum_exp (cell(outPos,(*iter).src), cell(outPos,(*iter).dest) + (*iter).logWeight);
   }
+  LogThisAt(6,"Backward log-likelihood: " << logLike() << endl);
   LogThisAt(8,"Backward matrix:" << endl << toJsonString());
 }
 

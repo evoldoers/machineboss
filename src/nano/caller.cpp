@@ -52,7 +52,7 @@ json BaseCallingParams::asJson() const {
 }
 
 void BaseCallingParams::writeJson (ostream& out) const {
-  out << asJson();
+  out << asJson() << endl;
 }
 
 void BaseCallingParams::readJson (const json& j) {

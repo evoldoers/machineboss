@@ -4,11 +4,15 @@
 ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
   TraceDPMatrix (eval, modelParams, trace, traceParams)
 {
+  ProgressLog(plog,3);
+  plog.initProgress ("Viterbi algorithm (%ld samples, %u transitions)", outLen, nTrans);
+
   cell(0,eval.startState()) = 0;
   for (const auto& it: nullTrans())
     update (0, it.dest, cell(0,it.src) + it.logWeight, it.in);
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
+    plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
       for (const auto& it: transByOut[outTok])
@@ -18,6 +22,7 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
     for (const auto& it: nullTrans())
       update (outPos, it.dest, cell(outPos,it.src) + it.logWeight, it.in);
   }
+  LogThisAt(6,"Viterbi log-likelihood: " << logLike() << endl);
   LogThisAt(8,"Viterbi matrix:" << endl << toJsonString());
 }
 
