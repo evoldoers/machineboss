@@ -25,7 +25,7 @@ BackwardTraceMatrix::BackwardTraceMatrix (const EvaluatedMachine& eval, const Ga
       log_accum_exp (cell(outPos,(*iter).src), cell(outPos,(*iter).dest) + (*iter).logWeight);
   }
   LogThisAt(6,"Backward log-likelihood: " << logLike() << endl);
-  LogThisAt(8,"Backward matrix:" << endl << toJsonString());
+  LogThisAt(10,"Backward matrix:" << endl << *this);
 }
 
 double BackwardTraceMatrix::logLike() const {

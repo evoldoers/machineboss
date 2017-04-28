@@ -48,7 +48,7 @@ public:
   TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
 
   void writeJson (ostream& out) const;
-  string toJsonString() const;
+  friend ostream& operator<< (ostream&, const TraceDPMatrix&);
   
   inline double& cell (OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(outPos,state)]; }
   inline const double cell (OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(outPos,state)]; }

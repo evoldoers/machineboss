@@ -52,8 +52,7 @@ void TraceDPMatrix::writeJson (ostream& outs) const {
        << "}" << endl;
 }
 
-string TraceDPMatrix::toJsonString() const {
-  ostringstream outs;
-  writeJson (outs);
-  return outs.str();
+ostream& operator<< (ostream& out, const TraceDPMatrix& m) {
+  m.writeJson (out);
+  return out;
 }

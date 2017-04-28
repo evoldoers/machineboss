@@ -23,7 +23,7 @@ ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const Gaus
       log_accum_exp (cell(outPos,it.dest), cell(outPos,it.src) + it.logWeight);
   }
   LogThisAt(6,"Forward log-likelihood: " << logLike() << endl);
-  LogThisAt(8,"Forward matrix:" << endl << toJsonString());
+  LogThisAt(10,"Forward matrix:" << endl << *this);
 }
 
 double ForwardTraceMatrix::logLike() const {

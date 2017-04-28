@@ -23,7 +23,7 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
       update (outPos, it.dest, cell(outPos,it.src) + it.logWeight, it.in);
   }
   LogThisAt(6,"Viterbi log-likelihood: " << logLike() << endl);
-  LogThisAt(8,"Viterbi matrix:" << endl << toJsonString());
+  LogThisAt(10,"Viterbi matrix:" << endl << *this);
 }
 
 double ViterbiTraceMatrix::logLike() const {
