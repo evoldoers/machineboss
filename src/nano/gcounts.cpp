@@ -84,7 +84,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
 }
 
 void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
-  // expected log-likelihood = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
+  // expected log-likelihood = sum_gaussians m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
   double coeff_log_scale = 0, coeff_1_over_scale = 0, coeff_scale2 = 0, coeff_shift = 0, coeff_shift2 = 0, coeff_shift_over_scale = 0;
   for (auto& outSym_n: gaussIndex) {
     const OutputSymbol& outSym = outSym_n.first;
