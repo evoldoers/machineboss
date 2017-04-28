@@ -277,6 +277,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
   };
 
   // first, a quick optimization hack to filter out inaccessible states
+  LogThisAt(6,"Finding accessible states" << endl);
   Machine dummyCompMachine;
   vguard<MachineState>& dummyComp = dummyCompMachine.state;
   dummyComp = vguard<MachineState> (first.nStates() * second.nStates());
@@ -308,7 +309,8 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond) {
 	  dest.insert (compState(i,jt.dest));
       for (const auto& d: dest) {
 	ms.trans.push_back (MachineTransition (string(), string(), d, WeightExpr()));
-	toVisit.push_back(d);
+	if (!visited[d])
+	  toVisit.push_back(d);
       }
     }
   }
