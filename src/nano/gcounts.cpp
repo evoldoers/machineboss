@@ -123,7 +123,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
 double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
   const auto gaussSymbol = extract_keys (modelParams.gauss);
   double lp = modelPrior.logProb (modelParams, traceListParams);
-  // expected log-likelihood = sum_kmers sum_reads m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
+  // expected log-likelihood = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
   const double log_sqrt_2pi = log(2*M_PI)/2;
   for (size_t n = 0; n < gaussSymbol.size(); ++n) {
     const OutputSymbol& outSym = gaussSymbol[n];

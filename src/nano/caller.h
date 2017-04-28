@@ -25,7 +25,7 @@ struct BaseCallingParams : BaseCallingParamNamer {
   void readJson (const json& json);
 };
 
-struct BaseCallingPrior : BaseCallingParamNamer {
+struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
   double condFreq, cptWeight, cptExtend, cptEnd;
   double mu, muCount;
   double tau, tauCount;

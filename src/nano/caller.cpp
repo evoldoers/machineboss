@@ -75,6 +75,7 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
   GaussianModelPrior prior;
   
   GaussianPrior emitPrior;
+  (TraceParamsPrior&) emitPrior = *this;
   emitPrior.mu0 = mu;
   emitPrior.n_mu = muCount;
   emitPrior.tau0 = tau;
