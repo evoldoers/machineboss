@@ -11,6 +11,17 @@ struct GaussianCounts {
   void inc (const SampleMoments& sampleMoments, const double postProb);
 };
 
+// y = scale * (x + shift)
+// x ~ Normal(mean mu, precision tau)
+// P(y) = P(x) dx/dy = P(x) / scale
+// log P(y) = -log(scale) - log(Normal(y/scale-shift,mu,tau))
+//          = -log(scale) + (1/2)*log(tau/(2*pi)) - (tau/2)*(y/scale-shift-mu)^2
+//          = -log(scale) + (1/2)*log(tau/(2*pi)) - (tau/2)*((y/scale)^2 - 2*(y/scale)*(mu+shift) + (mu+shift)^2)
+
+// Expected log-likelihood
+//  = sum_gaussians sum_datasets sum_samples log P(y)
+//  = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*tau/(2*(scale^2))
+
 struct GaussianModelCounts {
   map<string,double> prob;
   vguard<GaussianCounts> gauss;

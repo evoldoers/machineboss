@@ -45,7 +45,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
     const OutputSymbol& outSym = gaussSymbol[n];
     const GaussianPrior& prior = modelPrior.gauss.at(outSym);
     GaussianParams& params = modelParams.gauss.at(outSym);
-    // expected log-likelihood = sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
+    // expected log-likelihood = sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*tau/(2*(scale^2))
     double coeff_log_tau = 0, coeff_tau_mu = 0, coeff_tau_mu2 = 0, coeff_tau = 0;
     auto countsIter = modelCountsList.begin();
     for (size_t m = 0; m < modelCountsList.size(); ++m) {
@@ -56,7 +56,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
 	coeff_log_tau += counts.m0 / 2;
 	coeff_tau_mu += counts.m1 / trace.scale - counts.m0 * trace.shift;
 	coeff_tau_mu2 -= counts.m0 / 2;
-	coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 * trace.scale * trace.scale / 2;
+	coeff_tau += counts.m1 * trace.shift / trace.scale - counts.m0 * trace.shift * trace.shift / 2 - counts.m2 * 2 / (trace.scale * trace.scale);
       }
     }
 
@@ -84,8 +84,8 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
 }
 
 void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
-  // expected log-likelihood = sum_gaussians m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
-  double coeff_log_scale = 0, coeff_1_over_scale = 0, coeff_scale2 = 0, coeff_shift = 0, coeff_shift2 = 0, coeff_shift_over_scale = 0;
+  // expected log-likelihood = sum_gaussians m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*tau/(2*(scale^2))
+  double coeff_log_scale = 0, coeff_1_over_scale = 0, coeff_1_over_scale2 = 0, coeff_shift = 0, coeff_shift2 = 0, coeff_shift_over_scale = 0;
   for (auto& outSym_n: gaussIndex) {
     const OutputSymbol& outSym = outSym_n.first;
     const size_t n = outSym_n.second;
@@ -94,7 +94,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
     const GaussianParams& params = modelParams.gauss.at(outSym);
     coeff_log_scale -= counts.m0;
     coeff_1_over_scale += counts.m1 * params.tau * params.mu;
-    coeff_scale2 -= counts.m2 * params.tau / 2;
+    coeff_1_over_scale2 -= counts.m2 * params.tau / 2;
     coeff_shift -= counts.m0 * params.tau * params.mu;
     coeff_shift2 -= counts.m0 * params.tau / 2;
     coeff_shift_over_scale += counts.m1 * params.tau;
@@ -108,7 +108,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
   
   WeightExpr objective = add (add (add (multiply (coeff_log_scale, logOf (scaleParam)),
 					divide (coeff_1_over_scale, scaleParam)),
-				   add (multiply (coeff_scale2, multiply (scaleParam, scaleParam)),
+				   add (divide (coeff_1_over_scale2, multiply (scaleParam, scaleParam)),
 					multiply (coeff_shift, shiftParam))),
 			      add (add (multiply (coeff_shift2, multiply (shiftParam, shiftParam)),
 					multiply (coeff_shift_over_scale, divide (shiftParam, scaleParam))),
@@ -130,7 +130,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
 double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
   const auto gaussSymbol = extract_keys (modelParams.gauss);
   double lp = modelPrior.logProb (modelParams, traceListParams);
-  // expected log-likelihood = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*(tau/2*(scale^2))
+  // expected log-likelihood = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*tau/(2*(scale^2))
   const double log_sqrt_2pi = log(2*M_PI)/2;
   for (size_t n = 0; n < gaussSymbol.size(); ++n) {
     const OutputSymbol& outSym = gaussSymbol[n];
@@ -147,7 +147,7 @@ double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelPar
 	const double shift = traceParams.shift, scale = traceParams.scale;
 	lp += m0*(-log(scale) + 0.5*log(tau) - log_sqrt_2pi - (tau/2)*(mu+shift)*(mu+shift))
 	  + m1*(tau/scale)*(mu+shift)
-	  - m2*(tau/2)*scale*scale;
+	  - m2*tau/(2*scale*scale);
       }
     }
   }
