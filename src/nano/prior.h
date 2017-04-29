@@ -31,6 +31,7 @@ struct GaussianModelPrior : TraceParamsPrior {
   ParamAssign count;  // pseudocounts for Dirichlet & Beta priors
   Constraints cons;  // normalization constraints
 
+  double logProb (const GaussianModelParams& modelParams) const;
   double logProb (const GaussianModelParams& modelParams, const TraceListParams& traceListParams) const;
 };
 

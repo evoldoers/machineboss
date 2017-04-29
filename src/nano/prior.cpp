@@ -49,8 +49,12 @@ double TraceParamsPrior::logProb (const TraceListParams& traceListParams) const 
 }
 
 double GaussianModelPrior::logProb (const GaussianModelParams& modelParams, const TraceListParams& traceListParams) const {
+  return logProb(modelParams) + TraceParamsPrior::logProb (traceListParams);
+}
+
+double GaussianModelPrior::logProb (const GaussianModelParams& modelParams) const {
   Assert (cons.prob.size() == 0, "No free probability parameters allowed!");
-  double lp = TraceParamsPrior::logProb (traceListParams);
+  double lp = 0;
   for (const auto& g: gauss) {
     const auto& m = modelParams.gauss.at(g.first);
     const auto& p = g.second;

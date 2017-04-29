@@ -29,11 +29,15 @@ struct GaussianModelCounts {
   GaussianModelCounts();
   void init (const EvaluatedMachine&);
   double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const Trace&, const TraceParams&);  // returns log-likelihood
+  WeightExpr traceExpectedLogEmit (const GaussianModelParams&, const GaussianModelPrior&) const;
   void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
   json asJson() const;
   void writeJson (ostream& out) const;
   static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
   static double expectedLogEmit (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
+  static ParamDefs traceParamDefs (const TraceParams&);
+  static inline string shiftParamName() { return string("shift"); }
+  static inline string sqrtScaleParamName() { return string("sqrtScale"); }
 };
 
 #endif /* GAUSSCOUNTS_INCLUDED */

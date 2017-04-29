@@ -83,7 +83,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
   }
 }
 
-void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
+WeightExpr GaussianModelCounts::traceExpectedLogEmit (const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
   // expected log-likelihood = sum_gaussians m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*tau/(2*(scale^2))
   double coeff_log_scale = 0, coeff_1_over_scale = 0, coeff_1_over_scale2 = 0, coeff_shift = 0, coeff_shift2 = 0, coeff_shift_over_scale = 0;
   for (auto& outSym_n: gaussIndex) {
@@ -100,56 +100,51 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
     coeff_shift_over_scale += counts.m1 * params.tau;
   }
 
-  auto add = WeightAlgebra::add, multiply = WeightAlgebra::multiply, subtract = WeightAlgebra::subtract, divide = WeightAlgebra::divide;
+  auto add = WeightAlgebra::add, multiply = WeightAlgebra::multiply, divide = WeightAlgebra::divide;
   auto logOf = WeightAlgebra::logOf;
 
-  const string shiftParam("shift"), sqrtScaleParam("sqrtScale");
-  const WeightExpr scaleParam = multiply (sqrtScaleParam, sqrtScaleParam);
+  const WeightExpr shiftParam = shiftParamName();
+  const WeightExpr scaleParam = multiply (sqrtScaleParamName(), sqrtScaleParamName());
   
-  WeightExpr objective = add (add (add (multiply (coeff_log_scale, logOf (scaleParam)),
-					divide (coeff_1_over_scale, scaleParam)),
-				   add (divide (coeff_1_over_scale2, multiply (scaleParam, scaleParam)),
-					multiply (coeff_shift, shiftParam))),
-			      add (add (multiply (coeff_shift2, multiply (shiftParam, shiftParam)),
-					multiply (coeff_shift_over_scale, divide (shiftParam, scaleParam))),
-				   modelPrior.logTraceExpr (shiftParam, scaleParam)));
+  const WeightExpr e = add (add (add (multiply (coeff_log_scale, logOf (scaleParam)),
+				      divide (coeff_1_over_scale, scaleParam)),
+				 add (divide (coeff_1_over_scale2, multiply (scaleParam, scaleParam)),
+				      multiply (coeff_shift, shiftParam))),
+			    add (add (multiply (coeff_shift2, multiply (shiftParam, shiftParam)),
+				      multiply (coeff_shift_over_scale, divide (shiftParam, scaleParam))),
+				 modelPrior.logTraceExpr (shiftParam, scaleParam)));
 
+  return e;
+}
+
+ParamDefs GaussianModelCounts::traceParamDefs (const TraceParams& traceParams) {
+  ParamDefs defs;
+  defs[shiftParamName()] = traceParams.shift;
+  defs[sqrtScaleParamName()] = sqrt (traceParams.scale);
+  return defs;
+}
+
+void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
   LogThisAt(5,"Optimizing trace scaling parameters" << endl);
 
-  ParamDefs defs;
-  defs[shiftParam] = traceParams.shift;
-  defs[sqrtScaleParam] = sqrt (traceParams.scale);
-
-  const Minimizer minimizer (subtract (0, objective));  // we want to maximize objective, i.e. minimize (-objective)
+  const WeightExpr objective = traceExpectedLogEmit (modelParams, modelPrior);
+  const Minimizer minimizer (WeightAlgebra::subtract (0, objective));  // we want to maximize objective, i.e. minimize (-objective)
+  const ParamDefs defs = traceParamDefs (traceParams);
   const ParamDefs optDefs = minimizer.minimize (defs);
 
-  traceParams.shift = optDefs.at(shiftParam).get<double>();
-  traceParams.scale = optDefs.at(sqrtScaleParam).get<double>() * optDefs.at(sqrtScaleParam).get<double>();
+  traceParams.shift = optDefs.at(shiftParamName()).get<double>();
+  traceParams.scale = pow (optDefs.at(sqrtScaleParamName()).get<double>(), 2.);
 }
 
 double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
   const auto gaussSymbol = extract_keys (modelParams.gauss);
-  double lp = modelPrior.logProb (modelParams, traceListParams);
-  // expected log-likelihood = sum_gaussians sum_datasets m0*(-log(scale)+(1/2)log(tau)-(1/2)log(2*pi)-(tau/2)(mu+shift)^2) + m1*(tau/scale)*(mu+shift) - m2*tau/(2*(scale^2))
-  const double log_sqrt_2pi = log(2*M_PI)/2;
-  for (size_t n = 0; n < gaussSymbol.size(); ++n) {
-    const OutputSymbol& outSym = gaussSymbol[n];
-    const GaussianPrior& prior = modelPrior.gauss.at(outSym);
-    const GaussianParams& params = modelParams.gauss.at(outSym);
-    auto countsIter = modelCountsList.begin();
-    for (size_t m = 0; m < traceListParams.params.size(); ++m) {
-      const GaussianModelCounts& modelCounts = *(countsIter++);
-      if (modelCounts.gaussIndex.count(outSym)) {
-	const GaussianCounts& counts = modelCounts.gauss[modelCounts.gaussIndex.at(outSym)];
-	const TraceParams& traceParams = traceListParams.params[m];
-	const double m0 = counts.m0, m1 = counts.m1, m2 = counts.m2;
-	const double tau = params.tau, mu = params.mu;
-	const double shift = traceParams.shift, scale = traceParams.scale;
-	lp += m0*(-log(scale) + 0.5*log(tau) - log_sqrt_2pi - (tau/2)*(mu+shift)*(mu+shift))
-	  + m1*(tau/scale)*(mu+shift)
-	  - m2*tau/(2*scale*scale);
-      }
-    }
+  double lp = modelPrior.logProb (modelParams);
+  size_t m = 0;
+  for (const GaussianModelCounts& modelCounts: modelCountsList) {
+    const TraceParams& traceParams = traceListParams.params[m++];
+    const ParamDefs defs = traceParamDefs (traceParams);
+    const WeightExpr e = modelCounts.traceExpectedLogEmit (modelParams, modelPrior);
+    lp += WeightAlgebra::eval (e, defs);
   }
   return lp;
 }
