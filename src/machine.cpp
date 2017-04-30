@@ -262,106 +262,125 @@ bool Machine::isAdvancingMachine() const {
   return true;
 }
 
-Machine Machine::compose (const Machine& first, const Machine& origSecond) {
+inline StateIndex ij2compState (StateIndex i, StateIndex j, StateIndex jStates) {
+  return i * jStates + j;
+}
+
+inline StateIndex compState2i (StateIndex comp, StateIndex jStates) {
+  return comp / jStates;
+}
+
+inline StateIndex compState2j (StateIndex comp, StateIndex jStates) {
+  return comp % jStates;
+}
+
+Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignCompositeStateNames, bool collapseDegenerateTransitions) {
   LogThisAt(3,"Composing " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to compose transducers A*B where B is not a waiting machine");
 
-  // lambdas to map to/from composite state index
-  auto compState = [&](StateIndex i,StateIndex j) -> StateIndex {
-    return i * second.nStates() + j;
-  };
-
-  auto ijState = [&](StateIndex ij) -> pair<StateIndex,StateIndex> {
-    return pair<StateIndex,StateIndex> (ij / second.nStates(), ij % second.nStates());
-  };
+  const StateIndex iStates = first.nStates(), jStates = second.nStates();
 
   // first, a quick optimization hack to filter out inaccessible states
   LogThisAt(6,"Finding accessible states" << endl);
-  Machine dummyCompMachine;
-  vguard<MachineState>& dummyComp = dummyCompMachine.state;
-  dummyComp = vguard<MachineState> (first.nStates() * second.nStates());
-
-  vguard<bool> visited (dummyComp.size(), false);
-  list<StateIndex> toVisit;
-  toVisit.push_front (0);
+  vguard<bool> keep (iStates * jStates, false);
+  vguard<StateIndex> toVisit, dest, keptState;
+  keptState.reserve (iStates * jStates);
+  toVisit.push_back(0);
+  keep[0] = true;
+  ProgressLog(plogAcc,6);
+  plogAcc.initProgress ("Performing depth-first search of state space (max %lu states)", iStates*jStates);
   while (!toVisit.empty()) {
-    const auto c = toVisit.front();
-    toVisit.pop_front();
-    if (!visited[c]) {
-      visited[c] = true;
-      MachineState& ms = dummyComp[c];
-      const auto ij = ijState (c);
-      const StateIndex i = ij.first, j = ij.second;
-      const MachineState& msi = first.state[i];
-      const MachineState& msj = second.state[j];
-      set<StateIndex> dest;
-      if (msj.waits() || msj.terminates()) {
-	for (const auto& it: msi.trans)
-	  if (it.outputEmpty())
-	    dest.insert (compState(it.dest,j));
-	  else
-	    for (const auto& jt: msj.trans)
-	      if (it.out == jt.in)
-		dest.insert (compState(it.dest,jt.dest));
-      } else
-	for (const auto& jt: msj.trans)
-	  dest.insert (compState(i,jt.dest));
-      for (const auto& d: dest) {
-	ms.trans.push_back (MachineTransition (string(), string(), d, WeightExpr()));
-	if (!visited[d])
-	  toVisit.push_back(d);
+    plogAcc.logProgress (keptState.size() / (double) (iStates*jStates), "visited %lu states", keptState.size());
+    const StateIndex c = toVisit.back();
+    toVisit.pop_back();
+    keptState.push_back(c);
+    const StateIndex i = compState2i(c,jStates), j = compState2j(c,jStates);
+    const MachineState& msi = first.state[i];
+    const MachineState& msj = second.state[j];
+    dest.clear();
+    if (msj.waits() || msj.terminates()) {
+      for (const auto& it: msi.trans)
+	if (it.outputEmpty())
+	  dest.push_back (ij2compState(it.dest,j,jStates));
+	else
+	  for (const auto& jt: msj.trans)
+	    if (it.out == jt.in)
+	      dest.push_back (ij2compState(it.dest,jt.dest,jStates));
+    } else
+      for (const auto& jt: msj.trans)
+	dest.push_back (ij2compState(i,jt.dest,jStates));
+    for (const StateIndex d: dest)
+      if (!keep[d]) {
+	keep[d] = true;
+	toVisit.push_back(d);
       }
-    }
   }
-  vguard<bool> isAccessible (dummyComp.size(), false);
-  for (auto s: dummyCompMachine.accessibleStates())
-    isAccessible[s] = true;
-  
+  plogAcc.logFinal ("found %lu states", keptState.size());
+
+  sort (keptState.begin(), keptState.end());
+  vguard<StateIndex> comp2kept (iStates * jStates);
+  for (StateIndex k = 0; k < keptState.size(); ++k)
+    comp2kept[keptState[k]] = k;
+
   // now do the composition for real
   Machine compMachine;
   vguard<MachineState>& comp = compMachine.state;
-  comp = vguard<MachineState> (first.nStates() * second.nStates());
+  LogThisAt(7,"Initializing composite machine states" << endl);
+  comp.resize (keptState.size());
 
-  ProgressLog(plogName,6);
-  plogName.initProgress ("Constructing namespace (%lu * %lu states)", first.nStates(), second.nStates());
-
-  for (StateIndex i = 0; i < first.nStates(); ++i)
-    for (StateIndex j = 0; j < second.nStates(); ++j) {
-      const StateIndex c = compState(i,j);
-      plogName.logProgress (c / (double) comp.size(), "state %ld/%ld", c, comp.size());
-      if (isAccessible[c]) {
-	MachineState& ms = comp[c];
-	ms.name = StateName ({first.state[i].name, second.state[j].name});
-      }
+  if (assignCompositeStateNames) {
+    ProgressLog(plogName,6);
+    plogName.initProgress ("Constructing namespace (%lu states)", keptState.size());
+    for (StateIndex k = 0; k < keptState.size(); ++k) {
+      const StateIndex c = keptState[k];
+      const StateIndex i = compState2i(c,jStates), j = compState2j(c,jStates);
+      const MachineState& msi = first.state[i];
+      const MachineState& msj = second.state[j];
+      plogName.logProgress (k / (double) keptState.size(), "state %ld/%ld", k, keptState.size());
+      MachineState& ms = comp[k];
+      ms.name = StateName ({first.state[i].name, second.state[j].name});
     }
+    plogName.logFinal("done");
+  }
 
   ProgressLog(plogTrans,6);
-  plogTrans.initProgress ("Computing transition weights (%lu * %lu states)", first.nStates(), second.nStates());
+  plogTrans.initProgress ("Computing transition weights (%lu states)", keptState.size());
 
-  for (StateIndex i = 0; i < first.nStates(); ++i)
-    for (StateIndex j = 0; j < second.nStates(); ++j) {
-      const StateIndex c = compState(i,j);
-      plogTrans.logProgress (c / (double) comp.size(), "state %ld/%ld", c, comp.size());
-      if (isAccessible[c]) {
-	MachineState& ms = comp[c];
-	const MachineState& msi = first.state[i];
-	const MachineState& msj = second.state[j];
-	TransAccumulator ta;
-	if (msj.waits() || msj.terminates()) {
-	  for (const auto& it: msi.trans)
-	    if (it.outputEmpty())
-	      ta.accumulate (it.in, string(), compState(it.dest,j), it.weight);
-	    else
-	      for (const auto& jt: msj.trans)
-		if (it.out == jt.in)
-		  ta.accumulate (it.in, jt.out, compState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight));
+  TransAccumulator ta;
+  for (StateIndex k = 0; k < keptState.size(); ++k) {
+    const StateIndex c = keptState[k];
+    const StateIndex i = compState2i(c,jStates), j = compState2j(c,jStates);
+    const MachineState& msi = first.state[i];
+    const MachineState& msj = second.state[j];
+    plogTrans.logProgress (k / (double) keptState.size(), "state %ld/%ld", k, keptState.size());
+    MachineState& ms = comp[k];
+    if (collapseDegenerateTransitions)
+      ta.clear();
+    else
+      ta.transList = &ms.trans;
+    if (msj.waits() || msj.terminates()) {
+      for (const auto& it: msi.trans)
+	if (it.outputEmpty()) {
+	  const StateIndex d = ij2compState(it.dest,j,jStates);
+	  if (keep[d])
+	    ta.accumulate (it.in, string(), comp2kept[d], it.weight);
 	} else
 	  for (const auto& jt: msj.trans)
-	    ta.accumulate (string(), jt.out, compState(i,jt.dest), jt.weight);
-	ms.trans = ta.transitions();
+	    if (it.out == jt.in) {
+	      const StateIndex d = ij2compState(it.dest,jt.dest,jStates);
+	      if (keep[d])
+		ta.accumulate (it.in, jt.out, comp2kept[d], WeightAlgebra::multiply (it.weight, jt.weight));
+	    }
+    } else
+      for (const auto& jt: msj.trans) {
+	const StateIndex d = ij2compState(i,jt.dest,jStates);
+	if (keep[d])
+	  ta.accumulate (string(), jt.out, comp2kept[d], jt.weight);
       }
-    }
+    if (collapseDegenerateTransitions)
+      ms.trans = ta.transitions();
+  }
 
   LogThisAt(3,"Transducer composition yielded " << compMachine.nStates() << "-state machine" << endl);
   return compMachine.ergodicMachine().advanceSort().advancingMachine().ergodicMachine();
@@ -871,11 +890,22 @@ Machine Machine::singleTransition (const WeightExpr& weight) {
   return n;
 }
 
+TransAccumulator::TransAccumulator() : transList (NULL)
+{ }
+
+void TransAccumulator::clear() {
+  t.clear();
+}
+
 void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w) {
-  if (t[dest][in].count(out))
-    t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
-  else
-    t[dest][in][out] = w;
+  if (transList)
+    transList->push_back (MachineTransition (in, out, dest, w));
+  else {
+    if (t[dest][in].count(out))
+      t[dest][in][out] = WeightAlgebra::add(w,t[dest][in][out]);
+    else
+      t[dest][in][out] = w;
+  }
 }
 
 TransList TransAccumulator::transitions() const {

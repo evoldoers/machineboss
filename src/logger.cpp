@@ -169,3 +169,15 @@ void ProgressLogger::logProgress (double completedFraction, const char* desc, ..
     reportInterval = fmin (10., 2*reportInterval);
   }
 }
+
+void ProgressLogger::logFinal (const char* desc, ...) {
+  va_list argptr;
+  char *progMsg;
+  va_start (argptr, desc);
+  vasprintf (&progMsg, desc, argptr);
+  va_end (argptr);
+
+  logger.print (string(msg) + ": " + progMsg + "\n", file, line, verbosity);
+      
+  free(progMsg);
+}

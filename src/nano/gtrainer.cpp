@@ -54,7 +54,7 @@ void GaussianModelFitter::init (const Machine& m, const GaussianModelParams& mp,
     vguard<OutputSymbol> seq (fs.length());
     for (SeqIdx pos = 0; pos < fs.length(); ++pos)
       seq[pos] = string (1, tolower (fs.seq[pos]));
-    inputConditionedMachine.push_back (Machine::compose (Machine::generator (fs.name, seq), machine));
+    inputConditionedMachine.push_back (Machine::compose (Machine::generator (fs.name, seq), machine, false, false));
   }
 }
 

@@ -97,6 +97,7 @@ public:
   ~ProgressLogger();
   void initProgress (const char* desc, ...);
   void logProgress (double completedFraction, const char* desc, ...);
+  void logFinal (const char* desc, ...);
 private:
   ProgressLogger (const ProgressLogger&) = delete;
   ProgressLogger& operator= (const ProgressLogger&) = delete;

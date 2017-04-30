@@ -76,7 +76,7 @@ struct Machine {
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
 
-  static Machine compose (const Machine& first, const Machine& second);
+  static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true);
   static Machine intersect (const Machine& first, const Machine& second);
   static Machine concatenate (const Machine& left, const Machine& right);
   static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
@@ -110,7 +110,10 @@ struct Machine {
 typedef JsonLoader<Machine> MachineLoader;
 
 struct TransAccumulator {
+  TransList* transList;  // if non-null, will accumulate transitions direct to this list, without collapsing
   map<StateIndex,map<InputSymbol,map<OutputSymbol,WeightExpr> > > t;
+  TransAccumulator();
+  void clear();
   void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w);
   TransList transitions() const;
 };
