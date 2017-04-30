@@ -731,9 +731,13 @@ bool Machine::isAligningMachine() const {
 Machine Machine::eliminateSilentTransitions() const {
   if (!isAdvancingMachine())
     return advancingMachine().eliminateSilentTransitions();
+  LogThisAt(3,"Eliminating silent transitions from " << nStates() << "-state transducer" << endl);
   Machine em;
   if (nStates()) {
     em.state.resize (nStates());
+    // Silent transitions from i->j are prepended to loud transitions from j->k.
+    // In case there are no loud transitions from j->k, then the set of "unaccounted-for" outgoing silent transitions from i is stored,
+    // and is then appended to loud transitions h->i (this has to be done in a second pass, because it can be the case that h>i).
     vguard<TransList> silentTrans (nStates());
     for (long long s = nStates() - 1; s >= 0; --s) {
       const MachineState& ms = state[s];
@@ -750,17 +754,25 @@ Machine Machine::eliminateSilentTransitions() const {
 	    for (const auto& t2: em.state[t.dest].trans)
 	      loud.accumulate (t2.in, t2.out, t2.dest, WeightAlgebra::multiply(t.weight,t2.weight));
 	  }
-	} else {
+	} else
 	  loud.accumulate(t);
-	  for (const auto& t2: silentTrans[t.dest])
-	    loud.accumulate (t.in, t.out, t2.dest, WeightAlgebra::multiply(t.weight,t2.weight));
-	}
       ems.trans = loud.transitions();
       silentTrans[s] = silent.transitions();
     }
+    for (MachineState& ems: em.state) {
+      TransAccumulator loud;
+      for (const auto& t: ems.trans) {
+	loud.accumulate(t);
+	for (const auto& t2: silentTrans[t.dest])
+	  loud.accumulate (t.in, t.out, t2.dest, WeightAlgebra::multiply(t.weight,t2.weight));
+      }
+      ems.trans = loud.transitions();
+    }
     em.state[0].trans.insert (em.state[0].trans.end(), silentTrans[0].begin(), silentTrans[0].end());
   }
-  return em.ergodicMachine();
+  const Machine elimMachine = em.ergodicMachine();
+  LogThisAt(3,"Elimination of silent transitions from " << nStates() << "-state, " << nTransitions() << "-transition machine yielded " << elimMachine.nStates() << "-state, " << elimMachine.nTransitions() << "-transition machine" << endl);
+  return elimMachine;
 }
 
 Machine Machine::generator (const string& name, const vguard<OutputSymbol>& seq) {

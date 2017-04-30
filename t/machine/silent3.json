@@ -1,0 +1,16 @@
+{"state":
+ [{"id":"a",
+   "trans":[{"to":3,"weight":"u"}]},
+  {"id":"c",
+   "trans":[{"to":4,"weight":"w"}]},
+  {"id":"e",
+   "trans":[{"to":5,"weight":"y"}]},
+  {"id":"b",
+   "trans":[{"to":1,"in":"A","weight":"v"}]},
+  {"id":"d",
+   "trans":[{"to":2,"out":"B","weight":"x"}]},
+  {"id":"f",
+   "trans":[{"to":6,"weight":"z"}]},
+  {"id":"g"}
+ ]
+}
