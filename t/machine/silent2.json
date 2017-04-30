@@ -1,0 +1,10 @@
+{"state":
+ [{"id":"a",
+   "trans":[{"to":1,"weight":"x"}]},
+  {"id":"b",
+   "trans":[{"to":2,"weight":"y"}]},
+  {"id":"c",
+   "trans":[{"to":3,"weight":"z"}]},
+  {"id":"d"}
+ ]
+}

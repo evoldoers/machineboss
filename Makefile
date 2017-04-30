@@ -203,6 +203,7 @@ test-concat:
 
 test-eliminate:
 	@$(TEST) bin/$(BOSS) -n t/machine/silent.json t/expect/silent-elim.json
+	@$(TEST) bin/$(BOSS) -n t/machine/silent2.json t/expect/silent2-elim.json
 
 test-reverse:
 	@$(TEST) bin/$(BOSS) -e -g t/io/seq001.json t/expect/generator001-reversed.json
