@@ -50,10 +50,10 @@ struct MachineState {
   bool exitsWithIO() const;  // true if this has any transitions with input and/or output
   bool exitsWithoutIO() const;  // true if this has any transitions without input or output
   bool terminates() const;  // true if this has no outgoing transitions. Note that the end state is not required to have this property
-  bool waits() const;  // !exitsWithoutInput()
-  bool continues() const;  // !exitsWithInput() && !terminates()
-  bool isSilent() const;  // !exitsWithIO()
-  bool isLoud() const;  // exitsWithIO() && !exitsWithoutIO()
+  bool waits() const;  // !exitsWithoutInput()                     ["input" or "end" state: machine only leaves this state if it receives input]
+  bool continues() const;  // !exitsWithInput() && !terminates()   ["insert" state: can't accept input, and has at least one outgoing transition]
+  bool isSilent() const;  // !exitsWithIO()                        ["null" state]
+  bool isLoud() const;  // exitsWithIO() && !exitsWithoutIO()      ["emit" state]
 };
 
 struct Machine {
