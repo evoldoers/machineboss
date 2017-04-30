@@ -35,6 +35,7 @@ Prefix operators:
   -e [ --reverse ]           reverse
   -r [ --revcomp ]           reverse-complement '~'
   -f [ --flip ]              flip input/output
+  -n [ --eliminate ]         eliminate silent transitions
 
 Postfix operators:
   -z [ --zero-or-one ]       union with null '?'
@@ -53,8 +54,8 @@ Miscellaneous:
   -E [ --end ]               right bracket ')'
 
 Transducer application:
-  -S [ --save ] arg          save machine
-  -G [ --graphviz ]          output in Graphviz DOT format
+  -S [ --save ] arg          save machine to file
+  -G [ --graphviz ]          write machine in Graphviz DOT format
   -P [ --params ] arg        load parameters
   -F [ --functions ] arg     load functions & constants
   -C [ --constraints ] arg   load constraints

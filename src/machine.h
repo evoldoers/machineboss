@@ -103,6 +103,8 @@ struct Machine {
   Machine waitingMachine() const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
 
+  Machine eliminateSilentTransitions() const;
+
   size_t nSilentBackTransitions() const;
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
 };
@@ -115,6 +117,7 @@ struct TransAccumulator {
   TransAccumulator();
   void clear();
   void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w);
+  void accumulate (const MachineTransition&);
   TransList transitions() const;
 };
 

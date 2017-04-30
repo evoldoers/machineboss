@@ -173,7 +173,7 @@ test-unitindel2:
 	@$(TEST) bin/$(BOSS) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-reverse test-revcomp test-flip test-weight test-shorthand
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand
 test-generator:
 	@$(TEST) bin/$(BOSS) -g t/io/seq101.json t/expect/generator101.json
 
@@ -200,6 +200,9 @@ test-noisy-loop:
 
 test-concat:
 	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
+
+test-eliminate:
+	@$(TEST) bin/$(BOSS) -n t/machine/silent.json t/expect/silent-elim.json
 
 test-reverse:
 	@$(TEST) bin/$(BOSS) -e -g t/io/seq001.json t/expect/generator001-reversed.json

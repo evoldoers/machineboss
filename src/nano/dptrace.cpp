@@ -20,7 +20,7 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   nStates (eval.nStates()),
   nOutToks (eval.outputTokenizer.tok2sym.size())
 {
-  LogThisAt(7,"Creating " << (outLen+1) << "*" << nStates << " matrix" << endl);
+  LogThisAt(7,"Creating " << (outLen+1) << "-sample * " << nStates << "-state matrix" << endl);
   LogThisAt(9,"Machine:" << endl << eval.toJsonString() << endl);
 
   nTrans = 0;

@@ -316,8 +316,8 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
 	toVisit.push_back(d);
       }
   }
-  plogAcc.logFinal ("found %lu states", keptState.size());
 
+  LogThisAt(7,"Sorting & indexing " << keptState.size() << " states" << endl);
   sort (keptState.begin(), keptState.end());
   vguard<StateIndex> comp2kept (iStates * jStates);
   for (StateIndex k = 0; k < keptState.size(); ++k)
@@ -341,7 +341,6 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
       MachineState& ms = comp[k];
       ms.name = StateName ({first.state[i].name, second.state[j].name});
     }
-    plogName.logFinal("done");
   }
 
   ProgressLog(plogTrans,6);
@@ -729,6 +728,41 @@ bool Machine::isAligningMachine() const {
   return true;
 }
 
+Machine Machine::eliminateSilentTransitions() const {
+  if (!isAdvancingMachine())
+    return advancingMachine().eliminateSilentTransitions();
+  Machine em;
+  if (nStates()) {
+    em.state.resize (nStates());
+    vguard<TransList> silentTrans (nStates());
+    for (long long s = nStates() - 1; s >= 0; --s) {
+      const MachineState& ms = state[s];
+      MachineState& ems = em.state[s];
+      ems.name = ms.name;
+      TransAccumulator silent, loud;
+      for (const auto& t: ms.trans)
+	if (t.isSilent()) {
+	  if (state[t.dest].terminates())
+	    silent.accumulate(t);
+	  else {
+	    for (const auto& t2: silentTrans[t.dest])
+	      silent.accumulate (t.in, t.out, t2.dest, WeightAlgebra::multiply(t.weight,t2.weight));
+	    for (const auto& t2: em.state[t.dest].trans)
+	      loud.accumulate (t2.in, t2.out, t2.dest, WeightAlgebra::multiply(t.weight,t2.weight));
+	  }
+	} else {
+	  loud.accumulate(t);
+	  for (const auto& t2: silentTrans[t.dest])
+	    loud.accumulate (t.in, t.out, t2.dest, WeightAlgebra::multiply(t.weight,t2.weight));
+	}
+      ems.trans = loud.transitions();
+      silentTrans[s] = silent.transitions();
+    }
+    em.state[0].trans.insert (em.state[0].trans.end(), silentTrans[0].begin(), silentTrans[0].end());
+  }
+  return em.ergodicMachine();
+}
+
 Machine Machine::generator (const string& name, const vguard<OutputSymbol>& seq) {
   Machine m;
   m.state.resize (seq.size() + 1);
@@ -895,6 +929,10 @@ TransAccumulator::TransAccumulator() : transList (NULL)
 
 void TransAccumulator::clear() {
   t.clear();
+}
+
+void TransAccumulator::accumulate (const MachineTransition& t) {
+  accumulate (t.in, t.out, t.dest, t.weight);
 }
 
 void TransAccumulator::accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w) {
