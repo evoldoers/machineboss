@@ -1,7 +1,7 @@
 #include "../logger.h"
 #include "backtrace.h"
 
-BackwardTraceMatrix::BackwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
+BackwardTraceMatrix::BackwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams) :
   TraceDPMatrix (eval, modelParams, trace, traceParams),
   nullTrans_rbegin (nullTrans().rbegin()),
   nullTrans_rend (nullTrans().rend())

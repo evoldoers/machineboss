@@ -8,7 +8,7 @@ struct GaussianTrainer {
   Machine machine;
   GaussianModelPrior prior;
 
-  TraceList traceList;
+  TraceMomentsList traceList;
 
   TraceListParams traceListParams;
   GaussianModelParams modelParams;
@@ -17,7 +17,7 @@ struct GaussianTrainer {
   double logPrior, logLike, prevLogLike;  // logLike includes logPrior
   size_t iter;
   
-  void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceList&);
+  void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&);
   void reset();
   bool testFinished();
   double expectedLogEmit() const;
@@ -27,7 +27,7 @@ struct GaussianModelFitter : GaussianTrainer {
   vguard<FastSeq> seqs;
   list<Machine> inputConditionedMachine;
   
-  void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceList&, const vguard<FastSeq>&);
+  void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&, const vguard<FastSeq>&);
   void fit();
 };
 

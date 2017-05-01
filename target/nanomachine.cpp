@@ -93,6 +93,9 @@ int main (int argc, char** argv) {
       for (const auto& textFilename: vm.at("raw").as<vector<string> >())
 	traceList.readText (textFilename);
 
+    // segment
+    const TraceMomentsList traceMomentsList (traceList);
+    
     // initialize machine & prior
     BaseCallingMachine machine;
     machine.init (initParams.alphabet, initParams.kmerLen, initParams.components);
@@ -109,7 +112,7 @@ int main (int argc, char** argv) {
 	readFastSeqs (seqFilename.c_str(), trainSeqs);
 
       GaussianModelFitter fitter;
-      fitter.init (machine, initParams.params, modelPrior, traceList, trainSeqs);
+      fitter.init (machine, initParams.params, modelPrior, traceMomentsList, trainSeqs);
       fitter.fit();
 
       trainedParams.params = fitter.modelParams;
@@ -124,7 +127,7 @@ int main (int argc, char** argv) {
     // do basecalling
     if (vm.count("call")) {
       GaussianDecoder decoder;
-      decoder.init (machine, trainedParams.params, modelPrior, traceList);
+      decoder.init (machine, trainedParams.params, modelPrior, traceMomentsList);
       writeFastaSeqs (cout, decoder.decode());
     }
 

@@ -9,14 +9,13 @@ TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t
   in = i;
 }
 
-TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
+TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& moments, const TraceParams& traceParams) :
   eval (eval),
   modelParams (modelParams),
-  trace (trace),
+  moments (moments),
   traceParams (traceParams),
-  moments (trace),
   coeffs (modelParams, traceParams, eval.outputTokenizer),
-  outLen (trace.sample.size()),
+  outLen (moments.sample.size()),
   nStates (eval.nStates()),
   nOutToks (eval.outputTokenizer.tok2sym.size())
 {

@@ -1,7 +1,7 @@
 #include "fwdtrace.h"
 #include "../logger.h"
 
-ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
+ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams) :
   TraceDPMatrix (eval, modelParams, trace, traceParams)
 {
   ProgressLog(plog,3);

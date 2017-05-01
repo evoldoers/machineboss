@@ -1,7 +1,7 @@
 #include "vtrace.h"
 #include "../logger.h"
 
-ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams) :
+ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams) :
   TraceDPMatrix (eval, modelParams, trace, traceParams)
 {
   ProgressLog(plog,3);

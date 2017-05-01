@@ -7,7 +7,7 @@
 #define MaxEMIterations 1000
 #define MinEMImprovement .001
 
-void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceList& tl) {
+void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl) {
   machine = m;
   prior = pr;
   modelParams = mp;
@@ -46,7 +46,7 @@ double GaussianTrainer::expectedLogEmit() const {
   return GaussianModelCounts::expectedLogEmit (modelParams, traceListParams, prior, counts);
 }
 
-void GaussianModelFitter::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceList& tl, const vguard<FastSeq>& s) {
+void GaussianModelFitter::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl, const vguard<FastSeq>& s) {
   GaussianTrainer::init (m, mp, pr, tl);
   seqs = s;
   inputConditionedMachine.clear();

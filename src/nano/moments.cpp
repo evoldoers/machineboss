@@ -2,8 +2,9 @@
 #include "../util.h"
 #include "moments.h"
 
-TraceMoments::TraceMoments (const Trace& trace)
-  : sample (trace.sample.size())
+TraceMoments::TraceMoments (const Trace& trace) :
+  name (trace.name),
+  sample (trace.sample.size())
 {
   for (TraceIndex j = 0; j < sample.size(); ++j) {
     const double t = trace.sample[j];
@@ -12,6 +13,14 @@ TraceMoments::TraceMoments (const Trace& trace)
     e.m1 = t;
     e.m2 = t*t;
   }
+}
+
+TraceMomentsList::TraceMomentsList()
+{ }
+
+TraceMomentsList::TraceMomentsList (const TraceList& traceList) {
+  for (const auto& t: traceList.trace)
+    trace.push_back (TraceMoments(t));
 }
 
 GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams& modelParams, const TraceParams& traceParams, const OutputTokenizer& outputTokenizer)

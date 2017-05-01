@@ -70,10 +70,6 @@ void TraceParams::readJson (const json& j) {
   shift = j.at("shift").get<double>();
 }
 
-void TraceListParams::init (const TraceList& ts) {
-  params = vguard<TraceParams> (ts.size());
-}
-
 void TraceListParams::writeJson (ostream& out) const {
   out << "[";
   size_t n = 0;

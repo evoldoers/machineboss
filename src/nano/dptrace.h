@@ -37,15 +37,14 @@ protected:
 public:
   const EvaluatedMachine& eval;
   const GaussianModelParams& modelParams;
-  const Trace& trace;
+  const TraceMoments& moments;
   const TraceParams& traceParams;
-  const TraceMoments moments;
   const GaussianModelCoefficients coeffs;
   const OutputIndex outLen;
   const StateIndex nStates;
   const OutputToken nOutToks;
 
-  TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
+  TraceDPMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&);
 
   void writeJson (ostream& out) const;
   friend ostream& operator<< (ostream&, const TraceDPMatrix&);

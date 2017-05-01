@@ -23,7 +23,7 @@ void GaussianModelCounts::init (const EvaluatedMachine& m) {
     gaussIndex[m.outputTokenizer.tok2sym[n]] = n - 1;
 }
 
-double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const Trace& t, const TraceParams& tp) {
+double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const TraceMoments& t, const TraceParams& tp) {
   const ForwardTraceMatrix forward (m, mp, t, tp);
   const BackwardTraceMatrix backward (m, mp, t, tp);
   backward.getGaussianCounts (forward, gauss);

@@ -4,7 +4,7 @@
 #include "dptrace.h"
 
 struct ForwardTraceMatrix : TraceDPMatrix {
-  ForwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const Trace& trace, const TraceParams& traceParams);
+  ForwardTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&);
   double logLike() const;
 };
 

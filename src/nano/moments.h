@@ -10,8 +10,16 @@ struct SampleMoments {
 };
 
 struct TraceMoments {
+  string name;
   vguard<SampleMoments> sample;
   TraceMoments (const Trace& trace);
+};
+
+struct TraceMomentsList {
+  list<TraceMoments> trace;
+  inline size_t size() const { return trace.size(); }
+  TraceMomentsList();
+  TraceMomentsList (const TraceList&);
 };
 
 struct GaussianCoefficients {
