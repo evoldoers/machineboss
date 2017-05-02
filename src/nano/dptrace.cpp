@@ -9,6 +9,11 @@ TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t
   in = i;
 }
 
+size_t calcBlockSize (size_t storageColumns, size_t totalColumns) {
+  const double s = pow ((double) storageColumns, 2) - 4*totalColumns;
+  return s >= 0 ? ceil ((storageColumns + sqrt(s)) / 2) : 1;
+}
+
 TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& moments, const TraceParams& traceParams, size_t bb) :
   eval (eval),
   modelParams (modelParams),
@@ -20,7 +25,11 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   nOutToks (eval.outputTokenizer.tok2sym.size()),
   nColumns (outLen + 1),
   blockBytes (bb),
-  blockSize (blockBytes ? max((OutputIndex)2,min((OutputIndex)(blockBytes / (nStates * sizeof(double))),(OutputIndex)nColumns)) : nColumns),
+  blockSize (blockBytes
+	     ? max ((OutputIndex) 2,
+		    min ((OutputIndex) nColumns,
+			 (OutputIndex) calcBlockSize (blockBytes / (nStates * sizeof(double)), outLen)))
+	     : nColumns),
   nCheckpoints (1 + ((nColumns - 1) / blockSize))
 {
   LogThisAt(7,"Creating " << (outLen+1) << "-sample * " << nStates << "-state matrix" << endl);
