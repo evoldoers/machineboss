@@ -2,10 +2,10 @@
 #include "../logger.h"
 
 ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams) :
-  TraceDPMatrix (eval, modelParams, trace, traceParams)
+  TraceDPMatrix (eval, modelParams, trace, traceParams, 0)
 {
   ProgressLog(plog,3);
-  plog.initProgress ("Viterbi algorithm (%ld samples, %u transitions)", outLen, nTrans);
+  plog.initProgress ("Viterbi algorithm (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
 
   cell(0,eval.startState()) = 0;
   for (const auto& it: nullTrans())
@@ -22,8 +22,8 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
     for (const auto& it: nullTrans())
       update (outPos, it.dest, cell(outPos,it.src) + it.logWeight, it.in);
   }
+
   LogThisAt(6,"Viterbi log-likelihood: " << logLike() << endl);
-  LogThisAt(10,"Viterbi matrix:" << endl << *this);
 }
 
 double ViterbiTraceMatrix::logLike() const {

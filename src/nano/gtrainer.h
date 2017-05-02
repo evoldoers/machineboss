@@ -16,7 +16,10 @@ struct GaussianTrainer {
   list<GaussianModelCounts> counts;
   double logPrior, logLike, prevLogLike;  // logLike includes logPrior
   size_t iter;
+
+  size_t blockBytes;
   
+  GaussianTrainer();
   void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&);
   void reset();
   bool testFinished();

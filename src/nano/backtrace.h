@@ -8,7 +8,7 @@ class BackwardTraceMatrix : public TraceDPMatrix {
 private:
   vguard<IndexedTrans>::const_reverse_iterator nullTrans_rbegin, nullTrans_rend;
 public:
-  BackwardTraceMatrix (const ForwardTraceMatrix&, MachineCounts* = NULL, vguard<GaussianCounts>* = NULL);
+  BackwardTraceMatrix (ForwardTraceMatrix&, MachineCounts* = NULL, vguard<GaussianCounts>* = NULL);
   double logLike() const;
 };
 

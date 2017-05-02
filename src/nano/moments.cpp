@@ -25,7 +25,7 @@ TraceMoments::TraceMoments (const Trace& trace) :
   name (trace.name),
   sample (trace.sample.size())
 {
-  for (TraceIndex j = 0; j < sample.size(); ++j) {
+  for (size_t j = 0; j < sample.size(); ++j) {
     const double t = trace.sample[j];
     SampleMoments& e = sample[j];
     e.m0 = 1;

@@ -1,23 +1,30 @@
 #include "../logger.h"
 #include "backtrace.h"
 
-BackwardTraceMatrix::BackwardTraceMatrix (const ForwardTraceMatrix& fwd, MachineCounts* transCounts, vguard<GaussianCounts>* emitCounts) :
-  TraceDPMatrix (fwd.eval, fwd.modelParams, fwd.moments, fwd.traceParams),
+BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts* transCounts, vguard<GaussianCounts>* emitCounts) :
+  TraceDPMatrix (fwd.eval, fwd.modelParams, fwd.moments, fwd.traceParams, fwd.blockBytes),
   nullTrans_rbegin (nullTrans().rbegin()),
   nullTrans_rend (nullTrans().rend())
 {
-  const double llFinal = fwd.logLike();
+  const double llFinal = fwd.logLike;
 
   ProgressLog(plog,3);
-  plog.initProgress ("Backward algorithm (%ld samples, %u transitions)", outLen, nTrans);
+  plog.initProgress ("Backward algorithm (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
 
-  cell(outLen,eval.endState()) = 0;
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
     plog.logProgress ((outLen - outPos) / (double) outLen, "sample %ld/%ld", outPos, outLen);
+
+    if (outPos < outLen && ((outPos + 1) % fwd.blockSize) == 0)
+      fwd.refillBlock (outPos + 1 - fwd.blockSize);
+
     vguard<double>& thisColumn = column(outPos);
+    initColumn (thisColumn);
+
     const vguard<double>& thisFwdColumn = fwd.column(outPos);
 
-    if (outPos < outLen) {
+    if (outPos == outLen)
+      thisColumn[eval.endState()] = 0;
+    else {
       const auto& sample = moments.sample[outPos];
       const vguard<double>& nextColumn = column(outPos+1);
       for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
@@ -44,7 +51,6 @@ BackwardTraceMatrix::BackwardTraceMatrix (const ForwardTraceMatrix& fwd, Machine
     }
   }
   LogThisAt(6,"Backward log-likelihood: " << logLike() << endl);
-  LogThisAt(10,"Backward matrix:" << endl << *this);
 }
 
 double BackwardTraceMatrix::logLike() const {

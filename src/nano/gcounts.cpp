@@ -23,16 +23,16 @@ void GaussianModelCounts::init (const EvaluatedMachine& m) {
     gaussIndex[m.outputTokenizer.tok2sym[n]] = n - 1;
 }
 
-double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const TraceMoments& t, const TraceParams& tp) {
+double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const TraceMoments& t, const TraceParams& tp, size_t blockBytes) {
   MachineCounts mc (m);
-  const ForwardTraceMatrix forward (m, mp, t, tp);
+  ForwardTraceMatrix forward (m, mp, t, tp, blockBytes);
   const BackwardTraceMatrix backward (forward, &mc, &gauss);
 
   const auto pc = mc.paramCounts (machine, mp.prob);
   for (auto p_c: pc)
     prob[p_c.first] += p_c.second;
 
-  return forward.logLike();
+  return forward.logLike;
 }
 
 void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {

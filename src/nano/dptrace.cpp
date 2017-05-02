@@ -9,7 +9,7 @@ TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t
   in = i;
 }
 
-TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& moments, const TraceParams& traceParams) :
+TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& moments, const TraceParams& traceParams, size_t bb) :
   eval (eval),
   modelParams (modelParams),
   moments (moments),
@@ -17,7 +17,11 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   coeffs (modelParams, traceParams, eval.outputTokenizer),
   outLen (moments.sample.size()),
   nStates (eval.nStates()),
-  nOutToks (eval.outputTokenizer.tok2sym.size())
+  nOutToks (eval.outputTokenizer.tok2sym.size()),
+  nColumns (outLen + 1),
+  blockBytes (bb),
+  blockSize (blockBytes ? max((OutputIndex)2,min((OutputIndex)(blockBytes / (nStates * sizeof(double))),(OutputIndex)nColumns)) : nColumns),
+  nCheckpoints (1 + ((nColumns - 1) / blockSize))
 {
   LogThisAt(7,"Creating " << (outLen+1) << "-sample * " << nStates << "-state matrix" << endl);
   LogThisAt(9,"Machine:" << endl << eval.toJsonString() << endl);
@@ -33,25 +37,5 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
 	  ++nTrans;
 	}
 
-  columnStorage.resize (outLen + 1, vguard<double> (nStates, -numeric_limits<double>::infinity()));
-}
-
-void TraceDPMatrix::writeJson (ostream& outs) const {
-  outs << "{" << endl
-       << " \"cell\": [";
-  for (OutputIndex o = 0; o <= outLen; ++o)
-    for (StateIndex s = 0; s < nStates; ++s)
-      outs << ((o || s) ? "," : "") << endl
-	   << "  { \"outPos\": " << o
-	   << ", \"state\": " << eval.state[s].name
-	   << ", \"logLike\": " << setprecision(5) << cell(o,s)
-	   << " }";
-  outs << endl
-       << " ]" << endl
-       << "}" << endl;
-}
-
-ostream& operator<< (ostream& out, const TraceDPMatrix& m) {
-  m.writeJson (out);
-  return out;
+  columnStorage.resize (blockSize + nCheckpoints - 1, vguard<double> (nStates, -numeric_limits<double>::infinity()));
 }

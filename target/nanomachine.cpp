@@ -39,10 +39,11 @@ int main (int argc, char** argv) {
       ("components,c", po::value<int>()->default_value(1), "# of mixture components in length distributions")
       ;
 
-    po::options_description eventOpts("Event detection options");
-    modelOpts.add_options()
+    po::options_description dpOpts("Event detection & DP options");
+    dpOpts.add_options()
       ("maxfracdiff,f", po::value<double>()->default_value(.01), "max fractional delta between samples in same event")
       ("maxsamples,s", po::value<size_t>()->default_value(4), "max number of samples per event")
+      ("memlimit,m", po::value<size_t>()->default_value(1<<30), "approximate memory limit for forward-backward DP")
       ;
 
     po::options_description appOpts("Data options");
@@ -59,7 +60,7 @@ int main (int argc, char** argv) {
     posOpts.add("data", -1);
 
     po::options_description parseOpts("");
-    parseOpts.add(generalOpts).add(modelOpts).add(appOpts);
+    parseOpts.add(generalOpts).add(modelOpts).add(appOpts).add(dpOpts);
 
     // parse args
     po::variables_map vm;
@@ -119,6 +120,7 @@ int main (int argc, char** argv) {
 
       GaussianModelFitter fitter;
       fitter.init (machine, initParams.params, modelPrior, traceMomentsList, trainSeqs);
+      fitter.blockBytes = vm.at("memlimit").as<size_t>() / 2;
       fitter.fit();
 
       trainedParams.params = fitter.modelParams;

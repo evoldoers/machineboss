@@ -7,6 +7,10 @@
 #define MaxEMIterations 1000
 #define MinEMImprovement .001
 
+GaussianTrainer::GaussianTrainer() :
+  blockBytes(0)
+{ }
+
 void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl) {
   machine = m;
   prior = pr;
@@ -70,7 +74,7 @@ void GaussianModelFitter::fit() {
       const EvaluatedMachine eval (machine, modelParams.prob);
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (machine, eval, modelParams, trace, traceParams);
+      logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes);
       counts.push_back (c);
       evalMachine.push_back (eval);
       LogThisAt(6,"Counts for trace #" << m << ", iteration #" << (iter+1) << ":" << endl << JsonWriter<GaussianModelCounts>::toJsonString(c) << endl);
@@ -101,7 +105,7 @@ vguard<FastSeq> GaussianDecoder::decode() {
       reset();
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (machine, eval, modelParams, trace, traceParams);
+      logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes);
       counts.push_back (c);
       if (testFinished())
 	break;

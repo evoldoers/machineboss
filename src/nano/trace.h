@@ -10,8 +10,6 @@
 using namespace std;
 using json = nlohmann::json;
 
-typedef long TraceIndex;
-
 struct Trace {
   string name;
   vguard<double> sample;
