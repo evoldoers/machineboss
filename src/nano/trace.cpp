@@ -3,7 +3,7 @@
 #include <string>
 
 // comment out if no HDF5
-// #include "../../ext/fast5/fast5.hpp"
+#include "../../ext/fast5/fast5.hpp"
 
 #include "../jsonio.h"
 #include "../regexmacros.h"
@@ -33,15 +33,13 @@ void Trace::readFast5 (const string& filename) {
   name = filename;
   sample.clear();
 
-  // comment out the rest of this function if no HDF5 libraries
-  /*
+  // comment out the rest of this function if no HDF5 libraries are installed
   fast5::File f;
   f.open(filename);
   if (f.have_raw_samples()) {
     const auto raw = f.get_raw_samples();
     sample.insert (sample.end(), raw.begin(), raw.end());
   }
-  */
 }
 
 void TraceList::readJson (const string& fn) {
