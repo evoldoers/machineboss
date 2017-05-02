@@ -8,10 +8,7 @@ class BackwardTraceMatrix : public TraceDPMatrix {
 private:
   vguard<IndexedTrans>::const_reverse_iterator nullTrans_rbegin, nullTrans_rend;
 public:
-  BackwardTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&);
-  
-  void getMachineCounts (const ForwardTraceMatrix&, MachineCounts&) const;
-  void getGaussianCounts (const ForwardTraceMatrix&, vguard<GaussianCounts>&) const;
+  BackwardTraceMatrix (const ForwardTraceMatrix&, MachineCounts* = NULL, vguard<GaussianCounts>* = NULL);
   double logLike() const;
 };
 

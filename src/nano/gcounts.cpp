@@ -24,12 +24,10 @@ void GaussianModelCounts::init (const EvaluatedMachine& m) {
 }
 
 double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const TraceMoments& t, const TraceParams& tp) {
+  MachineCounts mc (m);
   const ForwardTraceMatrix forward (m, mp, t, tp);
-  const BackwardTraceMatrix backward (m, mp, t, tp);
-  backward.getGaussianCounts (forward, gauss);
+  const BackwardTraceMatrix backward (forward, &mc, &gauss);
 
-  MachineCounts mc(m);
-  backward.getMachineCounts (forward, mc);
   const auto pc = mc.paramCounts (machine, mp.prob);
   for (auto p_c: pc)
     prob[p_c.first] += p_c.second;

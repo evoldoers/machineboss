@@ -33,7 +33,7 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
 	  ++nTrans;
 	}
 
-  cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
+  columnStorage.resize (outLen + 1, vguard<double> (nStates, -numeric_limits<double>::infinity()));
 }
 
 void TraceDPMatrix::writeJson (ostream& outs) const {

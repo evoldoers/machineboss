@@ -13,14 +13,16 @@ ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const Gaus
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
     plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
+    vguard<double>& thisColumn = column(outPos);
+    const vguard<double>& prevColumn = column(outPos-1);
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
       for (const auto& it: transByOut[outTok])
-	log_accum_exp (cell(outPos,it.dest), cell(outPos-1,it.src) + it.logWeight + llEmit);
+	log_accum_exp (thisColumn[it.dest], prevColumn[it.src] + it.logWeight + llEmit);
     }
 
     for (const auto& it: nullTrans())
-      log_accum_exp (cell(outPos,it.dest), cell(outPos,it.src) + it.logWeight);
+      log_accum_exp (thisColumn[it.dest], thisColumn[it.src] + it.logWeight);
   }
   LogThisAt(6,"Forward log-likelihood: " << logLike() << endl);
   LogThisAt(10,"Forward matrix:" << endl << *this);

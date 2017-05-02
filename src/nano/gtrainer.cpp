@@ -16,8 +16,8 @@ void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, con
 }
 
 void GaussianTrainer::reset() {
-  LogThisAt(5,"Model parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<GaussianModelParams>::toJsonString(modelParams));
-  LogThisAt(5,"Training set parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<TraceListParams>::toJsonString(traceListParams));
+  LogThisAt(7,"Model parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<GaussianModelParams>::toJsonString(modelParams));
+  LogThisAt(7,"Training set parameters, iteration #" << (iter+1) << ":" << endl << JsonWriter<TraceListParams>::toJsonString(traceListParams));
   logPrior = prior.logProb (modelParams, traceListParams);
   logLike = logPrior;
   counts.clear();
