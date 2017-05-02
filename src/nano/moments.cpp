@@ -1,6 +1,25 @@
 #include <math.h>
 #include "../util.h"
 #include "moments.h"
+#include "segmenter.h"
+
+SampleMoments::SampleMoments() :
+  m0(0), m1(0), m2(0)
+{ }
+
+SampleMoments::SampleMoments (const Trace& t, size_t pos, size_t len) :
+  m0(0), m1(0), m2(0)
+{
+  for (size_t i = 0; i < len; ++i) {
+    const double x = t.sample[pos + i];
+    m0 += 1;
+    m1 += x;
+    m2 += x*x;
+  }
+}
+
+TraceMoments::TraceMoments()
+{ }
 
 TraceMoments::TraceMoments (const Trace& trace) :
   name (trace.name),
@@ -21,6 +40,13 @@ TraceMomentsList::TraceMomentsList()
 TraceMomentsList::TraceMomentsList (const TraceList& traceList) {
   for (const auto& t: traceList.trace)
     trace.push_back (TraceMoments(t));
+}
+
+TraceMomentsList::TraceMomentsList (const TraceList& traceList, double maxFracDiff, size_t maxSegLen) {
+  for (const auto& t: traceList.trace) {
+    const Segmenter seg (t, maxFracDiff, maxSegLen);
+    trace.push_back (seg.segments());
+  }
 }
 
 GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams& modelParams, const TraceParams& traceParams, const OutputTokenizer& outputTokenizer)

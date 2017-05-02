@@ -7,11 +7,14 @@
 
 struct SampleMoments {
   double m0, m1, m2;
+  SampleMoments();
+  SampleMoments (const Trace&, size_t pos, size_t len);
 };
 
 struct TraceMoments {
   string name;
   vguard<SampleMoments> sample;
+  TraceMoments();
   TraceMoments (const Trace& trace);
 };
 
@@ -20,6 +23,7 @@ struct TraceMomentsList {
   inline size_t size() const { return trace.size(); }
   TraceMomentsList();
   TraceMomentsList (const TraceList&);
+  TraceMomentsList (const TraceList&, double maxFracDiff, size_t maxSegLen);
 };
 
 struct GaussianCoefficients {

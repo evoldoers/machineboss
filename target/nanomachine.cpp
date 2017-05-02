@@ -39,6 +39,12 @@ int main (int argc, char** argv) {
       ("components,c", po::value<int>()->default_value(1), "# of mixture components in length distributions")
       ;
 
+    po::options_description eventOpts("Event detection options");
+    modelOpts.add_options()
+      ("maxfracdiff,f", po::value<double>()->default_value(.01), "max fractional delta between samples in same event")
+      ("maxsamples,s", po::value<size_t>()->default_value(4), "max number of samples per event")
+      ;
+
     po::options_description appOpts("Data options");
     appOpts.add_options()
       ("fast5,D", po::value<vector<string> >(), "load trace data from FAST5 file(s)")
@@ -94,7 +100,7 @@ int main (int argc, char** argv) {
 	traceList.readText (textFilename);
 
     // segment
-    const TraceMomentsList traceMomentsList (traceList);
+    const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsamples").as<size_t>());
     
     // initialize machine & prior
     BaseCallingMachine machine;

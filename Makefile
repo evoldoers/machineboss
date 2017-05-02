@@ -48,6 +48,10 @@ HDF5_LIB ?= hdf5
 HDF5_FLAGS = -isystem $(HDF5_INCLUDE_DIR)
 HDF5_LIBS = -L$(HDF5_LIB_DIR) -l$(HDF5_LIB)
 
+# Uncomment to disable HDF5
+#HDF5_FLAGS =
+#HDF5_LIBS =
+
 # install dir
 PREFIX = /usr/local
 
