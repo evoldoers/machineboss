@@ -9,9 +9,17 @@ TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t
   in = i;
 }
 
-size_t calcBlockSize (size_t storageColumns, size_t totalColumns) {
-  const double s = pow ((double) storageColumns, 2) - 4*totalColumns;
-  return s >= 0 ? ceil ((storageColumns + sqrt(s)) / 2) : 1;
+// S = storageColumns, M = maxStorageColumns, T = totalColumns, X = blockSize
+// X + (T/X) = S
+// If M is large enough, we can set S=M so that all available storage is used:
+//  X + (T/X) = M
+//  X^2 - MX + T = 0
+//  X = (M + sqrt(M^2 - 4T)) / 2
+// The condition for this is M^2 - 4T >= 0
+// Otherwise, we just minimize S via dS/dX=0, yielding X=sqrt(T) and S=2*sqrt(T)
+size_t calcBlockSize (size_t maxStorageColumns, size_t totalColumns) {
+  const double discriminant = pow ((double) maxStorageColumns, 2) - 4 * (double) totalColumns;
+  return ceil (discriminant >= 0 ? ((maxStorageColumns + sqrt(discriminant)) / 2) : sqrt ((double) totalColumns));
 }
 
 TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& moments, const TraceParams& traceParams, size_t bb) :
@@ -47,6 +55,7 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
 	}
 
   const OutputIndex storageColumns = blockSize + nCheckpoints - 1;
-  LogThisAt(7,"Creating " << storageColumns << "-column (" << (outLen+1) << "-sample) * " << nStates << "-state matrix" << endl);
+  LogThisAt(8,"Block size is " << blockSize << " columns, # of checkpoint columns is " << nCheckpoints << endl);
+  LogThisAt(7,"Creating " << storageColumns << "-column * " << nStates << "-state matrix" << endl);
   columnStorage.resize (storageColumns, vguard<double> (nStates, -numeric_limits<double>::infinity()));
 }
