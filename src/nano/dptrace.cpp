@@ -32,7 +32,7 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
 	     : nColumns),
   nCheckpoints (1 + ((nColumns - 1) / blockSize))
 {
-  LogThisAt(7,"Creating " << (outLen+1) << "-sample * " << nStates << "-state matrix" << endl);
+  LogThisAt(7,"Indexing " << nStates << "-state machine" << endl);
   LogThisAt(9,"Machine:" << endl << eval.toJsonString() << endl);
 
   nTrans = 0;
@@ -46,5 +46,7 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
 	  ++nTrans;
 	}
 
-  columnStorage.resize (blockSize + nCheckpoints - 1, vguard<double> (nStates, -numeric_limits<double>::infinity()));
+  const OutputIndex storageColumns = blockSize + nCheckpoints - 1;
+  LogThisAt(7,"Creating " << storageColumns << "-column (" << (outLen+1) << "-sample) * " << nStates << "-state matrix" << endl);
+  columnStorage.resize (storageColumns, vguard<double> (nStates, -numeric_limits<double>::infinity()));
 }
