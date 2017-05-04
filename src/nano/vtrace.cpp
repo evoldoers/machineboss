@@ -31,7 +31,7 @@ double ViterbiTraceMatrix::logLike() const {
 }
 
 MachinePath ViterbiTraceMatrix::path (const Machine& m) const {
-  Assert (logLike() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
+  Assert (logLike() > -numeric_limits<double>::infinity(), "Can't do Viterbi traceback: no finite-weight paths");
   MachinePath path;
   OutputIndex outPos = outLen;
   StateIndex s = nStates - 1;
