@@ -32,6 +32,7 @@ struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
   double condFreq, cptWeight, cptExtend, cptEnd;
   double mu, muCount;
   double tau, tauCount;
+  double muPad, tauPad;
 
   BaseCallingPrior();
   

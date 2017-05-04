@@ -83,7 +83,8 @@ BaseCallingPrior::BaseCallingPrior()
     cptExtend(1),
     cptEnd(1),
     mu(0), muCount(1),
-    tau(1), tauCount(2)
+    tau(1), tauCount(2),
+    muPad(1), tauPad(1)
 { }
 
 GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmerLen, int components) const {
@@ -121,7 +122,13 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
     prior.cons.norm.push_back (condFreqParam);
   }
 
-  prior.gauss[padEmitLabel()] = emitPrior;
+  GaussianPrior padPrior;
+  padPrior.mu0 = muPad;
+  padPrior.n_mu = muCount;
+  padPrior.tau0 = tauPad;
+  padPrior.n_tau = tauCount;
+
+  prior.gauss[padEmitLabel()] = padPrior;
   prior.count.defs[padExtendLabel()] = cptExtend;
   prior.count.defs[padEndLabel()] = cptEnd;
   prior.cons.norm.push_back (vguard<string> { padExtendLabel(), padEndLabel() });
