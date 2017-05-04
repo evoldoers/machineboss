@@ -1,6 +1,18 @@
 #include "caller.h"
 #include "../logger.h"
 
+string BaseCallingParamNamer::padEmitLabel() {
+  return string("padEmit");
+}
+
+string BaseCallingParamNamer::padExtendLabel() {
+  return string("padExtend");
+}
+
+string BaseCallingParamNamer::padEndLabel() {
+  return string("padEnd");
+}
+
 string BaseCallingParamNamer::emitLabel (const string& kmerStr) {
   return string("emit(") + kmerStr + ")";
 }
@@ -45,6 +57,9 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
     params.prob.defs[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
     params.gauss[emitLabel (kmerStr)] = GaussianParams();
   }
+  params.gauss[padEmitLabel()] = GaussianParams();
+  params.prob.defs[padExtendLabel()] = .5;
+  params.prob.defs[padEndLabel()] = .5;
 }
 
 json BaseCallingParams::asJson() const {
@@ -73,9 +88,9 @@ BaseCallingPrior::BaseCallingPrior()
 
 GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmerLen, int components) const {
   GaussianModelPrior prior;
-  
+  (TraceParamsPrior&) prior = *this;
+
   GaussianPrior emitPrior;
-  (TraceParamsPrior&) emitPrior = *this;
   emitPrior.mu0 = mu;
   emitPrior.n_mu = muCount;
   emitPrior.tau0 = tau;
@@ -106,6 +121,11 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
     prior.cons.norm.push_back (condFreqParam);
   }
 
+  prior.gauss[padEmitLabel()] = emitPrior;
+  prior.count.defs[padExtendLabel()] = cptExtend;
+  prior.count.defs[padEndLabel()] = cptEnd;
+  prior.cons.norm.push_back (vguard<string> { padExtendLabel(), padEndLabel() });
+
   return prior;
 }
 
@@ -131,7 +151,9 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
     }
     for (auto c: alph)
       end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (condFreqLabel (suffix, c))));
-    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr(1. / (double) nKmers)));
-    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr(true)));
+    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightAlgebra::multiply (padEndLabel(), 1. / (double) nKmers)));
+    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr (padEndLabel())));
   }
+  state[startState()].trans.push_back (MachineTransition (string(), padEmitLabel(), 0, padExtendLabel()));
+  state[endState()].trans.push_back (MachineTransition (string(), padEmitLabel(), nStates() - 1, padExtendLabel()));
 }

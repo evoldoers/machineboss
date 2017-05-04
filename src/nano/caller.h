@@ -6,6 +6,9 @@
 #include "prior.h"
 
 struct BaseCallingParamNamer {
+  static string padEmitLabel();
+  static string padExtendLabel();
+  static string padEndLabel();
   static string emitLabel (const string& kmerStr);
   static string condFreqLabel (const string& prefix, const char suffix);
   static string cptWeightLabel (const string& kmerStr, int cpt);
