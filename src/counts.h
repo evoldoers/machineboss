@@ -8,12 +8,14 @@
 // E-step
 struct MachineCounts {
   vguard<vguard<double> > count;  // indexed: count[state][nTrans]
+  MachineCounts();
   MachineCounts (const EvaluatedMachine&);
   MachineCounts (const EvaluatedMachine&, const SeqPair&);
   void init (const EvaluatedMachine&);
   double add (const EvaluatedMachine&, const SeqPair&);  // returns log-likelihood
   MachineCounts& operator+= (const MachineCounts&);
   void writeJson (ostream&) const;
+  map<string,double> paramCounts (const Machine&, const ParamAssign&) const;
 };
 
 // M-step

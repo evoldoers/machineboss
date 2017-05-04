@@ -29,6 +29,7 @@ string detokenize (const TokSeq& s, const string& alphabet);
 Kmer makeKmer (SeqIdx k, vector<AlphTok>::const_iterator tok, AlphTok alphabetSize);
 Kmer numberOfKmers (SeqIdx k, AlphTok alphabetSize);
 string kmerToString (Kmer kmer, SeqIdx k, const string& alphabet);
+Kmer stringToKmer (const string& s, const string& alphabet);
 
 struct FastSeq {
   // basic FASTQ data
@@ -51,7 +52,9 @@ struct FastSeq {
   void writeFastq (ostream& out) const;
 };
 
+void readFastSeqs (const char* filename, vguard<FastSeq>&);
 vguard<FastSeq> readFastSeqs (const char* filename);
+
 void writeFastaSeqs (ostream& out, const vguard<FastSeq>& fastSeqs);
 void writeFastqSeqs (ostream& out, const vguard<FastSeq>& fastSeqs);
 

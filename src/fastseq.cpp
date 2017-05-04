@@ -79,6 +79,11 @@ string kmerToString (Kmer kmer, SeqIdx k, const string& alphabet) {
   return string (rev.rbegin(), rev.rend());
 }
 
+Kmer stringToKmer (const string& s, const string& alphabet) {
+  const TokSeq tok = validTokenize (s, alphabet);
+  return makeKmer (tok.size(), tok.begin(), alphabet.size());
+}
+
 void FastSeq::writeFasta (ostream& out) const {
   out << '>' << name;
   if (comment.size())
@@ -120,9 +125,7 @@ void initFastSeq (FastSeq& seq, kseq_t* ks) {
     seq.qual = string(ks->qual.s);
 }
 
-vguard<FastSeq> readFastSeqs (const char* filename) {
-  vguard<FastSeq> seqs;
-
+void readFastSeqs (const char* filename, vguard<FastSeq>& seqs) {
   gzFile fp = gzopen(filename, "r");
   Require (fp != Z_NULL, "Couldn't open %s", filename);
 
@@ -143,7 +146,11 @@ vguard<FastSeq> readFastSeqs (const char* filename) {
   
   if (seqs.empty())
     Warn ("Couldn't read any sequences from %s", filename);
-  
+}
+
+vguard<FastSeq> readFastSeqs (const char* filename) {
+  vguard<FastSeq> seqs;
+  readFastSeqs (filename, seqs);
   return seqs;
 }
 

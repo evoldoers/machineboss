@@ -50,10 +50,10 @@ struct MachineState {
   bool exitsWithIO() const;  // true if this has any transitions with input and/or output
   bool exitsWithoutIO() const;  // true if this has any transitions without input or output
   bool terminates() const;  // true if this has no outgoing transitions. Note that the end state is not required to have this property
-  bool waits() const;  // !exitsWithoutInput()
-  bool continues() const;  // !exitsWithInput() && !terminates()
-  bool isSilent() const;  // !exitsWithIO()
-  bool isLoud() const;  // exitsWithIO() && !exitsWithoutIO()
+  bool waits() const;  // !exitsWithoutInput()                     ["input" or "end" state: machine only leaves this state if it receives input]
+  bool continues() const;  // !exitsWithInput() && !terminates()   ["insert" state: can't accept input, and has at least one outgoing transition]
+  bool isSilent() const;  // !exitsWithIO()                        ["null" state]
+  bool isLoud() const;  // exitsWithIO() && !exitsWithoutIO()      ["emit" state]
 };
 
 struct Machine {
@@ -68,15 +68,15 @@ struct Machine {
   StateIndex startState() const;
   StateIndex endState() const;
 
-  vguard<InputSymbol> inputAlphabet() const;
-  vguard<OutputSymbol> outputAlphabet() const;
+  vguard<InputSymbol> inputAlphabet() const;  // alphabetically sorted
+  vguard<OutputSymbol> outputAlphabet() const;  // alphabetically sorted
 
   set<StateIndex> accessibleStates() const;
 
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
 
-  static Machine compose (const Machine& first, const Machine& second);
+  static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true);
   static Machine intersect (const Machine& first, const Machine& second);
   static Machine concatenate (const Machine& left, const Machine& right);
   static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
@@ -103,6 +103,8 @@ struct Machine {
   Machine waitingMachine() const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
 
+  Machine eliminateSilentTransitions() const;
+
   size_t nSilentBackTransitions() const;
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
 };
@@ -110,8 +112,12 @@ struct Machine {
 typedef JsonLoader<Machine> MachineLoader;
 
 struct TransAccumulator {
+  TransList* transList;  // if non-null, will accumulate transitions direct to this list, without collapsing
   map<StateIndex,map<InputSymbol,map<OutputSymbol,WeightExpr> > > t;
+  TransAccumulator();
+  void clear();
   void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w);
+  void accumulate (const MachineTransition&);
   TransList transitions() const;
 };
 

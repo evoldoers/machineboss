@@ -25,6 +25,13 @@ struct JsonWriter {
     obj.writeJson (out);
     return out.str();
   }
+
+  static nlohmann::json toJson (const Base& obj) {
+    std::istringstream in (toJsonString (obj));
+    nlohmann::json j;
+    in >> j;
+    return j;
+  }
 };
 
 template<class Base>
@@ -69,7 +76,7 @@ struct JsonReader : Base {
     return obj;
   }
 
-  static void readFile (Base& obj, const string& filename) {
+  static void readFile (Base& obj, const std::string& filename) {
     std::ifstream infile (filename);
     if (!infile)
       Fail ("File not found: %s", filename.c_str());

@@ -50,6 +50,7 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("flip,f", "flip input/output")
+      ("eliminate,n", "eliminate silent transitions")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -213,6 +214,8 @@ int main (int argc, char** argv) {
 	  m = Machine::kleenePlus (popMachine());
 	else if (command == "--loop")
 	  m = Machine::kleeneLoop (popMachine(), nextMachine());
+	else if (command == "--eliminate")
+	  m = nextMachine().eliminateSilentTransitions();
 	else if (command == "--reverse")
 	  m = nextMachine().reverse();
 	else if (command == "--revcomp") {
@@ -328,7 +331,7 @@ int main (int argc, char** argv) {
       size_t n = 0;
       for (const auto& seqPair: data.seqPairs) {
 	const ViterbiMatrix viterbi (eval, seqPair);
-	const MachinePath path = viterbi.trace (machine);
+	const MachinePath path = viterbi.path (machine);
 	cout << (n++ ? ",\n " : "");
 	path.writeJson (cout);
       }

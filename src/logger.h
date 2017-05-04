@@ -77,7 +77,7 @@ extern Logger logger;
 #define LoggingThisAt(V) (logger.testVerbosityOrLogTags(V,__func__,__FILE__))
 #define LoggingTag(T)    (logger.testLogTag(T))
 
-#define LogStream(V,S) do { ostringstream tmpLog; tmpLog << S; logger.print(tmpLog.str(),__FILE__,__LINE__,V); } while(0)
+#define LogStream(V,S) do { logger.lock(V,__FILE__,__LINE__,true); clog << S; logger.unlock(true); } while(0)
 
 #define LogAt(V,S)     do { if (LoggingAt(V)) LogStream(V,S); } while(0)
 #define LogThisAt(V,S) do { if (LoggingThisAt(V)) LogStream(V,S); } while(0)
@@ -97,6 +97,7 @@ public:
   ~ProgressLogger();
   void initProgress (const char* desc, ...);
   void logProgress (double completedFraction, const char* desc, ...);
+  void logFinal (const char* desc, ...);
 private:
   ProgressLogger (const ProgressLogger&) = delete;
   ProgressLogger& operator= (const ProgressLogger&) = delete;

@@ -24,6 +24,10 @@ Params Params::combine (const Params& p) const {
   return c;
 }
 
+void Params::clear() {
+  defs.clear();
+}
+
 void ParamAssign::readJson (const json& pj) {
   readJsonWithSchema (pj, "params");
 }

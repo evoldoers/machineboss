@@ -128,6 +128,10 @@ double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs) {
     const string n = w.get<string>();
     if (!defs.count(n))
       throw runtime_error(string("Parameter ") + n + (" not defined"));
+    // optimize the special case that definition is a numeric assignment
+    const auto& val = defs.at(n);
+    if (val.is_number())
+      return val.get<double>();
     return eval (defs.at(n), exclude(defs,n));
   }
   if (op == "log") return log (eval (w.at("log"), defs));

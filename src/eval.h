@@ -46,7 +46,7 @@ struct EvaluatedMachineState {
   
   StateName name;
   TransIndex nTransitions;
-  InOutStateTransMap incoming, outgoing;
+  InOutStateTransMap incoming, outgoing;  // indexed by input token, output token, and (source or destination) state
 };
 
 struct EvaluatedMachine {
