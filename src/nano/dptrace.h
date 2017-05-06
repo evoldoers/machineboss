@@ -12,6 +12,9 @@ public:
   struct IndexedTrans : EvaluatedMachineState::Trans {
     StateIndex src, dest;
     InputToken in;
+    bool loop;
+    EvaluatedMachineState::TransIndex loopTransIndex;
+    LogWeight loopLogWeight;
     IndexedTrans (const EvaluatedMachineState::Trans&, StateIndex, StateIndex, InputToken);
   };
 
@@ -33,6 +36,10 @@ protected:
 
   void initColumn (vguard<double>& col) {
     fill (col.begin(), col.end(), -numeric_limits<double>::infinity());
+  }
+
+  inline OutputIndex checkpoint (OutputIndex outPos) const {
+    return outPos - (outPos % blockSize);
   }
   
 public:
@@ -59,6 +66,23 @@ public:
 
   inline double logEmitProb (OutputIndex outPos, OutputToken outTok) const {
     return coeffs.gauss[outTok-1].logEmitProb (moments.sample[outPos-1]);
+  }
+
+  inline const EvaluatedMachineState::Trans* getLoopTrans (InputToken inTok, OutputToken outTok, StateIndex state) const {
+    return (eval.state[state].outgoing.count(inTok)
+	    && eval.state[state].outgoing.at(inTok).count(outTok)
+	    && eval.state[state].outgoing.at(inTok).at(outTok).count(state))
+      ? &eval.state[state].outgoing.at(inTok).at(outTok).at(state)
+      : NULL;
+  }
+  
+  inline double logTransProb (OutputIndex outPos, const IndexedTrans& trans) const {
+    return logTransProb (outPos, trans.logWeight, trans.loopLogWeight);
+  }
+
+  inline double logTransProb (OutputIndex outPos, double logWeight, double loopLogWeight) const {
+    const auto& mom = moments.sample[outPos-1];
+    return logWeight + (mom.m0 == 1 ? 0. : ((mom.m0 - 1) * loopLogWeight));
   }
 };
 

@@ -4,10 +4,14 @@
 #include <random>
 #include "dptrace.h"
 
-struct ForwardTraceMatrix : TraceDPMatrix {
-  ForwardTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0);
+class ForwardTraceMatrix : public TraceDPMatrix {
+private:
   void fillColumn (OutputIndex outPos);
-  void refillBlock (OutputIndex blockStart);
+  OutputIndex lastCheckpoint;
+
+public:
+  ForwardTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0);
+  void readyColumn (OutputIndex);
   MachinePath samplePath (const Machine&, mt19937&);
   double logLike;
 };

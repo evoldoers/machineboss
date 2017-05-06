@@ -6,7 +6,8 @@
 #include "trace.h"
 
 struct SampleMoments {
-  double m0, m1, m2;
+  int m0;
+  double m1, m2;
   SampleMoments();
   SampleMoments (const Trace&, size_t pos, size_t len);
 };

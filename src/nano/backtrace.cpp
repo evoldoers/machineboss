@@ -14,12 +14,10 @@ BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
     plog.logProgress ((outLen - outPos) / (double) outLen, "sample %ld/%ld", outPos, outLen);
 
-    if (outPos < outLen && ((outPos + 1) % fwd.blockSize) == 0)
-      fwd.refillBlock (outPos + 1 - fwd.blockSize);
-
     vguard<double>& thisColumn = column(outPos);
     initColumn (thisColumn);
 
+    fwd.readyColumn(outPos);
     const vguard<double>& thisFwdColumn = fwd.column(outPos);
 
     if (outPos == outLen)
@@ -30,12 +28,17 @@ BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts
       for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
 	const double llEmit = logEmitProb(outPos+1,outTok);
 	for (const auto& it: transByOut[outTok]) {
-	  const double llTrans = nextColumn[it.dest] + it.logWeight + llEmit;
+	  const double llTrans = nextColumn[it.dest] + logTransProb(outPos+1,it) + llEmit;
 	  log_accum_exp (thisColumn[it.src], llTrans);
 	  if (transCounts || emitCounts) {
 	    const double ppEmit = exp (thisFwdColumn[it.src] + llTrans - llFinal);
-	    if (transCounts)
+	    if (transCounts) {
 	      transCounts->count[it.src][it.transIndex] += ppEmit;
+	      if (it.loop) {
+		const auto& mom = moments.sample[outPos];
+		transCounts->count[it.dest][it.loopTransIndex] += (mom.m0 - 1) * ppEmit;
+	      }
+	    }
 	    if (emitCounts)
 	      (*emitCounts)[outTok-1].inc (sample, ppEmit);
 	  }

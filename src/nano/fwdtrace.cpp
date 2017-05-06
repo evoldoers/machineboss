@@ -30,22 +30,25 @@ void ForwardTraceMatrix::fillColumn (OutputIndex outPos) {
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
       for (const auto& it: transByOut[outTok])
-	log_accum_exp (thisColumn[it.dest], prevColumn[it.src] + it.logWeight + llEmit);
+	log_accum_exp (thisColumn[it.dest], prevColumn[it.src] + logTransProb(outPos,it) + llEmit);
     }
   }
   
   for (const auto& it: nullTrans())
     log_accum_exp (thisColumn[it.dest], thisColumn[it.src] + it.logWeight);
+
+  lastCheckpoint = checkpoint(outPos);
 }
 
-void ForwardTraceMatrix::refillBlock (OutputIndex blockStart) {
-  Assert (blockStart % blockSize == 0, "In ForwardTraceMatrix: block start is not aligned with checkpoint");
+void ForwardTraceMatrix::readyColumn (OutputIndex outPos) {
+  const OutputIndex blockStart = checkpoint(outPos);
+  if (blockStart != lastCheckpoint) {
+    const OutputIndex blockEnd = min((OutputIndex)nColumns,blockStart+blockSize) - 1;
+    LogThisAt(4,"Refilling Forward matrix from sample " << (blockStart+1) << " to " << blockEnd << endl);
 
-  const OutputIndex blockEnd = min((OutputIndex)nColumns,blockStart+blockSize) - 1;
-  LogThisAt(3,"Refilling Forward matrix from sample " << (blockStart+1) << " to " << blockEnd << endl);
-
-  for (OutputIndex outPos = blockStart + 1; outPos <= blockEnd; ++outPos)
-    fillColumn (outPos);
+    for (OutputIndex outPos = blockStart + 1; outPos <= blockEnd; ++outPos)
+      fillColumn (outPos);
+  }
 }
 
 MachinePath ForwardTraceMatrix::samplePath (const Machine& machine, mt19937& generator) {
@@ -59,17 +62,22 @@ MachinePath ForwardTraceMatrix::samplePath (const Machine& machine, mt19937& gen
     vguard<double> transLogLike;
     vguard<EvaluatedMachineState::TransIndex> transIndex;
     vguard<StateIndex> transSource;
-    for (const auto& inTok_outStateTransMap: state.incoming)
+    readyColumn (outPos);
+    for (const auto& inTok_outStateTransMap: state.incoming) {
+      const InputToken inTok = inTok_outStateTransMap.first;
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second) {
 	const OutputToken outTok = outTok_stateTransMap.first;
 	if (outTok == 0 || outPos > 0)
 	  for (const auto& src_trans: outTok_stateTransMap.second) {
-	    const double tll = cell(outPos-(outTok?1:0),src_trans.first) + src_trans.second.logWeight + (outTok ? logEmitProb(outPos,outTok) : 0);
+	    const EvaluatedMachineState::Trans& trans = src_trans.second;
+	    const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,s);
+	    const double tll = cell(outPos-(outTok?1:0),src_trans.first) + logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity()) + (outTok ? logEmitProb(outPos,outTok) : 0);
 	    transLogLike.push_back (tll);
 	    transIndex.push_back (src_trans.second.transIndex);
 	    transSource.push_back (src_trans.first);
 	  }
       }
+    }
     const double tll_min = *(min_element (transLogLike.begin(), transLogLike.end()));
     vguard<double> transProb (transLogLike.size());
     double tpTotal = 0;
@@ -82,11 +90,7 @@ MachinePath ForwardTraceMatrix::samplePath (const Machine& machine, mt19937& gen
     for (ti = 0; p > 0 && ti < transProb.size(); ++ti)
       p -= transProb[ti];
     const MachineTransition& trans = machine.state[transSource[ti]].getTransition (transIndex[ti]);
-    if (!trans.outputEmpty()) {
-      if (outPos % blockSize == 0)
-	refillBlock (outPos - blockSize);
-      --outPos;
-    }
+    if (!trans.outputEmpty()) --outPos;
     s = transSource[ti];
     path.trans.push_front (trans);
   }

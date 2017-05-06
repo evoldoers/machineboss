@@ -1,7 +1,10 @@
 #include "dptrace.h"
 #include "../logger.h"
 
-TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t, StateIndex s, StateIndex d, InputToken i)
+TraceDPMatrix::IndexedTrans::IndexedTrans (const EvaluatedMachineState::Trans& t, StateIndex s, StateIndex d, InputToken i) :
+  loopLogWeight (-numeric_limits<double>::infinity()),
+  loopTransIndex (0),
+  loop (false)
 {
   init (t.logWeight, t.transIndex);
   src = s;
@@ -50,7 +53,18 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second)
 	for (const auto& src_trans: outTok_stateTransMap.second) {
 	  Assert (outTok_stateTransMap.first || (src_trans.first <= dest), "Input-blinded machine is not topologically sorted (transition from %d to %d has no output)", src_trans.first, dest);
-	  transByOut[outTok_stateTransMap.first].push_back (IndexedTrans (src_trans.second, src_trans.first, dest, inTok_outStateTransMap.first));
+	  const auto inTok = inTok_outStateTransMap.first;
+	  const auto outTok = outTok_stateTransMap.first;
+	  const auto src = src_trans.second;
+	  const auto trans = src_trans.first;
+	  IndexedTrans it (src, trans, dest, inTok);
+	  const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,dest);
+	  if (loopTrans) {
+	    it.loop = true;
+	    it.loopTransIndex = loopTrans->transIndex;
+	    it.loopLogWeight = loopTrans->logWeight;
+	  }
+	  transByOut[outTok].push_back (it);
 	  ++nTrans;
 	}
 

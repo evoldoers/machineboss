@@ -16,7 +16,7 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
     for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
       const double llEmit = logEmitProb(outPos,outTok);
       for (const auto& it: transByOut[outTok])
-	update (outPos, it.dest, cell(outPos-1,it.src) + it.logWeight + llEmit, it.in);
+	update (outPos, it.dest, cell(outPos-1,it.src) + logTransProb(outPos,it) + llEmit, it.in);
     }
 
     for (const auto& it: nullTrans())
@@ -38,26 +38,39 @@ MachinePath ViterbiTraceMatrix::path (const Machine& m) const {
   while (outPos > 0 || s != 0) {
     const EvaluatedMachineState& state = eval.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
+    const EvaluatedMachineState::Trans *bestTrans, *bestLoopTrans = NULL;
     StateIndex bestSource;
-    EvaluatedMachineState::TransIndex bestTransIndex;
 
-    for (const auto& inTok_outStateTransMap: state.incoming)
+    for (const auto& inTok_outStateTransMap: state.incoming) {
+      const InputToken inTok = inTok_outStateTransMap.first;
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second) {
 	const OutputToken outTok = outTok_stateTransMap.first;
 	if (outTok == 0 || outPos > 0)
 	  for (const auto& src_trans: outTok_stateTransMap.second) {
-	    const double tll = cell(outPos-(outTok?1:0),src_trans.first) + src_trans.second.logWeight + (outTok ? logEmitProb(outPos,outTok) : 0);
+	    const EvaluatedMachineState::Trans& trans = src_trans.second;
+	    const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,s);
+	    const double tll = cell(outPos-(outTok?1:0),src_trans.first) + logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity()) + (outTok ? logEmitProb(outPos,outTok) : 0);
 	    if (tll > bestLogLike) {
 	      bestLogLike = tll;
+	      bestTrans = &trans;
+	      bestLoopTrans = loopTrans;
 	      bestSource = src_trans.first;
-	      bestTransIndex = src_trans.second.transIndex;
 	    }
 	  }
       }
-    const MachineTransition& bestTrans = m.state[bestSource].getTransition (bestTransIndex);
-    if (!bestTrans.outputEmpty()) --outPos;
+    }
+    const MachineTransition& bestMachineTrans = m.state[bestSource].getTransition (bestTrans->transIndex);
+    if (!bestMachineTrans.outputEmpty()) {
+      if (bestLoopTrans) {
+	const MachineTransition& bestLoopMachineTrans = m.state[s].getTransition (bestLoopTrans->transIndex);
+	const auto& mom = moments.sample[outPos];
+	for (int n = 1; n < mom.m0; ++n)
+	  path.trans.push_front (bestLoopMachineTrans);
+      }
+      --outPos;
+    }
     s = bestSource;
-    path.trans.push_front (bestTrans);
+    path.trans.push_front (bestMachineTrans);
   }
   return path;
 }
