@@ -100,7 +100,7 @@ const json& WeightAlgebra::operands (const WeightExpr& w) {
   return iter.value();
 }
 
-WeightExpr WeightAlgebra::expand (const WeightExpr& w, const ParamDefs& defs) {
+WeightExpr WeightAlgebra::bind (const WeightExpr& w, const ParamDefs& defs) {
   const string op = opcode(w);
   if (op == "null" || op == "boolean" || op == "int" || op == "float")
     return w;
@@ -111,12 +111,12 @@ WeightExpr WeightAlgebra::expand (const WeightExpr& w, const ParamDefs& defs) {
     return defs.at(n);
   }
   if (op == "log" || op == "exp")
-    return WeightExpr::object ({{op, expand (w.at(op), defs)}});
-  json expandArgs;
+    return WeightExpr::object ({{op, bind (w.at(op), defs)}});
+  json bindArgs;
   const json& args = operands(w);
   for (const auto& arg: args)
-    expandArgs.push_back (expand (arg, defs));
-  return WeightExpr::object ({{op, expandArgs}});
+    bindArgs.push_back (bind (arg, defs));
+  return WeightExpr::object ({{op, bindArgs}});
 }
 
 double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs) {

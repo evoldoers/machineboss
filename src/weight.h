@@ -29,7 +29,7 @@ struct WeightAlgebra {
   static string opcode (const WeightExpr& w);
   static const json& operands (const WeightExpr& w);
 
-  static WeightExpr expand (const WeightExpr& w, const ParamDefs& defs);
+  static WeightExpr bind (const WeightExpr& w, const ParamDefs& defs);
   
   static double eval (const WeightExpr& w, const ParamDefs& defs);
   static WeightExpr deriv (const WeightExpr& w, const ParamDefs& defs, const string& param);

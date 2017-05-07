@@ -79,6 +79,12 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
     for (auto& p: norm)
       modelParams.prob.defs[p] = paramCount[p] / sum;
   }
+
+  for (auto& rateParam_gamma: modelPrior.gamma) {
+    const string& rateParam = rateParam_gamma.first;
+    const GammaPrior& gamma = rateParam_gamma.second;
+    
+  }
 }
 
 WeightExpr GaussianModelCounts::traceExpectedLogEmit (const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
