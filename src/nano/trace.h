@@ -30,9 +30,9 @@ struct TraceList {
 };
 
 struct TraceParams {
-  double scale, shift;
+  double scale, shift, rate;
 
-  TraceParams();  // defaults: scale = 1, shift = 0
+  TraceParams();  // defaults: scale = 1, shift = 0, rate = 1
   
   void writeJson (ostream& out) const;
   void readJson (const json&);

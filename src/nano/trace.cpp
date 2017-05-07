@@ -63,7 +63,8 @@ void TraceList::readFast5 (const string& fn) {
 
 TraceParams::TraceParams() :
   scale(1),
-  shift(0)
+  shift(0),
+  rate(1)
 { }
 
 void TraceParams::writeJson (ostream& out) const {

@@ -12,6 +12,7 @@ using json = nlohmann::json;
 
 struct Constraints {
   vguard<string> prob;
+  vguard<string> rate;
   vguard<vguard<string> > norm;
 
   void readJson (const json& json);

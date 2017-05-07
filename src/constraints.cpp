@@ -15,6 +15,9 @@ void Constraints::readJson (const json& pj) {
   if (pj.count("prob"))
     for (const auto& p: pj.at("prob"))
       prob.push_back (p.get<string>());
+  if (pj.count("rate"))
+    for (const auto& r: pj.at("rate"))
+      rate.push_back (r.get<string>());
 }
 
 void Constraints::writeJson (ostream& out) const {
@@ -41,6 +44,14 @@ void Constraints::writeJson (ostream& out) const {
       out << (np++ ? "," : "") << "\"" << p << "\"";
     out << "]";
   }
+  if (rate.size()) {
+    out << (l++ ? ",\n " : "")
+	<< "\"rate\":[";
+    size_t nr = 0;
+    for (auto& r: rate)
+      out << (nr++ ? "," : "") << "\"" << r << "\"";
+    out << "]";
+  }
   out << "}" << endl;
 }
 
@@ -51,5 +62,7 @@ Params Constraints::defaultParams() const {
       params.defs[cp] = 1. / (double) c.size();
   for (auto& pp: prob)
     params.defs[pp] = .5;
+  for (auto& rp: rate)
+    params.defs[rp] = 1;
   return params;
 }

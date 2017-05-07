@@ -71,6 +71,15 @@ map<string,double> MachineCounts::paramCounts (const Machine& machine, const Par
   return paramCount;
 }
 
+WeightExpr makeSquareFunc (const string& trParam) {
+  return WeightAlgebra::multiply (WeightExpr(trParam),
+				  WeightExpr(trParam));
+}
+
+WeightExpr makeExpFunc (const string& trParam) {
+  return WeightAlgebra::expOf (WeightAlgebra::multiply (-1, makeSquareFunc (trParam)));
+}
+
 MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& constraints, const Params& constants) :
   constraints (constraints), constantDefs (constants.defs)
 {
@@ -95,11 +104,6 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
     transformedParam.push_back (trParam);
     return trParam;
   };
-  auto makeExpFunc = [&] (const string& trParam) -> WeightExpr {
-    return WeightAlgebra::expOf (WeightAlgebra::multiply (-1,
-							  WeightAlgebra::multiply (WeightExpr(trParam),
-										   WeightExpr(trParam))));
-  };
   for (const auto& c: constraints.norm) {
     WeightExpr notPrev (true);
     for (size_t n = 0; n < c.size(); ++n) {
@@ -114,8 +118,12 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
       }
     }
   }
+
   for (const auto& pParam: constraints.prob)
     paramTransformDefs[pParam] = makeExpFunc (makeTransformedParamName (pParam));
+
+  for (const auto& rParam: constraints.rate)
+    paramTransformDefs[rParam] = makeSquareFunc (makeTransformedParamName (rParam));
 
   allDefs = constantDefs;
   allDefs.insert (paramTransformDefs.begin(), paramTransformDefs.end());
@@ -201,6 +209,10 @@ Params MachineObjective::optimize (const Params& seed) const {
   for (const auto& pParam: constraints.prob) {
       const double p = seed.defs.at(pParam).get<double>();
       gsl_vector_set (x, transformedParamIndex.at(pParam), sqrt (-log (1 - p)));
+  }
+  for (const auto& rParam: constraints.rate) {
+      const double r = seed.defs.at(rParam).get<double>();
+      gsl_vector_set (x, transformedParamIndex.at(rParam), sqrt (r));
   }
 
   const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_vector_bfgs2;

@@ -26,8 +26,13 @@ struct GaussianPrior {
   double mu0, n_mu, tau0, n_tau;
 };
 
+struct GammaPrior {
+  double alpha, beta;
+};
+
 struct GaussianModelPrior : TraceParamsPrior {
   map<string,GaussianPrior> gauss;  // hyperparameters for Normal-Gamma priors
+  map<string,GammaPrior> gamma;  // hyperparameters for Normal-Gamma priors
   ParamAssign count;  // pseudocounts for Dirichlet & Beta priors
   Constraints cons;  // normalization constraints
 
