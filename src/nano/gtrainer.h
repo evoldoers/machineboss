@@ -5,7 +5,7 @@
 #include "gcounts.h"
 
 struct GaussianTrainer {
-  Machine machine;
+  EventMachine eventMachine;
   GaussianModelPrior prior;
 
   TraceMomentsList traceList;
@@ -20,17 +20,17 @@ struct GaussianTrainer {
   size_t blockBytes;
   
   GaussianTrainer();
-  void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&);
+  void init (const EventMachine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&);
   void reset();
   bool testFinished();
-  double expectedLogEmit() const;
+  double expectedLogLike() const;
 };
 
 struct GaussianModelFitter : GaussianTrainer {
   vguard<FastSeq> seqs;
   list<Machine> inputConditionedMachine;
   
-  void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&, const vguard<FastSeq>&);
+  void init (const EventMachine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&, const vguard<FastSeq>&);
   void fit();
 };
 

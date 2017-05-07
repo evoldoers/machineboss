@@ -30,14 +30,17 @@ struct GaussianModelCounts {
   void init (const EvaluatedMachine&);
   double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0);  // returns log-likelihood
   WeightExpr traceExpectedLogEmit (const GaussianModelParams&, const GaussianModelPrior&) const;
-  void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
+  WeightExpr traceExpectedLogEvents (const EventMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
+  void optimizeTraceParams (TraceParams&, const EventMachine&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
   json asJson() const;
   void writeJson (ostream& out) const;
-  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
-  static double expectedLogEmit (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
-  static ParamDefs traceParamDefs (const TraceParams&);
+  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const EventMachine&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
+  static double expectedLogLike (const EventMachine&, const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
+  static ParamDefs traceEventParamDefs (const TraceParams&);
+  static ParamDefs traceEmitParamDefs (const TraceParams&);
   static inline string shiftParamName() { return string("shift"); }
   static inline string sqrtScaleParamName() { return string("sqrtScale"); }
+  static inline string sqrtRateParamName() { return string("sqrtRate"); }
 };
 
 #endif /* GAUSSCOUNTS_INCLUDED */

@@ -68,12 +68,15 @@ TraceParams::TraceParams() :
 { }
 
 void TraceParams::writeJson (ostream& out) const {
-  out << "{\"scale\":" << scale << ",\"shift\":" << shift << "}";
+  out << "{\"scale\":" << scale
+      << ",\"shift\":" << shift
+      << ",\"rate\":" << rate << "}";
 }
 
 void TraceParams::readJson (const json& j) {
   scale = j.at("scale").get<double>();
   shift = j.at("shift").get<double>();
+  rate = j.at("rate").get<double>();
 }
 
 void TraceListParams::writeJson (ostream& out) const {

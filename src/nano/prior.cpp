@@ -2,6 +2,11 @@
 #include "../logsumexp.h"
 #include "prior.h"
 
+WeightExpr Prior::logGammaExpr (const WeightExpr& rateParam, double count, double time) {
+  return WeightAlgebra::subtract (WeightAlgebra::multiply (count, WeightAlgebra::logOf(rateParam)),
+				  WeightAlgebra::multiply (time, rateParam));
+}
+
 double Prior::logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau) {
   const double alpha = n_tau / 2, beta = (n_tau - 1) / (2*tau0);
   return logGammaPdf (tau, alpha - 1, beta)
@@ -34,7 +39,8 @@ WeightExpr Prior::logNormalInvSquareGammaExpr (const WeightExpr& muParam, const 
 
 TraceParamsPrior::TraceParamsPrior()
   : scale(1), scaleCount(2),
-    shift(0), shiftCount(1)
+    shift(0), shiftCount(1),
+    rateCount(1), rateTime(1)
 { }
 
 WeightExpr TraceParamsPrior::logTraceExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const {
@@ -44,7 +50,8 @@ WeightExpr TraceParamsPrior::logTraceExpr (const WeightExpr& shiftParam, const W
 double TraceParamsPrior::logProb (const TraceListParams& traceListParams) const {
   double lp = 0;
   for (const auto& tp: traceListParams.params)
-    lp += logNormalInvSquareGammaProb (tp.shift, tp.scale, shift, shiftCount, scale, scaleCount);
+    lp += logNormalInvSquareGammaProb (tp.shift, tp.scale, shift, shiftCount, scale, scaleCount)
+      + logGammaPdf (tp.rate, rateCount, rateTime);
   return lp;
 }
 
@@ -70,5 +77,7 @@ double GaussianModelPrior::logProb (const GaussianModelParams& modelParams) cons
     }
     lp += logDirichletPdf (m, c);
   }
+  for (const auto& r_g: gamma)
+    lp += logGammaPdf (modelParams.rate.defs.at(r_g.first), r_g.second.count, r_g.second.time);
   return lp;
 }

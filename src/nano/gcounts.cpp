@@ -35,7 +35,7 @@ double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine&
   return forward.logLike;
 }
 
-void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {
+void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const EventMachine& eventMachine, const list<EvaluatedMachine>& eval, const list<GaussianModelCounts>& modelCountsList) {
   LogThisAt(5,"Optimizing model parameters" << endl);
   const auto gaussSymbol = extract_keys (modelParams.gauss);
   const size_t nSym = gaussSymbol.size();
@@ -83,7 +83,24 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
   for (auto& rateParam_gamma: modelPrior.gamma) {
     const string& rateParam = rateParam_gamma.first;
     const GammaPrior& gamma = rateParam_gamma.second;
-    
+    const string sqrtRateParam = string("sqrt(") + rateParam + ")";
+    const ParamDefs modelDefs = modelParams.params().defs;
+    ParamDefs fixedParamDefs = modelDefs, seedDefs;
+    fixedParamDefs[rateParam] = WeightAlgebra::multiply (sqrtRateParam, sqrtRateParam);
+    seedDefs[sqrtRateParam] = sqrt (modelDefs.at(rateParam).get<double>());
+    WeightExpr objective = modelPrior.logGammaExpr (rateParam, gamma.count, gamma.time);
+    size_t m = 0;
+    for (const auto& eventName_func: eventMachine.event.defs)
+      for (auto& modelCounts: modelCountsList) {
+	const TraceParams& trace = traceListParams.params[m++];
+	fixedParamDefs[TraceParams::rateParamName()] = trace.rate;
+	objective = WeightAlgebra::add (objective,
+					WeightAlgebra::multiply (modelCounts.prob.at(eventName_func.first),
+								 WeightAlgebra::logOf (WeightAlgebra::bind (eventName_func.second, fixedParamDefs))));
+      }
+    const Minimizer minimizer (WeightAlgebra::subtract (false, objective));
+    const ParamDefs optDefs = minimizer.minimize (seedDefs);
+    modelParams.rate.defs[rateParam] = pow (optDefs.at(sqrtRateParam).get<double>(), 2);
   }
 }
 
@@ -121,34 +138,62 @@ WeightExpr GaussianModelCounts::traceExpectedLogEmit (const GaussianModelParams&
   return e;
 }
 
-ParamDefs GaussianModelCounts::traceParamDefs (const TraceParams& traceParams) {
+ParamDefs GaussianModelCounts::traceEmitParamDefs (const TraceParams& traceParams) {
   ParamDefs defs;
   defs[shiftParamName()] = traceParams.shift;
   defs[sqrtScaleParamName()] = sqrt (traceParams.scale);
   return defs;
 }
 
-void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
-  LogThisAt(5,"Optimizing trace scaling parameters" << endl);
-
-  const WeightExpr objective = traceExpectedLogEmit (modelParams, modelPrior);
-  const Minimizer minimizer (WeightAlgebra::subtract (0, objective));  // we want to maximize objective, i.e. minimize (-objective)
-  const ParamDefs defs = traceParamDefs (traceParams);
-  const ParamDefs optDefs = minimizer.minimize (defs);
-
-  traceParams.shift = optDefs.at(shiftParamName()).get<double>();
-  traceParams.scale = pow (optDefs.at(sqrtScaleParamName()).get<double>(), 2.);
+ParamDefs GaussianModelCounts::traceEventParamDefs (const TraceParams& traceParams) {
+  ParamDefs defs;
+  defs[sqrtRateParamName()] = sqrt (traceParams.rate);
+  return defs;
 }
 
-double GaussianModelCounts::expectedLogEmit (const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
+WeightExpr GaussianModelCounts::traceExpectedLogEvents (const EventMachine& eventMachine, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
+  const ParamDefs modelParamDefs = modelParams.params().defs;
+  const WeightExpr rateParam = WeightAlgebra::multiply (sqrtRateParamName(), sqrtRateParamName());
+  WeightExpr e = modelPrior.logGammaExpr (rateParam, modelPrior.rateCount, modelPrior.rateTime);
+  for (const auto& eventName_func: eventMachine.event.defs) {
+    e = WeightAlgebra::add (e,
+			    WeightAlgebra::multiply (prob.at(eventName_func.first),
+						     WeightAlgebra::logOf (WeightAlgebra::bind (eventName_func.second, modelParamDefs))));
+  }
+  return e;
+}
+
+void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const EventMachine& eventMachine, const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
+  LogThisAt(5,"Optimizing trace scaling parameters" << endl);
+
+  const WeightExpr emitObjective = traceExpectedLogEmit (modelParams, modelPrior);
+  const Minimizer emitMinimizer (WeightAlgebra::subtract (false, emitObjective));  // we want to maximize objective, i.e. minimize (-objective)
+  const ParamDefs seedEmitDefs = traceEmitParamDefs (traceParams);
+  const ParamDefs optEmitDefs = emitMinimizer.minimize (seedEmitDefs);
+
+  traceParams.shift = optEmitDefs.at(shiftParamName()).get<double>();
+  traceParams.scale = pow (optEmitDefs.at(sqrtScaleParamName()).get<double>(), 2.);
+
+  const WeightExpr eventObjective = traceExpectedLogEvents (eventMachine, modelParams, modelPrior);
+  const Minimizer eventMinimizer (WeightAlgebra::subtract (false, eventObjective));  // we want to maximize objective, i.e. minimize (-objective)
+  const ParamDefs seedEventDefs = traceEventParamDefs (traceParams);
+  const ParamDefs optEventDefs = eventMinimizer.minimize (seedEventDefs);
+
+  traceParams.rate = pow (optEventDefs.at(sqrtRateParamName()).get<double>(), 2.);
+}
+
+double GaussianModelCounts::expectedLogLike (const EventMachine& eventMachine, const GaussianModelParams& modelParams, const TraceListParams& traceListParams, const GaussianModelPrior& modelPrior, const list<GaussianModelCounts>& modelCountsList) {
   const auto gaussSymbol = extract_keys (modelParams.gauss);
   double lp = modelPrior.logProb (modelParams);
   size_t m = 0;
   for (const GaussianModelCounts& modelCounts: modelCountsList) {
     const TraceParams& traceParams = traceListParams.params[m++];
-    const ParamDefs defs = traceParamDefs (traceParams);
-    const WeightExpr e = modelCounts.traceExpectedLogEmit (modelParams, modelPrior);
-    lp += WeightAlgebra::eval (e, defs);
+    const ParamDefs emitDefs = traceEmitParamDefs (traceParams);
+    const WeightExpr logEmit = modelCounts.traceExpectedLogEmit (modelParams, modelPrior);
+    lp += WeightAlgebra::eval (logEmit, emitDefs);
+    const ParamDefs eventDefs = traceEventParamDefs (traceParams);
+    const WeightExpr logEvents = modelCounts.traceExpectedLogEvents (eventMachine, modelParams, modelPrior);
+    lp += WeightAlgebra::eval (logEvents, eventDefs);
   }
   return lp;
 }

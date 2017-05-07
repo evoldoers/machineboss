@@ -39,7 +39,7 @@ struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
   GaussianModelPrior modelPrior (const string& alph, SeqIdx kmerLen, int components) const;
 };
 
-struct BaseCallingMachine : Machine, BaseCallingParamNamer {
+struct BaseCallingMachine : EventMachine, BaseCallingParamNamer {
   int components, nKmers;
   void init (const string& alph, SeqIdx kmerLen, int components);
   // State indices are organized so that the only backward transitions (i->j where j<i) are output emissions

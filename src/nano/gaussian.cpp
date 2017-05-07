@@ -32,13 +32,6 @@ void GaussianModelParams::readJson (const json& j) {
   rate.readJson (j["rate"]);
 }
 
-Params GaussianModelParams::params (const WeightExpr& timeExpr) const {
-  Params p = prob.combine(rate);
-  for (const auto& r: extract_keys(rate.defs)) {
-    const auto wait = WeightAlgebra::expOf (WeightAlgebra::subtract (0,
-								     WeightAlgebra::multiply (r, timeExpr)));
-    p.defs[rateWaitParam(r)] = wait;
-    p.defs[rateExitParam(r)] = WeightAlgebra::subtract (true, wait);
-  }
-  return p;
+Params GaussianModelParams::params() const {
+  return prob.combine(rate);
 }

@@ -33,6 +33,8 @@ struct TraceParams {
   double scale, shift, rate;
 
   TraceParams();  // defaults: scale = 1, shift = 0, rate = 1
+
+  static inline string rateParamName() { return string("rate"); }
   
   void writeJson (ostream& out) const;
   void readJson (const json&);

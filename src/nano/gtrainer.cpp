@@ -11,8 +11,8 @@ GaussianTrainer::GaussianTrainer() :
   blockBytes(0)
 { }
 
-void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl) {
-  machine = m;
+void GaussianTrainer::init (const EventMachine& em, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl) {
+  eventMachine = em;
   prior = pr;
   modelParams = mp;
   traceList = tl;
@@ -30,7 +30,7 @@ void GaussianTrainer::reset() {
 bool GaussianTrainer::testFinished() {
   LogThisAt(2,"Baum-Welch, iteration #" << (iter+1) << ": log-likelihood " << logLike << endl);
   LogThisAt(3,"Log-prior, iteration #" << (iter+1) << ": " << logPrior << endl);
-  LogThisAt(4,"Expected log-likelihood (emissions) before M-step: " << expectedLogEmit() << endl);
+  LogThisAt(4,"Expected log-likelihood (emissions) before M-step: " << expectedLogLike() << endl);
   if (iter > 0) {
     if (iter == MaxEMIterations) {
       LogThisAt(2,"Reached " << MaxEMIterations << " iterations; stopping" << endl);
@@ -46,19 +46,19 @@ bool GaussianTrainer::testFinished() {
   return false;
 }
 
-double GaussianTrainer::expectedLogEmit() const {
-  return GaussianModelCounts::expectedLogEmit (modelParams, traceListParams, prior, counts);
+double GaussianTrainer::expectedLogLike() const {
+  return GaussianModelCounts::expectedLogLike (eventMachine, modelParams, traceListParams, prior, counts);
 }
 
-void GaussianModelFitter::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl, const vguard<FastSeq>& s) {
-  GaussianTrainer::init (m, mp, pr, tl);
+void GaussianModelFitter::init (const EventMachine& em, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl, const vguard<FastSeq>& s) {
+  GaussianTrainer::init (em, mp, pr, tl);
   seqs = s;
   inputConditionedMachine.clear();
   for (auto& fs: seqs) {
     vguard<OutputSymbol> seq (fs.length());
     for (SeqIdx pos = 0; pos < fs.length(); ++pos)
       seq[pos] = string (1, tolower (fs.seq[pos]));
-    inputConditionedMachine.push_back (Machine::compose (Machine::generator (fs.name, seq), machine, false, false).eliminateSilentTransitions());
+    inputConditionedMachine.push_back (Machine::compose (Machine::generator (fs.name, seq), eventMachine.machine, false, false).eliminateSilentTransitions());
   }
 }
 
@@ -71,7 +71,7 @@ void GaussianModelFitter::fit() {
     for (const auto& trace: traceList.trace) {
       const TraceParams& traceParams = traceListParams.params[m];
       const Machine& machine = *(machineIter++);
-      const EvaluatedMachine eval (machine, modelParams.prob);
+      const EvaluatedMachine eval (machine, modelParams.params().combine (eventMachine.event));
       GaussianModelCounts c;
       c.init (eval);
       logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes);
@@ -86,11 +86,11 @@ void GaussianModelFitter::fit() {
     auto countIter = counts.begin();
     auto evalIter = evalMachine.begin();
     for (auto& traceParams: traceListParams.params)
-      (*(countIter++)).optimizeTraceParams (traceParams, *(evalIter++), modelParams, prior);
-    LogThisAt(4,"Expected log-likelihood (emissions) after optimizing trace parameters: " << expectedLogEmit() << endl);
+      (*(countIter++)).optimizeTraceParams (traceParams, eventMachine, *(evalIter++), modelParams, prior);
+    LogThisAt(4,"Expected log-likelihood (emissions) after optimizing trace parameters: " << expectedLogLike() << endl);
 
-    GaussianModelCounts::optimizeModelParams (modelParams, traceListParams, prior, evalMachine, counts);
-    LogThisAt(4,"Expected log-likelihood (emissions) after optimizing model parameters: " << expectedLogEmit() << endl);
+    GaussianModelCounts::optimizeModelParams (modelParams, traceListParams, prior, eventMachine, evalMachine, counts);
+    LogThisAt(4,"Expected log-likelihood (emissions) after optimizing model parameters: " << expectedLogLike() << endl);
   }
 }
 
@@ -99,23 +99,23 @@ vguard<FastSeq> GaussianDecoder::decode() {
   size_t m = 0;
   for (const auto& trace: traceList.trace) {
     LogThisAt(3,"Fitting scaling parameters for trace " << trace.name << endl);
-    const EvaluatedMachine eval (machine, modelParams.prob);
+    const EvaluatedMachine eval (eventMachine.machine, modelParams.params().combine (eventMachine.event));
     TraceParams& traceParams = traceListParams.params[m];
     for (iter = 0; true; ++iter) {
       reset();
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes);
+      logLike += c.add (eventMachine.machine, eval, modelParams, trace, traceParams, blockBytes);
       counts.push_back (c);
       if (testFinished())
 	break;
-      c.optimizeTraceParams (traceParams, eval, modelParams, prior);
-      LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogEmit() << endl);
+      c.optimizeTraceParams (traceParams, eventMachine, eval, modelParams, prior);
+      LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
     }
     ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams);
     FastSeq fs;
     fs.name = trace.name;
-    for (const auto& trans: viterbi.path(machine).trans)
+    for (const auto& trans: viterbi.path(eventMachine.machine).trans)
       if (!trans.inputEmpty())
 	fs.seq.append (trans.in);
     result.push_back (fs);

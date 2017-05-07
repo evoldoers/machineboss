@@ -7,6 +7,8 @@
 #include "gaussian.h"
 
 struct Prior {
+  static WeightExpr logGammaExpr (const WeightExpr& rateParam, double count, double time);
+
   static double logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau);
   static WeightExpr logNormalGammaExpr (const WeightExpr& muParam, const WeightExpr& tauParam, double mu0, double n_mu, double tau0, double n_tau);
 
@@ -17,6 +19,7 @@ struct Prior {
 struct TraceParamsPrior : Prior {
   double scale, scaleCount;
   double shift, shiftCount;
+  double rateCount, rateTime;
   TraceParamsPrior();
   WeightExpr logTraceExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const;
   double logProb (const TraceListParams& traceListParams) const;
@@ -27,7 +30,7 @@ struct GaussianPrior {
 };
 
 struct GammaPrior {
-  double alpha, beta;
+  double count, time;
 };
 
 struct GaussianModelPrior : TraceParamsPrior {
@@ -35,7 +38,7 @@ struct GaussianModelPrior : TraceParamsPrior {
   map<string,GammaPrior> gamma;  // hyperparameters for Gamma priors
   ParamAssign count;  // pseudocounts for Dirichlet & Beta priors
   Constraints cons;  // normalization constraints
-
+  
   double logProb (const GaussianModelParams& modelParams) const;
   double logProb (const GaussianModelParams& modelParams, const TraceListParams& traceListParams) const;
 };
