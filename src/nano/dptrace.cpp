@@ -73,3 +73,20 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
   LogThisAt(7,"Creating " << storageColumns << "-column * " << nStates << "-state matrix" << endl);
   columnStorage.resize (storageColumns, vguard<double> (nStates, -numeric_limits<double>::infinity()));
 }
+
+void TraceDPMatrix::writeJson (ostream& out) {
+  out << "{" << endl
+       << " \"cell\": [";
+  for (OutputIndex o = 0; o <= outLen; ++o)
+    for (StateIndex s = 0; s < nStates; ++s)
+      out << ((o || s) ? "," : "") << endl
+	  << "  { \"outPos\": " << o << ", \"state\": " << s << ", \"logLike\": " << setprecision(5) << cell(o,s) << " }";
+  out << endl
+      << " ]" << endl
+      << "}" << endl;
+}
+
+ostream& operator<< (ostream& out, TraceDPMatrix& m) {
+  m.writeJson (out);
+  return out;
+}

@@ -47,14 +47,12 @@ MachinePath ViterbiTraceMatrix::path (const Machine& m) const {
 	const OutputToken outTok = outTok_stateTransMap.first;
 	if (outTok == 0 || outPos > 0)
 	  for (const auto& src_trans: outTok_stateTransMap.second) {
-	    const EvaluatedMachineState::Trans& trans = src_trans.second;
-	    const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,s);
-	    const double tll = cell(outPos-(outTok?1:0),src_trans.first) + logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity()) + (outTok ? logEmitProb(outPos,outTok) : 0);
+	    const double tll = logIncomingProb (inTok, outTok, outPos, src_trans.first, s, src_trans.second);
 	    if (tll > bestLogLike) {
 	      bestLogLike = tll;
-	      bestTrans = &trans;
-	      bestLoopTrans = loopTrans;
+	      bestLoopTrans = getLoopTrans (inTok, outTok, s);
 	      bestSource = src_trans.first;
+	      bestTrans = &src_trans.second;
 	    }
 	  }
       }

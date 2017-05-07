@@ -7,6 +7,7 @@ BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts
   nullTrans_rend (nullTrans().rend())
 {
   const double llFinal = fwd.logLike;
+  Assert (llFinal > -numeric_limits<double>::infinity(), "Can't get Forward-Backward counts: Forward likelihood is zero");
 
   ProgressLog(plog,3);
   plog.initProgress ("Backward algorithm (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
@@ -54,6 +55,7 @@ BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts
     }
   }
   LogThisAt(6,"Backward log-likelihood: " << logLike() << endl);
+  LogThisAt(10,"Backward matrix:" << endl << *this);
 }
 
 double BackwardTraceMatrix::logLike() const {

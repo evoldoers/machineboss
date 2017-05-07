@@ -18,6 +18,7 @@ ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const Gaus
 
   logLike = cell (outLen, eval.endState());
   LogThisAt(6,"Forward log-likelihood: " << logLike << endl);
+  LogThisAt(10,"Forward matrix:" << endl << *this);
 }
 
 void ForwardTraceMatrix::fillColumn (OutputIndex outPos) {
@@ -33,7 +34,7 @@ void ForwardTraceMatrix::fillColumn (OutputIndex outPos) {
 	log_accum_exp (thisColumn[it.dest], prevColumn[it.src] + logTransProb(outPos,it) + llEmit);
     }
   }
-  
+
   for (const auto& it: nullTrans())
     log_accum_exp (thisColumn[it.dest], thisColumn[it.src] + it.logWeight);
 
@@ -69,9 +70,7 @@ MachinePath ForwardTraceMatrix::samplePath (const Machine& machine, mt19937& gen
 	const OutputToken outTok = outTok_stateTransMap.first;
 	if (outTok == 0 || outPos > 0)
 	  for (const auto& src_trans: outTok_stateTransMap.second) {
-	    const EvaluatedMachineState::Trans& trans = src_trans.second;
-	    const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,s);
-	    const double tll = cell(outPos-(outTok?1:0),src_trans.first) + logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity()) + (outTok ? logEmitProb(outPos,outTok) : 0);
+	    const double tll = logIncomingProb (inTok, outTok, outPos, src_trans.first, s, src_trans.second);
 	    transLogLike.push_back (tll);
 	    transIndex.push_back (src_trans.second.transIndex);
 	    transSource.push_back (src_trans.first);

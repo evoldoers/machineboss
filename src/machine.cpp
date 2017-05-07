@@ -736,7 +736,7 @@ Machine Machine::eliminateSilentTransitions() const {
   if (nStates()) {
     em.state.resize (nStates());
     // Silent transitions from i->j are prepended to loud transitions from j->k.
-    // In case there are no loud transitions from j->k, then the set of "unaccounted-for" outgoing silent transitions from i is stored,
+    // In case there are no loud transitions from j->k (or if j is the end state), then the set of "unaccounted-for" outgoing silent transitions from i is stored,
     // and is then appended to loud transitions h->i (this has to be done in a second pass, because it can be the case that h>i).
     vguard<TransList> silentTrans (nStates());
     for (long long s = nStates() - 1; s >= 0; --s) {
@@ -746,7 +746,7 @@ Machine Machine::eliminateSilentTransitions() const {
       TransAccumulator silent, loud;
       for (const auto& t: ms.trans)
 	if (t.isSilent()) {
-	  if (state[t.dest].terminates())
+	  if (state[t.dest].terminates() || t.dest == nStates() - 1)
 	    silent.accumulate(t);
 	  else {
 	    for (const auto& t2: silentTrans[t.dest])

@@ -84,6 +84,16 @@ public:
     const auto& mom = moments.sample[outPos-1];
     return logWeight + (mom.m0 == 1 ? 0. : ((mom.m0 - 1) * loopLogWeight));
   }
+
+  inline double logIncomingProb (const InputToken inTok, const OutputToken outTok, const OutputIndex outPos, const StateIndex src, const StateIndex dest, const EvaluatedMachineState::Trans& trans) const {
+    const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,dest);
+    return cell(outPos-(outTok?1:0),src)
+      + logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity())
+      + (outTok ? logEmitProb(outPos,outTok) : 0);
+  }
+
+  void writeJson (ostream&);
+  friend ostream& operator<< (ostream&, TraceDPMatrix&);
 };
 
 #endif /* DPTRACE_INCLUDED */
