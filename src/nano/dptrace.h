@@ -12,10 +12,11 @@ public:
   struct IndexedTrans : EvaluatedMachineState::Trans {
     StateIndex src, dest;
     InputToken in;
+    OutputToken out;
     bool loop;
     EvaluatedMachineState::TransIndex loopTransIndex;
     LogWeight loopLogWeight;
-    IndexedTrans (const EvaluatedMachineState::Trans&, StateIndex, StateIndex, InputToken);
+    IndexedTrans (const EvaluatedMachineState::Trans&, StateIndex, StateIndex, InputToken, OutputToken);
   };
 
 private:
@@ -30,10 +31,10 @@ private:
   }
 
 protected:
-  vguard<vguard<IndexedTrans> > transByOut;  // indexed by output token
-  inline const vguard<IndexedTrans>& nullTrans() const { return transByOut.front(); }
-  size_t nTrans;
-
+  vguard<IndexedTrans> emitTrans, nullTrans;
+  size_t nTrans, maxDistanceFromStart;
+  vguard<size_t> emitTransOffset;   // if idx = emitTransOffset[d], then emitTrans[idx] is first emit transition to a state of distance >= d from start
+  
   void initColumn (vguard<double>& col) {
     fill (col.begin(), col.end(), -numeric_limits<double>::infinity());
   }
@@ -41,7 +42,17 @@ protected:
   inline OutputIndex checkpoint (OutputIndex outPos) const {
     return outPos - (outPos % blockSize);
   }
-  
+
+  inline vguard<IndexedTrans>::const_iterator bandTransBegin (OutputIndex outPos) const {
+    const size_t d = (size_t) (maxDistanceFromStart * max (0., outPos / (double) outLen - bandWidth / 2));
+    return emitTrans.begin() + emitTransOffset[d];
+  }
+
+  inline vguard<IndexedTrans>::const_iterator bandTransEnd (OutputIndex outPos) const {
+    const size_t d = (size_t) (maxDistanceFromStart * min (1., outPos / (double) outLen + bandWidth / 2));
+    return emitTrans.begin() + emitTransOffset[d+1];
+  }
+
 public:
   const EvaluatedMachine& eval;
   const GaussianModelParams& modelParams;
@@ -55,8 +66,9 @@ public:
   const size_t blockBytes;
   const OutputIndex blockSize;
   const size_t nCheckpoints;
+  const double bandWidth;
   
-  TraceDPMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0);
+  TraceDPMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);
 
   inline vguard<double>& column (OutputIndex outPos) { return columnStorage[columnIndex(outPos)]; }
   inline const vguard<double>& column (OutputIndex outPos) const { return columnStorage[columnIndex(outPos)]; }

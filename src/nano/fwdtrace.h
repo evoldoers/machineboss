@@ -10,7 +10,7 @@ private:
   OutputIndex lastCheckpoint;
 
 public:
-  ForwardTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0);
+  ForwardTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);
   void readyColumn (OutputIndex);
   MachinePath samplePath (const Machine&, mt19937&);
   double logLike;

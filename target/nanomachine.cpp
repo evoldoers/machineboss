@@ -44,6 +44,7 @@ int main (int argc, char** argv) {
       ("maxfracdiff,f", po::value<double>()->default_value(.01), "max fractional delta between samples in same event")
       ("maxsamples,s", po::value<size_t>()->default_value(4), "max number of samples per event")
       ("memlimit,m", po::value<size_t>()->default_value(1<<30), "approximate memory limit for forward-backward DP")
+      ("bandwidth,w", po::value<double>()->default_value(1), "proportion of DP matrix to fill around main diagonal")
       ;
 
     po::options_description appOpts("Data options");
@@ -121,6 +122,7 @@ int main (int argc, char** argv) {
       GaussianModelFitter fitter;
       fitter.init (eventMachine, initParams.params, modelPrior, traceMomentsList, trainSeqs);
       fitter.blockBytes = vm.at("memlimit").as<size_t>() / 2;
+      fitter.bandWidth = vm.at("bandwidth").as<double>();
       fitter.fit();
 
       trainedParams.params = fitter.modelParams;

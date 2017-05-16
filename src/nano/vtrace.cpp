@@ -1,25 +1,27 @@
 #include "vtrace.h"
 #include "../logger.h"
 
-ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams) :
-  TraceDPMatrix (eval, modelParams, trace, traceParams, 0)
+ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams, double bandWidth) :
+  TraceDPMatrix (eval, modelParams, trace, traceParams, 0, bandWidth)
 {
   ProgressLog(plog,3);
   plog.initProgress ("Viterbi algorithm (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
 
   cell(0,eval.startState()) = 0;
-  for (const auto& it: nullTrans())
+  for (const auto& it: nullTrans)
     update (0, it.dest, cell(0,it.src) + it.logWeight, it.in);
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
     plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
-    for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
+    const auto itBegin = bandTransBegin(outPos), itEnd = bandTransEnd(outPos);
+    for (auto itIter = itBegin; itIter != itEnd; ++itIter) {
+      const auto& it = *itIter;
+      const OutputToken outTok = it.out;
       const double llEmit = logEmitProb(outPos,outTok);
-      for (const auto& it: transByOut[outTok])
-	update (outPos, it.dest, cell(outPos-1,it.src) + logTransProb(outPos,it) + llEmit, it.in);
+      update (outPos, it.dest, cell(outPos-1,it.src) + logTransProb(outPos,it) + llEmit, it.in);
     }
 
-    for (const auto& it: nullTrans())
+    for (const auto& it: nullTrans)
       update (outPos, it.dest, cell(outPos,it.src) + it.logWeight, it.in);
   }
 

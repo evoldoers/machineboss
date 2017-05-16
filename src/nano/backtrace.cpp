@@ -2,9 +2,9 @@
 #include "backtrace.h"
 
 BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts* transCounts, vguard<GaussianCounts>* emitCounts) :
-  TraceDPMatrix (fwd.eval, fwd.modelParams, fwd.moments, fwd.traceParams, fwd.blockBytes),
-  nullTrans_rbegin (nullTrans().rbegin()),
-  nullTrans_rend (nullTrans().rend())
+  TraceDPMatrix (fwd.eval, fwd.modelParams, fwd.moments, fwd.traceParams, fwd.blockBytes, fwd.bandWidth),
+  nullTrans_rbegin (nullTrans.rbegin()),
+  nullTrans_rend (nullTrans.rend())
 {
   const double llFinal = fwd.logLike;
   Assert (llFinal > -numeric_limits<double>::infinity(), "Can't get Forward-Backward counts: Forward likelihood is zero");
@@ -26,23 +26,24 @@ BackwardTraceMatrix::BackwardTraceMatrix (ForwardTraceMatrix& fwd, MachineCounts
     else {
       const auto& sample = moments.sample[outPos];
       const vguard<double>& nextColumn = column(outPos+1);
-      for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
+      const auto itBegin = bandTransBegin(outPos), itEnd = bandTransEnd(outPos);
+      for (auto itIter = itBegin; itIter != itEnd; ++itIter) {
+	const auto& it = *itIter;
+	const OutputToken outTok = it.out;
 	const double llEmit = logEmitProb(outPos+1,outTok);
-	for (const auto& it: transByOut[outTok]) {
-	  const double llTrans = nextColumn[it.dest] + logTransProb(outPos+1,it) + llEmit;
-	  log_accum_exp (thisColumn[it.src], llTrans);
-	  if (transCounts || emitCounts) {
-	    const double ppEmit = exp (thisFwdColumn[it.src] + llTrans - llFinal);
-	    if (transCounts) {
-	      transCounts->count[it.src][it.transIndex] += ppEmit;
-	      if (it.loop) {
-		const auto& mom = moments.sample[outPos];
-		transCounts->count[it.dest][it.loopTransIndex] += (mom.m0 - 1) * ppEmit;
-	      }
+	const double llTrans = nextColumn[it.dest] + logTransProb(outPos+1,it) + llEmit;
+	log_accum_exp (thisColumn[it.src], llTrans);
+	if (transCounts || emitCounts) {
+	  const double ppEmit = exp (thisFwdColumn[it.src] + llTrans - llFinal);
+	  if (transCounts) {
+	    transCounts->count[it.src][it.transIndex] += ppEmit;
+	    if (it.loop) {
+	      const auto& mom = moments.sample[outPos];
+	      transCounts->count[it.dest][it.loopTransIndex] += (mom.m0 - 1) * ppEmit;
 	    }
-	    if (emitCounts)
-	      (*emitCounts)[outTok-1].inc (sample, ppEmit);
 	  }
+	  if (emitCounts)
+	    (*emitCounts)[outTok-1].inc (sample, ppEmit);
 	}
       }
     }

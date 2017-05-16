@@ -8,7 +8,8 @@
 #define MinEMImprovement .001
 
 GaussianTrainer::GaussianTrainer() :
-  blockBytes(0)
+  blockBytes(0),
+  bandWidth(1)
 { }
 
 void GaussianTrainer::init (const EventMachine& em, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl) {
@@ -74,7 +75,7 @@ void GaussianModelFitter::fit() {
       const EvaluatedMachine eval (machine, modelParams.params().combine (eventMachine.event));
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes);
+      logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
       counts.push_back (c);
       evalMachine.push_back (eval);
       LogThisAt(6,"Counts for trace #" << m << ", iteration #" << (iter+1) << ":" << endl << JsonWriter<GaussianModelCounts>::toJsonString(c) << endl);
@@ -105,7 +106,7 @@ vguard<FastSeq> GaussianDecoder::decode() {
       reset();
       GaussianModelCounts c;
       c.init (eval);
-      logLike += c.add (eventMachine.machine, eval, modelParams, trace, traceParams, blockBytes);
+      logLike += c.add (eventMachine.machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
       counts.push_back (c);
       if (testFinished())
 	break;

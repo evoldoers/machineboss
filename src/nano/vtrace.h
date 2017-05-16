@@ -11,7 +11,7 @@ private:
   }
 
 public:
-  ViterbiTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&);
+  ViterbiTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, double bandWidth = 1);
   double logLike() const;
   MachinePath path (const Machine&) const;
 };

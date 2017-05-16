@@ -18,6 +18,7 @@ struct GaussianTrainer {
   size_t iter;
 
   size_t blockBytes;
+  double bandWidth;
   
   GaussianTrainer();
   void init (const EventMachine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&);

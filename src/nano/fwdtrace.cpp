@@ -1,14 +1,14 @@
 #include "fwdtrace.h"
 #include "../logger.h"
 
-ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams, size_t blockBytes) :
-  TraceDPMatrix (eval, modelParams, trace, traceParams, blockBytes)
+ForwardTraceMatrix::ForwardTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams, size_t blockBytes, double bandWidth) :
+  TraceDPMatrix (eval, modelParams, trace, traceParams, blockBytes, bandWidth)
 {
   ProgressLog(plog,3);
   plog.initProgress ("Forward algorithm (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
 
   cell(0,eval.startState()) = 0;
-  for (const auto& it: nullTrans())
+  for (const auto& it: nullTrans)
     log_accum_exp (cell(0,it.dest), cell(0,it.src) + it.logWeight);
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
@@ -28,14 +28,16 @@ void ForwardTraceMatrix::fillColumn (OutputIndex outPos) {
     thisColumn[eval.startState()] = 0;
   else {
     const vguard<double>& prevColumn = column(outPos-1);
-    for (OutputToken outTok = 1; outTok < nOutToks; ++outTok) {
+    const auto itBegin = bandTransBegin(outPos), itEnd = bandTransEnd(outPos);
+    for (auto itIter = itBegin; itIter != itEnd; ++itIter) {
+      const auto& it = *itIter;
+      const OutputToken outTok = it.out;
       const double llEmit = logEmitProb(outPos,outTok);
-      for (const auto& it: transByOut[outTok])
-	log_accum_exp (thisColumn[it.dest], prevColumn[it.src] + logTransProb(outPos,it) + llEmit);
+      log_accum_exp (thisColumn[it.dest], prevColumn[it.src] + logTransProb(outPos,it) + llEmit);
     }
   }
 
-  for (const auto& it: nullTrans())
+  for (const auto& it: nullTrans)
     log_accum_exp (thisColumn[it.dest], thisColumn[it.src] + it.logWeight);
 
   lastCheckpoint = checkpoint(outPos);
