@@ -33,6 +33,10 @@ string BaseCallingParamNamer::cptEndLabel (const string& kmerStr, int cpt) {
   return string("P(end|") + kmerStr + "," + cptName(cpt) + ")";
 }
 
+string BaseCallingParamNamer::cptExitRateLabel (const string& kmerStr, int cpt) {
+  return string("R(exit|") + kmerStr + "," + cptName(cpt) + ")";
+}
+
 string BaseCallingParamNamer::cptName (int cpt) {
   return string("cpt") + to_string(cpt + 1);
 }
@@ -51,8 +55,9 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
     GaussianParams emit;
     for (int cpt = 0; cpt < cpts; ++cpt) {
       params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
-      params.prob.defs[cptExtendLabel (kmerStr, cpt)] = .5;
-      params.prob.defs[cptEndLabel (kmerStr, cpt)] = .5;
+      //      params.prob.defs[cptExtendLabel (kmerStr, cpt)] = .5;
+      //      params.prob.defs[cptEndLabel (kmerStr, cpt)] = .5;
+      params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1;
     }
     params.prob.defs[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
     params.gauss[emitLabel (kmerStr)] = GaussianParams();
@@ -80,8 +85,10 @@ void BaseCallingParams::readJson (const json& j) {
 BaseCallingPrior::BaseCallingPrior()
   : condFreq(1),
     cptWeight(1),
-    cptExtend(1),
-    cptEnd(1),
+    padExtend(1),
+    padEnd(1),
+    cptExitCount(1),
+    cptExitTime(1),
     mu(0), muCount(1),
     tau(1), tauCount(2),
     muPad(1), tauPad(1)
@@ -97,6 +104,10 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
   emitPrior.tau0 = tau;
   emitPrior.n_tau = tauCount;
 
+  GammaPrior exitPrior;
+  exitPrior.count = cptExitCount;
+  exitPrior.time = cptExitTime;
+  
   const Kmer nk = numberOfKmers (kmerLen, alph.size());
   for (Kmer kmerPrefix = 0; kmerPrefix < nk; kmerPrefix += alph.size()) {
     vguard<string> condFreqParam;
@@ -109,9 +120,11 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
       cptWeightParam.reserve (components);
       for (int cpt = 0; cpt < components; ++cpt) {
 	prior.count.defs[cptWeightLabel (kmerStr, cpt)] = cptWeight;
-	prior.count.defs[cptExtendLabel (kmerStr, cpt)] = cptExtend;
-	prior.count.defs[cptEndLabel (kmerStr, cpt)] = cptEnd;
-	prior.cons.norm.push_back (vguard<string> { cptExtendLabel (kmerStr, cpt), cptEndLabel (kmerStr, cpt) });
+	//	prior.count.defs[cptExtendLabel (kmerStr, cpt)] = cptExtend;
+	//	prior.count.defs[cptEndLabel (kmerStr, cpt)] = cptEnd;
+	//	prior.cons.norm.push_back (vguard<string> { cptExtendLabel (kmerStr, cpt), cptEndLabel (kmerStr, cpt) });
+	prior.gamma[cptExitRateLabel (kmerStr, cpt)] = exitPrior;
+	prior.cons.rate.push_back (cptExitRateLabel (kmerStr, cpt));
 	cptWeightParam.push_back (cptWeightLabel (kmerStr, cpt));
       }
       prior.cons.norm.push_back (cptWeightParam);
@@ -129,8 +142,8 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
   padPrior.n_tau = tauCount;
 
   prior.gauss[padEmitLabel()] = padPrior;
-  prior.count.defs[padExtendLabel()] = cptExtend;
-  prior.count.defs[padEndLabel()] = cptEnd;
+  prior.count.defs[padExtendLabel()] = padExtend;
+  prior.count.defs[padEndLabel()] = padEnd;
   prior.cons.norm.push_back (vguard<string> { padExtendLabel(), padEndLabel() });
 
   return prior;
@@ -155,6 +168,9 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
       start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptWeightLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptExtendLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr (cptEndLabel (kmerStr, cpt))));
+      const WeightExpr cptEndProb = WeightAlgebra::expOf (WeightAlgebra::minus (cptExitRateLabel (kmerStr, cpt)));
+      event.defs[cptEndLabel (kmerStr, cpt)] = cptEndProb;
+      event.defs[cptExtendLabel (kmerStr, cpt)] = WeightAlgebra::negate (cptEndProb);
     }
     for (auto c: alph)
       end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (condFreqLabel (suffix, c))));

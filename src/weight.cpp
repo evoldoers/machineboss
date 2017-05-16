@@ -3,6 +3,10 @@
 #include "logsumexp.h"
 #include "util.h"
 
+WeightExpr WeightAlgebra::minus (const WeightExpr& x) {
+  return WeightExpr::object ({{"-", WeightExpr::array ({false, x})}});
+}
+
 WeightExpr WeightAlgebra::negate (const WeightExpr& p) {
   return WeightExpr::object ({{"-", WeightExpr::array ({true, p})}});
 }
@@ -91,6 +95,10 @@ string WeightAlgebra::opcode (const WeightExpr& w) {
     return string("float");
   if (w.is_string())
     return string("param");
+  if (w.is_array())
+    Abort ("Unexpected type in WeightExpr: array");
+  if (!w.is_object())
+    Abort ("Unexpected type (%d) in WeightExpr", w.type());
   auto iter = w.begin();
   return iter.key();
 }
@@ -119,27 +127,31 @@ WeightExpr WeightAlgebra::bind (const WeightExpr& w, const ParamDefs& defs) {
   return WeightExpr::object ({{op, bindArgs}});
 }
 
-double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs) {
+double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs, const set<string>* excludedDefs) {
   const string op = opcode(w);
   if (op == "null") return 0;
   if (op == "boolean") return w.get<bool>() ? 1. : 0.;
   if (op == "int" || op == "float") return w.get<double>();
   if (op == "param") {
     const string n = w.get<string>();
-    if (!defs.count(n))
+    if (!defs.count(n) || (excludedDefs && excludedDefs->count(n)))
       throw runtime_error(string("Parameter ") + n + (" not defined"));
     // optimize the special case that definition is a numeric assignment
     const auto& val = defs.at(n);
     if (val.is_number())
       return val.get<double>();
-    return eval (defs.at(n), exclude(defs,n));
+    set<string> innerExcludedDefs;
+    if (excludedDefs)
+      innerExcludedDefs.insert (excludedDefs->begin(), excludedDefs->end());
+    innerExcludedDefs.insert (n);
+    return eval (defs.at(n), defs, &innerExcludedDefs);
   }
-  if (op == "log") return log (eval (w.at("log"), defs));
-  if (op == "exp") return exp (eval (w.at("exp"), defs));
+  if (op == "log") return log (eval (w.at("log"), defs, excludedDefs));
+  if (op == "exp") return exp (eval (w.at("exp"), defs, excludedDefs));
   vguard<double> evalArgs;
   const json& args = operands(w);
   for (const auto& arg: args)
-    evalArgs.push_back (eval (arg, defs));
+    evalArgs.push_back (eval (arg, defs, excludedDefs));
   if (op == "*") return evalArgs[0] * evalArgs[1];
   if (op == "/") return evalArgs[0] / evalArgs[1];
   if (op == "+") return evalArgs[0] + evalArgs[1];

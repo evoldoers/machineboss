@@ -56,8 +56,10 @@ void MachineCounts::writeJson (ostream& outs) const {
 
 map<string,double> MachineCounts::paramCounts (const Machine& machine, const ParamAssign& prob) const {
   map<string,double> paramCount;
+  Assert (count.size() == machine.state.size(), "Number of states mismatch");
   for (StateIndex s = 0; s < machine.nStates(); ++s) {
     auto transIter = machine.state[s].trans.begin();
+    Assert (count[s].size() == machine.state[s].trans.size(), "State size mismatch");
     for (auto& c: count[s]) {
       auto& trans = *(transIter++);
       const auto transParams = WeightAlgebra::params (trans.weight, ParamDefs());

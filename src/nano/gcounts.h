@@ -28,7 +28,7 @@ struct GaussianModelCounts {
   map<OutputSymbol,size_t> gaussIndex;
   GaussianModelCounts();
   void init (const EvaluatedMachine&);
-  double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);  // returns log-likelihood
+  double add (const Machine&, const ParamFuncs&, const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);  // returns log-likelihood
   WeightExpr traceExpectedLogEmit (const GaussianModelParams&, const GaussianModelPrior&) const;
   WeightExpr traceExpectedLogEvents (const EventMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
   void optimizeTraceParams (TraceParams&, const EventMachine&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;

@@ -23,12 +23,16 @@ void GaussianModelCounts::init (const EvaluatedMachine& m) {
     gaussIndex[m.outputTokenizer.tok2sym[n]] = n - 1;
 }
 
-double GaussianModelCounts::add (const Machine& machine, const EvaluatedMachine& m, const GaussianModelParams& mp, const TraceMoments& t, const TraceParams& tp, size_t blockBytes, double bandWidth) {
+double GaussianModelCounts::add (const Machine& machine, const ParamFuncs& event, const EvaluatedMachine& m, const GaussianModelParams& mp, const TraceMoments& t, const TraceParams& tp, size_t blockBytes, double bandWidth) {
   MachineCounts mc (m);
   ForwardTraceMatrix forward (m, mp, t, tp, blockBytes, bandWidth);
   const BackwardTraceMatrix backward (forward, &mc, &gauss);
 
-  const auto pc = mc.paramCounts (machine, mp.prob);
+  ParamAssign eventProb (mp.prob);
+  for (auto p_f: event.defs)
+    eventProb.defs[p_f.first] = WeightAlgebra::eval (p_f.second, mp.rate.defs);
+  
+  const auto pc = mc.paramCounts (machine, eventProb);
   for (auto p_c: pc)
     prob[p_c.first] += p_c.second;
 
@@ -155,11 +159,12 @@ WeightExpr GaussianModelCounts::traceExpectedLogEvents (const EventMachine& even
   const ParamDefs modelParamDefs = modelParams.params().defs;
   const WeightExpr rateParam = WeightAlgebra::multiply (sqrtRateParamName(), sqrtRateParamName());
   WeightExpr e = modelPrior.logGammaExpr (rateParam, modelPrior.rateCount, modelPrior.rateTime);
-  for (const auto& eventName_func: eventMachine.event.defs) {
-    e = WeightAlgebra::add (e,
-			    WeightAlgebra::multiply (prob.at(eventName_func.first),
-						     WeightAlgebra::logOf (WeightAlgebra::bind (eventName_func.second, modelParamDefs))));
-  }
+  for (const auto& eventName_func: eventMachine.event.defs)
+    if (prob.count(eventName_func.first)) {
+      e = WeightAlgebra::add (e,
+			      WeightAlgebra::multiply (prob.at(eventName_func.first),
+						       WeightAlgebra::logOf (WeightAlgebra::bind (eventName_func.second, modelParamDefs))));
+    }
   return e;
 }
 

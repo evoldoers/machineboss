@@ -14,6 +14,7 @@ struct BaseCallingParamNamer {
   static string cptWeightLabel (const string& kmerStr, int cpt);
   static string cptExtendLabel (const string& kmerStr, int cpt);
   static string cptEndLabel (const string& kmerStr, int cpt);
+  static string cptExitRateLabel (const string& kmerStr, int cpt);
   static string cptName (int cpt);
 };
 
@@ -29,11 +30,11 @@ struct BaseCallingParams : BaseCallingParamNamer {
 };
 
 struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
-  double condFreq, cptWeight, cptExtend, cptEnd;
+  double condFreq, cptWeight, padExtend, padEnd, cptExitCount, cptExitTime;
   double mu, muCount;
   double tau, tauCount;
   double muPad, tauPad;
-
+  
   BaseCallingPrior();
   
   GaussianModelPrior modelPrior (const string& alph, SeqIdx kmerLen, int components) const;

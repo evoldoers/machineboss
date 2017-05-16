@@ -19,9 +19,10 @@ struct WeightAlgebra {
   static WeightExpr logOf (const WeightExpr& p);  // log(p)
   static WeightExpr expOf (const WeightExpr& p);  // exp(p)
 
-  static WeightExpr negate (const WeightExpr& p);
-  static WeightExpr reciprocal (const WeightExpr& p);
-  static WeightExpr geometricSum (const WeightExpr& p);
+  static WeightExpr minus (const WeightExpr& x);  // 0 - x
+  static WeightExpr negate (const WeightExpr& p);  // 1 - p
+  static WeightExpr reciprocal (const WeightExpr& p);  // 1 / p
+  static WeightExpr geometricSum (const WeightExpr& p);  // 1 / (1 - p)
 
   static bool isZero (const WeightExpr& w);
   static bool isOne (const WeightExpr& w);
@@ -31,7 +32,8 @@ struct WeightAlgebra {
 
   static WeightExpr bind (const WeightExpr& w, const ParamDefs& defs);
   
-  static double eval (const WeightExpr& w, const ParamDefs& defs);
+  static double eval (const WeightExpr& w, const ParamDefs& defs, const set<string>* excludedDefs = NULL);
+
   static WeightExpr deriv (const WeightExpr& w, const ParamDefs& defs, const string& param);
   static set<string> params (const WeightExpr& w, const ParamDefs& defs);
 
