@@ -26,15 +26,15 @@ string BaseCallingParamNamer::cptWeightLabel (const string& kmerStr, int cpt) {
 }
 
 string BaseCallingParamNamer::cptExtendLabel (const string& kmerStr, int cpt) {
-  return string("P(ext|") + kmerStr + "," + cptName(cpt) + ")";
+  return waitEventFuncName (cptExitRateLabel (kmerStr, cpt));
 }
 
 string BaseCallingParamNamer::cptEndLabel (const string& kmerStr, int cpt) {
-  return string("P(end|") + kmerStr + "," + cptName(cpt) + ")";
+  return exitEventFuncName (cptExitRateLabel (kmerStr, cpt));
 }
 
 string BaseCallingParamNamer::cptExitRateLabel (const string& kmerStr, int cpt) {
-  return string("R(exit|") + kmerStr + "," + cptName(cpt) + ")";
+  return string("R(move|") + kmerStr + "," + cptName(cpt) + ")";
 }
 
 string BaseCallingParamNamer::cptName (int cpt) {
@@ -55,8 +55,6 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
     GaussianParams emit;
     for (int cpt = 0; cpt < cpts; ++cpt) {
       params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
-      //      params.prob.defs[cptExtendLabel (kmerStr, cpt)] = .5;
-      //      params.prob.defs[cptEndLabel (kmerStr, cpt)] = .5;
       params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1;
     }
     params.prob.defs[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
@@ -120,9 +118,6 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
       cptWeightParam.reserve (components);
       for (int cpt = 0; cpt < components; ++cpt) {
 	prior.count.defs[cptWeightLabel (kmerStr, cpt)] = cptWeight;
-	//	prior.count.defs[cptExtendLabel (kmerStr, cpt)] = cptExtend;
-	//	prior.count.defs[cptEndLabel (kmerStr, cpt)] = cptEnd;
-	//	prior.cons.norm.push_back (vguard<string> { cptExtendLabel (kmerStr, cpt), cptEndLabel (kmerStr, cpt) });
 	prior.gamma[cptExitRateLabel (kmerStr, cpt)] = exitPrior;
 	prior.cons.rate.push_back (cptExitRateLabel (kmerStr, cpt));
 	cptWeightParam.push_back (cptWeightLabel (kmerStr, cpt));
@@ -152,31 +147,28 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
 void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
   components = cpts;
   nKmers = numberOfKmers (len, alph.size());
-  machine.state = vguard<MachineState> (nKmers * (components + 2) + 2);
-  machine.state[machine.startState()].name = "start";
-  machine.state[machine.endState()].name = "end";
+  state = vguard<MachineState> (nKmers * (components + 2) + 2);
+  state[startState()].name = "start";
+  state[endState()].name = "end";
   for (Kmer kmer = 0; kmer < nKmers; ++kmer) {
     const string kmerStr = kmerToString (kmer, len, alph);
     const string suffix = kmerStr.substr(1);
-    MachineState& start (machine.state[kmerStart(kmer)]);
-    MachineState& end (machine.state[kmerEnd(kmer)]);
+    MachineState& start (state[kmerStart(kmer)]);
+    MachineState& end (state[kmerEnd(kmer)]);
     start.name = kmerStr + "_start";
     end.name = kmerStr + "_end";
     for (int cpt = 0; cpt < cpts; ++cpt) {
-      MachineState& sc = machine.state[kmerEmit(kmer,cpt)];
+      MachineState& sc = state[kmerEmit(kmer,cpt)];
       sc.name = kmerStr + "_" + cptName(cpt);
       start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptWeightLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptExtendLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr (cptEndLabel (kmerStr, cpt))));
-      const WeightExpr cptEndProb = WeightAlgebra::expOf (WeightAlgebra::minus (cptExitRateLabel (kmerStr, cpt)));
-      event.defs[cptEndLabel (kmerStr, cpt)] = cptEndProb;
-      event.defs[cptExtendLabel (kmerStr, cpt)] = WeightAlgebra::negate (cptEndProb);
     }
     for (auto c: alph)
       end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (condFreqLabel (suffix, c))));
-    machine.state[machine.startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightAlgebra::multiply (padEndLabel(), 1. / (double) nKmers)));
-    end.trans.push_back (MachineTransition (string(), string(), machine.nStates() - 1, WeightExpr (padEndLabel())));
+    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightAlgebra::multiply (padEndLabel(), 1. / (double) nKmers)));
+    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr (padEndLabel())));
   }
-  machine.state[machine.startState()].trans.push_back (MachineTransition (string(), padEmitLabel(), 0, padExtendLabel()));
-  machine.state[machine.endState()].trans.push_back (MachineTransition (string(), padEmitLabel(), machine.nStates() - 1, padExtendLabel()));
+  state[startState()].trans.push_back (MachineTransition (string(), padEmitLabel(), 0, padExtendLabel()));
+  state[endState()].trans.push_back (MachineTransition (string(), padEmitLabel(), nStates() - 1, padExtendLabel()));
 }

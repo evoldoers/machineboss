@@ -8,9 +8,9 @@
 using namespace std;
 using json = nlohmann::json;
 
-struct EventMachine {
-  Machine machine;
-  ParamFuncs event;  // function defs relating placeholder probability parameters to rate parameters
+struct EventFuncNamer {
+  static string waitEventFuncName (const string& rateParam);
+  static string exitEventFuncName (const string& rateParam);
 };
 
 struct GaussianParams {
@@ -18,11 +18,12 @@ struct GaussianParams {
   GaussianParams();
 };
 
-struct GaussianModelParams {
+struct GaussianModelParams : EventFuncNamer {
   map<OutputSymbol,GaussianParams> gauss;
   ParamAssign prob, rate;
 
-  Params params() const;  // merges prob & rate
+  ParamAssign eventProbs (double traceRate) const;  // probabilities of wait & exit events
+  ParamAssign params (double traceRate) const;  // merges prob & eventProbs
   
   json asJson() const;
   void writeJson (ostream& out) const;

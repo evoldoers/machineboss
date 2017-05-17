@@ -105,8 +105,8 @@ int main (int argc, char** argv) {
     const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsamples").as<size_t>());
     
     // initialize machine & prior
-    BaseCallingMachine eventMachine;
-    eventMachine.init (initParams.alphabet, initParams.kmerLen, initParams.components);
+    BaseCallingMachine machine;
+    machine.init (initParams.alphabet, initParams.kmerLen, initParams.components);
 
     BaseCallingPrior bcPrior;
     const GaussianModelPrior modelPrior = bcPrior.modelPrior (initParams.alphabet, initParams.kmerLen, initParams.components);
@@ -120,7 +120,7 @@ int main (int argc, char** argv) {
 	readFastSeqs (seqFilename.c_str(), trainSeqs);
 
       GaussianModelFitter fitter;
-      fitter.init (eventMachine, initParams.params, modelPrior, traceMomentsList, trainSeqs);
+      fitter.init (machine, initParams.params, modelPrior, traceMomentsList, trainSeqs);
       fitter.blockBytes = vm.at("memlimit").as<size_t>() / 2;
       fitter.bandWidth = vm.at("bandwidth").as<double>();
       fitter.fit();
@@ -137,7 +137,7 @@ int main (int argc, char** argv) {
     // do basecalling
     if (vm.count("call")) {
       GaussianDecoder decoder;
-      decoder.init (eventMachine, trainedParams.params, modelPrior, traceMomentsList);
+      decoder.init (machine, trainedParams.params, modelPrior, traceMomentsList);
       writeFastaSeqs (cout, decoder.decode());
     }
 

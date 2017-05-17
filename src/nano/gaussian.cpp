@@ -1,5 +1,13 @@
 #include "gaussian.h"
 
+string EventFuncNamer::waitEventFuncName (const string& rateParam) {
+  return string("exp(-") + rateParam + "*t)";
+}
+
+string EventFuncNamer::exitEventFuncName (const string& rateParam) {
+  return string("1-exp(-") + rateParam + "*t)";
+}
+
 GaussianParams::GaussianParams() :
   mu (0),
   tau (1)
@@ -32,6 +40,16 @@ void GaussianModelParams::readJson (const json& j) {
   rate.readJson (j["rate"]);
 }
 
-Params GaussianModelParams::params() const {
-  return prob.combine(rate);
+ParamAssign GaussianModelParams::eventProbs (double traceRate) const {
+  ParamAssign e;
+  for (const auto& param_rate: rate.defs) {
+    const double waitProb = exp (-traceRate * param_rate.second.get<double>());
+    e.defs[waitEventFuncName(param_rate.first)] = waitProb;
+    e.defs[exitEventFuncName(param_rate.first)] = 1. - waitProb;
+  }
+  return e;
+}
+
+ParamAssign GaussianModelParams::params (double traceRate) const {
+  return ParamAssign (prob.combine (eventProbs (traceRate)));
 }

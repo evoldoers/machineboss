@@ -7,6 +7,10 @@ WeightExpr Prior::logGammaExpr (const WeightExpr& rateParam, double count, doubl
 				  WeightAlgebra::multiply (time, rateParam));
 }
 
+double Prior::logGammaProb (double rate, double count, double time) {
+  return logGammaPdf (rate, count, time);
+}
+
 double Prior::logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau) {
   const double alpha = n_tau / 2, beta = (n_tau - 1) / (2*tau0);
   return logGammaPdf (tau, alpha - 1, beta)

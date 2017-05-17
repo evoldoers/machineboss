@@ -28,15 +28,16 @@ struct GaussianModelCounts {
   map<OutputSymbol,size_t> gaussIndex;
   GaussianModelCounts();
   void init (const EvaluatedMachine&);
-  double add (const Machine&, const ParamFuncs&, const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);  // returns log-likelihood
+  double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);  // returns log-likelihood
   WeightExpr traceExpectedLogEmit (const GaussianModelParams&, const GaussianModelPrior&) const;
-  WeightExpr traceExpectedLogEvents (const EventMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
-  void optimizeTraceParams (TraceParams&, const EventMachine&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
+  double traceExpectedLogEvents (const GaussianModelParams&, const TraceParams&, const GaussianModelPrior&) const;
+  double eventWait (const string& rateParam, double traceRate) const;
+  double eventCount (const string& rateParam) const;
+  void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
   json asJson() const;
   void writeJson (ostream& out) const;
-  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const EventMachine&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
-  static double expectedLogLike (const EventMachine&, const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
-  static ParamDefs traceEventParamDefs (const TraceParams&);
+  static void optimizeModelParams (GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<EvaluatedMachine>&, const list<GaussianModelCounts>&);
+  static double expectedLogLike (const GaussianModelParams&, const TraceListParams&, const GaussianModelPrior&, const list<GaussianModelCounts>&);
   static ParamDefs traceEmitParamDefs (const TraceParams&);
   static inline string shiftParamName() { return string("shift"); }
   static inline string sqrtScaleParamName() { return string("sqrtScale"); }

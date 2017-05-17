@@ -5,7 +5,7 @@
 #include "../fastseq.h"
 #include "prior.h"
 
-struct BaseCallingParamNamer {
+struct BaseCallingParamNamer : EventFuncNamer {
   static string padEmitLabel();
   static string padExtendLabel();
   static string padEndLabel();
@@ -40,7 +40,7 @@ struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
   GaussianModelPrior modelPrior (const string& alph, SeqIdx kmerLen, int components) const;
 };
 
-struct BaseCallingMachine : EventMachine, BaseCallingParamNamer {
+struct BaseCallingMachine : Machine, BaseCallingParamNamer {
   int components, nKmers;
   void init (const string& alph, SeqIdx kmerLen, int components);
   // State indices are organized so that the only backward transitions (i->j where j<i) are output emissions

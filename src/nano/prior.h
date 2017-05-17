@@ -8,7 +8,8 @@
 
 struct Prior {
   static WeightExpr logGammaExpr (const WeightExpr& rateParam, double count, double time);
-
+  static double logGammaProb (double rate, double count, double time);
+  
   static double logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau);
   static WeightExpr logNormalGammaExpr (const WeightExpr& muParam, const WeightExpr& tauParam, double mu0, double n_mu, double tau0, double n_tau);
 

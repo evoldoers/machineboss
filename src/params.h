@@ -20,6 +20,8 @@ protected:
 };
 
 struct ParamAssign : Params {
+  ParamAssign() { }
+  ParamAssign (const Params& p) : Params(p) { }
   void readJson (const json& json);
 };
 
