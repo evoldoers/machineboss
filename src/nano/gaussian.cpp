@@ -16,7 +16,7 @@ GaussianParams::GaussianParams() :
 json GaussianModelParams::asJson() const {
   json jg = json::object();
   for (auto& g: gauss)
-    jg[g.first] = json ({ {"mu", g.second.mu}, {"tau", g.second.tau} });
+    jg[g.first] = json ({ {"mu", g.second.mu}, {"sigma", 1./sqrt(g.second.tau)} });
   return json::object ({ { "gauss", jg },
 	{ "prob", JsonWriter<ParamAssign>::toJson(prob) },
 	  { "rate", JsonWriter<ParamAssign>::toJson(rate) } });
@@ -33,7 +33,8 @@ void GaussianModelParams::readJson (const json& j) {
   for (json::const_iterator gaussIter = jg.begin(); gaussIter != jg.end(); ++gaussIter) {
     GaussianParams gp;
     gp.mu = gaussIter.value()["mu"].get<double>();
-    gp.tau = gaussIter.value()["tau"].get<double>();
+    const double sigma = gaussIter.value()["sigma"].get<double>();
+    gp.tau = 1. / (sigma * sigma);
     gauss[gaussIter.key()] = gp;
   }
   prob.readJson (j["prob"]);

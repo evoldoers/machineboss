@@ -17,10 +17,6 @@ string BaseCallingParamNamer::emitLabel (const string& kmerStr) {
   return string("emit(") + kmerStr + ")";
 }
 
-string BaseCallingParamNamer::condFreqLabel (const string& prefix, const char suffix) {
-  return string("P(") + suffix + "|" + prefix + ")";
-}
-
 string BaseCallingParamNamer::cptWeightLabel (const string& kmerStr, int cpt) {
   return string("P(") + cptName(cpt) + "|" + kmerStr + ")";
 }
@@ -58,7 +54,6 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
 	params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
       params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1. / (cpt + 1);
     }
-    params.prob.defs[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
     params.gauss[emitLabel (kmerStr)] = GaussianParams();
   }
   params.gauss[padEmitLabel()] = GaussianParams();
@@ -82,8 +77,7 @@ void BaseCallingParams::readJson (const json& j) {
 }
 
 BaseCallingPrior::BaseCallingPrior()
-  : condFreq(1),
-    cptWeight(1),
+  : cptWeight(1),
     padExtend(1),
     padEnd(1),
     cptExitCount(1),
@@ -107,9 +101,7 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
   exitPrior.count = cptExitCount;
   
   const Kmer nk = numberOfKmers (kmerLen, alph.size());
-  for (Kmer kmerPrefix = 0; kmerPrefix < nk; kmerPrefix += alph.size()) {
-    vguard<string> condFreqParam;
-    condFreqParam.reserve (alph.size());
+  for (Kmer kmerPrefix = 0; kmerPrefix < nk; kmerPrefix += alph.size())
     for (Kmer kmer = kmerPrefix; kmer < kmerPrefix + alph.size(); ++kmer) {
       const string kmerStr = kmerToString (kmer, kmerLen, alph);
       const string prefix = kmerStr.substr(0,kmerLen-1);
@@ -126,12 +118,8 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
       }
       if (components > 1)
 	prior.cons.norm.push_back (cptWeightParam);
-      prior.count.defs[condFreqLabel (prefix, suffix)] = condFreq;
       prior.gauss[emitLabel (kmerStr)] = emitPrior;
-      condFreqParam.push_back (condFreqLabel (prefix, suffix));
     }
-    prior.cons.norm.push_back (condFreqParam);
-  }
 
   GaussianPrior padPrior;
   padPrior.mu0 = muPad;
@@ -167,8 +155,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
 	const Kmer nk = sk * alphSize + nextTok;
 	const char c = alph[nextTok];
 	const StateIndex nki = (shortLen + 1 == len) ? kmerStart(nk) : shortKmer(nk,shortLen+1);
-	const WeightExpr w = (shortLen + 1 == len) ? WeightExpr(condFreqLabel(suffix,c)) : WeightExpr(1. / (double) alphSize);
-	skState.trans.push_back (MachineTransition (string(1,c), string(), nki, w));
+	skState.trans.push_back (MachineTransition (string(1,c), string(), nki, WeightExpr(true)));
       }
     }
   }
@@ -188,8 +175,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
       sc.trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr (cptEndLabel (kmerStr, cpt))));
     }
     for (auto c: alph)
-      end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (condFreqLabel (suffix, c))));
-    //    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightAlgebra::multiply (padEndLabel(), 1. / (double) nKmers)));
+      end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (true)));
     end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr (padEndLabel())));
   }
   state[startState()].trans.push_back (MachineTransition (string(), padEmitLabel(), 0, padExtendLabel()));

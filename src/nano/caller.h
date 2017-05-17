@@ -10,7 +10,6 @@ struct BaseCallingParamNamer : EventFuncNamer {
   static string padExtendLabel();
   static string padEndLabel();
   static string emitLabel (const string& kmerStr);
-  static string condFreqLabel (const string& prefix, const char suffix);
   static string cptWeightLabel (const string& kmerStr, int cpt);
   static string cptExtendLabel (const string& kmerStr, int cpt);
   static string cptEndLabel (const string& kmerStr, int cpt);
@@ -30,7 +29,7 @@ struct BaseCallingParams : BaseCallingParamNamer {
 };
 
 struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
-  double condFreq, cptWeight, padExtend, padEnd, cptExitCount, cptExitTime;
+  double cptWeight, padExtend, padEnd, cptExitCount, cptExitTime;
   double mu, muCount;
   double tau, tauCount;
   double muPad, tauPad;
