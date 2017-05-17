@@ -234,6 +234,23 @@ void Machine::writeDot (ostream& out, const char* emptyLabelText) const {
   out << "}" << endl;
 }
 
+Machine Machine::projectOutputToInput() const {
+  Assert (inputEmpty(), "Attempt to project output->input for transducer whose input is nonempty");
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      t.in = t.out;
+  return m;
+}
+
+bool Machine::inputEmpty() const {
+  return inputAlphabet().empty();
+}
+
+bool Machine::outputEmpty() const{
+  return outputAlphabet().empty();
+}
+
 bool Machine::isErgodicMachine() const {
   return accessibleStates().size() == nStates();
 }

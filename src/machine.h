@@ -93,11 +93,16 @@ struct Machine {
 
   Machine reverse() const;
   Machine flipInOut() const;
-  
+
+  bool inputEmpty() const;
+  bool outputEmpty() const;
+
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
   bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
   bool isAligningMachine() const;  // at most i->j transition with given input & output labels
+
+  Machine projectOutputToInput() const;  // copies all output labels to input labels. Requires inputEmpty()
 
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine() const;  // convert to waiting machine
