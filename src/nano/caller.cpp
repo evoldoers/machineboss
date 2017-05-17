@@ -54,8 +54,9 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
     const char suffix = kmerStr[kmerLen-1];
     GaussianParams emit;
     for (int cpt = 0; cpt < cpts; ++cpt) {
-      params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
-      params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1;
+      if (cpts > 1)
+	params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
+      params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1. / (cpt + 1);
     }
     params.prob.defs[condFreqLabel (prefix, suffix)] = 1. / (double) alph.size();
     params.gauss[emitLabel (kmerStr)] = GaussianParams();
@@ -104,7 +105,6 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
 
   GammaPrior exitPrior;
   exitPrior.count = cptExitCount;
-  exitPrior.time = cptExitTime;
   
   const Kmer nk = numberOfKmers (kmerLen, alph.size());
   for (Kmer kmerPrefix = 0; kmerPrefix < nk; kmerPrefix += alph.size()) {
@@ -117,12 +117,15 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
       vguard<string> cptWeightParam;
       cptWeightParam.reserve (components);
       for (int cpt = 0; cpt < components; ++cpt) {
-	prior.count.defs[cptWeightLabel (kmerStr, cpt)] = cptWeight;
+	if (components > 1)
+	  prior.count.defs[cptWeightLabel (kmerStr, cpt)] = cptWeight;
+	exitPrior.time = cptExitTime * (cpt + 1);
 	prior.gamma[cptExitRateLabel (kmerStr, cpt)] = exitPrior;
 	prior.cons.rate.push_back (cptExitRateLabel (kmerStr, cpt));
 	cptWeightParam.push_back (cptWeightLabel (kmerStr, cpt));
       }
-      prior.cons.norm.push_back (cptWeightParam);
+      if (components > 1)
+	prior.cons.norm.push_back (cptWeightParam);
       prior.count.defs[condFreqLabel (prefix, suffix)] = condFreq;
       prior.gauss[emitLabel (kmerStr)] = emitPrior;
       condFreqParam.push_back (condFreqLabel (prefix, suffix));
@@ -180,7 +183,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
     for (int cpt = 0; cpt < cpts; ++cpt) {
       MachineState& sc = state[kmerEmit(kmer,cpt)];
       sc.name = kmerStr + "_" + cptName(cpt);
-      start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptWeightLabel (kmerStr, cpt))));
+      start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), cpts == 1 ? WeightExpr(true) : WeightExpr (cptWeightLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptExtendLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr (cptEndLabel (kmerStr, cpt))));
     }

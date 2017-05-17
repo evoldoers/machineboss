@@ -88,7 +88,7 @@ void GaussianModelCounts::optimizeModelParams (GaussianModelParams& modelParams,
     for (size_t m = 0; m < modelCountsList.size(); ++m) {
       const GaussianModelCounts& modelCounts = *(countsIter++);
       const TraceParams& trace = traceListParams.params[m];
-      time += modelCounts.eventWait (rateParam, trace.rate);
+      time += modelCounts.eventWait (rateParam, modelParams, trace) * trace.rate;
       count += modelCounts.eventCount (rateParam);
     }
     modelParams.rate.defs[rateParam] = (count + gamma.count) / (time + gamma.time);
@@ -100,10 +100,18 @@ double GaussianModelCounts::eventCount (const string& rateParam) const {
   return prob.count(exitEvent) ? prob.at(exitEvent) : 0.;
 }
 
-double GaussianModelCounts::eventWait (const string& rateParam, double traceRate) const {
+double GaussianModelCounts::eventWait (const string& rateParam, const GaussianModelParams& modelParams, const TraceParams& traceParams) const {
   const string exitEvent = GaussianModelParams::exitEventFuncName (rateParam);
   const string waitEvent = GaussianModelParams::waitEventFuncName (rateParam);
-  return traceRate * ((prob.count(exitEvent) ? prob.at(exitEvent) : 0.) + (prob.count(waitEvent) ? prob.at(waitEvent) : 0.));
+  double t = 0;
+  if (prob.count(waitEvent))
+    t += prob.at(waitEvent);
+  if (prob.count(exitEvent)) {
+    const double r = modelParams.rate.defs.at(rateParam).get<double>() * traceParams.rate;
+    const double e = exp(-r);
+    t += prob.at(exitEvent) * (1-(r+1)*e) / (r*(1-e));  // expected amount of time before exit event occurred
+  }
+  return t;
 }
 
 WeightExpr GaussianModelCounts::traceExpectedLogEmit (const GaussianModelParams& modelParams, const GaussianModelPrior& modelPrior) const {
@@ -177,7 +185,7 @@ void GaussianModelCounts::optimizeTraceParams (TraceParams& traceParams, const E
   for (const auto& param_rate: modelParams.rate.defs) {
     const string& rateParam = param_rate.first;
     count += eventCount (rateParam);
-    time += eventWait (rateParam, traceParams.rate);
+    time += eventWait (rateParam, modelParams, traceParams) * param_rate.second.get<double>();
   }
   traceParams.rate = (count + modelPrior.rateCount) / (time + modelPrior.rateTime);
 }

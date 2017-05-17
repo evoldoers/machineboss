@@ -31,7 +31,7 @@ struct GaussianModelCounts {
   double add (const Machine&, const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);  // returns log-likelihood
   WeightExpr traceExpectedLogEmit (const GaussianModelParams&, const GaussianModelPrior&) const;
   double traceExpectedLogEvents (const GaussianModelParams&, const TraceParams&, const GaussianModelPrior&) const;
-  double eventWait (const string& rateParam, double traceRate) const;
+  double eventWait (const string& rateParam, const GaussianModelParams&, const TraceParams&) const;
   double eventCount (const string& rateParam) const;
   void optimizeTraceParams (TraceParams&, const EvaluatedMachine&, const GaussianModelParams&, const GaussianModelPrior&) const;
   json asJson() const;
