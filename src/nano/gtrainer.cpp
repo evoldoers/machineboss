@@ -31,7 +31,7 @@ void GaussianTrainer::reset() {
 bool GaussianTrainer::testFinished() {
   LogThisAt(2,"Baum-Welch, iteration #" << (iter+1) << ": log-likelihood " << logLike << endl);
   LogThisAt(3,"Log-prior, iteration #" << (iter+1) << ": " << logPrior << endl);
-  LogThisAt(4,"Expected log-likelihood (emissions) before M-step: " << expectedLogLike() << endl);
+  LogThisAt(4,"Expected log-likelihood before M-step: " << expectedLogLike() << endl);
   if (iter > 0) {
     if (iter == MaxEMIterations) {
       LogThisAt(2,"Reached " << MaxEMIterations << " iterations; stopping" << endl);
@@ -88,10 +88,10 @@ void GaussianModelFitter::fit() {
     auto evalIter = evalMachine.begin();
     for (auto& traceParams: traceListParams.params)
       (*(countIter++)).optimizeTraceParams (traceParams, *(evalIter++), modelParams, prior);
-    LogThisAt(4,"Expected log-likelihood (emissions) after optimizing trace parameters: " << expectedLogLike() << endl);
+    LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
 
     GaussianModelCounts::optimizeModelParams (modelParams, traceListParams, prior, evalMachine, counts);
-    LogThisAt(4,"Expected log-likelihood (emissions) after optimizing model parameters: " << expectedLogLike() << endl);
+    LogThisAt(4,"Expected log-likelihood after optimizing model parameters: " << expectedLogLike() << endl);
   }
 }
 
