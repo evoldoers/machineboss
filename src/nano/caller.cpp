@@ -145,11 +145,31 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
 }
 
 void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
+  alphSize = alph.size();
   components = cpts;
-  nKmers = numberOfKmers (len, alph.size());
-  state = vguard<MachineState> (nKmers * (components + 2) + 2);
+  nKmers = numberOfKmers (len, alphSize);
+  kmerOffset = nShorterKmers (len);
+  state = vguard<MachineState> (nKmers * (components + 2) + kmerOffset + 1);
   state[startState()].name = "start";
   state[endState()].name = "end";
+
+  for (int shortLen = 0; shortLen < len; ++shortLen) {
+    const Kmer nShort = numberOfKmers (shortLen, alphSize);
+    for (Kmer sk = 0; sk < nShort; ++sk) {
+      MachineState& skState (state[shortKmer(sk,shortLen)]);
+      const string suffix = kmerToString (sk, shortLen, alph);
+      if (shortLen > 0)
+	skState.name = suffix;
+      for (AlphTok nextTok = 0; nextTok < alphSize; ++nextTok) {
+	const Kmer nk = sk * alphSize + nextTok;
+	const char c = alph[nextTok];
+	const StateIndex nki = (shortLen + 1 == len) ? kmerStart(nk) : shortKmer(nk,shortLen+1);
+	const WeightExpr w = (shortLen + 1 == len) ? WeightExpr(condFreqLabel(suffix,c)) : WeightExpr(1. / (double) alphSize);
+	skState.trans.push_back (MachineTransition (string(1,c), string(), nki, w));
+      }
+    }
+  }
+
   for (Kmer kmer = 0; kmer < nKmers; ++kmer) {
     const string kmerStr = kmerToString (kmer, len, alph);
     const string suffix = kmerStr.substr(1);
@@ -166,7 +186,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
     }
     for (auto c: alph)
       end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (condFreqLabel (suffix, c))));
-    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightAlgebra::multiply (padEndLabel(), 1. / (double) nKmers)));
+    //    state[startState()].trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightAlgebra::multiply (padEndLabel(), 1. / (double) nKmers)));
     end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr (padEndLabel())));
   }
   state[startState()].trans.push_back (MachineTransition (string(), padEmitLabel(), 0, padExtendLabel()));
