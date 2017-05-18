@@ -50,6 +50,7 @@ int main (int argc, char** argv) {
     po::options_description appOpts("Data options");
     appOpts.add_options()
       ("fast5,D", po::value<vector<string> >(), "load trace data from FAST5 file(s)")
+      ("normalize,N", "normalize trace data")
       ("raw,R", po::value<vector<string> >(), "load trace from text file(s) e.g. from 'f5dump --rw' in fast5")
       ("model,M", po::value<string>(), "load model parameters from file")
       ("fasta,T", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
@@ -101,8 +102,11 @@ int main (int argc, char** argv) {
       for (const auto& textFilename: vm.at("raw").as<vector<string> >())
 	traceList.readText (textFilename);
 
-    for (auto& trace: traceList.trace)
-      trace.normalize();
+    if (vm.count("normalize")) {
+      LogThisAt(2,"Normalizing trace data" << endl);
+      for (auto& trace: traceList.trace)
+	trace.normalize();
+    }
     
     // segment
     const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsamples").as<size_t>());
