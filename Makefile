@@ -6,39 +6,43 @@ MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
 # try to figure out where GSL is
 # autoconf would be better but we just need a quick hack for now :)
 # Thanks to Torsten Seemann for gsl-config and pkg-config formulae
-GSLPREFIX = $(shell gsl-config --prefix)
-ifeq (,$(wildcard $(GSLPREFIX)/include/gsl/gsl_sf.h))
-GSLPREFIX = /usr
-ifeq (,$(wildcard $(GSLPREFIX)/include/gsl/gsl_sf.h))
-GSLPREFIX = /usr/local
+GSL_PREFIX = $(shell gsl-config --prefix)
+ifeq (,$(wildcard $(GSL_PREFIX)/include/gsl/gsl_sf.h))
+GSL_PREFIX = /usr
+ifeq (,$(wildcard $(GSL_PREFIX)/include/gsl/gsl_sf.h))
+GSL_PREFIX = /usr/local
 endif
 endif
 
-GSLFLAGS = $(shell pkg-config --cflags gsl)
-ifeq (, $(GSLFLAGS))
-GSLFLAGS = -I$(GSLPREFIX)/include
+GSL_FLAGS = $(shell pkg-config --cflags gsl)
+ifeq (, $(GSL_FLAGS))
+GSL_FLAGS = -I$(GSL_PREFIX)/include
 endif
 
-GSLLIBS = $(shell pkg-config --libs gsl)
-ifeq (, $(GSLLIBS))
-GSLLIBS = -L$(GSLPREFIX)/lib -lgsl -lgslcblas -lm
+GSL_LIBS = $(shell pkg-config --libs gsl)
+ifeq (, $(GSL_LIBS))
+GSL_LIBS = -L$(GSL_PREFIX)/lib -lgsl -lgslcblas -lm
 endif
 
 # NB pkg-config support for Boost is lacking; see https://svn.boost.org/trac/boost/ticket/1094
-BOOSTPREFIX = /usr
-ifeq (,$(wildcard $(BOOSTPREFIX)/include/boost/regex.h))
-BOOSTPREFIX = /usr/local
-ifeq (,$(wildcard $(BOOSTPREFIX)/include/boost/regex.h))
-BOOSTPREFIX =
+BOOST_PREFIX = /usr
+ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
+BOOST_PREFIX = /usr/local
+ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
+BOOST_PREFIX =
 endif
 endif
 
-BOOSTFLAGS =
-BOOSTLIBS =
-ifneq (,$(BOOSTPREFIX))
-BOOSTFLAGS := -I$(BOOSTPREFIX)/include
-BOOSTLIBS := -L$(BOOSTPREFIX)/lib -lboost_regex -lboost_program_options
+BOOST_FLAGS =
+BOOST_LIBS =
+ifneq (,$(BOOST_PREFIX))
+BOOST_FLAGS := -I$(BOOST_PREFIX)/include
+BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_program_options
 endif
+
+# HTSlib
+HTS_FLAGS = $(shell pkg-config --cflags htslib)
+HTS_LIBS = $(shell pkg-config --libs htslib)
 
 # HDF5
 HDF5_DIR ?= /usr/local
@@ -57,18 +61,18 @@ PREFIX = /usr/local
 
 # other flags
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
-CPPFLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSLFLAGS) $(BOOSTFLAGS)
+CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSL_FLAGS) $(BOOST_FLAGS)
 else
-CPPFLAGS = -std=c++11 -g -O3 $(GSLFLAGS) $(BOOSTFLAGS)
+CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS)
 endif
-CPPFLAGS += -Iext -Iext/nlohmann_json
-LIBFLAGS = -lstdc++ -lz $(GSLLIBS) $(BOOSTLIBS)
+CPP_FLAGS += -Iext -Iext/nlohmann_json
+LD_FLAGS = -lstdc++ -lz $(GSL_LIBS) $(BOOST_LIBS)
 
-CPPFILES = $(wildcard src/*.cpp)
-OBJFILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPPFILES)))
+CPP_FILES = $(wildcard src/*.cpp)
+OBJ_FILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES)))
 
-CPPFILES_NANO = $(wildcard src/nano/*.cpp)
-OBJFILES_NANO = $(subst src/,obj/,$(subst .cpp,.o,$(CPPFILES_NANO)))
+CPP_FILES_NANO = $(wildcard src/nano/*.cpp)
+OBJ_FILES_NANO = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES_NANO)))
 
 # try clang++, fall back to g++
 CPP = clang++
@@ -92,32 +96,32 @@ all: $(BOSS) $(NANO)
 # Nanomachine build rules
 obj/nano/%.o: src/nano/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(CPPFLAGS) $(HDF5_FLAGS) -c -o $@ $<
+	$(CPP) $(CPP_FLAGS) $(HDF5_FLAGS) $(HTS_FLAGS) -c -o $@ $<
 
-bin/$(NANO): $(OBJFILES) $(OBJFILES_NANO) obj/$(NANO).o target/$(NANO).cpp
+bin/$(NANO): $(OBJ_FILES) $(OBJ_FILES_NANO) obj/$(NANO).o target/$(NANO).cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LIBFLAGS) $(HDF5_LIBS) -o $@ obj/$(NANO).o $(OBJFILES) $(OBJFILES_NANO)
+	$(CPP) $(LD_FLAGS) $(HDF5_LIBS) $(HTS_LIBS) -o $@ obj/$(NANO).o $(OBJ_FILES) $(OBJ_FILES_NANO)
 
 # Main build rules
-bin/%: $(OBJFILES) obj/%.o target/%.cpp
+bin/%: $(OBJ_FILES) obj/%.o target/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
+	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
 
 obj/%.o: src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(CPPFLAGS) -c -o $@ $<
+	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 obj/%.o: target/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(CPPFLAGS) -c -o $@ $<
+	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
-t/bin/%: $(OBJFILES) obj/%.o t/src/%.cpp
+t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	@$(CPP) $(LIBFLAGS) -o $@ obj/$*.o $(OBJFILES)
+	@$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
 
 obj/%.o: t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	@$(CPP) $(CPPFLAGS) -c -o $@ $<
+	@$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 $(BOSS): bin/$(BOSS)
 

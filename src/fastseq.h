@@ -7,7 +7,7 @@
 #include <set>
 #include <zlib.h>
 #include "vguard.h"
-#include "kseq.h"
+#include "../ext/htslib/kseq.h"
 
 using namespace std;
 
