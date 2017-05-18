@@ -45,9 +45,12 @@ fasta.obj(fastaPath).on ('data', function (data) {
   emitPad()
   for (var pos = 0; pos <= data.seq.length - model.kmerlen; ++pos) {
     var kmer = data.seq.substr(pos,model.kmerlen).toLowerCase()
-    var stayProb = Math.exp (-rate * model.params.rate["R(move|"+kmer+",cpt1)"])
+    var rateParam = "R(move|" + kmer + ",cpt1)"
+    var emitParam = "emit(" + kmer + ")"
+    var moveRate = model.params.rate[rateParam]
+    var stayProb = Math.exp (-rate * moveRate)
     do {
-      emit ("emit("+kmer+")")
+      emit (emitParam)
     } while (generator.random() < stayProb)
   }
   emitPad()
