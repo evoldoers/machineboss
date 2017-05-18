@@ -9,6 +9,18 @@
 #include "../regexmacros.h"
 #include "trace.h"
 
+void Trace::normalize() {
+  const double m0 = sample.size();
+  double m1 = 0, m2 = 0;
+  for (auto x: sample) {
+    m1 += x;
+    m2 += x*x;
+  }
+  const double mean = m1 / m0, sd = sqrt(m2/m0 - mean*mean);
+  for (auto& x: sample)
+    x = (x - mean) / sd;
+}
+
 void Trace::writeJson (ostream& out) const {
   out << "[" << to_string_join(sample,",") << "]";
 }

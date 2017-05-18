@@ -101,9 +101,9 @@ vguard<FastSeq> GaussianDecoder::decode() {
   for (const auto& trace: traceList.trace) {
     LogThisAt(3,"Fitting scaling parameters for trace " << trace.name << endl);
     TraceParams& traceParams = traceListParams.params[m];
-    const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
     for (iter = 0; true; ++iter) {
       reset();
+      const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
       GaussianModelCounts c;
       c.init (eval);
       logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
@@ -113,6 +113,7 @@ vguard<FastSeq> GaussianDecoder::decode() {
       c.optimizeTraceParams (traceParams, eval, modelParams, prior);
       LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
     }
+    const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
     ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams);
     FastSeq fs;
     fs.name = trace.name;

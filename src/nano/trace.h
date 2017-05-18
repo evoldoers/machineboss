@@ -14,6 +14,8 @@ struct Trace {
   string name;
   vguard<double> sample;
   
+  void normalize();
+  
   void writeJson (ostream& out) const;
   void readJson (const json&);
 

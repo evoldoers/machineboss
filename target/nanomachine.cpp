@@ -101,6 +101,9 @@ int main (int argc, char** argv) {
       for (const auto& textFilename: vm.at("raw").as<vector<string> >())
 	traceList.readText (textFilename);
 
+    for (auto& trace: traceList.trace)
+      trace.normalize();
+    
     // segment
     const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsamples").as<size_t>());
     
