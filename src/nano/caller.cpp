@@ -82,9 +82,14 @@ BaseCallingPrior::BaseCallingPrior()
     padEnd(1),
     cptExitCount(1),
     cptExitTime(1),
-    mu(0), muCount(1),
-    tau(1), tauCount(2),
-    muPad(1), tauPad(1)
+    mu (BaseCallerMuMean),
+    muCount (CALC_N_MU (BaseCallerMuError, CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
+    tau (CALC_TAU_MODE (CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
+    tauCount (CALC_N_TAU (CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
+    muPad (BaseCallerPadMuMean),
+    muPadCount (CALC_N_MU (BaseCallerPadMuError, CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError))),
+    tauPad (CALC_TAU_MODE (CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError))),
+    tauPadCount (CALC_N_TAU (CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError)))
 { }
 
 GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmerLen, int components) const {

@@ -1,0 +1,17 @@
+kmer	level_mean	level_stdv	sd_mean	sd_stdv	weight
+AA	10	.	1	.	.
+AC	20	.	1	.	.
+AG	30	.	1	.	.
+AT	40	.	1	.	.
+CA	50	.	1	.	.
+CC	60	.	1	.	.
+CG	70	.	1	.	.
+CT	80	.	1	.	.
+GA	90	.	1	.	.
+GC	100	.	1	.	.
+GG	110	.	1	.	.
+GT	120	.	1	.	.
+TA	130	.	1	.	.
+TC	140	.	1	.	.
+TG	150	.	1	.	.
+TT	160	.	1	.	.

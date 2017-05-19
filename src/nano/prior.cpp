@@ -13,6 +13,7 @@ double Prior::logGammaProb (double rate, double count, double time) {
 
 double Prior::logNormalGammaProb (double mu, double tau, double mu0, double n_mu, double tau0, double n_tau) {
   const double alpha = n_tau / 2, beta = (n_tau - 1) / (2*tau0);
+  //  cerr << "mu=" << mu << " tau=" << tau << " mu0=" << mu0 << " n_mu=" << n_mu << " tau0=" << tau0 << " n_tau=" << n_tau << " alpha=" << alpha << " beta=" << beta << " logGammaPdf=" << logGammaPdf (tau, alpha - 1, beta) << " logGaussianPdf=" << logGaussianPdf (mu, mu0, 1 / sqrt(n_mu*tau)) << endl;
   return logGammaPdf (tau, alpha - 1, beta)
     + logGaussianPdf (mu, mu0, 1 / sqrt(n_mu*tau));
 }
@@ -42,9 +43,12 @@ WeightExpr Prior::logNormalInvSquareGammaExpr (const WeightExpr& muParam, const 
 }
 
 TraceParamsPrior::TraceParamsPrior()
-  : scale(1), scaleCount(2),
-    shift(0), shiftCount(1),
-    rateCount(1), rateTime(1)
+  : scale(1),
+    scaleCount(2),
+    shift(0),
+    shiftCount(0.1),
+    rateCount(1),
+    rateTime(1)
 { }
 
 WeightExpr TraceParamsPrior::logTraceExpr (const WeightExpr& shiftParam, const WeightExpr& scaleParam) const {
@@ -69,7 +73,9 @@ double GaussianModelPrior::logProb (const GaussianModelParams& modelParams) cons
   for (const auto& g: gauss) {
     const auto& m = modelParams.gauss.at(g.first);
     const auto& p = g.second;
-    lp += logNormalGammaProb (m.mu, m.tau, p.mu0, p.n_mu, p.tau0, p.n_tau);
+    const double ng_ll = logNormalGammaProb (m.mu, m.tau, p.mu0, p.n_mu, p.tau0, p.n_tau);
+    lp += ng_ll;
+    //    cerr << g.first << " " << ng_ll << endl;
   }
   for (const auto& n: cons.norm) {
     vguard<double> c, m;
@@ -79,9 +85,14 @@ double GaussianModelPrior::logProb (const GaussianModelParams& modelParams) cons
       c.push_back (count.defs.at(p));
       m.push_back (modelParams.prob.defs.at(p));
     }
-    lp += logDirichletPdf (m, c);
+    const double d_ll = logDirichletPdf (m, c);
+    lp += d_ll;
+    //    cerr << join(n) << " " << d_ll << endl;
   }
-  for (const auto& r_g: gamma)
-    lp += logGammaPdf (modelParams.rate.defs.at(r_g.first), r_g.second.count, r_g.second.time);
+  for (const auto& r_g: gamma) {
+    const double g_ll = logGammaPdf (modelParams.rate.defs.at(r_g.first), r_g.second.count, r_g.second.time);
+    lp += g_ll;
+    //    cerr << r_g.first << " " << g_ll << endl;
+  }
   return lp;
 }

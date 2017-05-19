@@ -5,6 +5,20 @@
 #include "../fastseq.h"
 #include "prior.h"
 
+// Required (see prior.h):
+//  mu_mean > sigma_sd^{-2}
+//  sigma_mean < sigma_sd
+
+#define BaseCallerMuMean     100
+#define BaseCallerMuError    20
+#define BaseCallerSigmaMean  1
+#define BaseCallerSigmaError 2
+
+#define BaseCallerPadMuMean     200
+#define BaseCallerPadMuError    100
+#define BaseCallerPadSigmaMean  50
+#define BaseCallerPadSigmaError 60
+
 struct BaseCallingParamNamer : EventFuncNamer {
   static string padEmitLabel();
   static string padExtendLabel();
@@ -30,9 +44,8 @@ struct BaseCallingParams : BaseCallingParamNamer {
 
 struct BaseCallingPrior : BaseCallingParamNamer, TraceParamsPrior {
   double cptWeight, padExtend, padEnd, cptExitCount, cptExitTime;
-  double mu, muCount;
-  double tau, tauCount;
-  double muPad, tauPad;
+  double mu, muCount, tau, tauCount;
+  double muPad, muPadCount, tauPad, tauPadCount;
   
   BaseCallingPrior();
   

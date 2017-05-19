@@ -29,7 +29,7 @@ function inputError(err) {
 var fastaPath = opt.options['fasta'] || inputError("You must specify a FASTA sequence file")
 var modelPath = opt.options['model'] || inputError("You must specify a JSON model file")
 
-var seed = opt.options['rnd-seed'] || defaultSeed
+var seed = parseInt(opt.options['rnd-seed']) || defaultSeed
 var generator = new MersenneTwister (seed)
 Math.random = generator.random.bind(generator)
 
