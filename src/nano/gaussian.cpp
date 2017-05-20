@@ -31,7 +31,6 @@ void GaussianModelParams::readJson (const json& j) {
   prob.clear();
   const json& jg = j["gauss"];
   for (json::const_iterator gaussIter = jg.begin(); gaussIter != jg.end(); ++gaussIter) {
-    cerr << gaussIter.value() << endl;
     GaussianParams gp;
     gp.mu = gaussIter.value()["mu"].get<double>();
     const double sigma = gaussIter.value()["sigma"].get<double>();
