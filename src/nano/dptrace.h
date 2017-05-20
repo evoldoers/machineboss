@@ -98,10 +98,13 @@ public:
   }
 
   inline double logIncomingProb (const InputToken inTok, const OutputToken outTok, const OutputIndex outPos, const StateIndex src, const StateIndex dest, const EvaluatedMachineState::Trans& trans) const {
-    const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,dest);
-    return cell(outPos-(outTok?1:0),src)
-      + logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity())
-      + (outTok ? logEmitProb(outPos,outTok) : 0);
+    if (outTok) {
+      const EvaluatedMachineState::Trans* loopTrans = getLoopTrans(inTok,outTok,dest);
+      return cell(outPos-1,src)
+	+ logTransProb(outPos,trans.logWeight,loopTrans ? loopTrans->logWeight : -numeric_limits<double>::infinity())
+	+ logEmitProb(outPos,outTok);
+    } else
+      return cell(outPos,src) + trans.logWeight;
   }
 
   void writeJson (ostream&);

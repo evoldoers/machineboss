@@ -63,7 +63,7 @@ MachinePath ViterbiTraceMatrix::path (const Machine& m) const {
     if (!bestMachineTrans.outputEmpty()) {
       if (bestLoopTrans) {
 	const MachineTransition& bestLoopMachineTrans = m.state[s].getTransition (bestLoopTrans->transIndex);
-	const auto& mom = moments.sample[outPos];
+	const auto& mom = moments.sample[outPos-1];
 	for (int n = 1; n < mom.m0; ++n)
 	  path.trans.push_front (bestLoopMachineTrans);
       }
