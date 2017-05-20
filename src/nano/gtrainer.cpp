@@ -115,9 +115,11 @@ vguard<FastSeq> GaussianDecoder::decode() {
     }
     const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
     ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams);
+    const MachinePath path = viterbi.path(machine);
+    LogThisAt(6,"Viterbi path:" << endl << trace.pathScoreBreakdown (machine, path, modelParams, traceParams) << endl);
     FastSeq fs;
     fs.name = trace.name;
-    for (const auto& trans: viterbi.path(machine).trans)
+    for (const auto& trans: path.trans)
       if (!trans.inputEmpty())
 	fs.seq.append (trans.in);
     result.push_back (fs);

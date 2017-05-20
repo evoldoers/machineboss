@@ -114,6 +114,12 @@ StateIndex Machine::endState() const {
   return nStates() - 1;
 }
 
+string Machine::stateNameJson (StateIndex s) const {
+  if (state[s].name.is_null())
+    return to_string(s);
+  return state[s].name.dump();
+}
+
 vguard<InputSymbol> Machine::inputAlphabet() const {
   set<InputSymbol> alph;
   for (const auto& ms: state)

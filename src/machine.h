@@ -68,6 +68,8 @@ struct Machine {
   StateIndex startState() const;
   StateIndex endState() const;
 
+  string stateNameJson (StateIndex) const;
+  
   vguard<InputSymbol> inputAlphabet() const;  // alphabetically sorted
   vguard<OutputSymbol> outputAlphabet() const;  // alphabetically sorted
 

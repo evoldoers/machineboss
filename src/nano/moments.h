@@ -17,6 +17,8 @@ struct TraceMoments {
   vguard<SampleMoments> sample;
   TraceMoments();
   TraceMoments (const Trace& trace);
+
+  string pathScoreBreakdown (const Machine&, const MachinePath&, const GaussianModelParams&, const TraceParams&) const;
 };
 
 struct TraceMomentsList {

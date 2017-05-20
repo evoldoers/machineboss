@@ -34,6 +34,44 @@ TraceMoments::TraceMoments (const Trace& trace) :
   }
 }
 
+string TraceMoments::pathScoreBreakdown (const Machine& machine, const MachinePath& path, const GaussianModelParams& modelParams, const TraceParams& traceParams) const {
+  ostringstream out;
+  out << "Source\tDest\tIn\tOut\tTrans\tEmit\n";
+  const OutputTokenizer outputTokenizer (machine.outputAlphabet());
+  const GaussianModelCoefficients modelCoeffs (modelParams, traceParams, outputTokenizer);
+  const auto params = modelParams.params (traceParams.rate);
+  StateIndex s = machine.startState();
+  long pos = 0, ignore = 0;
+  double lp = 0;
+  for (const auto& trans: path.trans) {
+    const double trans_ll = log (WeightAlgebra::eval (trans.weight, params.defs));
+    double emit_ll = 0;
+    out << machine.stateNameJson(s)
+	<< "\t" << machine.stateNameJson(trans.dest)
+	<< "\t\"" << trans.in << "\""
+	<< "\t\"" << trans.out << "\""
+	<< "\t" << trans_ll
+	<< "\t";
+    if (!trans.outputEmpty()) {
+      if (ignore > 0) {
+	--ignore;
+	out << "(segment)";
+      } else {
+	const SampleMoments& x = sample[pos++];
+	const GaussianCoefficients& gc = modelCoeffs.gauss[outputTokenizer.sym2tok.at (trans.out) - 1];
+	ignore = x.m0 - 1;
+	emit_ll = gc.logEmitProb(x);
+	out << emit_ll;
+      }
+      lp += trans_ll + emit_ll;
+    }
+    s = trans.dest;
+    out << endl;
+  }
+  out << "Total log-likelihood " << lp << endl;
+  return out.str();
+}
+
 TraceMomentsList::TraceMomentsList()
 { }
 
@@ -64,4 +102,3 @@ GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams&
     e.m2coeff = -p.tau/(2*scale*scale);
   }
 }
-    
