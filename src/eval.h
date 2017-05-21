@@ -59,6 +59,7 @@ struct EvaluatedMachine {
   StateIndex nStates() const;
   StateIndex startState() const;
   StateIndex endState() const;
+  string stateNameJson (StateIndex) const;
 };
 
 #endif /* EVAL_INCLUDED */

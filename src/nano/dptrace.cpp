@@ -116,7 +116,7 @@ void TraceDPMatrix::writeJson (ostream& out) {
   for (OutputIndex o = 0; o <= outLen; ++o)
     for (StateIndex s = 0; s < nStates; ++s)
       out << ((o || s) ? "," : "") << endl
-	  << "  { \"outPos\": " << o << ", \"state\": " << s << ", \"logLike\": " << setprecision(5) << cell(o,s) << " }";
+	  << "  { \"outPos\": " << o << ", \"state\": " << eval.stateNameJson(s) << ", \"logLike\": " << setprecision(5) << cell(o,s) << " }";
   out << endl
       << " ]" << endl
       << "}" << endl;

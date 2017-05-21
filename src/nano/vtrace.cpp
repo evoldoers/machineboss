@@ -26,6 +26,7 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
   }
 
   LogThisAt(6,"Viterbi log-likelihood: " << logLike() << endl);
+  LogThisAt(10,"Viterbi matrix:" << endl << *this);
 }
 
 double ViterbiTraceMatrix::logLike() const {

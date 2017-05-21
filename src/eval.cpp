@@ -103,3 +103,9 @@ string EvaluatedMachine::toJsonString() const {
   writeJson (outs);
   return outs.str();
 }
+
+string EvaluatedMachine::stateNameJson (StateIndex s) const {
+  if (state[s].name.is_null())
+    return to_string(s);
+  return state[s].name.dump();
+}

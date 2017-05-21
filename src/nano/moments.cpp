@@ -36,39 +36,44 @@ TraceMoments::TraceMoments (const Trace& trace) :
 
 string TraceMoments::pathScoreBreakdown (const Machine& machine, const MachinePath& path, const GaussianModelParams& modelParams, const TraceParams& traceParams) const {
   ostringstream out;
-  out << "Source\tDest\tIn\tOut\tTrans\tEmit\n";
+  //  out << "Source\tDest\tIn\tOut\tTrans\tEmit\n";
+  out << "{ \"trans\":\n  [";
   const OutputTokenizer outputTokenizer (machine.outputAlphabet());
   const GaussianModelCoefficients modelCoeffs (modelParams, traceParams, outputTokenizer);
   const auto params = modelParams.params (traceParams.rate);
   StateIndex s = machine.startState();
-  long pos = 0, ignore = 0;
+  long pos = 0, ignore = 0, transCount = 0;
   double lp = 0;
   for (const auto& trans: path.trans) {
     const double trans_ll = log (WeightAlgebra::eval (trans.weight, params.defs));
     double emit_ll = 0;
-    out << machine.stateNameJson(s)
-	<< "\t" << machine.stateNameJson(trans.dest)
-	<< "\t\"" << trans.in << "\""
-	<< "\t\"" << trans.out << "\""
-	<< "\t" << trans_ll
-	<< "\t";
+    out << ((transCount++) ? ",\n   " : "")
+	<< "{ \"src\": " << machine.stateNameJson(s)
+	<< ", \"dest\": " << machine.stateNameJson(trans.dest);
+    if (!trans.inputEmpty())
+      out << ", \"in\": \"" << trans.in << "\"";
+    if (!trans.outputEmpty())
+      out << ", \"out\": \"" << trans.out << "\"";
+    out << ", \"transLogLike\": " << trans_ll;
     if (!trans.outputEmpty()) {
       if (ignore > 0) {
 	--ignore;
-	out << "(segment)";
+	out << ", \"segment\": true";
       } else {
 	const SampleMoments& x = sample[pos++];
 	const GaussianCoefficients& gc = modelCoeffs.gauss[outputTokenizer.sym2tok.at (trans.out) - 1];
 	ignore = x.m0 - 1;
 	emit_ll = gc.logEmitProb(x);
-	out << emit_ll;
+	out << ", \"emitLogLike\": " << emit_ll;
       }
       lp += trans_ll + emit_ll;
     }
+    out << " }";
     s = trans.dest;
-    out << endl;
   }
-  out << "Total log-likelihood " << lp << endl;
+  out << "]," << endl
+      << " \"logLike\": " << lp
+      << " }" << endl;
   return out.str();
 }
 
