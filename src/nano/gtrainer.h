@@ -19,6 +19,7 @@ struct GaussianTrainer {
 
   size_t blockBytes;
   double bandWidth;
+  bool fitTrace;
   
   GaussianTrainer();
   void init (const Machine&, const GaussianModelParams&, const GaussianModelPrior&, const TraceMomentsList&);

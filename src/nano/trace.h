@@ -32,6 +32,7 @@ struct TraceList {
 };
 
 struct TraceParams {
+  string name;
   double scale, shift, rate;
 
   TraceParams();  // defaults: scale = 1, shift = 0, rate = 1
@@ -45,6 +46,9 @@ struct TraceListParams {
 
   template<class T> void init (const T& traceList) {
     params = vguard<TraceParams> (traceList.size());
+    size_t n = 0;
+    for (const auto& trace: traceList)
+      params[n++].name = trace.name;
   }
 
   inline size_t size() const { return params.size(); }

@@ -9,7 +9,8 @@
 
 GaussianTrainer::GaussianTrainer() :
   blockBytes(0),
-  bandWidth(1)
+  bandWidth(1),
+  fitTrace(true)
 { }
 
 void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, const GaussianModelPrior& pr, const TraceMomentsList& tl) {
@@ -17,7 +18,7 @@ void GaussianTrainer::init (const Machine& m, const GaussianModelParams& mp, con
   prior = pr;
   modelParams = mp;
   traceList = tl;
-  traceListParams.init (traceList);
+  traceListParams.init (traceList.trace);
 }
 
 void GaussianTrainer::reset() {
@@ -73,6 +74,7 @@ void GaussianModelFitter::fit() {
       const TraceParams& traceParams = traceListParams.params[m];
       const Machine& machine = *(machineIter++);
       const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
+      Assert (trace.name == traceParams.name, "Trace name (%s) does not match trace parameters (%s)", trace.name.c_str(), traceParams.name.c_str());
       GaussianModelCounts c;
       c.init (eval);
       logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
@@ -84,11 +86,13 @@ void GaussianModelFitter::fit() {
     if (testFinished())
       break;
 
-    auto countIter = counts.begin();
-    auto evalIter = evalMachine.begin();
-    for (auto& traceParams: traceListParams.params)
-      (*(countIter++)).optimizeTraceParams (traceParams, *(evalIter++), modelParams, prior);
-    LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
+    if (fitTrace) {
+      auto countIter = counts.begin();
+      auto evalIter = evalMachine.begin();
+      for (auto& traceParams: traceListParams.params)
+	(*(countIter++)).optimizeTraceParams (traceParams, *(evalIter++), modelParams, prior);
+      LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
+    }
 
     GaussianModelCounts::optimizeModelParams (modelParams, traceListParams, prior, evalMachine, counts);
     LogThisAt(4,"Expected log-likelihood after optimizing model parameters: " << expectedLogLike() << endl);
@@ -99,20 +103,24 @@ vguard<FastSeq> GaussianDecoder::decode() {
   vguard<FastSeq> result;
   size_t m = 0;
   for (const auto& trace: traceList.trace) {
-    LogThisAt(3,"Fitting scaling parameters for trace " << trace.name << endl);
     TraceParams& traceParams = traceListParams.params[m];
-    for (iter = 0; true; ++iter) {
-      reset();
-      const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
-      GaussianModelCounts c;
-      c.init (eval);
-      logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
-      counts.push_back (c);
-      if (testFinished())
-	break;
-      c.optimizeTraceParams (traceParams, eval, modelParams, prior);
-      LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
+    Assert (trace.name == traceParams.name, "Trace name (%s) does not match trace parameters (%s)", trace.name.c_str(), traceParams.name.c_str());
+    if (fitTrace) {
+      LogThisAt(3,"Fitting scaling parameters for trace " << trace.name << endl);
+      for (iter = 0; true; ++iter) {
+	reset();
+	const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
+	GaussianModelCounts c;
+	c.init (eval);
+	logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
+	counts.push_back (c);
+	if (testFinished())
+	  break;
+	c.optimizeTraceParams (traceParams, eval, modelParams, prior);
+	LogThisAt(4,"Expected log-likelihood after optimizing trace parameters: " << expectedLogLike() << endl);
+      }
     }
+    LogThisAt(3,"Base-calling trace " << trace.name << endl);
     const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
     ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams);
     const MachinePath path = viterbi.path(machine);

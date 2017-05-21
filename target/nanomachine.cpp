@@ -39,10 +39,10 @@ int main (int argc, char** argv) {
       ("components,c", po::value<int>()->default_value(1), "# of mixture components in length distributions")
       ;
 
-    po::options_description dpOpts("Event detection & DP options");
+    po::options_description dpOpts("Segmenting & DP options");
     dpOpts.add_options()
-      ("maxfracdiff,f", po::value<double>()->default_value(.01), "max fractional delta between samples in same event")
-      ("maxsamples,s", po::value<size_t>()->default_value(4), "max number of samples per event")
+      ("maxfracdiff,f", po::value<double>()->default_value(.01), "max fractional delta between samples in same segment")
+      ("maxsegment,g", po::value<size_t>()->default_value(4), "max number of samples per segment")
       ("memlimit,m", po::value<size_t>()->default_value(1<<30), "approximate memory limit for forward-backward DP")
       ("bandwidth,w", po::value<double>()->default_value(1), "proportion of DP matrix to fill around main diagonal")
       ;
@@ -53,8 +53,11 @@ int main (int argc, char** argv) {
       ("normalize,N", "normalize trace data")
       ("raw,R", po::value<vector<string> >(), "load trace from text file(s) e.g. from 'f5dump --rw' in fast5")
       ("model,M", po::value<string>(), "load model parameters from file")
-      ("fasta,T", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
+      ("trace,t", po::value<string>(), "load trace scaling parameters to file")
+      ("fasta,F", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
+      ("no-fit-trace,x", "do not attempt to fit trace parameters")
       ("save,S", po::value<string>(), "save trained model parameters to file")
+      ("save-trace,T", po::value<string>(), "save trained trace scaling parameters to file")
       ("call,C", "base-call using Viterbi decoding, first fitting scaling parameters using EM")
       ;
 
@@ -109,7 +112,15 @@ int main (int argc, char** argv) {
     }
     
     // segment
-    const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsamples").as<size_t>());
+    const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsegment").as<size_t>());
+
+    // init trace params
+    TraceListParams traceListParams;
+    if (vm.count("trace")) {
+      LogThisAt(2,"Reading scaling parameters" << endl);
+      JsonReader<TraceListParams>::readFile (traceListParams, vm.at("trace").as<string>());
+    } else
+      traceListParams.init (traceList.trace);
     
     // initialize machine & prior
     BaseCallingMachine machine;
@@ -128,25 +139,36 @@ int main (int argc, char** argv) {
 
       GaussianModelFitter fitter;
       fitter.init (machine, initParams.params, modelPrior, traceMomentsList, trainSeqs);
+      fitter.traceListParams = traceListParams;
+      fitter.fitTrace = !vm.count("no-fit-trace");
       fitter.blockBytes = vm.at("memlimit").as<size_t>() / 2;
       fitter.bandWidth = vm.at("bandwidth").as<double>();
       fitter.fit();
 
       trainedParams.params = fitter.modelParams;
+      traceListParams = fitter.traceListParams;
     }
     
-    // save parameters
+    // save model parameters
     if (vm.count("save"))
       JsonWriter<BaseCallingParams>::toFile (trainedParams, vm.at("save").as<string>());
     else if (!vm.count("call"))
       trainedParams.writeJson (cout);
-
+    
     // do basecalling
     if (vm.count("call")) {
       GaussianDecoder decoder;
       decoder.init (machine, trainedParams.params, modelPrior, traceMomentsList);
+      decoder.traceListParams = traceListParams;
+      decoder.fitTrace = !vm.count("no-fit-trace");
       writeFastaSeqs (cout, decoder.decode());
+
+      traceListParams = decoder.traceListParams;
     }
+
+    // save trace parameters
+    if (vm.count("save-trace"))
+      JsonWriter<TraceListParams>::toFile (traceListParams, vm.at("save-trace").as<string>());
 
   } catch (const std::exception& e) {
     cerr << e.what() << endl;
