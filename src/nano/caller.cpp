@@ -1,6 +1,11 @@
 #include "caller.h"
 #include "../logger.h"
 
+#define BaseCallerMuMode BaseCallerMuMean
+#define BaseCallerPadMuMode BaseCallerPadMuMean
+#define BaseCallerTauMode CALC_TAU_MODE (CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))
+#define BaseCallerPadTauMode CALC_TAU_MODE (CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError))
+
 string BaseCallingParamNamer::padEmitLabel() {
   return string("padEmit");
 }
@@ -54,9 +59,15 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
 	params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
       params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1. / (cpt + 1);
     }
-    params.gauss[emitLabel (kmerStr)] = GaussianParams();
+    GaussianParams gp;
+    gp.mu = BaseCallerMuMode;
+    gp.tau = BaseCallerTauMode;
+    params.gauss[emitLabel (kmerStr)] = gp;
   }
-  params.gauss[padEmitLabel()] = GaussianParams();
+  GaussianParams pad_gp;
+  pad_gp.mu = BaseCallerPadMuMode;
+  pad_gp.tau = BaseCallerPadTauMode;
+  params.gauss[padEmitLabel()] = pad_gp;
   params.prob.defs[padExtendLabel()] = .5;
   params.prob.defs[padEndLabel()] = .5;
 }
@@ -82,13 +93,13 @@ BaseCallingPrior::BaseCallingPrior()
     padEnd(1),
     cptExitCount(1),
     cptExitTime(1),
-    mu (BaseCallerMuMean),
+    mu (BaseCallerMuMode),
     muCount (CALC_N_MU (BaseCallerMuError, CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
-    tau (CALC_TAU_MODE (CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
+    tau (BaseCallerTauMode),
     tauCount (CALC_N_TAU (CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
-    muPad (BaseCallerPadMuMean),
+    muPad (BaseCallerPadMuMode),
     muPadCount (CALC_N_MU (BaseCallerPadMuError, CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError))),
-    tauPad (CALC_TAU_MODE (CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError))),
+    tauPad (BaseCallerPadTauMode),
     tauPadCount (CALC_N_TAU (CALC_TAU_MEAN(BaseCallerPadSigmaMean), CALC_TAU_SD(BaseCallerPadSigmaError)))
 { }
 
