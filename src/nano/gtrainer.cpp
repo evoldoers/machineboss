@@ -122,7 +122,7 @@ vguard<FastSeq> GaussianDecoder::decode() {
     }
     LogThisAt(3,"Base-calling trace " << trace.name << endl);
     const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
-    ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams);
+    ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams, blockBytes);
     const MachinePath path = viterbi.path(machine);
     LogThisAt(6,"Viterbi path:" << endl << trace.pathScoreBreakdown (machine, path, modelParams, traceParams) << endl);
     FastSeq fs;

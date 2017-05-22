@@ -65,7 +65,7 @@ MachinePath ForwardTraceMatrix::samplePath (const Machine& machine, mt19937& gen
     vguard<double> transLogLike;
     vguard<EvaluatedMachineState::TransIndex> transIndex;
     vguard<StateIndex> transSource;
-    readyColumn (outPos);
+    readyColumn (outPos - 1);
     for (const auto& inTok_outStateTransMap: state.incoming) {
       const InputToken inTok = inTok_outStateTransMap.first;
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second) {

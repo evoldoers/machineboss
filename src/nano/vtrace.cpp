@@ -1,8 +1,8 @@
 #include "vtrace.h"
 #include "../logger.h"
 
-ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams, double bandWidth) :
-  TraceDPMatrix (eval, modelParams, trace, traceParams, 0, bandWidth)
+ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const GaussianModelParams& modelParams, const TraceMoments& trace, const TraceParams& traceParams, size_t blockBytes, double bandWidth) :
+  TraceDPMatrix (eval, modelParams, trace, traceParams, blockBytes, bandWidth)
 {
   ProgressLog(plog,3);
   plog.initProgress ("Viterbi algorithm (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
@@ -13,29 +13,45 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
     plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
-    const auto itBegin = bandTransBegin(outPos);
-    const auto itEnd = bandTransEnd(outPos);
-    for (auto itIter = itBegin; itIter != itEnd; ++itIter) {
-      const auto& it = *itIter;
-      const OutputToken outTok = it.out;
-      const double llEmit = logEmitProb(outPos,outTok);
-      update (outPos, it.dest, cell(outPos-1,it.src) + logTransProb(outPos,it) + llEmit, it.in);
-    }
-
-    for (const auto& it: nullTrans)
-      update (outPos, it.dest, cell(outPos,it.src) + it.logWeight, it.in);
+    fillColumn (outPos);
   }
 
-  LogThisAt(6,"Viterbi log-likelihood: " << logLike() << endl);
+  logLike = cell (outLen, eval.endState());
+  LogThisAt(6,"Viterbi log-likelihood: " << logLike << endl);
   LogThisAt(10,"Viterbi matrix:" << endl << *this);
 }
 
-double ViterbiTraceMatrix::logLike() const {
-  return cell (outLen, eval.endState());
+void ViterbiTraceMatrix::fillColumn (OutputIndex outPos) {
+  vguard<double>& thisColumn = column(outPos);
+  initColumn (thisColumn);
+  const auto itBegin = bandTransBegin(outPos);
+  const auto itEnd = bandTransEnd(outPos);
+  for (auto itIter = itBegin; itIter != itEnd; ++itIter) {
+    const auto& it = *itIter;
+    const OutputToken outTok = it.out;
+    const double llEmit = logEmitProb(outPos,outTok);
+    update (outPos, it.dest, cell(outPos-1,it.src) + logTransProb(outPos,it) + llEmit, it.in);
+  }
+
+  for (const auto& it: nullTrans)
+    update (outPos, it.dest, cell(outPos,it.src) + it.logWeight, it.in);
+
+  lastCheckpoint = checkpoint(outPos);
 }
 
-MachinePath ViterbiTraceMatrix::path (const Machine& m) const {
-  Assert (logLike() > -numeric_limits<double>::infinity(), "Can't do Viterbi traceback: no finite-weight paths");
+void ViterbiTraceMatrix::readyColumn (OutputIndex outPos) {
+  const OutputIndex blockStart = checkpoint(outPos);
+  if (blockStart != lastCheckpoint) {
+    const OutputIndex blockEnd = min((OutputIndex)nColumns,blockStart+blockSize) - 1;
+    LogThisAt(4,"Refilling Viterbi matrix from sample " << (blockStart+1) << " to " << blockEnd << endl);
+
+    for (OutputIndex outPos = blockStart + 1; outPos <= blockEnd; ++outPos)
+      fillColumn (outPos);
+  }
+}
+
+MachinePath ViterbiTraceMatrix::path (const Machine& m) {
+  Assert (logLike > -numeric_limits<double>::infinity(), "Can't do Viterbi traceback: no finite-weight paths");
   MachinePath path;
   OutputIndex outPos = outLen;
   StateIndex s = nStates - 1;
@@ -44,7 +60,7 @@ MachinePath ViterbiTraceMatrix::path (const Machine& m) const {
     double bestLogLike = -numeric_limits<double>::infinity();
     const EvaluatedMachineState::Trans *bestTrans, *bestLoopTrans = NULL;
     StateIndex bestSource;
-
+    readyColumn (outPos - 1);
     for (const auto& inTok_outStateTransMap: state.incoming) {
       const InputToken inTok = inTok_outStateTransMap.first;
       for (const auto& outTok_stateTransMap: inTok_outStateTransMap.second) {

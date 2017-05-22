@@ -10,10 +10,15 @@ private:
     ll = inTok ? max(ll,newLogLike) : log_sum_exp(ll,newLogLike);
   }
 
+  void fillColumn (OutputIndex outPos);
+  OutputIndex lastCheckpoint;
+
 public:
-  ViterbiTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, double bandWidth = 1);
-  double logLike() const;
-  MachinePath path (const Machine&) const;
+  double logLike;
+
+  ViterbiTraceMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);
+  void readyColumn (OutputIndex);
+  MachinePath path (const Machine&);
 };
 
 #endif /* VITERBI_TRACE_INCLUDED */

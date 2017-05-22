@@ -162,6 +162,7 @@ int main (int argc, char** argv) {
       decoder.init (machine, trainedParams.params, modelPrior, traceMomentsList);
       decoder.traceListParams = traceListParams;
       decoder.fitTrace = !vm.count("no-fit-trace");
+      decoder.blockBytes = vm.at("memlimit").as<size_t>();
       writeFastaSeqs (cout, decoder.decode());
 
       traceListParams = decoder.traceListParams;

@@ -1,11 +1,14 @@
 
 NANO = ../../../bin/nanomachine
 
-r9.4_180mv_450bps_6mer/template_median68pA.model:
-	curl https://raw.githubusercontent.com/nanoporetech/kmer_models/master/r9.4_180mv_450bps_6mer/template_median68pA.model >$@
+r9.2_180mv_250bps_6mer/template_median68pA.model r9.4_180mv_450bps_6mer/template_median68pA.model:
+	curl https://raw.githubusercontent.com/nanoporetech/kmer_models/master/$@ >$@
 
 %.json: %.model
 	../node/kmer2model.js $< >$@
+
+ont-r92.json: r9.2_180mv_250bps_6mer/template_median68pA.json
+	cp $< $@
 
 ont-r94.json: r9.4_180mv_450bps_6mer/template_median68pA.json
 	cp $< $@
