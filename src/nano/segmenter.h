@@ -11,6 +11,7 @@ struct Segmenter {
   vguard<vguard<int> > minSegs;
   Segmenter (const Trace& trace, double maxFracDiff, size_t maxSegLen);
   TraceMoments segments() const;
+  friend ostream& operator<< (ostream&, const Segmenter&);
 };
 
 #endif /* SEGMENTER_INCLUDED */
