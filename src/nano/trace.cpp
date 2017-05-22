@@ -63,6 +63,8 @@ void TraceList::readJson (const string& fn) {
 
 void TraceList::readText (const string& fn) {
   ifstream in (fn);
+  if (!in)
+    Fail ("File not found: %s", fn.c_str());
   Trace t;
   t.name = fn;
   t.readText (in);
