@@ -13,7 +13,8 @@ ViterbiTraceMatrix::ViterbiTraceMatrix (const EvaluatedMachine& eval, const Gaus
 
   for (OutputIndex outPos = 1; outPos <= outLen; ++outPos) {
     plog.logProgress ((outPos - 1) / (double) outLen, "sample %ld/%ld", outPos, outLen);
-    const auto itBegin = bandTransBegin(outPos), itEnd = bandTransEnd(outPos);
+    const auto itBegin = bandTransBegin(outPos);
+    const auto itEnd = bandTransEnd(outPos);
     for (auto itIter = itBegin; itIter != itEnd; ++itIter) {
       const auto& it = *itIter;
       const OutputToken outTok = it.out;

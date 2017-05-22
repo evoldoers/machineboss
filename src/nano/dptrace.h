@@ -43,13 +43,17 @@ protected:
     return outPos - (outPos % blockSize);
   }
 
+  inline double fracBandCenter (OutputIndex outPos) const {
+    return max (halfBandWidth, min (1. - halfBandWidth, outPos / (double) outLen));
+  }
+  
   inline vguard<IndexedTrans>::const_iterator bandTransBegin (OutputIndex outPos) const {
-    const size_t d = (size_t) (maxDistanceFromStart * max (0., outPos / (double) outLen - bandWidth / 2));
+    const size_t d = (size_t) (maxDistanceFromStart * max (0., fracBandCenter(outPos) - halfBandWidth));
     return emitTrans.begin() + emitTransOffset[d];
   }
 
   inline vguard<IndexedTrans>::const_iterator bandTransEnd (OutputIndex outPos) const {
-    const size_t d = (size_t) (maxDistanceFromStart * min (1., outPos / (double) outLen + bandWidth / 2));
+    const size_t d = (size_t) (maxDistanceFromStart * min (1., fracBandCenter(outPos) + halfBandWidth));
     return emitTrans.begin() + emitTransOffset[d+1];
   }
 
@@ -67,6 +71,7 @@ public:
   const OutputIndex blockSize;
   const size_t nCheckpoints;
   const double bandWidth;
+  const double halfBandWidth;
   
   TraceDPMatrix (const EvaluatedMachine&, const GaussianModelParams&, const TraceMoments&, const TraceParams&, size_t blockBytes = 0, double bandWidth = 1);
 

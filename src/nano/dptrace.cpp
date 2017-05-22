@@ -43,7 +43,8 @@ TraceDPMatrix::TraceDPMatrix (const EvaluatedMachine& eval, const GaussianModelP
 			 (OutputIndex) calcBlockSize (blockBytes / (nStates * sizeof(double)), outLen)))
 	     : nColumns),
   nCheckpoints (1 + ((nColumns - 1) / blockSize)),
-  bandWidth (bandWidth)
+  bandWidth (bandWidth),
+  halfBandWidth (bandWidth / 2.)
 {
   LogThisAt(7,"Indexing " << nStates << "-state machine" << endl);
   LogThisAt(9,"Machine:" << endl << eval.toJsonString() << endl);

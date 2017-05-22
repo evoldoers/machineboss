@@ -18,6 +18,7 @@ struct TraceMoments {
   TraceMoments();
   TraceMoments (const Trace& trace);
 
+  void writeJson (ostream&) const;
   string pathScoreBreakdown (const Machine&, const MachinePath&, const GaussianModelParams&, const TraceParams&) const;
 };
 
@@ -27,6 +28,7 @@ struct TraceMomentsList {
   TraceMomentsList();
   TraceMomentsList (const TraceList&);
   TraceMomentsList (const TraceList&, double maxFracDiff, size_t maxSegLen);
+  friend ostream& operator<< (ostream&, const TraceMomentsList&);
 };
 
 struct GaussianCoefficients {

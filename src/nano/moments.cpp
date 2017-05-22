@@ -34,6 +34,13 @@ TraceMoments::TraceMoments (const Trace& trace) :
   }
 }
 
+void TraceMoments::writeJson (ostream& out) const {
+  out << "{\"name\":\"" << escaped_str(name) << "\",\"moments\":[";
+  for (size_t n = 0; n < sample.size(); ++n)
+    out << (n ? "," : "") << "[" << sample[n].m0 << "," << sample[n].m1 << "," << sample[n].m2 << "]";
+  out << "]}";
+}
+
 string TraceMoments::pathScoreBreakdown (const Machine& machine, const MachinePath& path, const GaussianModelParams& modelParams, const TraceParams& traceParams) const {
   ostringstream out;
   //  out << "Source\tDest\tIn\tOut\tTrans\tEmit\n";
@@ -90,6 +97,18 @@ TraceMomentsList::TraceMomentsList (const TraceList& traceList, double maxFracDi
     const Segmenter seg (t, maxFracDiff, maxSegLen);
     trace.push_back (seg.segments());
   }
+}
+
+ostream& operator<< (ostream& out, const TraceMomentsList& traceMomentsList) {
+  size_t n = 0;
+  out << "[";
+  for (const auto& trace: traceMomentsList.trace) {
+    if (n++)
+      out << ",\n ";
+    trace.writeJson (out);
+  }
+  out << "]";
+  return out;
 }
 
 GaussianModelCoefficients::GaussianModelCoefficients (const GaussianModelParams& modelParams, const TraceParams& traceParams, const OutputTokenizer& outputTokenizer)

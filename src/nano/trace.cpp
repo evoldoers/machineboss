@@ -34,11 +34,13 @@ void Trace::readJson (const json& j) {
 
 void Trace::readText (istream& in) {
   sample.clear();
-  const regex num_re (RE_WHITE_OR_EMPTY RE_NUMERIC_CHAR_CLASS RE_DOT_STAR);
+  const regex num_re (RE_WHITE_OR_EMPTY "-?" RE_NUMERIC_CHAR_CLASS RE_DOT_STAR);
   string line;
   while (getline(in,line))
     if (regex_match (line, num_re))
       sample.push_back (stod (line));
+    else
+      cerr << "Skipping line: " << line << endl;
 }
 
 void Trace::readFast5 (const string& filename) {

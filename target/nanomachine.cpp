@@ -113,7 +113,8 @@ int main (int argc, char** argv) {
     
     // segment
     const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsegment").as<size_t>());
-
+    LogThisAt(5,"Trace moments:" << endl << traceMomentsList << endl);
+    
     // init trace params
     TraceListParams traceListParams;
     if (vm.count("trace")) {
