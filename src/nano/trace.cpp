@@ -43,7 +43,7 @@ void Trace::readText (istream& in) {
       cerr << "Skipping line: " << line << endl;
 }
 
-void Trace::readFast5 (const string& filename) {
+void Trace::readFast5 (const string& filename, const string& groupName, const string& readName) {
   name = filename;
   sample.clear();
 
@@ -51,8 +51,11 @@ void Trace::readFast5 (const string& filename) {
   fast5::File f;
   f.open(filename);
   if (f.have_raw_samples()) {
-    const auto raw = f.get_raw_samples();
-    sample.insert (sample.end(), raw.begin(), raw.end());
+    const auto raw = f.get_raw_samples (readName);
+    const auto raw_params = f.get_raw_samples_params (readName);
+    const auto event_detection_params = f.get_eventdetection_events_params (groupName, readName);
+    const size_t eventStart = event_detection_params.start_time - raw_params.start_time;
+    sample.insert (sample.end(), raw.begin() + eventStart, raw.end());
   }
 }
 

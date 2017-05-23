@@ -20,7 +20,7 @@ struct Trace {
   void readJson (const json&);
 
   void readText (istream& in);
-  void readFast5 (const string& filename);
+  void readFast5 (const string& filename, const string& groupName = string(), const string& readName = string());
 };
 
 struct TraceList {
