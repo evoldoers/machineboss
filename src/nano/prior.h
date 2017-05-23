@@ -26,10 +26,9 @@
 // also
 //     alpha = n_tau / 2
 //      beta = (n_tau - 1) / tau_mode
-// For n_mu to be positive, we require mu_mean > tau_sd
-// For tau_mode to be positive, we require n_tau > 2 => tau_mean > tau_sd
-// If tau_mean = sigma_sd^{-2} and tau_sd = sigma_sd^{-2},
-// then these conditions imply mu_mean > sigma_sd^{-2} and sigma_mean < sigma_sd
+// For n_mu and tau_mode to be positive, we require tau_mean > tau_sd
+// If tau_mean = sigma_mean^{-2} and tau_sd = sigma_sd^{-2},
+// then this condition implies sigma_mean < sigma_sd
 
 #define CALC_N_TAU(TAU_MEAN,TAU_SD) (2. * ((TAU_MEAN) / (double) (TAU_SD)) * ((TAU_MEAN) / (double) (TAU_SD)))
 #define CALC_N_MU(MU_SD,TAU_MEAN,TAU_SD) (1. / ((MU_SD) * ((TAU_MEAN) - (TAU_SD) * (TAU_SD) / (double) (TAU_MEAN))))

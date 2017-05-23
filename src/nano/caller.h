@@ -5,8 +5,7 @@
 #include "../fastseq.h"
 #include "prior.h"
 
-// Required (see prior.h):
-//  mu_mean > sigma_sd^{-2}
+// Required for sane hyperparameters (see prior.h):
 //  sigma_mean < sigma_sd
 
 #define BaseCallerMuMean     100
@@ -14,7 +13,7 @@
 #define BaseCallerSigmaMean  1
 #define BaseCallerSigmaError 2
 
-#define BaseCallerPadMuMean     200
+#define BaseCallerPadMuMean     BaseCallerMuMean
 #define BaseCallerPadMuError    100
 #define BaseCallerPadSigmaMean  50
 #define BaseCallerPadSigmaError 60
