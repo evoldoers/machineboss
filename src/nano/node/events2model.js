@@ -23,4 +23,4 @@ var strand = opt.options.strand || defaultStrand
 var group = opt.options.group || ''
 
 var file = new fast5.File (filename)
-console.log(file)
+console.log (JSON.stringify(file,null,2))
