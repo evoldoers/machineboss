@@ -1,5 +1,5 @@
 // Ian Holmes, 2017
-// A simplified port of David Matei's fast5.hpp which can be found here:
+// A slimmed-down port of David Matei's fast5.hpp which can be found here:
 // https://github.com/mateidavid/fast5/blob/master/src/fast5.hpp
 
 var extend = require('extend')
@@ -14,7 +14,7 @@ var h5tb = hdf5_module.h5tb
 var Access = hdf5_globals.Access
 var H5OType = hdf5_globals.H5OType
 
-// constructor
+// Constructor
 
 var File = function (filename) {
   extend (this,
@@ -30,7 +30,35 @@ var File = function (filename) {
     this.open (filename)
 }
 
-// HDF5 string constants
+// HDF5 helpers
+
+File.prototype.path_parent_child = function (path) {
+  var path_split = path.split('/'), child = path_split.pop()
+  return { parent: path_split.join('/'),
+           child: child }
+}
+
+File.prototype.get_object_type = function (path) {
+  var pc = this.path_parent_child (path)
+  if (/\//.test(pc.parent) && !this.group_exists(pc.parent))
+    return H5OType.H5O_TYPE_UNKNOWN
+  var parent = pc.parent.length ? this.file.openGroup(pc.parent) : this.file
+  var isChild = {}
+  parent.getMemberNames().forEach (function (child) { isChild[child] = true })
+  if (!isChild[pc.child])
+    return H5OType.H5O_TYPE_UNKNOWN
+  return parent.getChildType (pc.child)
+}
+
+File.prototype.group_exists = function (path) {
+  return this.get_object_type(path) === H5OType.H5O_TYPE_GROUP
+}
+
+File.prototype.dataset_exists = function (path) {
+  return this.get_object_type(path) === H5OType.H5O_TYPE_DATASET
+}
+
+// Fast5 internal paths
 
 File.prototype.file_version_path = function() { return "/file_version"; }
 File.prototype.channel_id_path = function()   { return "/UniqueGlobalKey/channel_id"; }
@@ -86,14 +114,6 @@ File.prototype.basecall_fastq_path = function (gr, st)
 {
   return this.basecall_strand_group_path(gr, st) + "/Fastq";
 }
-File.prototype.basecall_model_path = function (gr, st)
-{
-  return this.basecall_strand_group_path(gr, st) + "/Model";
-}
-File.prototype.basecall_model_file_path = function (gr, st)
-{
-  return this.basecall_group_path(gr) + "/Summary/basecall_1d_" + this.strand_name(st) + "/model_file";
-}
 File.prototype.basecall_events_path = function (gr, st)
 {
   return this.basecall_strand_group_path(gr, st) + "/Events";
@@ -111,7 +131,7 @@ File.prototype.basecall_summary_path = function(gr)
   return this.basecall_group_path(gr) + "/Summary";
 }
 
-// methods
+// Cache updaters
 
 File.prototype.open = function (filename) {
   this.file = new hdf5.File (filename, Access.ACC_RDONLY)
@@ -123,32 +143,6 @@ File.prototype.reload = function() {
   this.load_raw_samples_read_names()
   this.load_event_detection_groups()
   this.load_basecall_groups()
-}
-
-File.prototype.path_parent_child = function (path) {
-  var path_split = path.split('/')
-  return { parent: path_split.slice(0,path_split.length-1).join('/'),
-           child: path_split[path_split.length-1] }
-}
-
-File.prototype.get_object_type = function (path) {
-  var pc = this.path_parent_child (path)
-  if (/\//.test(pc.parent) && !this.group_exists(pc.parent))
-    return H5OType.H5O_TYPE_UNKNOWN
-  var parent = pc.parent.length ? this.file.openGroup(pc.parent) : this.file
-  var isChild = {}
-  parent.getMemberNames().forEach (function (child) { isChild[child] = true })
-  if (!isChild[pc.child])
-    return H5OType.H5O_TYPE_UNKNOWN
-  return parent.getChildType (pc.child)
-}
-
-File.prototype.group_exists = function (path) {
-  return this.get_object_type(path) === H5OType.H5O_TYPE_GROUP
-}
-
-File.prototype.dataset_exists = function (path) {
-  return this.get_object_type(path) === H5OType.H5O_TYPE_DATASET
 }
 
 File.prototype.load_channel_id_params = function() {
@@ -266,7 +260,7 @@ File.prototype.fill_event_detection_group = function(gr) {
   return (gr.length || !this.event_detection_groups.length) ? gr : this.event_detection_groups[0]
 }
 
-File.prototype.fill_eventdetection_read_name = function(gr, rn) {
+File.prototype.fill_event_detection_read_name = function(gr, rn) {
   return (rn.length || !this.event_detection_read_names[gr] || !this.event_detection_read_names[gr].length) ? rn : this.event_detection_read_names[gr][0]
 }
 
@@ -278,6 +272,5 @@ File.prototype.fill_basecall_1d_group = function(st, gr) {
   var _gr = this.fill_basecall_group(st, gr);
   return this.get_basecall_1d_group(_gr);
 }
-
 
 exports.File = File
