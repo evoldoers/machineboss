@@ -273,4 +273,19 @@ File.prototype.fill_basecall_1d_group = function(st, gr) {
   return this.get_basecall_1d_group(_gr);
 }
 
+// Access /file_version
+// Access /UniqueGlobalKey/channel_id
+// Access /UniqueGlobalKey/tracking_id
+// Access /Sequences
+// Access Raw Samples
+// Access EventDetection groups
+// Access EventDetection events
+// Access Basecall groups
+// Access Basecall group params
+// Access Basecall group log
+// Access Basecall fastq
+// Access Basecall events
+// Static helpers
+
+
 exports.File = File
