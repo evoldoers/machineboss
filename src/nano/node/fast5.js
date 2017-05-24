@@ -3,9 +3,16 @@
 // https://github.com/mateidavid/fast5/blob/master/src/fast5.hpp
 
 var extend = require('extend')
-var hdf5_mod = require('hdf5')
-var hdf5 = hdf5_mod.hdf5
-var h5lt = hdf5_mod.h5lt
+
+var hdf5_module = require('hdf5')
+var hdf5_globals = require('hdf5/lib/globals')
+
+var hdf5 = hdf5_module.hdf5
+var h5lt = hdf5_module.h5lt
+var h5tb = hdf5_module.h5tb
+
+var Access = hdf5_globals.Access
+var H5OType = hdf5_globals.H5OType
 
 // constructor
 
@@ -17,7 +24,7 @@ var File = function (filename) {
             event_detection_read_names: {},
             basecall_groups: [],
             basecall_group_descriptions: {},
-            basecall_strand_groups: [null, null, null] })
+            basecall_strand_groups: [[], [], []] })
   
   if (filename)
     this.open (filename)
@@ -107,7 +114,6 @@ File.prototype.basecall_summary_path = function(gr)
 // methods
 
 File.prototype.open = function (filename) {
-  var Access = require('hdf5/lib/globals').Access
   this.file = new hdf5.File (filename, Access.ACC_RDONLY)
   this.reload()
 }
@@ -119,25 +125,30 @@ File.prototype.reload = function() {
   this.load_basecall_groups()
 }
 
+File.prototype.path_parent_child = function (path) {
+  var path_split = path.split('/')
+  return { parent: path_split.slice(0,path_split.length-1).join('/'),
+           child: path_split[path_split.length-1] }
+}
+
+File.prototype.get_object_type = function (path) {
+  var pc = this.path_parent_child (path)
+  if (/\//.test(pc.parent) && !this.group_exists(pc.parent))
+    return H5OType.H5O_TYPE_UNKNOWN
+  var parent = pc.parent.length ? this.file.openGroup(pc.parent) : this.file
+  var isChild = {}
+  parent.getMemberNames().forEach (function (child) { isChild[child] = true })
+  if (!isChild[pc.child])
+    return H5OType.H5O_TYPE_UNKNOWN
+  return parent.getChildType (pc.child)
+}
+
 File.prototype.group_exists = function (path) {
-  var exists = false
-  try {
-    this.file.openGroup (path)
-    exists = true
-  } catch (e) { }
-  return exists
+  return this.get_object_type(path) === H5OType.H5O_TYPE_GROUP
 }
 
 File.prototype.dataset_exists = function (path) {
-  var exists = false
-  var path_split = path.split('/')
-  var group_path = path_split.slice(0,path_split.length-1).join('/'), dataset_name = path_split[path_split.length-1]
-  try {
-    var group = this.file.openGroup (group_path)
-    var dataset = h5lt.readDataset (group.id, dataset_name)
-    exists = true
-  } catch (e) { }
-  return exists
+  return this.get_object_type(path) === H5OType.H5O_TYPE_DATASET
 }
 
 File.prototype.load_channel_id_params = function() {
@@ -145,73 +156,79 @@ File.prototype.load_channel_id_params = function() {
 }
 
 File.prototype.load_raw_samples_read_names = function() {
-  var group = this.file.openGroup (this.raw_samples_root_path())
-  this.raw_samples_read_names = group.getMemberNamesByCreationOrder()
+  if (this.group_exists(this.raw_samples_root_path())) {
+    var group = this.file.openGroup (this.raw_samples_root_path())
+    this.raw_samples_read_names = group.getMemberNamesByCreationOrder()
+  }
 }
 
 File.prototype.load_event_detection_groups = function() {
   var fast5 = this
-  var ed_gr_prefix = this.event_detection_group_prefix()
-  var group = this.file.openGroup (this.event_detection_root_path())
-  var ed_group_names = group.getMemberNamesByCreationOrder()
-  this.event_detection_groups = ed_group_names.filter (function (ed_group_name) {
-    return ed_group_name.substr(0,ed_gr_prefix.length) === ed_gr_prefix
-  }).map (function (ed_group_name) {
-    return ed_group_name.substr (ed_gr_prefix.length)
-  })
-  this.event_detection_groups.forEach (function (ed_gr_suffix) {
-    var ed_group = group.openGroup (ed_gr_prefix + ed_gr_suffix + '/Reads')
-    fast5.event_detection_read_names[ed_gr_suffix] = ed_group.getMemberNamesByCreationOrder()
-  })
+  if (this.group_exists(this.event_detection_root_path())) {
+    var ed_gr_prefix = this.event_detection_group_prefix()
+    var group = this.file.openGroup (this.event_detection_root_path())
+    var ed_group_names = group.getMemberNamesByCreationOrder()
+    this.event_detection_groups = ed_group_names.filter (function (ed_group_name) {
+      return ed_group_name.substr(0,ed_gr_prefix.length) === ed_gr_prefix
+    }).map (function (ed_group_name) {
+      return ed_group_name.substr (ed_gr_prefix.length)
+    })
+    this.event_detection_groups.forEach (function (ed_gr_suffix) {
+      var ed_group = group.openGroup (ed_gr_prefix + ed_gr_suffix + '/Reads')
+      fast5.event_detection_read_names[ed_gr_suffix] = ed_group.getMemberNamesByCreationOrder()
+    })
+  }
 }
 
 File.prototype.load_basecall_groups = function() {
   var fast5 = this
-  var bc_gr_prefix = this.basecall_group_prefix()
-  var group = this.file.openGroup (this.basecall_root_path())
-  var bc_group_names = group.getMemberNamesByCreationOrder()
-  this.basecall_groups = bc_group_names.filter (function (bc_group_name) {
-    return bc_group_name.substr(0,bc_gr_prefix.length) === bc_gr_prefix
-  }).map (function (bc_group_name) {
-    return bc_group_name.substr (bc_gr_prefix.length)
-  })
-  this.basecall_groups.forEach (function (gr) {
-    var desc = { name: "?",
-                 version: "?",
-                 have_subgroup: [false, false, false],
-                 have_fastq: [false, false, false],
-                 have_events: [false, false, false] }
-    var attr = fast5.file.getDatasetAttributes (fast5.basecall_group_path(gr))
-    if (attr.name === "ONT Sequencing Workflow") {
-      desc.name = "metrichor";
-      desc.version = (attr["chimaera version"] || "?") + "+" +
-        (attr["dragonet version"] || "?");
-    } else if (attr.name === "MinKNOW-Live-Basecalling") {
-      desc.name = "minknow";
-      desc.version = attr.version || "?"
-    } else if (attr.name == "ONT Albacore Sequencing Software") {
-      desc.name = "albacore";
-      desc.version = attr.version || "?"
-    }
-    for (var st = 0; st < 3; ++st) {
-      try {
-        var st_subgroup = fast5.file.openGroup (fast5.basecall_strand_group_path(gr, st))
-        desc.have_subgroup[st] = true
-        desc.have_fastq[st] = fast5.dataset_exists (fast5.basecall_fastq_path(gr, st))
-        desc.have_events[st] = fast5.dataset_exists (fast5.basecall_events_path(gr, st))
-        if (st === 0)
-          desc.ed_gr = gr
-        if (st === 2)
-          desc.have_alignment = fast5.have_basecall_alignment(gr)
-      } catch (e) { }
-    }
-    if (desc.have_subgroup[0] || desc.have_subgroup[1])
-      desc.bc_1d_gr = gr
-    else if (desc.have_subgroup[2])
-      desc.bc_1d_gr = gr
-  
-    fast5.basecall_group_descriptions[gr] = desc
-  })
+  if (this.group_exists (this.basecall_root_path())) {
+    var bc_gr_prefix = this.basecall_group_prefix()
+    var group = this.file.openGroup (this.basecall_root_path())
+    var bc_group_names = group.getMemberNamesByCreationOrder()
+    this.basecall_groups = bc_group_names.filter (function (bc_group_name) {
+      return bc_group_name.substr(0,bc_gr_prefix.length) === bc_gr_prefix
+    }).map (function (bc_group_name) {
+      return bc_group_name.substr (bc_gr_prefix.length)
+    })
+    this.basecall_groups.forEach (function (gr) {
+      var desc = { name: "?",
+                   version: "?",
+                   have_subgroup: [false, false, false],
+                   have_fastq: [false, false, false],
+                   have_events: [false, false, false] }
+      var attr = fast5.file.getDatasetAttributes (fast5.basecall_group_path(gr))
+      if (attr.name === "ONT Sequencing Workflow") {
+        desc.name = "metrichor";
+        desc.version = (attr["chimaera version"] || "?") + "+" +
+          (attr["dragonet version"] || "?");
+      } else if (attr.name === "MinKNOW-Live-Basecalling") {
+        desc.name = "minknow";
+        desc.version = attr.version || "?"
+      } else if (attr.name == "ONT Albacore Sequencing Software") {
+        desc.name = "albacore";
+        desc.version = attr.version || "?"
+      }
+      for (var st = 0; st < 3; ++st) {
+        if (fast5.group_exists (fast5.basecall_strand_group_path(gr, st))) {
+          desc.have_subgroup[st] = true
+          fast5.basecall_strand_groups[st].push(gr)
+          desc.have_fastq[st] = fast5.dataset_exists (fast5.basecall_fastq_path(gr, st))
+          desc.have_events[st] = fast5.dataset_exists (fast5.basecall_events_path(gr, st))
+          if (st === 0)
+            desc.ed_gr = gr
+          if (st === 2)
+            desc.have_alignment = fast5.have_basecall_alignment(gr)
+        }
+      }
+      if (desc.have_subgroup[0] || desc.have_subgroup[1])
+        desc.bc_1d_gr = gr
+      else if (desc.have_subgroup[2])
+        desc.bc_1d_gr = gr
+      
+      fast5.basecall_group_descriptions[gr] = desc
+    })
+  }
 }
 
 File.prototype.detect_basecall_event_detection_group = function(gr) {
