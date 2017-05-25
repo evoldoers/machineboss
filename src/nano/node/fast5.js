@@ -33,16 +33,16 @@ var File = function (filename) {
 // HDF5 helpers
 
 File.prototype.path_parent_child = function (path) {
-  var path_split = path.split('/'), child = path_split.pop()
-  return { parent: path_split.join('/'),
+  var path_split = path.split('/').slice(1), child = path_split.pop(), parent = '/' + path_split.join('/')
+  return { parent: parent.length ? parent : '/',
            child: child }
 }
 
 File.prototype.get_object_type = function (path) {
   var pc = this.path_parent_child (path)
-  if (/\//.test(pc.parent) && !this.group_exists(pc.parent))
+  if (pc.parent.length && pc.parent !== '/' && !this.group_exists(pc.parent))
     return H5OType.H5O_TYPE_UNKNOWN
-  var parent = pc.parent.length ? this.file.openGroup(pc.parent) : this.file
+  var parent = pc.parent === '/' ? this.file : this.file.openGroup(pc.parent)
   var isChild = {}
   parent.getMemberNames().forEach (function (child) { isChild[child] = true })
   if (!isChild[pc.child])
@@ -56,6 +56,27 @@ File.prototype.group_exists = function (path) {
 
 File.prototype.dataset_exists = function (path) {
   return this.get_object_type(path) === H5OType.H5O_TYPE_DATASET
+}
+
+File.prototype.attribute_exists = function (path) {
+  var pc = this.path_parent_child (path)
+  var attrs = this.file.getDatasetAttributes(pc.parent)
+  return attrs.hasOwnProperty (pc.child)
+}
+
+File.prototype.get_attr = function (path) {
+  var pc = this.path_parent_child (path)
+  return this.file.getDatasetAttributes(pc.parent)[pc.child]
+}
+
+File.prototype.get_dataset = function (path) {
+  return h5lt.readDataset (this.file.id, path)
+}
+
+File.prototype.table_to_object = function (table) {
+  var obj = {}
+  table.forEach (function (col) { obj[col.name] = col })
+  return obj
 }
 
 // Fast5 internal paths
@@ -117,10 +138,6 @@ File.prototype.basecall_fastq_path = function (gr, st)
 File.prototype.basecall_events_path = function (gr, st)
 {
   return this.basecall_strand_group_path(gr, st) + "/Events";
-}
-File.prototype.basecall_alignment_path = function(gr)
-{
-  return this.basecall_strand_group_path(gr, 2) + "/Alignment";
 }
 File.prototype.basecall_config_path = function(gr)
 {
@@ -210,15 +227,13 @@ File.prototype.load_basecall_groups = function() {
           desc.have_fastq[st] = fast5.dataset_exists (fast5.basecall_fastq_path(gr, st))
           desc.have_events[st] = fast5.dataset_exists (fast5.basecall_events_path(gr, st))
           if (st === 0)
-            desc.ed_gr = gr
-          if (st === 2)
-            desc.have_alignment = fast5.have_basecall_alignment(gr)
+            desc.ed_gr = fast5.detect_basecall_event_detection_group(gr)
         }
       }
       if (desc.have_subgroup[0] || desc.have_subgroup[1])
         desc.bc_1d_gr = gr
       else if (desc.have_subgroup[2])
-        desc.bc_1d_gr = gr
+        desc.bc_1d_gr = fast5.detect_basecall_1d_group(gr)
       
       fast5.basecall_group_descriptions[gr] = desc
     })
@@ -240,32 +255,42 @@ File.prototype.detect_basecall_event_detection_group = function(gr) {
   return ""
 }
 
-File.prototype.get_basecall_params = function(gr) {
-  return this.file.getDatasetAttributes (this.basecall_group_path(gr))
+File.prototype.detect_basecall_1d_group = function(gr) {
+  var path = this.basecall_group_path(gr) + "/basecall_1d";
+  if (this.attribute_exists(path)) {
+    var tmp = this.get_attr(path)
+    var pref = this.basecall_root_path().substr(1) + "/" + this.basecall_group_prefix();
+    if (tmp.length >= pref.length
+        && tmp.substr(0, pref.length) == pref)
+    {
+      var gr_1d = tmp.substr(pref.length);
+      if (this.have_basecall_group(gr_1d))
+        return gr_1d;
+    }
+  }
+  return gr;
 }
 
-File.prototype.have_basecall_alignment = function(gr) {
-  return this.dataset_exists (this.basecall_alignment_path(gr))
-}
+// Functions that fill in empty arguments with default values
 
-File.prototype.have_event_detection_group = function(ed_gr) {
-  return event_detection_read_names[ed_gr]
+File.prototype.is_null_arg = function (arg) {
+  return typeof(arg) === 'undefined' || arg === ''
 }
 
 File.prototype.fill_raw_samples_read_name = function(rn) {
-  return (rn.length || !this.raw_samples_read_names.length) ? rn : this.raw_samples_read_names[0]
+  return (!this.is_null_arg(rn) || !this.raw_samples_read_names.length) ? rn : this.raw_samples_read_names[0]
 }
 
 File.prototype.fill_event_detection_group = function(gr) {
-  return (gr.length || !this.event_detection_groups.length) ? gr : this.event_detection_groups[0]
+  return (!this.is_null_arg(gr) || !this.event_detection_groups.length) ? gr : this.event_detection_groups[0]
 }
 
 File.prototype.fill_event_detection_read_name = function(gr, rn) {
-  return (rn.length || !this.event_detection_read_names[gr] || !this.event_detection_read_names[gr].length) ? rn : this.event_detection_read_names[gr][0]
+  return (!this.is_null_arg(rn) || !this.event_detection_read_names[gr] || !this.event_detection_read_names[gr].length) ? rn : this.event_detection_read_names[gr][0]
 }
 
 File.prototype.fill_basecall_group = function(st, gr) {
-  return (gr.length || !this.basecall_strand_groups[st]) ? gr : this.basecall_strand_groups[st][0]
+  return (!this.is_null_arg(gr) || !this.basecall_strand_groups[st]) ? gr : this.basecall_strand_groups[st][0]
 }
 
 File.prototype.fill_basecall_1d_group = function(st, gr) {
@@ -274,18 +299,90 @@ File.prototype.fill_basecall_1d_group = function(st, gr) {
 }
 
 // Access /file_version
+File.prototype.file_version = function() { return this.get_attr (this.file_version_path()) }
 // Access /UniqueGlobalKey/channel_id
+File.prototype.have_channel_id_params = function() { return this.channel_id_params.sampling_rate > 0 }
+File.prototype.get_channel_id_params = function() { return this.channel_id_params }
+File.prototype.have_sampling_rate = function() { return this.have_channel_id_params() }
+File.prototype.get_sampling_rate = function() { return this.channel_id_params.sampling_rate }
 // Access /UniqueGlobalKey/tracking_id
+File.prototype.have_tracking_id_params = function() { return this.group_exists(this.tracking_id_path()) }
+File.prototype.get_tracking_id_params = function() { return this.file.getDatasetAttributes(this.tracking_id_path()) }
 // Access /Sequences
+File.prototype.have_sequences_params = function() { return this.group_exists(this.sequences_path()) }
+File.prototype.get_sequences_params = function() { return this.file.getDatasetAttributes(this.sequences_path()) }
 // Access Raw Samples
+File.prototype.get_raw_samples_read_name_list = function() { return this.raw_samples_read_names }
+File.prototype.have_raw_samples = function(rn) { return this.is_null_arg(rn) ? this.raw_samples_read_names.length : this.raw_samples_read_names.find (function(s) { return s === rn })  }
+File.prototype.get_raw_samples_params = function(rn) { return this.file.getDatasetAttributes(this.raw_samples_params_path (this.fill_raw_samples_read_name(rn))) }
+File.prototype.get_raw_int_samples = function(rn) { return this.get_dataset (this.raw_samples_path (this.fill_raw_samples_read_name(rn)))  }
+File.prototype.get_raw_samples = function(rn) { return this.get_raw_int_samples(rn).map (this.raw_sample_to_float_function()) }
 // Access EventDetection groups
+File.prototype.get_event_detection_group_list = function() { return this.event_detection_groups }
+File.prototype.have_event_detection_group = function(gr) { return this.is_null_arg(gr) ? Object.keys(this.event_detection_read_names).length : this.event_detection_read_names[gr] }
+File.prototype.get_event_detection_read_name_list = function(gr) { return this.event_detection_read_names[this.fill_event_detection_group(gr)] || [] }
+File.prototype.get_event_detection_params = function(gr) { return this.file.getDatasetAttributes(this.event_detection_group_path (this.fill_event_detection_group(gr))) }
 // Access EventDetection events
+File.prototype.have_event_detection_events = function(gr,rn) {
+  var _gr = this.fill_event_detection_group(gr)
+  var _rn = this.fill_raw_samples_read_name(rn)
+  var read_names = this.event_detection_read_names[_gr]
+  return read_names && read_names.find (function (s) { return s === _rn })
+}
+File.prototype.get_event_detection_events_params = function(gr,rn) {
+  var _gr = this.fill_event_detection_group(gr)
+  var _rn = this.fill_raw_samples_read_name(rn)
+  return this.have_event_detection_events(_gr,_rn) ? this.file.getDatasetAttributes(this.event_detection_events_params_path(_gr,_rn)) : undefined
+}
+File.prototype.get_event_detection_events = function(gr,rn) {
+  var _gr = this.fill_event_detection_group(gr)
+  var _rn = this.fill_raw_samples_read_name(rn)
+  return h5tb.readTable(this.file.id,this.event_detection_events_path(_gr,_rn))
+}
 // Access Basecall groups
+File.prototype.get_basecall_group_list = function() { return this.basecall_groups }
+File.prototype.have_basecall_group = function(gr) { return this.is_null_arg(gr) ? this.basecall_groups.length : this.basecall_groups.find (function(s) { return s === gr }) }
+File.prototype.get_basecall_strand_group_list = function(st) { return this.basecall_strand_groups[st] }
+File.prototype.have_basecall_strand_group = function(st,gr) {
+  return this.is_null_arg(gr) ? this.basecall_strand_groups[st].length : this.basecall_strand_groups[st].find (function(s) { return s === gr })
+}
+File.prototype.get_basecall_group_description = function(gr) { return this.basecall_group_descriptions[gr] }
+File.prototype.get_basecall_1d_group = function(gr) { return this.basecall_group_descriptions.hasOwnProperty(gr) ? this.basecall_group_descriptions[gr].bc_1d_gr : undefined }
+File.prototype.get_basecall_event_detection_group = function(gr) { return this.basecall_group_descriptions.hasOwnProperty(gr) ? this.basecall_group_descriptions[gr].ed_gr : undefined }
 // Access Basecall group params
+File.prototype.get_basecall_params = function(gr) { return this.file.getDatasetAttributes (this.basecall_group_path(gr)) }
 // Access Basecall group log
+File.prototype.have_basecall_log = function(gr) { return this.group_exists (this.basecall_log_path(gr)) }
+File.prototype.get_basecall_log = function(gr) { return h5lt.readDataset (this.file.id, this.basecall_log_path(gr)) }
+File.prototype.get_basecall_config = function(gr) { return this.group_exists(this.basecall_config_path(gr)) ? this.file.getDatasetAttributes (this.basecall_config_path(gr)) : undefined }
+File.prototype.get_basecall_summary = function(gr) { return this.group_exists(this.basecall_summary_path(gr)) ? this.file.getDatasetAttributes (this.basecall_summary_path(gr)) : undefined }
 // Access Basecall fastq
+File.prototype.have_basecall_fastq = function(st,gr) {
+  var _gr = this.fill_event_detection_group(gr)
+  return this.basecall_group_descriptions.hasOwnProperty(_gr) && this.basecall_group_descriptions[_gr].have_fastq[st]
+}
+File.prototype.get_basecall_fastq = function(st,gr) { return h5lt.readDataset (this.file.id, this.basecall_fastq_path(this.fill_event_detection_group(gr),st)) }
+File.prototype.have_basecall_seq = function(st,gr) { return this.have_basecall_fastq(st,gr) }
+File.prototype.get_basecall_seq = function(st,gr) { return this.fq2seq (this.get_basecall_fastq(st,gr)) }
 // Access Basecall events
+File.prototype.have_basecall_events = function(st,gr) {
+  var _gr = this.fill_basecall_1d_group(st,gr)
+  return this.basecall_group_descriptions.hasOwnProperty(_gr) && this.basecall_group_descriptions[_gr].have_events[st]
+}
+File.prototype.get_basecall_events_params = function(st,gr) { return this.file.getDatasetAttributes (this.basecall_events_path(this.fill_basecall_1d_group(st,gr),st)) }
+File.prototype.get_basecall_events = function(st,gr) { return h5tb.readTable (this.file.id, this.basecall_events_path(this.fill_basecall_1d_group(st,gr),st)) }
 // Static helpers
-
+File.prototype.time_to_int = function(tf) { return tf * this.channel_id_params.sampling_rate }
+File.prototype.time_to_float = function(ti) { return (ti + .5) / this.channel_id_params.sampling_rate }
+File.prototype.raw_sample_to_float_function = function() {
+  var offset = this.channel_id_params.offset
+  var range = this.channel_id_params.range
+  var digitisation = this.channel_id_params.digitisation
+  var scale = range / digitisation
+  return function (si) { return (si + offset) * scale }
+}
+File.prototype.raw_sample_to_float = function(si) { return this.raw_sample_to_float_function() (si) }
+File.prototype.fq2seq = function(fq) { return this.split_fq(fq)[1] }
+File.prototype.split_fq = function(fq) { return fq.split('\n') }
 
 exports.File = File
