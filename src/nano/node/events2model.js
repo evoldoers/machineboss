@@ -23,7 +23,7 @@ var strand = opt.options.strand || defaultStrand
 var group = opt.options.group || ''
 
 var file = new fast5.File (filename)
-var events = file.table_to_object (file.get_basecall_events(0))
+var events = file.table_to_object (file.get_basecall_events(strand,group))
 
 var byState = {}
 var sampling_rate = file.channel_id_params.sampling_rate
