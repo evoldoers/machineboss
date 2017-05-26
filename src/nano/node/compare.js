@@ -39,10 +39,7 @@ fasta.obj(queryFilename).on ('data', function (data) {
   var insertions = alignInfo.alignment.filter (function (col) { return col[0] === '-' }).length
   var mismatches = alignInfo.alignment.length - matches - insertions - deletions
   console.log ("Score: " + alignInfo.score + " (match " + matchScore + ", mismatch "+ mismatchScore + ", gap " + gapScore + ")")
-  console.log (matches + " matches")
-  console.log (mismatches + " mismatches")
-  console.log (insertions + " insertions")
-  console.log (deletions + " deletions")
+  console.log (matches + " matches, " + mismatches + " mismatches, " + insertions + " insertions, " + deletions + " deletions")
   console.log ("Reference length " + refSeq.length)
   console.log ("Query length " + querySeq.length)
 })
