@@ -8,7 +8,7 @@ var fast5 = require('./fast5')
 var defaultStrand = 0
 var matchScore = +5, mismatchScore = -4, gapScore = -7
 
-var opt = getopt.create([
+var parser = getopt.create([
   ['q' , 'query=PATH'      , 'FASTA query file'],
   ['r' , 'reference=PATH'  , 'FAST5 reference file'],
   ['s' , 'strand=N'        , 'strand (0, 1, 2; default ' + defaultStrand + ')'],
@@ -16,10 +16,12 @@ var opt = getopt.create([
   ['h' , 'help'            , 'display this help message']
 ])              // create Getopt instance
 .bindHelp()     // bind option 'help' to default action
-.parseSystem(); // parse command line
+var opt = parser.parseSystem(); // parse command line
 
 function inputError(err) {
-    throw new Error (err)
+  parser.showHelp()
+  console.warn (err, "\n")
+  process.exit(1)
 }
 
 var queryFilename = opt.options.query || inputError("Please specify a query file")
