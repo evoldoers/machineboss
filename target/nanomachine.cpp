@@ -28,8 +28,8 @@ int main (int argc, char** argv) {
     generalOpts.add_options()
       ("help,h", "display this help message")
       ("verbose,v", po::value<int>()->default_value(2), "verbosity level")
-      ("debug,d", po::value<vector<string> >(), "log specified function")
-      ("monochrome,b", "log in black & white")
+      ("debug,D", po::value<vector<string> >(), "log specified function")
+      ("monochrome,M", "log in black & white")
       ;
 
     po::options_description modelOpts("Model options");
@@ -41,28 +41,28 @@ int main (int argc, char** argv) {
 
     po::options_description dpOpts("Segmenting & DP options");
     dpOpts.add_options()
-      ("maxfracdiff,f", po::value<double>()->default_value(.01), "max fractional delta between samples in same segment")
-      ("maxsegment,g", po::value<size_t>()->default_value(4), "max number of samples per segment")
-      ("memlimit,m", po::value<size_t>()->default_value(1<<30), "approximate memory limit for forward-backward DP")
-      ("bandwidth,w", po::value<double>()->default_value(1), "proportion of DP matrix to fill around main diagonal")
+      ("maxfracdiff,F", po::value<double>()->default_value(.01), "max fractional delta between samples in same segment")
+      ("maxsegment,G", po::value<size_t>()->default_value(4), "max number of samples per segment")
+      ("memlimit,L", po::value<size_t>()->default_value(1<<30), "approximate memory limit for forward-backward DP")
+      ("bandwidth,W", po::value<double>()->default_value(1), "proportion of DP matrix to fill around main diagonal")
       ;
 
     po::options_description appOpts("Data options");
     appOpts.add_options()
-      ("fast5,D", po::value<vector<string> >(), "load trace data from FAST5 file(s)")
-      ("normalize,N", "normalize trace data")
-      ("raw,R", po::value<vector<string> >(), "load trace from text file(s) e.g. from 'f5dump --rw' in fast5")
-      ("model,M", po::value<string>(), "load model parameters from file")
+      ("fast5,d", po::value<vector<string> >(), "load trace data from FAST5 file(s)")
+      ("normalize,n", "normalize trace data")
+      ("raw,r", po::value<vector<string> >(), "load trace from text file(s) e.g. from 'f5dump --rw' in fast5")
+      ("model,m", po::value<string>(), "load model parameters from file")
       ("trace,t", po::value<string>(), "load trace scaling parameters to file")
-      ("fasta,F", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
+      ("fasta,f", po::value<vector<string> >(), "load training sequences from FASTA/FASTQ file(s), then fit using EM")
       ("no-fit-trace,x", "do not attempt to fit trace parameters")
-      ("save,S", po::value<string>(), "save trained model parameters to file")
-      ("save-trace,T", po::value<string>(), "save trained trace scaling parameters to file")
-      ("call,C", "base-call using Viterbi decoding, first fitting scaling parameters using EM")
+      ("save,s", po::value<string>(), "save trained model parameters to file")
+      ("save-trace,t", po::value<string>(), "save trained trace scaling parameters to file")
+      ("basecall,b", "base-call using Viterbi decoding, first fitting scaling parameters using EM")
       ;
 
     po::positional_options_description posOpts;
-    posOpts.add("data", -1);
+    posOpts.add("fast5", -1);
 
     po::options_description parseOpts("");
     parseOpts.add(generalOpts).add(modelOpts).add(appOpts).add(dpOpts);
@@ -113,7 +113,7 @@ int main (int argc, char** argv) {
     
     // segment
     const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsegment").as<size_t>());
-    LogThisAt(5,"Trace moments:" << endl << traceMomentsList << endl);
+    LogThisAt(8,"Trace moments:" << endl << traceMomentsList << endl);
     
     // init trace params
     TraceListParams traceListParams;
@@ -153,11 +153,11 @@ int main (int argc, char** argv) {
     // save model parameters
     if (vm.count("save"))
       JsonWriter<BaseCallingParams>::toFile (trainedParams, vm.at("save").as<string>());
-    else if (!vm.count("call"))
+    else if (!vm.count("basecall"))
       trainedParams.writeJson (cout);
     
     // do basecalling
-    if (vm.count("call")) {
+    if (vm.count("basecall")) {
       GaussianDecoder decoder;
       decoder.init (machine, trainedParams.params, modelPrior, traceMomentsList);
       decoder.traceListParams = traceListParams;

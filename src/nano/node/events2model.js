@@ -40,7 +40,7 @@ for (var col = 0; col < events.start.length; ++col) {
     var m1 = mean * m0
     var m2 = (stdev*stdev + mean*mean) * m0
     if (!byKmer[kmer])
-      byKmer[kmer] = { m0: 0, m1: 0, m2: 0, moves: 0 }
+      byKmer[kmer] = newInfo()
     var info = byKmer[kmer]
     info.m0 += m0
     info.m1 += m1
@@ -50,9 +50,40 @@ for (var col = 0; col < events.start.length; ++col) {
   }
 }
 
+function newInfo() { return { m0: 0, m1: 0, m2: 0, moves: 0 } }
+
+var alph = 'acgt'
+var nKmers = Math.pow(alph.length,kmerLen)
+var allKmers = new Array(nKmers).fill(0).map (function (_, n) {
+  var kmer = ''
+  for (var i = 0; i < kmerLen; ++i)
+    kmer += alph.charAt (Math.floor(n / Math.pow(alph.length,i)) % alph.length)
+  return kmer
+})
+var gotKmers = Object.keys(byKmer).sort()
+allKmers.forEach (function (kmer) {
+  if (!byKmer[kmer]) {
+    var equivs = []
+    for (var n = 1; n < kmerLen && equivs.length === 0; ++n)
+      equivs = gotKmers.filter (function (equivKmer) {
+	return equivKmer.substr(n) === kmer.substr(n)
+      })
+    console.warn ("Missing kmer " + kmer + "; using (" + equivs.join(" ") + ")")
+    var info = newInfo()
+    equivs.forEach (function (equivKmer) {
+      var equivInfo = byKmer[equivKmer]
+      info.m0 += equivInfo.m0
+      info.m1 += equivInfo.m1
+      info.m2 += equivInfo.m2
+      info.moves += equivInfo.moves
+    })
+    byKmer[kmer] = info
+  }
+})
+
 var padEmitMu = 200, padEmitSigma = 50
 
-var json = { alphabet: "acgt", kmerlen: kmerLen, components: 1, params: { gauss: { padEmit: { mu: padEmitMu, sigma: padEmitSigma } }, rate: {}, prob: { padExtend: .5, padEnd: .5 } } }
+var json = { alphabet: alph, kmerlen: kmerLen, components: 1, params: { gauss: { padEmit: { mu: padEmitMu, sigma: padEmitSigma } }, rate: {}, prob: { padExtend: .5, padEnd: .5 } } }
 Object.keys(byKmer).forEach (function (kmer) {
   var info = byKmer[kmer]
   var mean = info.m1 / info.m0
