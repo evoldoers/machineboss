@@ -4,7 +4,11 @@
   "version": "0.0.1",
   "dependencies": {
     "hdf5.node": "ihh/hdf5.node#int64_as_string",
+    "bionode-fasta": "*",
+    "mersennetwister": "*",
+    "jStat": "*",
     "extend": "*",
+    "colors": "*",
     "node-getopt": "*"
   },
   "repository": {

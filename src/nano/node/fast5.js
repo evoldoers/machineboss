@@ -361,7 +361,7 @@ File.prototype.have_basecall_fastq = function(st,gr) {
   var _gr = this.fill_event_detection_group(gr)
   return this.basecall_group_descriptions.hasOwnProperty(_gr) && this.basecall_group_descriptions[_gr].have_fastq[st]
 }
-File.prototype.get_basecall_fastq = function(st,gr) { return h5lt.readDataset (this.file.id, this.basecall_fastq_path(this.fill_event_detection_group(gr),st)) }
+File.prototype.get_basecall_fastq = function(st,gr) { return h5lt.readDataset (this.file.id, this.basecall_fastq_path(this.fill_basecall_group(st,gr),st)) }
 File.prototype.have_basecall_seq = function(st,gr) { return this.have_basecall_fastq(st,gr) }
 File.prototype.get_basecall_seq = function(st,gr) { return this.fq2seq (this.get_basecall_fastq(st,gr)) }
 // Access Basecall events
