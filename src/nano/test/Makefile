@@ -28,3 +28,13 @@ $S-$M-shift$H.raw: $S.fa $M.json
 $S-$M-$P.decode: $S-$M-$P.raw $M.json
 	$(NANO) -R $S-$M-$P.raw -M $M.json -v8 -C -T $S-$M-$P.trace >$@
 
+
+LOMAN = $(HOME)/loman-r9/pass
+$(READ).$(K)mer.json: $(LOMAN)/$(READ).fast5
+	../node/events2model.js -f $< -k $K >$@
+
+$(READ).$(K)mer.fa: $(READ).$(K)mer.json
+	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.json -v6 -b -x >$@
+
+$(READ).$(K)mer.cmp: $(READ).$(K)mer.fa
+	../node/compare.js -r $(LOMAN)/$(READ).fast5 -q $(READ).$(K)mer.fa

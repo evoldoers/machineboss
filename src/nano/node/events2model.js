@@ -25,7 +25,7 @@ function inputError(err) {
 var filename = opt.argv[0] || opt.options['fast5'] || inputError("Please specify an input file")
 var strand = opt.options.strand || defaultStrand
 var group = opt.options.group || ''
-var kmerLen = opt.options.kmerlen || defaultKmerLen
+var kmerLen = opt.options.kmerlen ? parseInt(opt.options.kmerlen) : defaultKmerLen
 
 var file = new fast5.File (filename)
 var events = file.table_to_object (file.get_basecall_events(strand,group))
