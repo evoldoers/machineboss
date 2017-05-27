@@ -6,7 +6,7 @@ var fast5 = require('./fast5')
 var defaultStrand = 0
 var defaultKmerLen = 6
 
-var opt = getopt.create([
+var parser = getopt.create([
   ['f' , 'fast5=PATH'      , 'FAST5 input file'],
   ['s' , 'strand=N'        , 'strand (0, 1, 2; default ' + defaultStrand + ')'],
   ['g' , 'group=GROUP'     , 'group name (000, RN_001, ...)'],
@@ -14,10 +14,12 @@ var opt = getopt.create([
   ['h' , 'help'            , 'display this help message']
 ])              // create Getopt instance
 .bindHelp()     // bind option 'help' to default action
-.parseSystem(); // parse command line
+var opt = parser.parseSystem(); // parse command line
 
 function inputError(err) {
-    throw new Error (err)
+  parser.showHelp()
+  console.warn (err, "\n")
+  process.exit(1)
 }
 
 var filename = opt.argv[0] || opt.options['fast5'] || inputError("Please specify an input file")
