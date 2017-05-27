@@ -41,7 +41,7 @@ fasta.obj(queryFilename).on ('data', function (data) {
   var insertions = alignInfo.alignment.filter (function (col) { return col[0] === '-' }).length
   var mismatches = alignInfo.alignment.length - matches - insertions - deletions
   console.log ("Score: " + alignInfo.score + " (match " + matchScore + ", mismatch "+ mismatchScore + ", gap " + gapScore + ")")
-  console.log (matches + " matches, " + mismatches + " mismatches, " + insertions + " insertions, " + deletions + " deletions")
+  console.log (matches + " matches, " + (mismatches + " " + "mismatches").bgCyan.blue + ", " + (insertions + " " + "insertions").green + ", " + (deletions + " " + "deletions").bgRed.white)
   console.log ("Reference length " + refSeq.length + " (" + Math.round(100*matches/refSeq.length) + "% identical)")
   console.log ("Query length " + querySeq.length + " (" + Math.round(100*matches/querySeq.length) + "% identical)")
 })
@@ -94,7 +94,7 @@ function prettyPrint (alignment, labels, refRowIndex) {
       process.stdout.write (rowLabel + new Array(labelCols+1-rowLabel.length).fill(' ').join(''))
       for (var colIndex = colStart; colIndex < colStart + alignCols && colIndex < alignment.length; ++colIndex) {
 	var alignChar = alignment[colIndex][rowIndex], refChar = alignment[colIndex][refRowIndex]
-	process.stdout.write (alignChar === refChar ? alignChar : alignChar.inverse)
+	process.stdout.write (alignChar === refChar ? alignChar : (alignChar === '-' ? alignChar.bgRed.white : (refChar === '-' ? alignChar.green : alignChar.bgCyan.blue)))
       }
       process.stdout.write ("\n")
     })
