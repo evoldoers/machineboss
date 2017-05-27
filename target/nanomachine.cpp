@@ -112,9 +112,11 @@ int main (int argc, char** argv) {
     }
     
     // segment
-    const TraceMomentsList traceMomentsList (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsegment").as<size_t>());
+    TraceMomentsList traceMomentsList;
+    traceMomentsList.init (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsegment").as<size_t>());
     LogThisAt(8,"Trace moments:" << endl << traceMomentsList << endl);
-    
+    Assert (traceMomentsList.isSummaryOf(traceList), "Trace moments are not an accurate summary of traces");
+
     // init trace params
     TraceListParams traceListParams;
     if (vm.count("trace")) {

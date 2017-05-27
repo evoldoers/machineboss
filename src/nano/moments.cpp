@@ -34,6 +34,19 @@ TraceMoments::TraceMoments (const Trace& trace) :
   }
 }
 
+bool TraceMoments::isSummaryOf (const Trace& trace, double epsilon) const {
+  size_t pos = 0;
+  for (const auto& x: sample) {
+    if (pos + (size_t) x.m0 > trace.sample.size())
+      return false;
+    const SampleMoments s (trace, pos, x.m0);
+    if (abs(s.m1 - x.m1) >= epsilon || abs(s.m2 - x.m2) >= epsilon)
+      return false;
+    pos += (size_t) x.m0;
+  }
+  return pos == trace.sample.size();
+}
+
 void TraceMoments::writeJson (ostream& out) const {
   out << "{\"name\":\"" << escaped_str(name) << "\",\"moments\":[";
   for (size_t n = 0; n < sample.size(); ++n)
@@ -88,15 +101,37 @@ TraceMomentsList::TraceMomentsList()
 { }
 
 TraceMomentsList::TraceMomentsList (const TraceList& traceList) {
+  init (traceList);
+}
+
+TraceMomentsList::TraceMomentsList (const TraceList& traceList, double maxFracDiff, size_t maxSegLen) {
+  init (traceList, maxFracDiff, maxSegLen);
+}
+
+void TraceMomentsList::init (const TraceList& traceList) {
   for (const auto& t: traceList.trace)
     trace.push_back (TraceMoments(t));
 }
 
-TraceMomentsList::TraceMomentsList (const TraceList& traceList, double maxFracDiff, size_t maxSegLen) {
+void TraceMomentsList::init (const TraceList& traceList, double maxFracDiff, size_t maxSegLen) {
   for (const auto& t: traceList.trace) {
     const Segmenter seg (t, maxFracDiff, maxSegLen);
     trace.push_back (seg.segments());
   }
+}
+
+bool TraceMomentsList::isSummaryOf (const TraceList& traceList, double epsilon) const {
+  auto iter = trace.begin();
+  auto tlIter = traceList.trace.begin();
+  while (iter != trace.end()) {
+    if (tlIter == traceList.trace.end())
+      return false;
+    if (!(*iter).isSummaryOf (*tlIter, epsilon))
+      return false;
+    ++tlIter;
+    ++iter;
+  }
+  return tlIter == traceList.trace.end();
 }
 
 ostream& operator<< (ostream& out, const TraceMomentsList& traceMomentsList) {
