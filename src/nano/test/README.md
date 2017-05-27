@@ -15,5 +15,5 @@
 
 
 # Basecalling test
-~/bossmachine/src/nano/node/events2model.js -f ~/Dropbox/Projects/MinION/loman-r9/nanopore2_20160729_FNFAB24462_MN17024_sequencing_run_E_coli_K12_1D_R9_SpotOn_2_95274_ch238_read274_strand.fast5
+~/bossmachine/src/nano/node/events2model.js -f ~/Dropbox/Projects/MinION/loman-r9/nanopore2_20160729_FNFAB24462_MN17024_sequencing_run_E_coli_K12_1D_R9_SpotOn_2_95274_ch238_read274_strand.fast5 >long.json
 rm LOG ; ( ~/bossmachine/bin/nanomachine -d ~/Dropbox/Projects/MinION/loman-r9/nanopore2_20160729_FNFAB24462_MN17024_sequencing_run_E_coli_K12_1D_R9_SpotOn_2_95274_ch238_read274_strand.fast5 -m long.json -v6 -x -b > long.fa ) | & tee LOG
