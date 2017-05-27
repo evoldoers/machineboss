@@ -19,6 +19,18 @@ using namespace std;
 
 namespace po = boost::program_options;
 
+// Function used to check that 'opt1' and 'opt2' are not specified at the same time.
+// http://www.boost.org/doc/libs/1_57_0/libs/program_options/example/real.cpp
+void conflicting_options(const po::variables_map& vm, 
+                         const char* opt1, const char* opt2)
+{
+    if (vm.count(opt1) && !vm[opt1].defaulted() 
+        && vm.count(opt2) && !vm[opt2].defaulted())
+        throw logic_error(string("Conflicting options '") 
+                          + opt1 + "' and '" + opt2 + "'.");
+}
+
+// main program
 int main (int argc, char** argv) {
 
   try {
@@ -87,6 +99,9 @@ int main (int argc, char** argv) {
     // load parameters
     LogThisAt(2,"Initializing model" << endl);
     BaseCallingParams initParams;
+    conflicting_options (vm, "model", "alphabet");
+    conflicting_options (vm, "model", "kmerlen");
+    conflicting_options (vm, "model", "components");
     if (vm.count("model"))
       JsonReader<BaseCallingParams>::readFile (initParams, vm.at("model").as<string>());
     else
