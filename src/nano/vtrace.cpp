@@ -52,10 +52,13 @@ void ViterbiTraceMatrix::readyColumn (OutputIndex outPos) {
 
 MachinePath ViterbiTraceMatrix::path (const Machine& m) {
   Assert (logLike > -numeric_limits<double>::infinity(), "Can't do Viterbi traceback: no finite-weight paths");
+  ProgressLog(plog,3);
+  plog.initProgress ("Viterbi traceback (%ld samples, %u states, %u transitions)", outLen, nStates, nTrans);
   MachinePath path;
   OutputIndex outPos = outLen;
   StateIndex s = nStates - 1;
   while (outPos > 0 || s != 0) {
+    plog.logProgress ((outLen - outPos) / (double) outLen, "sample %ld/%ld", outPos, outLen);
     const EvaluatedMachineState& state = eval.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
     const EvaluatedMachineState::Trans *bestTrans, *bestLoopTrans = NULL;
