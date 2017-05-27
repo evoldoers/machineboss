@@ -42,8 +42,8 @@ fasta.obj(queryFilename).on ('data', function (data) {
   var mismatches = alignInfo.alignment.length - matches - insertions - deletions
   console.log ("Score: " + alignInfo.score + " (match " + matchScore + ", mismatch "+ mismatchScore + ", gap " + gapScore + ")")
   console.log (matches + " matches, " + mismatches + " mismatches, " + insertions + " insertions, " + deletions + " deletions")
-  console.log ("Reference length " + refSeq.length)
-  console.log ("Query length " + querySeq.length)
+  console.log ("Reference length " + refSeq.length + " (" + Math.round(100*matches/refSeq.length) + "% identical)")
+  console.log ("Query length " + querySeq.length + " (" + Math.round(100*matches/querySeq.length) + "% identical)")
 })
 
 function align(xSeq,ySeq,matchScore,mismatchScore,gapScore) {

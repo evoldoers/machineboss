@@ -51,10 +51,11 @@ int main (int argc, char** argv) {
       ("components,c", po::value<int>()->default_value(1), "# of mixture components in length distributions")
       ;
 
-    po::options_description dpOpts("Segmenting & DP options");
+    po::options_description dpOpts("Event detection & DP options");
     dpOpts.add_options()
-      ("maxfracdiff,F", po::value<double>()->default_value(.01), "max fractional delta between samples in same segment")
-      ("maxsegment,G", po::value<size_t>()->default_value(4), "max number of samples per segment")
+      ("fast5events,E", "use events from fast5 file")
+      ("maxfracdiff,F", po::value<double>()->default_value(.01), "max fractional delta between samples in same event")
+      ("maxeventlen,V", po::value<size_t>()->default_value(4), "max number of samples per event")
       ("memlimit,L", po::value<size_t>()->default_value(1<<30), "approximate memory limit for forward-backward DP")
       ("bandwidth,W", po::value<double>()->default_value(1), "proportion of DP matrix to fill around main diagonal")
       ;
@@ -128,9 +129,17 @@ int main (int argc, char** argv) {
     
     // segment
     TraceMomentsList traceMomentsList;
-    traceMomentsList.init (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxsegment").as<size_t>());
+    conflicting_options (vm, "fast5events", "raw");
+    conflicting_options (vm, "fast5events", "normalize");
+    conflicting_options (vm, "fast5events", "maxfracdiff");
+    conflicting_options (vm, "fast5events", "maxeventlen");
+    if (vm.count("fast5events"))
+      for (const auto& fast5Filename: vm.at("fast5").as<vector<string> >())
+	traceMomentsList.readFast5 (fast5Filename);
+    else
+      traceMomentsList.init (traceList, vm.at("maxfracdiff").as<double>(), vm.at("maxeventlen").as<size_t>());
     LogThisAt(8,"Trace moments:" << endl << traceMomentsList << endl);
-    Assert (traceMomentsList.isSummaryOf(traceList), "Trace moments are not an accurate summary of traces");
+    traceMomentsList.assertIsSummaryOf (traceList);
 
     // init trace params
     TraceListParams traceListParams;

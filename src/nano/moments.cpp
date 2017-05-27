@@ -1,7 +1,10 @@
 #include <math.h>
+#include <gsl/gsl_math.h>
 #include "../util.h"
 #include "moments.h"
 #include "segmenter.h"
+
+#include "../../ext/fast5/fast5.hpp"
 
 SampleMoments::SampleMoments() :
   m0(0), m1(0), m2(0)
@@ -34,17 +37,33 @@ TraceMoments::TraceMoments (const Trace& trace) :
   }
 }
 
-bool TraceMoments::isSummaryOf (const Trace& trace, double epsilon) const {
+void TraceMoments::readFast5 (const string& filename) {
+  name = filename;
+  sample.clear();
+
+  fast5::File f;
+  f.open(filename);
+  const vector<fast5::EventDetection_Event> events = f.get_eventdetection_events();
+  sample.resize (events.size());
+  for (size_t n = 0; n < events.size(); ++n) {
+    const fast5::EventDetection_Event& e = events[n];
+    SampleMoments& s = sample[n];
+    s.m0 = e.length;
+    s.m1 = e.mean * e.length;
+    s.m2 = (e.stdv * e.stdv + e.mean * e.mean) * e.length;
+  }
+}
+
+void TraceMoments::assertIsSummaryOf (const Trace& trace, double epsilon) const {
   size_t pos = 0;
   for (const auto& x: sample) {
-    if (pos + (size_t) x.m0 > trace.sample.size())
-      return false;
+    Assert (pos + (size_t) x.m0 <= trace.sample.size(), "Trace summary %s has more samples than original trace %s", name.c_str(), trace.name.c_str());
     const SampleMoments s (trace, pos, x.m0);
-    if (abs(s.m1 - x.m1) >= epsilon || abs(s.m2 - x.m2) >= epsilon)
-      return false;
+    Assert (gsl_fcmp(s.m1,x.m1,epsilon) == 0, "Samples %u-%u of trace summary %s have 1st moment %g, original trace %s has 1st moment %g (difference %g)", pos, pos + x.m0 - 1, name.c_str(), x.m1, trace.name.c_str(), s.m1, abs(s.m1-x.m1));
+    Assert (gsl_fcmp(s.m2,x.m2,epsilon) == 0, "Samples %u-%u of trace summary %s have 2nd moment %g, original trace %s has 2nd moment %g (difference %g)", pos, pos + x.m0 - 1, name.c_str(), x.m2, trace.name.c_str(), s.m2, abs(s.m2-x.m2));
     pos += (size_t) x.m0;
   }
-  return pos == trace.sample.size();
+  Assert (pos == trace.sample.size(), "Trace summary %s has fewer samples than original trace %s", name.c_str(), trace.name.c_str());
 }
 
 void TraceMoments::writeJson (ostream& out) const {
@@ -120,18 +139,22 @@ void TraceMomentsList::init (const TraceList& traceList, double maxFracDiff, siz
   }
 }
 
-bool TraceMomentsList::isSummaryOf (const TraceList& traceList, double epsilon) const {
+void TraceMomentsList::readFast5 (const string& filename) {
+  TraceMoments m;
+  m.readFast5 (filename);
+  trace.push_back (m);
+}
+
+void TraceMomentsList::assertIsSummaryOf (const TraceList& traceList, double epsilon) const {
   auto iter = trace.begin();
   auto tlIter = traceList.trace.begin();
   while (iter != trace.end()) {
-    if (tlIter == traceList.trace.end())
-      return false;
-    if (!(*iter).isSummaryOf (*tlIter, epsilon))
-      return false;
+    Assert (tlIter != traceList.trace.end(), "More traces in trace moments list than in original trace list");
+    (*iter).assertIsSummaryOf (*tlIter, epsilon);
     ++tlIter;
     ++iter;
   }
-  return tlIter == traceList.trace.end();
+  Assert (tlIter == traceList.trace.end(), "Fewer traces in trace moments list than in original trace list");
 }
 
 ostream& operator<< (ostream& out, const TraceMomentsList& traceMomentsList) {

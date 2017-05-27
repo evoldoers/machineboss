@@ -34,7 +34,7 @@ $(READ).$(K)mer.json: $(LOMAN)/$(READ).fast5
 	../node/events2model.js -f $< -k $K >$@
 
 $(READ).$(K)mer.fa: $(READ).$(K)mer.json
-	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.json -v6 -b -x >$@
+	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.json -v6 -b -x -E >$@
 
 $(READ).$(K)mer.cmp: $(READ).$(K)mer.fa
 	../node/compare.js -r $(LOMAN)/$(READ).fast5 -q $(READ).$(K)mer.fa

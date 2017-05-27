@@ -5,7 +5,7 @@
 #include "gaussian.h"
 #include "trace.h"
 
-#define TRACE_CMP_EPSILON 1e-8
+#define TRACE_CMP_EPSILON .01
 
 struct SampleMoments {
   int m0;
@@ -19,7 +19,8 @@ struct TraceMoments {
   vguard<SampleMoments> sample;
   TraceMoments();
   TraceMoments (const Trace& trace);
-  bool isSummaryOf (const Trace& trace, double epsilon = TRACE_CMP_EPSILON) const;
+  void readFast5 (const string& filename);
+  void assertIsSummaryOf (const Trace& trace, double epsilon = TRACE_CMP_EPSILON) const;
   void writeJson (ostream&) const;
   string pathScoreBreakdown (const Machine&, const MachinePath&, const GaussianModelParams&, const TraceParams&) const;
 };
@@ -32,7 +33,8 @@ struct TraceMomentsList {
   TraceMomentsList (const TraceList&, double maxFracDiff, size_t maxSegLen);
   void init (const TraceList&);
   void init (const TraceList&, double maxFracDiff, size_t maxSegLen);
-  bool isSummaryOf (const TraceList&, double epsilon = TRACE_CMP_EPSILON) const;
+  void readFast5 (const string& filename);
+  void assertIsSummaryOf (const TraceList&, double epsilon = TRACE_CMP_EPSILON) const;
   friend ostream& operator<< (ostream&, const TraceMomentsList&);
 };
 
