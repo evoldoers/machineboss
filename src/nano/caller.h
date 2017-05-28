@@ -57,7 +57,7 @@ struct BaseCallingMachine : Machine, BaseCallingParamNamer {
   // State indices are organized so that the only backward transitions (i->j where j<i) are output emissions
   inline StateIndex nShorterKmers (int len) const { return (numberOfKmers(len,alphSize) - 1) / (alphSize - 1); }  // sum_{n=0}^{L-1} A^l = (A^L - 1) / (A - 1)
   inline StateIndex shortKmer (Kmer kmer, int len) const { return len ? (nShorterKmers(len) + kmer) : 0; }
-  inline StateIndex kmerEmit (Kmer kmer, int component) const { return kmerOffset + component * nKmers + kmer; }
+  inline StateIndex kmerEmit (Kmer kmer, int component) const { return kmerOffset + (components - component - 1) * nKmers + kmer; }
   inline StateIndex kmerStart (Kmer kmer) const { return kmerOffset + components * nKmers + kmer; }
 };
 

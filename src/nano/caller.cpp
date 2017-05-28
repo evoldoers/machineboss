@@ -39,7 +39,7 @@ string BaseCallingParamNamer::kmerExitRateLabel (const string& kmerStr) {
 }
 
 string BaseCallingParamNamer::cptName (int cpt) {
-  return string("k=") + to_string(cpt + 1);
+  return string("r=") + to_string(cpt + 1);
 }
 
 void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
@@ -181,15 +181,15 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
     const WeightExpr endWeight (kmerEndLabel (kmerStr)), extendWeight (kmerExtendLabel (kmerStr));
     MachineState& start (state[kmerStart(kmer)]);
     start.name = kmerStr + "_start";
-    for (int cpt = 0; cpt < cpts; ++cpt) {
+    for (int cpt = cpts - 1; cpt >= 0; --cpt) {
       MachineState& sc = state[kmerEmit(kmer,cpt)];
       sc.name = kmerStr + "(" + cptName(cpt) + ")";
       start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), cpts == 1 ? WeightExpr(true) : WeightExpr (cptWeightLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), extendWeight));
-      if (cpt + 1 < cpts)
-	sc.trans.push_back (MachineTransition (string(), string(), kmerEmit(kmer,cpt+1), endWeight));
+      if (cpt > 0)
+	sc.trans.push_back (MachineTransition (string(), string(), kmerEmit(kmer,cpt-1), endWeight));
     }
-    MachineState& end = state[kmerEmit(kmer,cpts-1)];
+    MachineState& end = state[kmerEmit(kmer,0)];
     for (auto c: alph)
       end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), endWeight));
     end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightAlgebra::multiply (endWeight, WeightExpr (padEndLabel()))));
