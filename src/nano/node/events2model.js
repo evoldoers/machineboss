@@ -91,7 +91,7 @@ Object.keys(byKmer).forEach (function (kmer) {
   var mean = info.m1 / info.m0
   var stdev = Math.sqrt (info.m2 / info.m0 - mean*mean)
   json.params.gauss["emit("+kmer+")"] = { mu: mean, sigma: stdev }
-  json.params.rate["R(move|"+kmer+",cpt1)"] = info.moves / info.m0
+  json.params.rate["R("+kmer+")"] = info.moves / info.m0
 })
 
 console.log (JSON.stringify (json))

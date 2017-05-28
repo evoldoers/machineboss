@@ -26,20 +26,20 @@ string BaseCallingParamNamer::cptWeightLabel (const string& kmerStr, int cpt) {
   return string("P(") + cptName(cpt) + "|" + kmerStr + ")";
 }
 
-string BaseCallingParamNamer::cptExtendLabel (const string& kmerStr, int cpt) {
-  return waitEventFuncName (cptExitRateLabel (kmerStr, cpt));
+string BaseCallingParamNamer::kmerExtendLabel (const string& kmerStr) {
+  return waitEventFuncName (kmerExitRateLabel (kmerStr));
 }
 
-string BaseCallingParamNamer::cptEndLabel (const string& kmerStr, int cpt) {
-  return exitEventFuncName (cptExitRateLabel (kmerStr, cpt));
+string BaseCallingParamNamer::kmerEndLabel (const string& kmerStr) {
+  return exitEventFuncName (kmerExitRateLabel (kmerStr));
 }
 
-string BaseCallingParamNamer::cptExitRateLabel (const string& kmerStr, int cpt) {
-  return string("R(move|") + kmerStr + "," + cptName(cpt) + ")";
+string BaseCallingParamNamer::kmerExitRateLabel (const string& kmerStr) {
+  return string("R(") + kmerStr + ")";
 }
 
 string BaseCallingParamNamer::cptName (int cpt) {
-  return string("cpt") + to_string(cpt + 1);
+  return string("k=") + to_string(cpt + 1);
 }
 
 void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
@@ -54,11 +54,10 @@ void BaseCallingParams::init (const string& alph, SeqIdx len, int cpts) {
     const string prefix = kmerStr.substr(0,kmerLen-1);
     const char suffix = kmerStr[kmerLen-1];
     GaussianParams emit;
-    for (int cpt = 0; cpt < cpts; ++cpt) {
-      if (cpts > 1)
+    if (cpts > 1)
+      for (int cpt = 0; cpt < cpts; ++cpt)
 	params.prob.defs[cptWeightLabel (kmerStr, cpt)] = 1. / (double) cpts;
-      params.rate.defs[cptExitRateLabel (kmerStr, cpt)] = 1. / (cpt + 1);
-    }
+    params.rate.defs[kmerExitRateLabel (kmerStr)] = 1.;
     GaussianParams gp;
     gp.mu = BaseCallerMuMode;
     gp.tau = BaseCallerTauMode;
@@ -91,8 +90,8 @@ BaseCallingPrior::BaseCallingPrior()
   : cptWeight(1),
     padExtend(1),
     padEnd(1),
-    cptExitCount(1),
-    cptExitTime(1),
+    kmerExitCount(1),
+    kmerExitTime(1),
     mu (BaseCallerMuMode),
     muCount (CALC_N_MU (BaseCallerMuError, CALC_TAU_MEAN(BaseCallerSigmaMean), CALC_TAU_SD(BaseCallerSigmaError))),
     tau (BaseCallerTauMode),
@@ -114,7 +113,8 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
   emitPrior.n_tau = tauCount;
 
   GammaPrior exitPrior;
-  exitPrior.count = cptExitCount;
+  exitPrior.count = kmerExitCount;
+  exitPrior.time = kmerExitTime;
   
   const Kmer nk = numberOfKmers (kmerLen, alph.size());
   for (Kmer kmerPrefix = 0; kmerPrefix < nk; kmerPrefix += alph.size())
@@ -122,26 +122,25 @@ GaussianModelPrior BaseCallingPrior::modelPrior (const string& alph, SeqIdx kmer
       const string kmerStr = kmerToString (kmer, kmerLen, alph);
       const string prefix = kmerStr.substr(0,kmerLen-1);
       const char suffix = kmerStr[kmerLen-1];
-      vguard<string> cptWeightParam;
-      cptWeightParam.reserve (components);
-      for (int cpt = 0; cpt < components; ++cpt) {
-	if (components > 1)
+      if (components > 1) {
+	vguard<string> cptWeightParam;
+	cptWeightParam.reserve (components);
+	for (int cpt = 0; cpt < components; ++cpt) {
 	  prior.count.defs[cptWeightLabel (kmerStr, cpt)] = cptWeight;
-	exitPrior.time = cptExitTime * (cpt + 1);
-	prior.gamma[cptExitRateLabel (kmerStr, cpt)] = exitPrior;
-	prior.cons.rate.push_back (cptExitRateLabel (kmerStr, cpt));
-	cptWeightParam.push_back (cptWeightLabel (kmerStr, cpt));
-      }
-      if (components > 1)
+	  cptWeightParam.push_back (cptWeightLabel (kmerStr, cpt));
+	}
 	prior.cons.norm.push_back (cptWeightParam);
+      }
+      prior.gamma[kmerExitRateLabel (kmerStr)] = exitPrior;
+      prior.cons.rate.push_back (kmerExitRateLabel (kmerStr));
       prior.gauss[emitLabel (kmerStr)] = emitPrior;
     }
 
   GaussianPrior padPrior;
   padPrior.mu0 = muPad;
-  padPrior.n_mu = muCount;
+  padPrior.n_mu = muPadCount;
   padPrior.tau0 = tauPad;
-  padPrior.n_tau = tauCount;
+  padPrior.n_tau = tauPadCount;
 
   prior.gauss[padEmitLabel()] = padPrior;
   prior.count.defs[padExtendLabel()] = padExtend;
@@ -156,7 +155,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
   components = cpts;
   nKmers = numberOfKmers (len, alphSize);
   kmerOffset = nShorterKmers (len);
-  state = vguard<MachineState> (nKmers * (components + 2) + kmerOffset + 1);
+  state = vguard<MachineState> (nKmers * (components + 1) + kmerOffset + 1);
   state[startState()].name = "start";
   state[endState()].name = "end";
 
@@ -179,20 +178,21 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
   for (Kmer kmer = 0; kmer < nKmers; ++kmer) {
     const string kmerStr = kmerToString (kmer, len, alph);
     const string suffix = kmerStr.substr(1);
+    const WeightExpr endWeight (kmerEndLabel (kmerStr)), extendWeight (kmerExtendLabel (kmerStr));
     MachineState& start (state[kmerStart(kmer)]);
-    MachineState& end (state[kmerEnd(kmer)]);
     start.name = kmerStr + "_start";
-    end.name = kmerStr + "_end";
     for (int cpt = 0; cpt < cpts; ++cpt) {
       MachineState& sc = state[kmerEmit(kmer,cpt)];
-      sc.name = kmerStr + "_" + cptName(cpt);
+      sc.name = kmerStr + "(" + cptName(cpt) + ")";
       start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), cpts == 1 ? WeightExpr(true) : WeightExpr (cptWeightLabel (kmerStr, cpt))));
-      sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), WeightExpr (cptExtendLabel (kmerStr, cpt))));
-      sc.trans.push_back (MachineTransition (string(), string(), kmerEnd(kmer), WeightExpr (cptEndLabel (kmerStr, cpt))));
+      sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), extendWeight));
+      if (cpt + 1 < cpts)
+	sc.trans.push_back (MachineTransition (string(), string(), kmerEmit(kmer,cpt+1), endWeight));
     }
+    MachineState& end = state[kmerEmit(kmer,cpts-1)];
     for (auto c: alph)
-      end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), WeightExpr (true)));
-    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightExpr (padEndLabel())));
+      end.trans.push_back (MachineTransition (string(1,c), string(), kmerStart(stringToKmer(suffix+c,alph)), endWeight));
+    end.trans.push_back (MachineTransition (string(), string(), nStates() - 1, WeightAlgebra::multiply (endWeight, WeightExpr (padEndLabel()))));
   }
   state[startState()].trans.push_back (MachineTransition (string(), padEmitLabel(), 0, padExtendLabel()));
   state[endState()].trans.push_back (MachineTransition (string(), padEmitLabel(), nStates() - 1, padExtendLabel()));

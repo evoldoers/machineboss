@@ -14,7 +14,7 @@ lines.forEach (function (line) {
   if (kmer.length) {
     json.kmerlen = kmer.length
     json.params.gauss["emit("+kmer+")"] = { mu: level_mean, sigma: sd_mean }
-    json.params.rate["R(move|"+kmer+",cpt1)"] = 1
+    json.params.rate["R("+kmer+")"] = 1
   }
 })
 
