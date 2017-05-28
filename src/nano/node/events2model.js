@@ -9,6 +9,7 @@ var defaultKmerLen = 6
 var defaultComponents = 1
 
 var minFracInc = 1e-5  // minimum fractional increment for EM negative binomial fit
+var minExtendProb = 1e-10
 
 var parser = getopt.create([
   ['f' , 'fast5=PATH'      , 'FAST5 input file'],
@@ -99,14 +100,16 @@ allKmers.forEach (function (kmer) {
 
 var padEmitMu = 200, padEmitSigma = 50
 
-var json = { alphabet: alph, kmerlen: kmerLen, components: 1, params: { gauss: { padEmit: { mu: padEmitMu, sigma: padEmitSigma } }, rate: {}, prob: { padExtend: .5, padEnd: .5 } } }
+var json = { alphabet: alph, kmerlen: kmerLen, components: components, params: { gauss: { padEmit: { mu: padEmitMu, sigma: padEmitSigma } }, rate: {}, prob: { padExtend: .5, padEnd: .5 } } }
 Object.keys(byKmer).sort().forEach (function (kmer) {
   var info = byKmer[kmer]
 //  console.warn("Fitting kmer " + kmer + ", length distribution [" + info.lenDist.join(",") + "]")
   var mean = info.m1 / info.m0
   var stdev = Math.sqrt (info.m2 / info.m0 - mean*mean)
   var nb = negbin.fitNegBin (info.lenDist, components, undefined, negbin.minFracInc(minFracInc))
-  var rate = -Math.log (nb.pExtend)
+  var rate = -Math.log (Math.max (minExtendProb, nb.pExtend))
+  if (!(rate > 0 && rate < Infinity))
+    throw new Error ("While fitting kmer " + kmer + ", length distribution [" + info.lenDist.join(",") + "]: rate = " + rate)
   var cptWeight = nb.rDist
   json.params.gauss["emit("+kmer+")"] = { mu: mean, sigma: stdev }
   json.params.rate["R("+kmer+")"] = rate

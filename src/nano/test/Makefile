@@ -30,11 +30,19 @@ $S-$M-$P.decode: $S-$M-$P.raw $M.json
 
 
 LOMAN = $(HOME)/loman-r9/pass
+$(READ).$(PARAMS).cmp: $(READ).$(PARAMS).fa $(LOMAN)/$(READ).fast5
+	../node/compare.js -r $(LOMAN)/$(READ).fast5 -q $(READ).$(PARAMS).fa
+
+# single geometric length distribution, using fast5 event detection
 $(READ).$(K)mer.json: $(LOMAN)/$(READ).fast5
 	../node/events2model.js -f $< -k $K >$@
 
 $(READ).$(K)mer.fa: $(READ).$(K)mer.json
 	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.json -v6 -b -x -E >$@
 
-$(READ).$(K)mer.cmp: $(READ).$(K)mer.fa
-	../node/compare.js -r $(LOMAN)/$(READ).fast5 -q $(READ).$(K)mer.fa
+# negative binomial up to $(R), no event detection
+$(READ).$(K)mer.$(R)negbin.json: $(LOMAN)/$(READ).fast5
+	../node/events2model.js -f $< -k $K -c $R >$@
+
+$(READ).$(K)mer.$(R)negbin.fa: $(READ).$(K)mer.$(R)negbin.json
+	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.$(R)negbin.json -v6 -b -x -V1 >$@
