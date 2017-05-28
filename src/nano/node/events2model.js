@@ -55,8 +55,8 @@ for (var col = 0; col < events.start.length; ++col) {
     info.m1 += m1
     info.m2 += m2
     if (move) {
-      if (prevKmer)
-        byKmer[prevKmer].lenDist[prevLen] = (byKmer[prevKmer].lenDist[prevLen] || 0) + 1
+      if (prevKmer && prevLen > 1)
+        byKmer[prevKmer].lenDist[prevLen-1] = (byKmer[prevKmer].lenDist[prevLen-1] || 0) + 1
       prevLen = 0
     }
     prevKmer = kmer

@@ -187,7 +187,7 @@ void BaseCallingMachine::init (const string& alph, SeqIdx len, int cpts) {
       start.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), cpts == 1 ? WeightExpr(true) : WeightExpr (cptWeightLabel (kmerStr, cpt))));
       sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt), extendWeight));
       if (cpt > 0)
-	sc.trans.push_back (MachineTransition (string(), string(), kmerEmit(kmer,cpt-1), endWeight));
+	sc.trans.push_back (MachineTransition (string(), emitLabel(kmerStr), kmerEmit(kmer,cpt-1), endWeight));
     }
     MachineState& end = state[kmerEmit(kmer,0)];
     for (auto c: alph)
