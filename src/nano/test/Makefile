@@ -46,3 +46,10 @@ $(READ).$(K)mer.$(R)negbin.json: $(LOMAN)/$(READ).fast5
 
 $(READ).$(K)mer.$(R)negbin.fa: $(READ).$(K)mer.$(R)negbin.json
 	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.$(R)negbin.json -v6 -b -x -V1 >$@
+
+# negative binomial up to $(R) aggregated across all kmers, no event detection
+$(READ).$(K)mer.$(R)negbin-agg.json: $(LOMAN)/$(READ).fast5
+	../node/events2model.js -f $< -k $K -c $R -a >$@
+
+$(READ).$(K)mer.$(R)negbin-agg.fa: $(READ).$(K)mer.$(R)negbin-agg.json
+	$(NANO) -d $(LOMAN)/$(READ).fast5 -m $(READ).$(K)mer.$(R)negbin-agg.json -v6 -b -x -V1 >$@

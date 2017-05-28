@@ -17,6 +17,7 @@ var parser = getopt.create([
   ['g' , 'group=GROUP'     , 'group name (000, RN_001, ...)'],
   ['k' , 'kmerlen=N'       , 'kmer length (default ' + defaultKmerLen + ')'],
   ['c' , 'components=N'    , 'negative binomial mixture components (default ' + defaultComponents + ')'],
+  ['a' , 'aggregate'       , 'give all kmers the same length distribution'],
   ['h' , 'help'            , 'display this help message']
 ])              // create Getopt instance
 .bindHelp()     // bind option 'help' to default action
@@ -33,6 +34,7 @@ var strand = opt.options.strand || defaultStrand
 var group = opt.options.group || ''
 var kmerLen = opt.options.kmerlen ? parseInt(opt.options.kmerlen) : defaultKmerLen
 var components = opt.options.components ? parseInt(opt.options.components) : defaultComponents
+var aggregate = opt.options.aggregate
 
 var file = new fast5.File (filename)
 var events = file.table_to_object (file.get_basecall_events(strand,group))
@@ -66,6 +68,18 @@ for (var col = 0; col < events.start.length; ++col) {
 }
 
 function newInfo() { return { m0: 0, m1: 0, m2: 0, lenDist: [] } }
+function sumInfo (infoList) {
+  var info = newInfo()
+  infoList.forEach (function (summedInfo) {
+    info.m0 += summedInfo.m0
+    info.m1 += summedInfo.m1
+    info.m2 += summedInfo.m2
+    summedInfo.lenDist.forEach (function (count, len) {
+      info.lenDist[len] = (info.lenDist[len] || 0) + count
+    })
+  })
+  return info
+}
 
 var alph = 'acgt'
 var nKmers = Math.pow(alph.length,kmerLen)
@@ -76,6 +90,7 @@ var allKmers = new Array(nKmers).fill(0).map (function (_, n) {
   return kmer
 })
 var gotKmers = Object.keys(byKmer).sort()
+var sumAllInfo = aggregate && sumInfo (gotKmers.map (function (kmer) { return byKmer[kmer] }))
 allKmers.forEach (function (kmer) {
   if (!byKmer[kmer]) {
     var equivs = []
@@ -84,29 +99,23 @@ allKmers.forEach (function (kmer) {
 	return equivKmer.substr(n) === kmer.substr(n)
       })
     console.warn ("Missing kmer " + kmer + "; using (" + equivs.join(" ") + ")")
-    var info = newInfo()
-    equivs.forEach (function (equivKmer) {
-      var equivInfo = byKmer[equivKmer]
-      info.m0 += equivInfo.m0
-      info.m1 += equivInfo.m1
-      info.m2 += equivInfo.m2
-      equivInfo.lenDist.forEach (function (count, len) {
-        info.lenDist[len] = (info.lenDist[len] || 0) + count
-      })
-    })
-    byKmer[kmer] = info
+    byKmer[kmer] = sumInfo (equivs.map (function (equivKmer) { return byKmer[equivKmer] }))
   }
 })
 
-var padEmitMu = 200, padEmitSigma = 50
+function fitNegBin (info) {
+  return negbin.fitNegBin (info.lenDist, components, undefined, negbin.minFracInc(minFracInc))
+}
 
+var padEmitMu = 200, padEmitSigma = 50
 var json = { alphabet: alph, kmerlen: kmerLen, components: components, params: { gauss: { padEmit: { mu: padEmitMu, sigma: padEmitSigma } }, rate: {}, prob: { padExtend: .5, padEnd: .5 } } }
+var nbAll = aggregate && fitNegBin(sumAllInfo)
 Object.keys(byKmer).sort().forEach (function (kmer) {
   var info = byKmer[kmer]
 //  console.warn("Fitting kmer " + kmer + ", length distribution [" + info.lenDist.join(",") + "]")
   var mean = info.m1 / info.m0
   var stdev = Math.sqrt (info.m2 / info.m0 - mean*mean)
-  var nb = negbin.fitNegBin (info.lenDist, components, undefined, negbin.minFracInc(minFracInc))
+  var nb = aggregate ? nbAll : negbin.fitNegBin (info.lenDist, components, undefined, negbin.minFracInc(minFracInc))
   var rate = -Math.log (Math.max (minExtendProb, nb.pExtend))
   if (!(rate > 0 && rate < Infinity))
     throw new Error ("While fitting kmer " + kmer + ", length distribution [" + info.lenDist.join(",") + "]: rate = " + rate)
