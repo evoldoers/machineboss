@@ -71,7 +71,7 @@ var alph = 'acgt'
 var nKmers = Math.pow(alph.length,kmerLen)
 var allKmers = new Array(nKmers).fill(0).map (function (_, n) {
   var kmer = ''
-  for (var i = 0; i < kmerLen; ++i)
+  for (var i = kmerLen - 1; i >= 0; --i)
     kmer += alph.charAt (Math.floor(n / Math.pow(alph.length,i)) % alph.length)
   return kmer
 })
