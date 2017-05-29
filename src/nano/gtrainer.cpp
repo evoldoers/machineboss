@@ -100,6 +100,8 @@ void GaussianModelFitter::fit() {
 }
 
 vguard<FastSeq> GaussianDecoder::decode() {
+  const DummyGenerator generator (machine.inputAlphabet());
+  const Machine machineWithGenerator = Machine::compose (generator, machine);
   vguard<FastSeq> result;
   size_t m = 0;
   for (const auto& trace: traceList.trace) {
@@ -109,10 +111,10 @@ vguard<FastSeq> GaussianDecoder::decode() {
       LogThisAt(3,"Fitting scaling parameters for trace " << trace.name << endl);
       for (iter = 0; true; ++iter) {
 	reset();
-	const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
+	const EvaluatedMachine eval (machineWithGenerator, modelParams.params (traceParams.rate));
 	GaussianModelCounts c;
 	c.init (eval);
-	logLike += c.add (machine, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
+	logLike += c.add (machineWithGenerator, eval, modelParams, trace, traceParams, blockBytes, bandWidth);
 	counts.push_back (c);
 	if (testFinished())
 	  break;
@@ -121,10 +123,10 @@ vguard<FastSeq> GaussianDecoder::decode() {
       }
     }
     LogThisAt(3,"Base-calling trace " << trace.name << endl);
-    const EvaluatedMachine eval (machine, modelParams.params (traceParams.rate));
+    const EvaluatedMachine eval (machineWithGenerator, modelParams.params (traceParams.rate));
     ViterbiTraceMatrix viterbi (eval, modelParams, trace, traceParams, blockBytes);
-    const MachinePath path = viterbi.path(machine);
-    LogThisAt(6,"Viterbi path:" << endl << trace.pathScoreBreakdown (machine, path, modelParams, traceParams) << endl);
+    const MachinePath path = viterbi.path(machineWithGenerator);
+    LogThisAt(6,"Viterbi path:" << endl << trace.pathScoreBreakdown (machineWithGenerator, path, modelParams, traceParams) << endl);
     FastSeq fs;
     fs.name = trace.name;
     for (const auto& trans: path.trans)
@@ -134,4 +136,12 @@ vguard<FastSeq> GaussianDecoder::decode() {
     ++m;
   }
   return result;
+}
+
+DummyGenerator::DummyGenerator (const vguard<InputSymbol>& alphabet) {
+  state.resize (1);
+  MachineState& ms = state[startState()];
+  ms.name = alphabet;
+  for (const auto& sym: alphabet)
+    ms.trans.push_back (MachineTransition (sym, (OutputSymbol) sym, startState(), WeightExpr (1. / alphabet.size())));
 }

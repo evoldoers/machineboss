@@ -40,4 +40,8 @@ struct GaussianDecoder : GaussianTrainer {
   vguard<FastSeq> decode();
 };
 
+struct DummyGenerator : Machine {
+  DummyGenerator (const vguard<InputSymbol>& alphabet);
+};
+
 #endif /* GAUSSTRAINER_INCLUDED */
