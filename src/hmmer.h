@@ -15,7 +15,9 @@ struct HmmerModel {
 
   HmmerModel() { }
   void read (ifstream&);
-
+  static double strToProb (const string&);
+  static vguard<double> strsToProbs (const vguard<string>&);
+  
   Machine machine() const;
 };
 
