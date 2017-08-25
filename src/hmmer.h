@@ -5,6 +5,7 @@
 #include "vguard.h"
 #include "machine.h"
 
+// HMMER3 model
 struct HmmerModel {
   struct Node {
     vguard<double> matchEmit, insEmit;

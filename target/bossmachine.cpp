@@ -44,7 +44,7 @@ int main (int argc, char** argv) {
       ("generate,g", po::value<string>(), "sequence generator '<'")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
-      ("hmmer,H", po::value<string>(), "load machine from HMMER model file")
+      ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
       ;
 
     po::options_description prefixOpts("Prefix operators");
