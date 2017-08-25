@@ -21,15 +21,21 @@ void HmmerModel::read (ifstream& in) {
   const regex end_re ("^//");
   string line;
   smatch tag_match;
-  vguard<string> alph;
   while (getline(in,line))
-    if (regex_match (line, tag_match, tag_re)) {
+    if (regex_search (line, tag_match, tag_re)) {
       const string tag = tag_match.str(1);
       if (tag == "HMM") {
 	const vguard<string> hmm_alph = split (line);
+	Assert (hmm_alph.size() > 1, "HMM parse error: empty alphabet");
 	alph = vguard<string> (hmm_alph.begin() + 1, hmm_alph.end());
-	for (int skip = 0; skip < 4; ++skip)
-	  getline(in,line);
+	for (int skip = 0; skip < 3; ++skip)
+	  if (!getline(in,line))
+	    break;
+	const vguard<string> ins0 = split (line);
+	Assert (ins0.size() == alph.size(), "HMM parse error: wrong number of fields in node 0 insert line");
+	ins0Emit = strsToProbs (ins0);
+ 	if (!getline(in,line))
+	  break;
 	const vguard<string> beginTrans = split (line);
 	b_to_m1 = strToProb (beginTrans[0]);
 	b_to_i0 = strToProb (beginTrans[1]);
@@ -39,17 +45,17 @@ void HmmerModel::read (ifstream& in) {
 	while (getline(in,line)) {
 	  if (regex_match (line, end_re))
 	    break;
-	  vguard<string> nodeMatchEmit = split (line);
-	  Assert (nodeMatchEmit.size() == alph.size() + 6, "HMM parse error: wrong number of fields in node match line");
-	  Assert (stoi(nodeMatchEmit[0]) == node.size() + 1, "HMM parse error: incorrect node index");
+	  const vguard<string> nodeMatchLine = split (line);
+	  Assert (nodeMatchLine.size() == alph.size() + 6, "HMM parse error: wrong number of fields in node match line");
+	  Assert (stoi(nodeMatchLine[0]) == node.size() + 1, "HMM parse error: incorrect node index");
 	  Assert (getline(in,line), "HMM parse error: premature truncation of node after match line");
 	  const vguard<string> nodeInsEmit = split (line);
-	  Assert (nodeMatchEmit.size() == alph.size(), "HMM parse error: wrong number of fields in node insert line");
+	  Assert (nodeInsEmit.size() == alph.size(), "HMM parse error: wrong number of fields in node insert line");
 	  Assert (getline(in,line), "HMM parse error: premature truncation of node after insert line");
 	  const vguard<string> nodeTrans = split (line);
 	  Assert (nodeTrans.size() == 7, "HMM parse error: wrong number of fields in node transitions line");
 	  Node n;
-	  nodeMatchEmit.erase (nodeMatchEmit.begin());
+	  const vguard<string> nodeMatchEmit (nodeMatchLine.begin() + 1, nodeMatchLine.begin() + alph.size() + 1);
 	  n.matchEmit = strsToProbs (nodeMatchEmit);
 	  n.insEmit = strsToProbs (nodeInsEmit);
 	  n.m_to_m = strToProb (nodeTrans[0]);
@@ -76,7 +82,13 @@ Machine HmmerModel::machine() const {
   m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
   m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
   m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
-  
+
+  m.state[ix_idx(0)].trans.push_back (MachineTransition (string(), string(), m_idx(1), i0_to_m1));
+  m.state[ix_idx(0)].trans.push_back (MachineTransition (string(), string(), i_idx(0), i0_to_i0));
+
+  for (size_t sym = 0; sym < alph.size(); ++sym)
+    m.state[i_idx(0)].trans.push_back (MachineTransition (string(), alph[sym], ix_idx(0), ins0Emit[sym]));
+
   for (int n = 0; n <= node.size(); ++n) {
     const string ns = to_string(n);
     m.state[i_idx(n)].name = string("I") + ns;
@@ -87,17 +99,22 @@ Machine HmmerModel::machine() const {
       m.state[d_idx(n)].name = string("D") + ns;
 
       const bool end = (n == node.size());
-      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n].m_to_m));
-      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n].m_to_i));
+      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].m_to_m));
+      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n-1].m_to_i));
       if (!end)
-	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n].m_to_d));
+	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n-1].m_to_d));
 
-      m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n].i_to_m));
-      m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n].i_to_i));
+      m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].i_to_m));
+      m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n-1].i_to_i));
 
-      m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n].d_to_m));
+      m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].d_to_m));
       if (!end)
-	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n].d_to_d));
+	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n-1].d_to_d));
+
+      for (size_t sym = 0; sym < alph.size(); ++sym) {
+	m.state[m_idx(n)].trans.push_back (MachineTransition (string(), alph[sym], mx_idx(n), node[n-1].matchEmit[sym]));
+	m.state[i_idx(n)].trans.push_back (MachineTransition (string(), alph[sym], ix_idx(n), node[n-1].insEmit[sym]));
+      }
     }
   }
   m.state[end_idx()].name = "E";

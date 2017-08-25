@@ -18,6 +18,7 @@
 #include "../src/viterbi.h"
 #include "../src/util.h"
 #include "../src/schema.h"
+#include "../src/hmmer.h"
 
 using namespace std;
 
@@ -43,6 +44,7 @@ int main (int argc, char** argv) {
       ("generate,g", po::value<string>(), "sequence generator '<'")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
+      ("hmmer,H", po::value<string>(), "load machine from HMMER model file")
       ;
 
     po::options_description prefixOpts("Prefix operators");
@@ -257,7 +259,12 @@ int main (int argc, char** argv) {
 	  swap (pushedMachines, machines);
 	} else if (command == "--end")
 	  throw runtime_error (string("Unmatched '") + arg + "'");
-	else {
+	else if (command == "--hmmer") {
+	  HmmerModel hmmer;
+	  ifstream infile (getArg());
+	  hmmer.read (infile);
+	  m = hmmer.machine();
+	} else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);
 	}
