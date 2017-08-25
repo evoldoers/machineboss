@@ -1,3 +1,4 @@
+#include <string>
 #include "hmmer.h"
 #include "regexmacros.h"
 #include "util.h"
@@ -66,8 +67,41 @@ void HmmerModel::read (ifstream& in) {
 }
 
 Machine HmmerModel::machine() const {
+  Assert (node.size() > 0, "Attempt to create a transducer from an empty HMMER model");
+
   Machine m;
-  // TODO: write me
+  m.state = vguard<MachineState> (nStates());
+
+  m.state[b_idx()].name = "B";
+  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
+  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
+  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
+  
+  for (int n = 0; n <= node.size(); ++n) {
+    const string ns = to_string(n);
+    m.state[i_idx(n)].name = string("I") + ns;
+    m.state[ix_idx(n)].name = string("Ix") + ns;
+    if (n > 0) {
+      m.state[m_idx(n)].name = string("M") + ns;
+      m.state[mx_idx(n)].name = string("Mx") + ns;
+      m.state[d_idx(n)].name = string("D") + ns;
+
+      const bool end = (n == node.size());
+      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n].m_to_m));
+      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n].m_to_i));
+      if (!end)
+	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n].m_to_d));
+
+      m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n].i_to_m));
+      m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n].i_to_i));
+
+      m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n].d_to_m));
+      if (!end)
+	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n].d_to_d));
+    }
+  }
+  m.state[end_idx()].name = "E";
+
   return m;
 }
 

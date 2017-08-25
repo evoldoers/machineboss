@@ -17,7 +17,16 @@ struct HmmerModel {
   void read (ifstream&);
   static double strToProb (const string&);
   static vguard<double> strsToProbs (const vguard<string>&);
-  
+
+  inline StateIndex b_idx() const { return 0; }
+  inline StateIndex i_idx (int n) const { return 5*n + 1; }
+  inline StateIndex ix_idx (int n) const { return 5*n + 2; }
+  inline StateIndex m_idx (int n) const { return 5*n - 2; }
+  inline StateIndex mx_idx (int n) const { return 5*n - 1; }
+  inline StateIndex d_idx (int n) const { return 5*n; }
+  inline StateIndex end_idx() const { return 5 * node.size() + 3; }
+  inline StateIndex nStates() const { return 5 * node.size() + 4; }
+
   Machine machine() const;
 };
 
