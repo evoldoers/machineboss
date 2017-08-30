@@ -589,7 +589,19 @@ Machine Machine::advancingMachine() const {
       am.state.reserve (nStates());
       vguard<TransList> effTrans;
       vguard<StateIndex> minDest (nStates());
+
+      size_t totalElim = 0;
+      for (StateIndex s = 0; s < nStates(); ++s)
+	totalElim += s + 1;
+
+      ProgressLog(plogElim,6);
+      plogElim.initProgress ("Eliminating backward silent transitions", totalElim);
+
+      size_t nElim = 0;
       for (StateIndex s = 0; s < nStates(); ++s) {
+	plogElim.logProgress (nElim / (double) totalElim, "state %ld/%ld", s, nStates());
+	nElim += s + 1;
+
 	const MachineState& ms = state[s];
 	effTrans.push_back (ms.trans);
 	am.state.push_back (MachineState());
@@ -713,7 +725,7 @@ Machine Machine::advanceSort() const {
     }
     if (!orderChanged) {
       result = *this;
-      LogThisAt(5,"Sort left machine unchanged with " << nSilentBackBefore << " backward silent transitions" << endl);
+      LogThisAt(5,"Sorting left machine unchanged with " << nSilentBackBefore << " backward silent transitions" << endl);
     } else {
       result.state.reserve (nStates());
       for (const auto s: order) {
@@ -723,12 +735,12 @@ Machine Machine::advanceSort() const {
       }
     
       const size_t nSilentBackAfter = result.nSilentBackTransitions();
-      Assert (nSilentBackAfter <= nSilentBackBefore, "Sort increased number of silent backward transitions from %u to %u", nSilentBackBefore, nSilentBackAfter);
+      Assert (nSilentBackAfter <= nSilentBackBefore, "Sorting increased number of silent backward transitions from %u to %u", nSilentBackBefore, nSilentBackAfter);
       if (nSilentBackAfter == nSilentBackBefore) {
 	result = *this;
-	LogThisAt(5,"Sort left number of backward silent transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
+	LogThisAt(5,"Sorting left number of backward silent transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
       } else
-	LogThisAt(5,"Sort reduced number of backward silent transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
+	LogThisAt(5,"Sorting reduced number of backward silent transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
     }
   } else {
