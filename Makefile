@@ -58,6 +58,7 @@ HDF5_LIBS = -L$(HDF5_LIB_DIR) -l$(HDF5_LIB)
 
 # install dir
 PREFIX = /usr/local
+INSTALL_BIN = $(PREFIX)/bin
 
 # other flags
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
@@ -91,7 +92,10 @@ SH = /bin/sh
 BOSS = bossmachine
 NANO = nanomachine
 
-all: $(BOSS) $(NANO)
+all: $(BOSS)
+
+install: $(BOSS)
+	cp bin/$(BOSS) $(INSTALL_BIN)/$(BOSS)
 
 # Nanomachine build rules
 obj/nano/%.o: src/nano/%.cpp
