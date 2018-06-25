@@ -18,7 +18,6 @@
 
 #ifdef __clang__
 #  pragma clang diagnostic push
-#  pragma clang diagnostic ignored "-Wunknown-pragmas"
 #  pragma clang diagnostic ignored "-Wunused-local-typedef"
 #endif
 
@@ -434,7 +433,7 @@ private:
             return cachedPtr;
         }
 
-        if (actualDocumentUri) {
+        if (actualDocumentUri && (!currentScope || *actualDocumentUri != *currentScope)) {
             const typename FunctionPtrs<AdapterType>::DocumentType *newDoc = NULL;
 
             // Have we seen this document before?
