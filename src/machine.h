@@ -28,6 +28,7 @@ struct MachineTransition {
   WeightExpr weight;
   MachineTransition();
   MachineTransition (InputSymbol, OutputSymbol, StateIndex, WeightExpr);
+  MachineTransition (InputSymbol, OutputSymbol, StateIndex, double);
   bool inputEmpty() const;
   bool outputEmpty() const;
   bool isSilent() const;  // inputEmpty() && outputEmpty()

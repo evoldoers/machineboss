@@ -7,10 +7,45 @@
 using namespace std;
 using json = nlohmann::json;
 
-typedef json WeightExpr;
+typedef struct ExprStruct* ExprPtr;
+
+struct BinaryExprArgs {
+  ExprPtr l, r;
+};
+
+union ExprArgs {
+  int intValue;
+  double doubleValue;
+  string* param;
+  ExprPtr arg;
+  BinaryExprArgs binary;
+};
+
+enum ExprType {
+  Mul, Add, Sub, Div,  // binary
+  Pow, Log, Exp,  // unary
+  Dbl, Int,  // constants
+  Param,  // parameter
+  Null
+};
+struct ExprStruct {
+  ExprType type;
+  ExprArgs args;
+  ExprStruct() : type(Null) { }
+};
+
+typedef ExprPtr WeightExpr;
 typedef map<string,WeightExpr> ParamDefs;
 
 struct WeightAlgebra {
+  static WeightExpr zero();
+  static WeightExpr one();
+
+  static WeightExpr intConstant (int value);
+  static WeightExpr doubleConstant (double value);
+
+  static WeightExpr param (const string& name);
+
   static WeightExpr multiply (const WeightExpr& l, const WeightExpr& r);  // l*r
   static WeightExpr add (const WeightExpr& l, const WeightExpr& r);  // l+r
   static WeightExpr subtract (const WeightExpr& l, const WeightExpr& r);  // l-r
@@ -24,11 +59,14 @@ struct WeightAlgebra {
   static WeightExpr reciprocal (const WeightExpr& p);  // 1 / p
   static WeightExpr geometricSum (const WeightExpr& p);  // 1 / (1 - p)
 
+  static bool isZero (const json& w);
+  static bool isOne (const json& w);
+
   static bool isZero (const WeightExpr& w);
   static bool isOne (const WeightExpr& w);
 
-  static string opcode (const WeightExpr& w);
-  static const json& operands (const WeightExpr& w);
+  static bool isNumber (const WeightExpr& w);
+  static double asDouble (const WeightExpr& w);
 
   static WeightExpr bind (const WeightExpr& w, const ParamDefs& defs);
   
@@ -42,6 +80,12 @@ struct WeightAlgebra {
   static ParamDefs exclude (const ParamDefs& defs, const string& param);
 
   static string toJsonString (const ParamDefs& defs);
+  static string toJsonString (const WeightExpr& w);
+
+  static json toJson (const ParamDefs& defs);
+  static json toJson (const WeightExpr& w);
+
+  static WeightExpr fromJson (const json& j);
 };
 
 #endif /* WEIGHT_INCLUDED */

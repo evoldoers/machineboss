@@ -66,7 +66,7 @@ map<string,double> MachineCounts::paramCounts (const Machine& machine, const Par
       const double w = WeightAlgebra::eval (trans.weight, prob.defs);
       for (auto& p: transParams) {
 	const auto deriv = WeightAlgebra::deriv (trans.weight, ParamDefs(), p);
-	paramCount[p] += c * WeightAlgebra::eval (deriv, prob.defs) * prob.defs.at(p).get<double>() / w;
+	paramCount[p] += c * WeightAlgebra::eval (deriv, prob.defs) * WeightAlgebra::asDouble (prob.defs.at(p)) / w;
       }
     }
   }
@@ -74,23 +74,23 @@ map<string,double> MachineCounts::paramCounts (const Machine& machine, const Par
 }
 
 WeightExpr makeSquareFunc (const string& trParam) {
-  return WeightAlgebra::multiply (WeightExpr(trParam),
-				  WeightExpr(trParam));
+  WeightExpr tr = WeightAlgebra::param (trParam);
+  return WeightAlgebra::multiply (tr, tr);
 }
 
 WeightExpr makeExpFunc (const string& trParam) {
-  return WeightAlgebra::expOf (WeightAlgebra::multiply (-1, makeSquareFunc (trParam)));
+  return WeightAlgebra::expOf (WeightAlgebra::minus (makeSquareFunc (trParam)));
 }
 
 MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& constraints, const Params& constants) :
-  constraints (constraints), constantDefs (constants.defs)
+  constraints (constraints), constantDefs (constants.defs), objective (WeightAlgebra::zero())
 {
   for (StateIndex s = 0; s < machine.state.size(); ++s) {
     EvaluatedMachineState::TransIndex t = 0;
     for (TransList::const_iterator iter = machine.state[s].trans.begin();
 	 iter != machine.state[s].trans.end(); ++iter, ++t)
       objective = WeightAlgebra::subtract (objective,
-					   WeightAlgebra::multiply (counts.count[s][t],
+					   WeightAlgebra::multiply (WeightAlgebra::doubleConstant (counts.count[s][t]),
 								    WeightAlgebra::logOf ((*iter).weight)));
   }
 
@@ -107,7 +107,7 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
     return trParam;
   };
   for (const auto& c: constraints.norm) {
-    WeightExpr notPrev (true);
+    WeightExpr notPrev = WeightAlgebra::one();
     for (size_t n = 0; n < c.size(); ++n) {
       const string& cParam = c[n];
       if (n == c.size() - 1)
@@ -148,7 +148,7 @@ Params gsl_vector_to_params (const gsl_vector *v, const MachineObjective& ml) {
   Params p;
   p.defs = ml.allDefs;
   for (size_t n = 0; n < ml.transformedParam.size(); ++n)
-    p.defs[ml.transformedParam[n]] = WeightExpr (gsl_vector_get (v, n));
+    p.defs[ml.transformedParam[n]] = WeightExpr (WeightAlgebra::doubleConstant (gsl_vector_get (v, n)));
   return p;
 }
 
@@ -202,18 +202,18 @@ Params MachineObjective::optimize (const Params& seed) const {
     double pSum = 0;
     for (size_t n = 0; n + 1 < c.size(); ++n) {
       const string& cParam = c[n];
-      const double p = seed.defs.at(cParam).get<double>();
+      const double p = WeightAlgebra::asDouble (seed.defs.at(cParam));
       const double z = 1 - p / (1 - pSum);
       pSum += p;
       gsl_vector_set (x, transformedParamIndex.at(cParam), sqrt (-log (z)));
     }
   }
   for (const auto& pParam: constraints.prob) {
-      const double p = seed.defs.at(pParam).get<double>();
+      const double p = WeightAlgebra::asDouble (seed.defs.at(pParam));
       gsl_vector_set (x, transformedParamIndex.at(pParam), sqrt (-log (1 - p)));
   }
   for (const auto& rParam: constraints.rate) {
-      const double r = seed.defs.at(rParam).get<double>();
+      const double r = WeightAlgebra::asDouble (seed.defs.at(rParam));
       gsl_vector_set (x, transformedParamIndex.at(rParam), sqrt (r));
   }
 
@@ -242,7 +242,7 @@ Params MachineObjective::optimize (const Params& seed) const {
   const Params finalTransformedParams = gsl_vector_to_params (s->x, *this);
   Params finalParams = seed;
   for (const auto& pt: paramTransformDefs)
-    finalParams.defs[pt.first] = WeightAlgebra::eval (pt.second, finalTransformedParams.defs);
+    finalParams.defs[pt.first] = WeightAlgebra::doubleConstant (WeightAlgebra::eval (pt.second, finalTransformedParams.defs));
   
   gsl_multimin_fdfminimizer_free (s);
   gsl_vector_free (x);

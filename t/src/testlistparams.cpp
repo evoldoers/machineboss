@@ -12,6 +12,6 @@ int main (int argc, char** argv) {
   ifstream in (argv[1]);
   in >> w;
   MachineSchema::validateOrDie ("expr", w);
-  cout << join(WeightAlgebra::params(w,ParamDefs()),"\n") << endl;
+  cout << join(WeightAlgebra::params(WeightAlgebra::fromJson(w),ParamDefs()),"\n") << endl;
   exit(0);
 }

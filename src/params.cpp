@@ -4,17 +4,13 @@
 #include "util.h"
 
 void Params::writeJson (ostream& out) const {
-  out << "{";
-  size_t n = 0;
-  for (auto& pv: defs)
-    out << (n++ ? "," : "") << "\"" << pv.first << "\":" << pv.second;
-  out << "}";
+  out << WeightAlgebra::toJsonString (defs);
 }
 
 void Params::readJsonWithSchema (const json& pj, const char* schemaName) {
   MachineSchema::validateOrDie (schemaName, pj);
   for (auto iter = pj.begin(); iter != pj.end(); ++iter)
-    defs[iter.key()] = iter.value();
+    defs[iter.key()] = WeightAlgebra::fromJson (iter.value());
 }
 
 Params Params::combine (const Params& p) const {

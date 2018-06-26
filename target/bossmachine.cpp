@@ -232,13 +232,27 @@ int main (int argc, char** argv) {
 	  m = nextMachine().flipInOut();
 	else if (command == "--weight") {
 	  const string wArg = getArg();
+	  json wj;
 	  WeightExpr w;
 	  try {
-	    w = json::parse(wArg);
-	    if (!MachineSchema::validate ("expr", w))
-	      w = WeightExpr(wArg);
+	    wj = json::parse(wArg);
+	    if (!MachineSchema::validate ("expr", wj))
+	      w = WeightAlgebra::fromJson (wj);
 	  } catch (...) {
-	    w = WeightExpr(wArg);
+	    const char* wc = wArg.c_str();
+	    char* p;
+	    const long intValue = strtol (wc, &p, 10);
+	    if (*p) {
+	      // integer conversion failed
+	      const double doubleValue = strtod (wc, &p);
+	      if (*p) {
+		// double conversion failed
+		w = WeightAlgebra::param (wArg);
+	      } else
+		w = WeightAlgebra::doubleConstant (doubleValue);
+	    }
+	    else
+	      w = WeightAlgebra::intConstant (intValue);
 	  }
 	  m = Machine::singleTransition (w);
 	} else if (command == "--begin") {

@@ -12,6 +12,6 @@ int main (int argc, char** argv) {
   in >> w;
   MachineSchema::validateOrDie ("expr", w);
   Params p = JsonLoader<ParamAssign>::fromFile (argv[2]);
-  cout << WeightAlgebra::eval(w,p.defs) << endl;
+  cout << WeightAlgebra::eval(WeightAlgebra::fromJson(w),p.defs) << endl;
   exit(0);
 }

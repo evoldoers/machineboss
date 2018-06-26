@@ -1,18 +1,103 @@
 #include <math.h>
+#include <list>
 #include "weight.h"
 #include "logsumexp.h"
 #include "util.h"
 
+// singleton for storing ExprStruct's
+class ExprStructFactory {
+private:
+  list<ExprStruct> exprStructStorage;
+  list<string> paramStorage;
+  ExprStruct zeroStr, oneStr;
+public:
+  ExprPtr zero, one;
+  ExprStructFactory() {
+    zeroStr.type = oneStr.type = Int;
+    zeroStr.args.intValue = 0;
+    oneStr.args.intValue = 1;
+    zero = &zeroStr;
+    one = &oneStr;
+  }
+  ExprPtr newExpr() {
+    exprStructStorage.push_front (ExprStruct());
+    return &exprStructStorage.front();
+  }
+  ExprPtr newParam (const string& param) {
+    paramStorage.push_front (param);
+    ExprPtr e = newExpr();
+    e->type = Param;
+    e->args.param = &paramStorage.front();
+    return e;
+  }
+  ExprPtr newInt (int val) {
+    if (val == 0)
+      return zero;
+    if (val == 1)
+      return one;
+    ExprPtr e = newExpr();
+    e->type = Int;
+    e->args.intValue = val;
+    return e;
+  }
+  ExprPtr newDouble (double val) {
+    if (val == 0.)
+      return zero;
+    if (val == 1.)
+      return one;
+    ExprPtr e = newExpr();
+    e->type = Dbl;
+    e->args.doubleValue = val;
+    return e;
+  }
+  ExprPtr newUnary (ExprType type, ExprPtr arg) {
+    Assert (arg, "Null argument to unary function");
+    ExprPtr e = newExpr();
+    e->type = type;
+    e->args.arg = arg;
+    return e;
+  }
+  ExprPtr newBinary (ExprType type, ExprPtr l, ExprPtr r) {
+    Assert (l && r, "Null argument to binary function");
+    ExprPtr e = newExpr();
+    e->type = type;
+    e->args.binary.l = l;
+    e->args.binary.r = r;
+    return e;
+  }
+};
+ExprStructFactory factory;
+
+WeightExpr WeightAlgebra::zero() {
+  return factory.zero;
+}
+
+WeightExpr WeightAlgebra::one() {
+  return factory.one;
+}
+
+WeightExpr WeightAlgebra::intConstant (int value) {
+  return value == 0 ? factory.zero : (value == 1 ? factory.one : factory.newInt (value));
+}
+
+WeightExpr WeightAlgebra::doubleConstant (double value) {
+  return value == 0. ? factory.zero : (value == 1. ? factory.one : factory.newDouble (value));
+}
+
+WeightExpr WeightAlgebra::param (const string& name) {
+  return factory.newParam (name);
+}
+
 WeightExpr WeightAlgebra::minus (const WeightExpr& x) {
-  return WeightExpr::object ({{"-", WeightExpr::array ({false, x})}});
+  return factory.newBinary (Sub, factory.zero, x);
 }
 
 WeightExpr WeightAlgebra::negate (const WeightExpr& p) {
-  return WeightExpr::object ({{"-", WeightExpr::array ({true, p})}});
+  return factory.newBinary (Sub, factory.one, p);
 }
 
 WeightExpr WeightAlgebra::reciprocal (const WeightExpr& p) {
-  return WeightExpr::object ({{"/", WeightExpr::array ({true, p})}});
+  return factory.newBinary (Div, factory.one, p);
 }
 
 WeightExpr WeightAlgebra::geometricSum (const WeightExpr& p) {
@@ -20,242 +105,312 @@ WeightExpr WeightAlgebra::geometricSum (const WeightExpr& p) {
 }
 
 WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {
-  return (isOne(r) || isZero(l)) ? WeightExpr(l) : WeightExpr::object ({{"/", WeightExpr::array ({l, r})}});
+  return (isOne(r) || isZero(l)) ? l : factory.newBinary (Div, l, r);
 }
 
 WeightExpr WeightAlgebra::subtract (const WeightExpr& l, const WeightExpr& r) {
-  return isZero(r) ? WeightExpr(l) : WeightExpr::object ({{"-", WeightExpr::array ({l, r})}});
+  return isZero(r) ? l : factory.newBinary (Sub, l, r);
 }
 
 WeightExpr WeightAlgebra::power (const WeightExpr& a, const WeightExpr& b) {
-  return isOne(b) ? WeightExpr(a) : (isZero(b) ? WeightExpr(true) : WeightExpr::object ({{"pow", WeightExpr::array ({a, b})}}));
+  return isOne(b) ? a : (isZero(b) ? factory.one : factory.newBinary (Pow, a, b));
 }
 
 WeightExpr WeightAlgebra::logOf (const WeightExpr& p) {
-  return isOne(p) ? WeightExpr() : (opcode(p) == "exp" ? p.at("exp") : WeightExpr::object ({{"log", p}}));
+  return isOne(p) ? factory.zero : (p->type == Exp ? p->args.arg : factory.newUnary (Log, p));
 }
 
 WeightExpr WeightAlgebra::expOf (const WeightExpr& p) {
-  return isZero(p) ? WeightExpr(true) : (opcode(p) == "log" ? p.at("log") : WeightExpr::object ({{"exp", p}}));
+  return isZero(p) ? factory.one : (p->type == Log ? p->args.arg : factory.newUnary (Exp, p));
 }
 
 WeightExpr WeightAlgebra::multiply (const WeightExpr& l, const WeightExpr& r) {
-  WeightExpr w;
+  WeightExpr w = NULL;
   if (isOne(l))
     w = r;
   else if (isOne(r))
     w = l;
-  else if (isZero(l) || isZero(r)) {
-    // w = null
-  } else if (l.is_number_integer() && r.is_number_integer())
-    w = l.get<int>() * r.get<int>();
-  else if (l.is_number() && r.is_number())
-    w = l.get<double>() * r.get<double>();
+  else if (isZero(l) || isZero(r))
+    w = factory.zero;
+  else if (l->type == Int && r->type == Int)
+    w = factory.newInt (l->args.intValue * r->args.intValue);
+  else if (isNumber(l) && isNumber(r))
+    w = factory.newDouble (asDouble(l) * asDouble(r));
   else
-    w = WeightExpr::object ({{"*", WeightExpr::array({l,r})}});
+    w = factory.newBinary (Mul, l, r);
   return w;
 }
 
 WeightExpr WeightAlgebra::add (const WeightExpr& l, const WeightExpr& r) {
-  WeightExpr w;
+  WeightExpr w = NULL;
   if (isZero(l))
     w = r;
   else if (isZero(r))
     w = l;
-  else if (l.is_number_integer() && r.is_number_integer())
-    w = l.get<int>() + r.get<int>();
-  else if (l.is_number() && r.is_number())
-    w = l.get<double>() + r.get<double>();
+  else if (l->type == Int && r->type == Int)
+    w = factory.newInt (l->args.intValue + r->args.intValue);
+  else if (isNumber(l) && isNumber(r))
+    w = factory.newDouble (asDouble(l) + asDouble(r));
   else
-    w = WeightExpr::object ({{"+", WeightExpr::array({l,r})}});
+    w = factory.newBinary (Add, l, r);
   return w;
 }
 
 bool WeightAlgebra::isZero (const WeightExpr& w) {
+  return w == factory.zero || (w->type == Int && w->args.intValue == 0) || (w->type == Dbl && w->args.doubleValue == 0.);
+}
+
+bool WeightAlgebra::isOne (const WeightExpr& w) {
+  return w == factory.one || (w->type == Int && w->args.intValue == 1) || (w->type == Dbl && w->args.doubleValue == 1.);
+}
+
+bool WeightAlgebra::isNumber (const WeightExpr& w) {
+  return w->type == Int || w->type == Dbl;
+}
+
+double WeightAlgebra::asDouble (const WeightExpr& w) {
+  Assert (isNumber(w), "WeightExpr is not numeric");
+  return w->type == Int ? ((double) w->args.intValue) : w->args.doubleValue;
+}
+
+bool WeightAlgebra::isZero (const json& w) {
   return w.is_null()
     || (w.is_boolean() && !w.get<bool>())
     || (w.is_number_integer() && w.get<int>() == 0)
     || (w.is_number() && w.get<double>() == 0.);
 }
 
-bool WeightAlgebra::isOne (const WeightExpr& w) {
+bool WeightAlgebra::isOne (const json& w) {
   return (w.is_boolean() && w.get<bool>())
     || (w.is_number_integer() && w.get<int>() == 1)
     || (w.is_number() && w.get<double>() == 1.);
 }
 
-string WeightAlgebra::opcode (const WeightExpr& w) {
-  if (w.is_null())
-    return string("null");
-  if (w.is_boolean())
-    return string("boolean");
-  if (w.is_number_integer())
-    return string("int");
-  if (w.is_number())
-    return string("float");
-  if (w.is_string())
-    return string("param");
-  if (w.is_array())
-    Abort ("Unexpected type in WeightExpr: array");
-  if (!w.is_object())
-    Abort ("Unexpected type (%d) in WeightExpr", w.type());
-  auto iter = w.begin();
-  return iter.key();
-}
-
-const json& WeightAlgebra::operands (const WeightExpr& w) {
-  auto iter = w.begin();
-  return iter.value();
-}
-
 WeightExpr WeightAlgebra::bind (const WeightExpr& w, const ParamDefs& defs) {
-  const string op = opcode(w);
-  if (op == "null" || op == "boolean" || op == "int" || op == "float")
-    return w;
-  if (op == "param") {
-    const string n = w.get<string>();
-    if (!defs.count(n))
-      return w;
-    return defs.at(n);
+  const ExprType op = w->type;
+  WeightExpr result = NULL;
+  switch (op) {
+  case Null:
+    throw runtime_error("Attempt to bind null expression");
+  case Int:
+  case Dbl:
+    result = w;
+    break;
+  case Param:
+    {
+      const string& n (*w->args.param);
+      result = defs.count(n) ? defs.at(n) : w;
+    }
+    break;
+  case Log:
+  case Exp:
+    result = factory.newUnary (op, bind (w->args.arg, defs));
+    break;
+  default:
+    result = factory.newBinary (op, bind (w->args.binary.l, defs), bind (w->args.binary.r, defs));
+    break;
   }
-  if (op == "log" || op == "exp")
-    return WeightExpr::object ({{op, bind (w.at(op), defs)}});
-  json bindArgs;
-  const json& args = operands(w);
-  for (const auto& arg: args)
-    bindArgs.push_back (bind (arg, defs));
-  return WeightExpr::object ({{op, bindArgs}});
+  return result;
 }
 
 double WeightAlgebra::eval (const WeightExpr& w, const ParamDefs& defs, const set<string>* excludedDefs) {
-  const string op = opcode(w);
-  if (op == "null") return 0;
-  if (op == "boolean") return w.get<bool>() ? 1. : 0.;
-  if (op == "int" || op == "float") return w.get<double>();
-  if (op == "param") {
-    const string n = w.get<string>();
-    if (!defs.count(n) || (excludedDefs && excludedDefs->count(n)))
-      throw runtime_error(string("Parameter ") + n + (" not defined"));
-    // optimize the special case that definition is a numeric assignment
-    const auto& val = defs.at(n);
-    if (val.is_number())
-      return val.get<double>();
-    set<string> innerExcludedDefs;
-    if (excludedDefs)
-      innerExcludedDefs.insert (excludedDefs->begin(), excludedDefs->end());
-    innerExcludedDefs.insert (n);
-    return eval (defs.at(n), defs, &innerExcludedDefs);
+  const ExprType op = w->type;
+  double result;
+  switch (op) {
+  case Null:
+    result = 0;
+    break;
+  case Int:
+  case Dbl:
+    result = asDouble(w);
+    break;
+  case Param:
+    {
+      const string& n (*w->args.param);
+      if (!defs.count(n) || (excludedDefs && excludedDefs->count(n)))
+	throw runtime_error(string("Parameter ") + n + (" not defined"));
+      // optimize the special case that definition is a numeric assignment
+      const auto& val = defs.at(n);
+      if (isNumber(val))
+	result = asDouble(val);
+      else {
+	set<string> innerExcludedDefs;
+	if (excludedDefs)
+	  innerExcludedDefs.insert (excludedDefs->begin(), excludedDefs->end());
+	innerExcludedDefs.insert (n);
+	result = eval (defs.at(n), defs, &innerExcludedDefs);
+      }
+    }
+    break;
+  case Log:
+    result = log (eval (w->args.arg, defs, excludedDefs));
+    break;
+  case Exp:
+    result = exp (eval (w->args.arg, defs, excludedDefs));
+    break;
+  default:
+    const double l = eval (w->args.binary.l, defs, excludedDefs);
+    const double r = eval (w->args.binary.r, defs, excludedDefs);
+    switch (op) {
+    case Mul:
+      result = l * r;
+      break;
+    case Div:
+      result = l / r;
+      break;
+    case Add:
+      result = l + r;
+      break;
+    case Sub:
+      result = l - r;
+      break;
+    case Pow:
+      result = pow (l, r);
+      break;
+    default:
+      Abort("Unknown opcode");
+    }
   }
-  if (op == "log") return log (eval (w.at("log"), defs, excludedDefs));
-  if (op == "exp") return exp (eval (w.at("exp"), defs, excludedDefs));
-  vguard<double> evalArgs;
-  const json& args = operands(w);
-  for (const auto& arg: args)
-    evalArgs.push_back (eval (arg, defs, excludedDefs));
-  if (op == "*") return evalArgs[0] * evalArgs[1];
-  if (op == "/") return evalArgs[0] / evalArgs[1];
-  if (op == "+") return evalArgs[0] + evalArgs[1];
-  if (op == "-") return evalArgs[0] - evalArgs[1];
-  if (op == "pow") return pow (evalArgs[0], evalArgs[1]);
-  Abort("Unknown opcode: %s", op.c_str());
-  return -numeric_limits<double>::infinity();
+  return result;
 }
 
 WeightExpr WeightAlgebra::deriv (const WeightExpr& w, const ParamDefs& defs, const string& param) {
-  WeightExpr d;
-  const string op = opcode(w);
-  if (op == "null" || op == "boolean" || op == "int" || op == "float") {
-    // d = null (implicit)
-  } else if (op == "param") {
-    const string n = w.get<string>();
-    if (param == n)
-      d = true;
-    else if (defs.count(n))
-      d = deriv (defs.at(n), exclude(defs,n), param);
-    // else d = null (implicit)
-  } else if (op == "exp") d = multiply (deriv (w.at("exp"), defs, param), w);  // w = exp(x), w' = x'exp(x)
-  else if (op == "log") d = divide (deriv (w.at("log"), defs, param), w.at("log"));  // w = log(x), w' = x'/x
-  else {
-    const json& args = operands(w);
-    vguard<WeightExpr> derivArgs;
-    for (const auto& arg: args)
-      derivArgs.push_back (deriv (arg, defs, param));
-    if (op == "*") d = add (multiply(derivArgs[0],args[1]), multiply(args[0],derivArgs[1]));  // w = fg, w' = f'g + g'f
-    else if (op == "/") d = subtract (divide(derivArgs[0],args[1]), multiply(derivArgs[1],divide(w,args[1])));  // w = f/g, w' = f'/g - g'f/g^2
-    else if (op == "+") d = add (derivArgs[0], derivArgs[1]);  // w = f + g, w' = f' + g'
-    else if (op == "-") d = subtract (derivArgs[0], derivArgs[1]);  // w = f - g, w' = f' - g'
-    else if (op == "pow") d = multiply (w, add (multiply(derivArgs[1],logOf(args[0])), multiply(derivArgs[0],divide(args[1],args[0]))));  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
-    else
-      Abort("Unknown opcode: %s", op.c_str());
+  WeightExpr d = NULL;
+  const ExprType op = w->type;
+  switch (op) {
+  case Null:
+  case Int:
+  case Dbl:
+    d = factory.zero;
+    break;
+  case Param:
+    {
+      const string& n (*w->args.param);
+      if (param == n)
+	d = factory.one;
+      else if (defs.count(n))
+	d = deriv (defs.at(n), exclude(defs,n), param);
+      else
+	d = factory.zero;
+    }
+    break;
+  case Exp:
+    d = multiply (deriv (w->args.arg, defs, param), w);  // w = exp(x), w' = x'exp(x)
+    break;
+  case Log:
+    d = divide (deriv (w->args.arg, defs, param), w->args.arg);  // w = log(x), w' = x'/x
+    break;
+  default:
+    const WeightExpr dl = deriv (w->args.binary.l, defs, param);
+    const WeightExpr dr = deriv (w->args.binary.r, defs, param);
+    switch (op) {
+    case Mul:
+      d = add (multiply(dl,w->args.binary.r), multiply(w->args.binary.l,dr));  // w = fg, w' = f'g + g'f
+      break;
+    case Div:
+      d = subtract (divide(dl,w->args.binary.r), multiply(dr,divide(w,w->args.binary.r)));  // w = f/g, w' = f'/g - g'f/g^2
+      break;
+    case Add:
+      d = add (dl, dr);  // w = f + g, w' = f' + g'
+      break;
+    case Sub:
+      d = subtract (dl, dr);  // w = f - g, w' = f' - g'
+      break;
+    case Pow:
+      d = multiply (w, add (multiply(dr,logOf(w->args.binary.l)), multiply(dl,divide(w->args.binary.r,w->args.binary.l))));  // w = a^b, w' = a^b (b'*log(a) + a'b/a)
+      break;
+    default:
+      Abort("Unknown opcode", op);
+    }
   }
   return d;
 }
 
 set<string> WeightAlgebra::params (const WeightExpr& w, const ParamDefs& defs) {
   set<string> p;
-  const string op = opcode(w);
-  if (op == "null" || op == "boolean" || op == "int" || op == "float") {
+  const ExprType op = w->type;
+  switch (op) {
+  case Null:
+  case Int:
+  case Dbl:
     // p is empty
-  } else if (op == "param") {
-    const string n = w.get<string>();
-    if (defs.count(n))
-      p = params (defs.at(n), exclude(defs,n));
-    else
-      p.insert (n);
-  } else if (op == "exp" || op == "log")
-    p = params (w.at(op), defs);
-  else {
-    const json& args = operands(w);
-    for (const auto& arg: args) {
-      const set<string> argParams = params(arg,defs);
-      p.insert (argParams.begin(), argParams.end());
+    break;
+  case Param:
+    {
+      const string& n (*w->args.param);
+      if (defs.count(n))
+	p = params (defs.at(n), exclude(defs,n));
+      else
+	p.insert (n);
     }
+    break;
+  case Exp:
+  case Log:
+    p = params (w->args.arg, defs);
+    break;
+  default:
+    const set<string> lParams = params (w->args.binary.l, defs);
+    const set<string> rParams = params (w->args.binary.r, defs);
+    p.insert (lParams.begin(), lParams.end());
+    p.insert (rParams.begin(), rParams.end());
+    break;
   }
   return p;
 }
 
 string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence) {
-  const string op = opcode(w);
-  if (op == "null") return string("0");
-  if (op == "boolean") return to_string (w.get<bool>() ? 1 : 0);
-  if (op == "int") return to_string (w.get<int>());
-  if (op == "float") return to_string (w.get<double>());
-  if (op == "param") {
-    const string n = w.get<string>();
-    return defs.count(n) ? toString(defs.at(n),exclude(defs,n)) : n;
+  const ExprType op = w->type;
+  string result;
+  switch (op) {
+  case Null: result = string("0"); break;
+  case Int: result = to_string (w->args.intValue); break;
+  case Dbl: result = to_string (w->args.doubleValue); break;
+  case Param:
+    {
+      const string& n (*w->args.param);
+      result = defs.count(n) ? toString(defs.at(n),exclude(defs,n)) : n;
+    }
+    break;
+  case Log:
+  case Exp:
+    result = string(op == Log ? "log" : "exp") + "(" + toString(w->args.arg,defs) + ")";
+    break;
+  case Pow:
+    result = string("pow(") + toString(w->args.binary.l,defs) + "," + toString(w->args.binary.r,defs) + ")";
+    break;
+  default:
+    // Precedence rules
+
+    // a*b: rank 2
+    // a needs () if it's anything except a multiplication or division [parent rank 2]
+    // b needs () if it's anything except a multiplication or division [parent rank 2]
+
+    // a/b: rank 2
+    // a needs () if it's anything except a multiplication or division [parent rank 2]
+    // b needs () if it's anything except a constant/function [parent rank 3]
+
+    // a-b: rank 1
+    // a never needs () [parent rank 0]
+    // b needs () if it's anything except a multiplication or division [parent rank 2]
+
+    // a+b: rank 1
+    // a never needs () [parent rank 0]
+    // b never needs () [parent rank 0]
+
+    int p, l, r;
+    string opcode;
+    if (op == Mul) { p = l = r = 2; opcode = "*"; }
+    else if (op == Div) { p = l = 2; r = 3; opcode = "/"; }
+    else if (op == Sub) { p = 1; l = 0; r = 2; opcode = "-"; }
+    else if (op == Add) { p = 1; l = r = 0; opcode = "+"; }
+    result = string(parentPrecedence > p ? "(" : "")
+      + toString(w->args.binary.l,defs,l)
+      + opcode
+      + toString(w->args.binary.r,defs,r)
+      + (parentPrecedence > p ? ")" : "");
+    break;
   }
-  if (op == "log" || op == "exp") return op + "(" + toString(w.at(op),defs) + ")";
-  const json& args = operands(w);
-  if (op == "pow") return string("pow(") + toString(args[0],defs) + "," + toString(args[1],defs) + ")";
-
-  // Precedence rules
-
-  // a*b: rank 2
-  // a needs () if it's anything except a multiplication or division [parent rank 2]
-  // b needs () if it's anything except a multiplication or division [parent rank 2]
-
-  // a/b: rank 2
-  // a needs () if it's anything except a multiplication or division [parent rank 2]
-  // b needs () if it's anything except a constant/function [parent rank 3]
-
-  // a-b: rank 1
-  // a never needs () [parent rank 0]
-  // b needs () if it's anything except a multiplication or division [parent rank 2]
-
-  // a+b: rank 1
-  // a never needs () [parent rank 0]
-  // b never needs () [parent rank 0]
-
-  int p, l, r;
-  if (op == "*") p = l = r = 2;
-  else if (op == "/") { p = l = 2; r = 3; }
-  else if (op == "-") { p = 1; l = 0; r = 2; }
-  else if (op == "+") { p = 1; l = r = 0; }
-  return string(parentPrecedence > p ? "(" : "")
-    + toString(args[0],defs,l)
-    + op
-    + toString(args[1],defs,r)
-    + (parentPrecedence > p ? ")" : "");
+  return result;
 }
 
 ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
@@ -266,10 +421,102 @@ ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
 
 string WeightAlgebra::toJsonString (const ParamDefs& defs) {
   ostringstream out;
-  out << "{";
-  size_t n = 0;
-  for (const auto& def: defs)
-    out << (n++ ? "," : "") << "\"" << escaped_str(def.first) << "\":" << def.second;
-  out << "}";
+  out << toJson(defs);
   return out.str();
+}
+
+string WeightAlgebra::toJsonString (const WeightExpr& w) {
+  ostringstream out;
+  out << toJson(w);
+  return out.str();
+}
+
+json WeightAlgebra::toJson (const ParamDefs& defs) {
+  json j = json::object();
+  for (const auto& def: defs)
+    j[def.first] = toJson (def.second);
+  return j;
+}
+
+json WeightAlgebra::toJson (const WeightExpr& w) {
+  const ExprType op = w->type;
+  json result;
+  if (isZero(w))
+    result = false;
+  else if (isOne(w))
+    result = true;
+  else
+    switch (op) {
+    case Null:
+      // result = null (implicit)
+      break;
+    case Int:
+      result = w->args.intValue;
+      break;
+    case Dbl:
+      result = w->args.doubleValue;
+      break;
+    case Param:
+      result = *w->args.param;
+      break;
+    case Log:
+      result = json::object ({{"log", toJson (w->args.arg)}});
+      break;
+    case Exp:
+      result = json::object ({{"exp", toJson (w->args.arg)}});
+      break;
+    case Pow:
+      result = json::object ({{"pow", json::array ({ toJson (w->args.binary.l), toJson (w->args.binary.r) })}});
+      break;
+    default:
+      string opcode;
+      switch (op) {
+      case Mul: opcode = "*"; break;
+      case Div: opcode = "/"; break;
+      case Add: opcode = "+"; break;
+      case Sub: opcode = "-"; break;
+      default: Abort ("Unknown opcode in toJson"); break;
+      }
+      result = json::object ({{ opcode, json::array ({ toJson (w->args.binary.l), toJson (w->args.binary.r) })}});
+      break;
+    }
+  return result;
+}
+
+WeightExpr WeightAlgebra::fromJson (const json& w) {
+ WeightExpr result = NULL;
+ if (w.is_null())
+   result = WeightExpr();
+ else if (w.is_boolean())
+   result = w.get<bool>() ? factory.one : factory.zero;
+ else if (w.is_number_integer())
+   result = factory.newInt (w.get<int>());
+ else if (w.is_number())
+   result = factory.newDouble (w.get<double>());
+ else if (w.is_string())
+   result = factory.newParam (w.get<string>());
+ else if (w.is_array())
+    Abort ("Unexpected type in WeightExpr: array");
+ else {
+   if (!w.is_object())
+     Abort ("Unexpected type (%d) in WeightExpr", w.type());
+   auto iter = w.begin();
+   const string opcode = iter.key();
+   const json args = iter.value();
+   if (opcode == "log")
+     result = logOf (fromJson (args[0]));
+   else if (opcode == "exp")
+     result = expOf (fromJson (args[0]));
+   else if (opcode == "*")
+     result = multiply (fromJson (args[0]), fromJson (args[1]));
+   else if (opcode == "/")
+     result = divide (fromJson (args[0]), fromJson (args[1]));
+   else if (opcode == "+")
+     result = add (fromJson (args[0]), fromJson (args[1]));
+   else if (opcode == "-")
+     result = subtract (fromJson (args[0]), fromJson (args[1]));
+   else
+     Abort ("Unknown opcode %s in JSON", opcode.c_str());
+ }
+ return result;
 }

@@ -59,10 +59,10 @@ Params Constraints::defaultParams() const {
   Params params;
   for (auto& c: norm)
     for (auto& cp: c)
-      params.defs[cp] = 1. / (double) c.size();
+      params.defs[cp] = WeightAlgebra::doubleConstant (1. / (double) c.size());
   for (auto& pp: prob)
-    params.defs[pp] = .5;
+    params.defs[pp] = WeightAlgebra::doubleConstant (.5);
   for (auto& rp: rate)
-    params.defs[rp] = 1;
+    params.defs[rp] = WeightAlgebra::intConstant (1);
   return params;
 }

@@ -15,9 +15,16 @@ MachineTransition::MachineTransition()
 
 MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr weight)
   : in (in),
-  out (out),
-  dest (dest),
-  weight (weight)
+    out (out),
+    dest (dest),
+    weight (weight)
+{ }
+
+MachineTransition::MachineTransition (InputSymbol in, OutputSymbol out, StateIndex dest, double weight)
+  : in (in),
+    out (out),
+    dest (dest),
+    weight (WeightAlgebra::doubleConstant (weight))
 { }
 
 bool MachineTransition::inputEmpty() const {
@@ -154,8 +161,8 @@ void Machine::writeJson (ostream& out) const {
 	out << "{\"to\":" << t.dest;
 	if (!t.inputEmpty()) out << ",\"in\":\"" << t.in << "\"";
 	if (!t.outputEmpty()) out << ",\"out\":\"" << t.out << "\"";
-	if (!(t.weight.is_boolean() && t.weight.get<bool>()))
-	  out << ",\"weight\":" << t.weight;
+	if (!WeightAlgebra::isOne (t.weight))
+	  out << ",\"weight\":" << WeightAlgebra::toJsonString(t.weight);
 	out << "}";
       }
       out << "]";
@@ -209,7 +216,7 @@ void Machine::readJson (const json& pj) {
 	  t.in = jt.at("in").get<string>();
 	if (jt.count("out"))
 	  t.out = jt.at("out").get<string>();
-	t.weight = jt.count("weight") ? jt.at("weight") : WeightExpr(true);
+	t.weight = jt.count("weight") ? WeightAlgebra::fromJson(jt.at("weight")) : WeightAlgebra::one();
 	ms.trans.push_back (t);
       }
     }
@@ -559,7 +566,7 @@ Machine Machine::waitingMachine() const {
 	    c.trans.push_back(t);
 	  else
 	    w.trans.push_back(t);
-	c.trans.push_back (MachineTransition (string(), string(), newState.size(), WeightExpr(true)));
+	c.trans.push_back (MachineTransition (string(), string(), newState.size(), WeightAlgebra::one()));
 	old2new.push_back (new2old.size());
 	new2old.push_back (newState.size());
 	swap (newState[s], c);
@@ -650,13 +657,13 @@ Machine Machine::advancingMachine() const {
 	  ta.accumulate (t.in, t.out, t.dest, t.weight);
 	const auto et = ta.transitions();
 	// factor out self-loops
-	WeightExpr exitSelf (true);
+	WeightExpr exitSelf = WeightAlgebra::one();
 	for (const auto& t: et)
 	  if (t.isSilent() && t.dest == s)
 	    exitSelf = WeightAlgebra::geometricSum (t.weight);
 	  else
 	    ams.trans.push_back (t);
-	if (!(exitSelf.is_boolean() && exitSelf.get<bool>()))
+	if (!WeightAlgebra::isOne (exitSelf))
 	  for (auto& t: ams.trans)
 	    t.weight = WeightAlgebra::multiply (exitSelf, t.weight);
 	effTrans[s] = ams.trans;
@@ -816,7 +823,7 @@ Machine Machine::generator (const string& name, const vguard<OutputSymbol>& seq)
   for (SeqIdx pos = 0; pos <= seq.size(); ++pos)
     m.state[pos].name = json::array ({string(name), pos});
   for (SeqIdx pos = 0; pos < seq.size(); ++pos)
-    m.state[pos].trans.push_back (MachineTransition (string(), seq[pos], pos + 1, WeightExpr(true)));
+    m.state[pos].trans.push_back (MachineTransition (string(), seq[pos], pos + 1, WeightAlgebra::one()));
   return m;
 }
 
@@ -826,7 +833,7 @@ Machine Machine::acceptor (const string& name, const vguard<InputSymbol>& seq) {
   for (SeqIdx pos = 0; pos <= seq.size(); ++pos)
     m.state[pos].name = json::array ({string(name), pos});
   for (SeqIdx pos = 0; pos < seq.size(); ++pos)
-    m.state[pos].trans.push_back (MachineTransition (seq[pos], string(), pos + 1, WeightExpr(true)));
+    m.state[pos].trans.push_back (MachineTransition (seq[pos], string(), pos + 1, WeightAlgebra::one()));
   return m;
 }
 
@@ -844,12 +851,12 @@ Machine Machine::concatenate (const Machine& left, const Machine& right) {
     for (auto& t: ms.trans)
       t.dest += left.state.size();
   }
-  m.state[left.endState()].trans.push_back (MachineTransition (string(), string(), right.startState() + left.state.size(), WeightExpr(true)));
+  m.state[left.endState()].trans.push_back (MachineTransition (string(), string(), right.startState() + left.state.size(), WeightAlgebra::one()));
   return m;
 }
 
 Machine Machine::takeUnion (const Machine& first, const Machine& second) {
-  return takeUnion (first, second, WeightExpr(true), WeightExpr(true));
+  return takeUnion (first, second, WeightAlgebra::one(), WeightAlgebra::one());
 }
 
 Machine Machine::takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst) {
@@ -880,8 +887,8 @@ Machine Machine::takeUnion (const Machine& first, const Machine& second, const W
   }
   m.state[0].trans.push_back (MachineTransition (string(), string(), 1, pFirst));
   m.state[0].trans.push_back (MachineTransition (string(), string(), 1 + first.nStates(), pSecond));
-  m.state[1 + first.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
-  m.state[1 + first.nStates() + second.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
+  m.state[1 + first.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
+  m.state[1 + first.nStates() + second.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
   return m;
 }
 
@@ -895,14 +902,14 @@ Machine Machine::zeroOrOne (const Machine& q) {
     m.state.push_back (MachineState());
     m.state.back().name = json::array ({"quant-end"});
   }
-  m.state[m.startState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
+  m.state[m.startState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
   return m;
 }
 
 Machine Machine::kleenePlus (const Machine& k) {
   Assert (k.nStates(), "Attempt to form Kleene closure of uninitialized transducer");
   Machine m (k);
-  m.state[k.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightExpr(true)));
+  m.state[k.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightAlgebra::one()));
   return m;
 }
 
@@ -928,9 +935,9 @@ Machine Machine::kleeneLoop (const Machine& main, const Machine& loop) {
   }
   m.state.push_back (MachineState());
   m.state.back().name = json::array ({"loop-end"});
-  m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), main.nStates() + loop.startState(), WeightExpr(true)));
-  m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightExpr(true)));
-  m.state[main.nStates() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightExpr(true)));
+  m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), main.nStates() + loop.startState(), WeightAlgebra::one()));
+  m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
+  m.state[main.nStates() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightAlgebra::one()));
   return m;
 }
 

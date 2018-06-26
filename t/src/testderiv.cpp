@@ -11,7 +11,7 @@ int main (int argc, char** argv) {
   ifstream in (argv[1]);
   in >> w;
   MachineSchema::validateOrDie ("expr", w);
-  WeightExpr d = WeightAlgebra::deriv (w, ParamDefs(), string(argv[2]));
-  cout << d << endl;
+  WeightExpr d = WeightAlgebra::deriv (WeightAlgebra::fromJson(w), ParamDefs(), string(argv[2]));
+  cout << WeightAlgebra::toJsonString(d) << endl;
   exit(0);
 }
