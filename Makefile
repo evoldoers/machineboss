@@ -72,9 +72,6 @@ LD_FLAGS = -lstdc++ -lz $(GSL_LIBS) $(BOOST_LIBS)
 CPP_FILES = $(wildcard src/*.cpp)
 OBJ_FILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES)))
 
-CPP_FILES_NANO = $(wildcard src/nano/*.cpp)
-OBJ_FILES_NANO = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES_NANO)))
-
 # try clang++, fall back to g++
 CPP = clang++
 ifeq (, $(shell which $(CPP)))
@@ -90,21 +87,11 @@ SH = /bin/sh
 # Targets
 
 BOSS = bossmachine
-NANO = nanomachine
 
 all: $(BOSS)
 
 install: $(BOSS)
 	cp bin/$(BOSS) $(INSTALL_BIN)/$(BOSS)
-
-# Nanomachine build rules
-obj/nano/%.o: src/nano/%.cpp
-	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(CPP_FLAGS) $(HDF5_FLAGS) $(HTS_FLAGS) -c -o $@ $<
-
-bin/$(NANO): $(OBJ_FILES) $(OBJ_FILES_NANO) obj/$(NANO).o target/$(NANO).cpp
-	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) $(HDF5_LIBS) $(HTS_LIBS) -o $@ obj/$(NANO).o $(OBJ_FILES) $(OBJ_FILES_NANO)
 
 # Main build rules
 bin/%: $(OBJ_FILES) obj/%.o target/%.cpp
@@ -128,8 +115,6 @@ obj/%.o: t/src/%.cpp
 	@$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 $(BOSS): bin/$(BOSS)
-
-$(NANO): bin/$(NANO)
 
 clean:
 	rm -rf bin/* t/bin/* obj/*
