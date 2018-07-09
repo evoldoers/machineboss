@@ -614,6 +614,8 @@ Machine Machine::advancingMachine() const {
 	am.state.push_back (MachineState());
 	MachineState& ams = am.state.back();
 	ams.name = ms.name;
+
+	// verify that there are no cycles
 	vguard<bool> markedForUpdate (s + 1, false);
 	function<void(StateIndex)> markForUpdate = [&](StateIndex i) {
 	  markedForUpdate[i] = true;
@@ -625,6 +627,7 @@ Machine Machine::advancingMachine() const {
 	    }
 	};
 	markForUpdate(s);
+
 	function<void(StateIndex)> updateEffTrans = [&](StateIndex i) {
 	  TransList newEffTrans, elimTrans;
 	  StateIndex newMinDest = nStates();
@@ -648,6 +651,8 @@ Machine Machine::advancingMachine() const {
 	  minDest[i] = newMinDest;
 	  effTrans[i] = newEffTrans;
 	};
+	// TODO optimization: do we need to loop t all the way down here?
+	// seems like perhaps we could do this more conservatively/lazily
 	for (StateIndex t = s; t > 0; --t)
 	  updateEffTrans(t-1);
 	updateEffTrans(s);
@@ -749,6 +754,15 @@ Machine Machine::advanceSort() const {
       } else
 	LogThisAt(5,"Sorting reduced number of backward silent transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
+
+      // show silent backward transitions
+      if (LoggingThisAt(6)) {
+	LogThisAt(6,"Silent backward transitions:" << endl);
+	for (StateIndex s = 1; s < nStates(); ++s)
+	  for (const auto& t: state[s].trans)
+	    if (t.isSilent() && t.dest <= s)
+	      LogThisAt(6,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
+      }
     }
   } else {
     LogThisAt(5,"Machine has no backward silent transitions; sort unnecessary" << endl);
