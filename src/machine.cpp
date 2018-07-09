@@ -594,8 +594,46 @@ Machine Machine::advancingMachine() const {
   } else {
     if (nStates()) {
       am.state.reserve (nStates());
-      vguard<TransList> effTrans;
-      vguard<StateIndex> minDest (nStates());
+
+      // effTrans[jMin][i] = set of effective transitions (i,j) where j >= jMin and i <= jMin
+      map<StateIndex,map<StateIndex,TransList> > effTrans;
+
+      // updateEffTrans(newMin,i) calculates effTrans[newMin][i]
+      function<void(StateIndex,StateIndex)> updateEffTrans = [&](StateIndex newMin, StateIndex i) {
+	if (!(effTrans.count(newMin) && effTrans.at(newMin).count(i))) {
+	  LogThisAt(6,"updateEffTrans(" << newMin << "," << i << ")");
+	  TransList oldTrans;
+	  if (newMin > i) {
+	    updateEffTrans (newMin - 1, i);
+	    oldTrans = effTrans[newMin-1][i];
+	  } else if (newMin == i)
+	    oldTrans = state[newMin].trans;
+
+	  TransList newEffTrans;
+	  StateIndex newMinDest = nStates();
+	  for (auto& t_ij: oldTrans) {
+	    if (t_ij.isLoud())
+	      newEffTrans.push_back(t_ij);
+	    else {
+	      const StateIndex j = t_ij.dest;
+	      if (j >= newMin) {
+		newMinDest = min (newMinDest, j);
+		newEffTrans.push_back(t_ij);
+	      } else {
+		Assert (j < i, "oops: infinite recursion");
+		updateEffTrans (newMin, j);
+		for (auto& t_jk: effTrans[newMin][j]) {
+		  const StateIndex k = t_jk.dest;
+		  Assert (t_jk.isLoud() || (k>j && (k > i || (k == i && i == newMin))), "oops: cycle. i=%d j=%d k=%d", i, j, k);
+		  newMinDest = min (newMinDest, k);
+		  newEffTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
+		}
+	      }
+	    }
+	  }
+	  effTrans[newMin][i] = newEffTrans;
+	}
+      };
 
       size_t totalElim = 0;
       for (StateIndex s = 0; s < nStates(); ++s)
@@ -610,55 +648,16 @@ Machine Machine::advancingMachine() const {
 	nElim += s + 1;
 
 	const MachineState& ms = state[s];
-	effTrans.push_back (ms.trans);
 	am.state.push_back (MachineState());
 	MachineState& ams = am.state.back();
 	ams.name = ms.name;
 
-	// verify that there are no cycles
-	vguard<bool> markedForUpdate (s + 1, false);
-	function<void(StateIndex)> markForUpdate = [&](StateIndex i) {
-	  markedForUpdate[i] = true;
-	  if (minDest[i] < s)
-	    for (auto& t_ij: effTrans[i]) {
-	      Assert (t_ij.isLoud() || i == s || t_ij.dest > i, "oops: cycle. i=%d j=%d", i, t_ij.dest);
-	      if (t_ij.isSilent() && t_ij.dest < s && !markedForUpdate[t_ij.dest])
-		markForUpdate (t_ij.dest);
-	    }
-	};
-	markForUpdate(s);
+	// recursive call to updateEffTrans
+	updateEffTrans(s,s);
 
-	function<void(StateIndex)> updateEffTrans = [&](StateIndex i) {
-	  TransList newEffTrans, elimTrans;
-	  StateIndex newMinDest = nStates();
-	  for (auto& t_ij: effTrans[i]) {
-	    if (t_ij.isLoud())
-	      newEffTrans.push_back(t_ij);
-	    else {
-	      const StateIndex j = t_ij.dest;
-	      if (j >= s) {
-		newMinDest = min (newMinDest, j);
-		newEffTrans.push_back(t_ij);
-	      } else
-		for (auto& t_jk: effTrans[j]) {
-		  const StateIndex k = t_jk.dest;
-		  Assert (t_jk.isLoud() || (k>j && (k > i || (k == i && i == s))), "oops: cycle. i=%d j=%d k=%d", i, j, k);
-		  newMinDest = min (newMinDest, k);
-		  newEffTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
-		}
-	    }
-	  }
-	  minDest[i] = newMinDest;
-	  effTrans[i] = newEffTrans;
-	};
-	// TODO optimization: do we need to loop t all the way down here?
-	// seems like perhaps we could do this more conservatively/lazily
-	for (StateIndex t = s; t > 0; --t)
-	  updateEffTrans(t-1);
-	updateEffTrans(s);
 	// aggregate all transitions that go to the same place
 	TransAccumulator ta;
-	for (const auto& t: effTrans[s])
+	for (const auto& t: effTrans[s][s])
 	  ta.accumulate (t.in, t.out, t.dest, t.weight);
 	const auto et = ta.transitions();
 	// factor out self-loops
@@ -671,8 +670,9 @@ Machine Machine::advancingMachine() const {
 	if (!WeightAlgebra::isOne (exitSelf))
 	  for (auto& t: ams.trans)
 	    t.weight = WeightAlgebra::multiply (exitSelf, t.weight);
-	effTrans[s] = ams.trans;
+	effTrans[s][s] = ams.trans;
       }
+      
       Assert (am.isAdvancingMachine(), "failed to create advancing machine");
       LogThisAt(5,"Converted " << nTransitions() << "-transition transducer into " << am.nTransitions() << "-transition advancing machine" << endl);
       LogThisAt(7,MachineLoader::toJsonString(am) << endl);
@@ -754,20 +754,21 @@ Machine Machine::advanceSort() const {
       } else
 	LogThisAt(5,"Sorting reduced number of backward silent transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
-
-      // show silent backward transitions
-      if (nSilentBackAfter > 0 && LoggingThisAt(6)) {
-	LogThisAt(6,"Silent backward transitions:" << endl);
-	for (StateIndex s = 1; s < nStates(); ++s)
-	  for (const auto& t: state[s].trans)
-	    if (t.isSilent() && t.dest <= s)
-	      LogThisAt(6,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
-      }
     }
   } else {
     LogThisAt(5,"Machine has no backward silent transitions; sort unnecessary" << endl);
     result = *this;
   }
+  
+  // show silent backward transitions
+  if (result.nSilentBackTransitions() > 0 && LoggingThisAt(6)) {
+    LogThisAt(6,"Silent backward transitions:" << endl);
+    for (StateIndex s = 1; s < nStates(); ++s)
+      for (const auto& t: state[s].trans)
+	if (t.isSilent() && t.dest <= s)
+	  LogThisAt(6,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
+  }
+
   return result;
 }
 
