@@ -756,7 +756,7 @@ Machine Machine::advanceSort() const {
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
 
       // show silent backward transitions
-      if (LoggingThisAt(6)) {
+      if (nSilentBackAfter > 0 && LoggingThisAt(6)) {
 	LogThisAt(6,"Silent backward transitions:" << endl);
 	for (StateIndex s = 1; s < nStates(); ++s)
 	  for (const auto& t: state[s].trans)
