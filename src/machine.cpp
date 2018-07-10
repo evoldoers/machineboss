@@ -760,12 +760,13 @@ Machine Machine::advanceSort() const {
   }
   
   // show silent backward transitions
-  if (result.nSilentBackTransitions() > 0 && LoggingThisAt(6)) {
-    LogThisAt(6,"Silent backward transitions:" << endl);
+#define SilentBackwardLogLevel 9
+  if (result.nSilentBackTransitions() > 0 && LoggingThisAt(SilentBackwardLogLevel)) {
+    LogThisAt(SilentBackwardLogLevel,"Silent backward transitions:" << endl);
     for (StateIndex s = 1; s < nStates(); ++s)
       for (const auto& t: state[s].trans)
 	if (t.isSilent() && t.dest <= s)
-	  LogThisAt(6,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
+	  LogThisAt(SilentBackwardLogLevel,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
   }
 
   return result;
