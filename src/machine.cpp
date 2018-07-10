@@ -154,6 +154,8 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
   ExprMemos memo;
   ExprRefCounts counts;
   vguard<const RefCount*> common;
+  map<string,string> name2def;
+  vguard<string> names;
   if (memoizeRepeatedExpressions) {
     set<string> params;
     ParamDefs dummyDefs;
@@ -166,19 +168,29 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
 
     for (const auto& t_c: counts) {
       const WeightExpr expr = t_c.second.expr;
-      if (t_c.second.refs > 1
+      if (t_c.second.refs.size() > 1
 	  && expr->type != Dbl && expr->type != Int && expr->type != Param && expr->type != Null
 	  && !WeightAlgebra::isOne (expr))
 	common.push_back (&t_c.second);
     }
     sort (common.begin(), common.end(), cmpRefCounts);
 
-    for (size_t n = 0; n < common.size(); ++n) {
-      string prefix, name;
-      do {
-	prefix = prefix + "_";
-      } while (params.count (name = prefix + to_string(n+1)));
-      memo[common[n]->expr] = name;
+    map<string,string> def2name;
+    size_t n = 0;
+    for (const auto& c: common) {
+      const string def = WeightAlgebra::toJsonString (c->expr, &memo);
+      if (def2name.count(def))
+	memo[c->expr] = def2name.at(def);
+      else {
+	string prefix, name;
+	do {
+	  prefix = prefix + "_";
+	} while (params.count (name = prefix + to_string(++n)));
+	memo[c->expr] = name;
+	name2def[name] = def;
+	def2name[def] = name;
+	names.push_back (name);
+      }
     }
   }
 
@@ -208,12 +220,12 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
       out << "," << endl;
   }
   out << endl << " ]";
-  if (memo.size()) {
+  if (names.size()) {
     out << "," << endl << " \"defs\":";
-    for (size_t n = 0; n < common.size(); ++n)
+    for (size_t n = 0; n < names.size(); ++n)
       out << (n ? ",\n  " : "\n {")
-	  << "\"" << memo[common[n]->expr]
-	  << "\":" << WeightAlgebra::toJsonString (common[n]->expr, NULL, &memo);
+	  << "\"" << names[n]
+	  << "\":" << name2def[names[n]];
     out << "}";
   }
   out << endl << "}" << endl;

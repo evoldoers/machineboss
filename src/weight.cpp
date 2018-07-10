@@ -529,7 +529,7 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
  return result;
 }
 
-void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts) {
+void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts, const WeightExpr parent) {
   switch (w->type) {
   case Null:
   case Int:
@@ -538,11 +538,11 @@ void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts) {
     break;
   case Log:
   case Exp:
-    countRefs (w->args.arg, counts);
+    countRefs (w->args.arg, counts, w);
     break;
   default:
-    countRefs (w->args.binary.l, counts);
-    countRefs (w->args.binary.r, counts);
+    countRefs (w->args.binary.l, counts, w);
+    countRefs (w->args.binary.r, counts, w);
     break;
   }
 
@@ -550,5 +550,5 @@ void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts) {
     counts[w].order = counts.size();
     counts[w].expr = w;
   }
-  ++counts[w].refs;
+  counts[w].refs.insert (parent);
 }

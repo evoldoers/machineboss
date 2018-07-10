@@ -39,7 +39,8 @@ typedef map<string,WeightExpr> ParamDefs;
 
 struct RefCount {
   WeightExpr expr;
-  int order, refs;
+  int order;
+  set<WeightExpr> refs;
 };
 typedef map<WeightExpr,RefCount> ExprRefCounts;
 typedef map<WeightExpr,string> ExprMemos;
@@ -95,7 +96,7 @@ struct WeightAlgebra {
   static WeightExpr fromJson (const json& j, const ParamDefs* defs = NULL);
 
   // trace refcount of functions
-  static void countRefs (const WeightExpr& w, ExprRefCounts& counts);
+  static void countRefs (const WeightExpr& w, ExprRefCounts& counts, const WeightExpr parent = NULL);
 };
 
 #endif /* WEIGHT_INCLUDED */
