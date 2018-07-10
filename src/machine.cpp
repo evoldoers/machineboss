@@ -595,43 +595,42 @@ Machine Machine::advancingMachine() const {
     if (nStates()) {
       am.state.reserve (nStates());
 
-      // effTrans[jMin][i] = set of effective transitions (i,j) where j >= jMin and i <= jMin
-      map<StateIndex,map<StateIndex,TransList> > effTrans;
+      // fwdTrans[i][jMin] = set of effective transitions { (i,j): i <= jMin <= j }
+      map<StateIndex,map<StateIndex,TransList> > fwdTrans;
 
-      // updateEffTrans(newMin,i) calculates effTrans[newMin][i]
-      function<void(StateIndex,StateIndex)> updateEffTrans = [&](StateIndex newMin, StateIndex i) {
-	if (!(effTrans.count(newMin) && effTrans.at(newMin).count(i))) {
-	  LogThisAt(6,"updateEffTrans(" << newMin << "," << i << ")");
+      // updateFwdTrans(i,newMin) calculates fwdTrans[i][newMin]
+      function<void(StateIndex,StateIndex)> updateFwdTrans = [&](StateIndex i, StateIndex newMin) {
+	if (!(fwdTrans.count(i) && fwdTrans.at(i).count(newMin))) {
 	  TransList oldTrans;
 	  if (newMin > i) {
-	    updateEffTrans (newMin - 1, i);
-	    oldTrans = effTrans[newMin-1][i];
+	    updateFwdTrans (i, newMin - 1);
+	    oldTrans = fwdTrans[i][newMin-1];
 	  } else if (newMin == i)
 	    oldTrans = state[newMin].trans;
 
-	  TransList newEffTrans;
+	  TransList newFwdTrans;
 	  StateIndex newMinDest = nStates();
-	  for (auto& t_ij: oldTrans) {
+	  for (const auto& t_ij: oldTrans) {
 	    if (t_ij.isLoud())
-	      newEffTrans.push_back(t_ij);
+	      newFwdTrans.push_back(t_ij);
 	    else {
 	      const StateIndex j = t_ij.dest;
 	      if (j >= newMin) {
 		newMinDest = min (newMinDest, j);
-		newEffTrans.push_back(t_ij);
+		newFwdTrans.push_back(t_ij);
 	      } else {
-		Assert (j < i, "oops: infinite recursion");
-		updateEffTrans (newMin, j);
-		for (auto& t_jk: effTrans[newMin][j]) {
+		if (i != j)
+		  updateFwdTrans (j, newMin);
+		for (const auto& t_jk: i == j ? oldTrans : fwdTrans[j][newMin]) {
 		  const StateIndex k = t_jk.dest;
 		  Assert (t_jk.isLoud() || (k>j && (k > i || (k == i && i == newMin))), "oops: cycle. i=%d j=%d k=%d", i, j, k);
 		  newMinDest = min (newMinDest, k);
-		  newEffTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
+		  newFwdTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
 		}
 	      }
 	    }
 	  }
-	  effTrans[newMin][i] = newEffTrans;
+	  fwdTrans[i][newMin] = newFwdTrans;
 	}
       };
 
@@ -652,12 +651,12 @@ Machine Machine::advancingMachine() const {
 	MachineState& ams = am.state.back();
 	ams.name = ms.name;
 
-	// recursive call to updateEffTrans
-	updateEffTrans(s,s);
+	// recursive call to updateFwdTrans
+	updateFwdTrans(s,s);
 
 	// aggregate all transitions that go to the same place
 	TransAccumulator ta;
-	for (const auto& t: effTrans[s][s])
+	for (const auto& t: fwdTrans[s][s])
 	  ta.accumulate (t.in, t.out, t.dest, t.weight);
 	const auto et = ta.transitions();
 	// factor out self-loops
@@ -670,7 +669,7 @@ Machine Machine::advancingMachine() const {
 	if (!WeightAlgebra::isOne (exitSelf))
 	  for (auto& t: ams.trans)
 	    t.weight = WeightAlgebra::multiply (exitSelf, t.weight);
-	effTrans[s][s] = ams.trans;
+	fwdTrans[s][s] = ams.trans;
       }
       
       Assert (am.isAdvancingMachine(), "failed to create advancing machine");
