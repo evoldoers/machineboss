@@ -649,6 +649,7 @@ Machine Machine::advancingMachine() const {
 
       // fwdTrans[i][jMin] = set of effective transitions { (i,j): i <= jMin <= j }
       map<StateIndex,map<StateIndex,TransList> > fwdTrans;
+      size_t nElim = 0;
 
       // updateFwdTrans(i,newMin) calculates fwdTrans[i][newMin]
       function<void(StateIndex,StateIndex)> updateFwdTrans = [&](StateIndex i, StateIndex newMin) {
@@ -679,6 +680,8 @@ Machine Machine::advancingMachine() const {
 		  newMinDest = min (newMinDest, k);
 		  newFwdTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
 		}
+		if (i > j)
+		  ++nElim;
 	      }
 	    }
 	  }
@@ -686,17 +689,13 @@ Machine Machine::advancingMachine() const {
 	}
       };
 
-      size_t totalElim = 0;
-      for (StateIndex s = 0; s < nStates(); ++s)
-	totalElim += s + 1;
+      const size_t totalElim = nSilentBackTransitions();
 
       ProgressLog(plogElim,6);
       plogElim.initProgress ("Eliminating backward silent transitions", totalElim);
 
-      size_t nElim = 0;
       for (StateIndex s = 0; s < nStates(); ++s) {
-	plogElim.logProgress (nElim / (double) totalElim, "state %ld/%ld", s, nStates());
-	nElim += s + 1;
+	plogElim.logProgress (nElim / (double) totalElim, "%ld/%ld", nElim, totalElim);
 
 	const MachineState& ms = state[s];
 	am.state.push_back (MachineState());
