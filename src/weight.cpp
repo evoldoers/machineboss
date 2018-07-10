@@ -3,6 +3,7 @@
 #include "weight.h"
 #include "logsumexp.h"
 #include "util.h"
+#include "logger.h"
 
 // singleton for storing ExprStruct's
 class ExprStructFactory {
@@ -199,7 +200,7 @@ WeightExpr WeightAlgebra::bind (const WeightExpr& w, const ParamDefs& defs) {
   case Param:
     {
       const string& n (*w->args.param);
-      result = defs.count(n) ? defs.at(n) : w;
+      result = defs.count(n) ? bind (defs.at(n), defs) : w;
     }
     break;
   case Log:
@@ -419,71 +420,77 @@ ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
   return defsCopy;
 }
 
-string WeightAlgebra::toJsonString (const ParamDefs& defs) {
+string WeightAlgebra::toJsonString (const ParamDefs& defs, const ExprMemos* memos) {
   ostringstream out;
-  out << toJson(defs);
+  out << toJson (defs, memos);
   return out.str();
 }
 
-string WeightAlgebra::toJsonString (const WeightExpr& w) {
+string WeightAlgebra::toJsonString (const WeightExpr& w, const ExprMemos* memos, const ExprMemos* childMemos) {
   ostringstream out;
-  out << toJson(w);
+  out << toJson (w, memos, childMemos);
   return out.str();
 }
 
-json WeightAlgebra::toJson (const ParamDefs& defs) {
+json WeightAlgebra::toJson (const ParamDefs& defs, const ExprMemos* memos) {
   json j = json::object();
   for (const auto& def: defs)
-    j[def.first] = toJson (def.second);
+    j[def.first] = toJson (def.second, memos);
   return j;
 }
 
-json WeightAlgebra::toJson (const WeightExpr& w) {
-  const ExprType op = w->type;
+json WeightAlgebra::toJson (const WeightExpr& w, const ExprMemos* memos, const ExprMemos* childMemos) {
   json result;
-  if (isZero(w))
-    result = false;
-  else if (isOne(w))
-    result = true;
-  else
-    switch (op) {
-    case Null:
-      // result = null (implicit)
-      break;
-    case Int:
-      result = w->args.intValue;
-      break;
-    case Dbl:
-      result = w->args.doubleValue;
-      break;
-    case Param:
-      result = *w->args.param;
-      break;
-    case Log:
-      result = json::object ({{"log", toJson (w->args.arg)}});
-      break;
-    case Exp:
-      result = json::object ({{"exp", toJson (w->args.arg)}});
-      break;
-    case Pow:
-      result = json::object ({{"pow", json::array ({ toJson (w->args.binary.l), toJson (w->args.binary.r) })}});
-      break;
-    default:
-      string opcode;
+  if (memos && memos->count(w))
+    result = memos->at(w);
+  else {
+    const ExprType op = w->type;
+    if (childMemos)
+      memos = childMemos;
+    if (isZero(w))
+      result = false;
+    else if (isOne(w))
+      result = true;
+    else
       switch (op) {
-      case Mul: opcode = "*"; break;
-      case Div: opcode = "/"; break;
-      case Add: opcode = "+"; break;
-      case Sub: opcode = "-"; break;
-      default: Abort ("Unknown opcode in toJson"); break;
+      case Null:
+	// result = null (implicit)
+	break;
+      case Int:
+	result = w->args.intValue;
+	break;
+      case Dbl:
+	result = w->args.doubleValue;
+	break;
+      case Param:
+	result = *w->args.param;
+	break;
+      case Log:
+	result = json::object ({{"log", toJson (w->args.arg, memos)}});
+	break;
+      case Exp:
+	result = json::object ({{"exp", toJson (w->args.arg, memos)}});
+	break;
+      case Pow:
+	result = json::object ({{"pow", json::array ({ toJson (w->args.binary.l, memos), toJson (w->args.binary.r, memos) })}});
+	break;
+      default:
+	string opcode;
+	switch (op) {
+	case Mul: opcode = "*"; break;
+	case Div: opcode = "/"; break;
+	case Add: opcode = "+"; break;
+	case Sub: opcode = "-"; break;
+	default: Abort ("Unknown opcode in toJson"); break;
+	}
+	result = json::object ({{ opcode, json::array ({ toJson (w->args.binary.l, memos), toJson (w->args.binary.r, memos) })}});
+	break;
       }
-      result = json::object ({{ opcode, json::array ({ toJson (w->args.binary.l), toJson (w->args.binary.r) })}});
-      break;
-    }
+  }
   return result;
 }
 
-WeightExpr WeightAlgebra::fromJson (const json& w) {
+WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
  WeightExpr result = NULL;
  if (w.is_null())
    result = WeightExpr();
@@ -493,9 +500,10 @@ WeightExpr WeightAlgebra::fromJson (const json& w) {
    result = factory.newInt (w.get<int>());
  else if (w.is_number())
    result = factory.newDouble (w.get<double>());
- else if (w.is_string())
-   result = factory.newParam (w.get<string>());
- else if (w.is_array())
+ else if (w.is_string()) {
+   const string name = w.get<string>();
+   result = defs && defs->count(name) ? defs->at(name) : factory.newParam(name);
+ } else if (w.is_array())
     Abort ("Unexpected type in WeightExpr: array");
  else {
    if (!w.is_object())
@@ -504,19 +512,43 @@ WeightExpr WeightAlgebra::fromJson (const json& w) {
    const string opcode = iter.key();
    const json args = iter.value();
    if (opcode == "log")
-     result = logOf (fromJson (args[0]));
+     result = logOf (fromJson (args[0], defs));
    else if (opcode == "exp")
-     result = expOf (fromJson (args[0]));
+     result = expOf (fromJson (args[0], defs));
    else if (opcode == "*")
-     result = multiply (fromJson (args[0]), fromJson (args[1]));
+     result = multiply (fromJson (args[0], defs), fromJson (args[1], defs));
    else if (opcode == "/")
-     result = divide (fromJson (args[0]), fromJson (args[1]));
+     result = divide (fromJson (args[0], defs), fromJson (args[1], defs));
    else if (opcode == "+")
-     result = add (fromJson (args[0]), fromJson (args[1]));
+     result = add (fromJson (args[0], defs), fromJson (args[1], defs));
    else if (opcode == "-")
-     result = subtract (fromJson (args[0]), fromJson (args[1]));
+     result = subtract (fromJson (args[0], defs), fromJson (args[1], defs));
    else
      Abort ("Unknown opcode %s in JSON", opcode.c_str());
  }
  return result;
+}
+
+void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts) {
+  switch (w->type) {
+  case Null:
+  case Int:
+  case Dbl:
+  case Param:
+    break;
+  case Log:
+  case Exp:
+    countRefs (w->args.arg, counts);
+    break;
+  default:
+    countRefs (w->args.binary.l, counts);
+    countRefs (w->args.binary.r, counts);
+    break;
+  }
+
+  if (!counts.count(w)) {
+    counts[w].order = counts.size();
+    counts[w].expr = w;
+  }
+  ++counts[w].refs;
 }

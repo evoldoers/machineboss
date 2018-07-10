@@ -81,6 +81,7 @@ int main (int argc, char** argv) {
     appOpts.add_options()
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
+      ("memoize,M", "memoize repeated expressions for compactness")
       ("params,P", po::value<vector<string> >(), "load parameters")
       ("functions,F", po::value<vector<string> >(), "load functions & constants")
       ("constraints,C", po::value<vector<string> >(), "load constraints")
@@ -302,12 +303,12 @@ int main (int argc, char** argv) {
       if (vm.count("graphviz"))
 	machine.writeDot (out);
       else
-	machine.writeJson (out);
+	machine.writeJson (out, vm.count("memoize"));
     } else if (!vm.count("train") && !vm.count("align")) {
       if (vm.count("graphviz"))
 	machine.writeDot (cout);
       else
-	machine.writeJson (cout);
+	machine.writeJson (cout, vm.count("memoize"));
     }
 
     // do some syntax checking

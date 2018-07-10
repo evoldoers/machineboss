@@ -36,6 +36,12 @@
         "anyOf": [ {"required": ["id"]}, {"required": ["n"]} ],
         "additionalProperties": false
       }
+    },
+    "defs": {
+      "type": "object",
+      "patternProperties": {
+	".*": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
+      }
     }
   },
   "additionalProperties": false

@@ -7,6 +7,7 @@
 #include "fastseq.h"
 #include "logger.h"
 #include "schema.h"
+#include "params.h"
 
 using json = nlohmann::json;
 
@@ -145,7 +146,42 @@ vguard<OutputSymbol> Machine::outputAlphabet() const {
   return vguard<OutputSymbol> (alph.begin(), alph.end());
 }
 
-void Machine::writeJson (ostream& out) const {
+bool cmpRefCounts (const RefCount* a, const RefCount* b) {
+  return a->order < b->order;
+}
+
+void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
+  ExprMemos memo;
+  ExprRefCounts counts;
+  vguard<const RefCount*> common;
+  if (memoizeRepeatedExpressions) {
+    set<string> params;
+    ParamDefs dummyDefs;
+    for (StateIndex s = 0; s < nStates(); ++s)
+      for (const auto& t: state[s].trans) {
+	WeightAlgebra::countRefs (t.weight, counts);
+	const auto tp = WeightAlgebra::params (t.weight, dummyDefs);
+	params.insert (tp.begin(), tp.end());
+      }
+
+    for (const auto& t_c: counts) {
+      const WeightExpr expr = t_c.second.expr;
+      if (t_c.second.refs > 1
+	  && expr->type != Dbl && expr->type != Int && expr->type != Param && expr->type != Null
+	  && !WeightAlgebra::isOne (expr))
+	common.push_back (&t_c.second);
+    }
+    sort (common.begin(), common.end(), cmpRefCounts);
+
+    for (size_t n = 0; n < common.size(); ++n) {
+      string prefix, name;
+      do {
+	prefix = prefix + "_";
+      } while (params.count (name = prefix + to_string(n+1)));
+      memo[common[n]->expr] = name;
+    }
+  }
+
   out << "{\"state\":" << endl << " [";
   for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
@@ -162,7 +198,7 @@ void Machine::writeJson (ostream& out) const {
 	if (!t.inputEmpty()) out << ",\"in\":\"" << t.in << "\"";
 	if (!t.outputEmpty()) out << ",\"out\":\"" << t.out << "\"";
 	if (!WeightAlgebra::isOne (t.weight))
-	  out << ",\"weight\":" << WeightAlgebra::toJsonString(t.weight);
+	  out << ",\"weight\":" << WeightAlgebra::toJsonString (t.weight, &memo);
 	out << "}";
       }
       out << "]";
@@ -171,11 +207,27 @@ void Machine::writeJson (ostream& out) const {
     if (s < nStates() - 1)
       out << "," << endl;
   }
-  out << endl << " ]" << endl << "}" << endl;
+  out << endl << " ]";
+  if (memo.size()) {
+    out << "," << endl << " \"defs\":";
+    for (size_t n = 0; n < common.size(); ++n)
+      out << (n ? ",\n  " : "\n {")
+	  << "\"" << memo[common[n]->expr]
+	  << "\":" << WeightAlgebra::toJsonString (common[n]->expr, NULL, &memo);
+    out << "}";
+  }
+  out << endl << "}" << endl;
 }
 
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
+
+  ParamFuncs funcs, bound;
+  if (pj.count("defs"))
+    funcs.readJson (pj.at("defs"));
+  for (auto& p_d: funcs.defs)
+    bound.defs[p_d.first] = WeightAlgebra::bind (p_d.second, funcs.defs);
+  
   json jstate = pj.at("state");
   Assert (jstate.is_array(), "state is not an array");
   map<string,StateIndex> id2n;
@@ -216,7 +268,7 @@ void Machine::readJson (const json& pj) {
 	  t.in = jt.at("in").get<string>();
 	if (jt.count("out"))
 	  t.out = jt.at("out").get<string>();
-	t.weight = jt.count("weight") ? WeightAlgebra::fromJson(jt.at("weight")) : WeightAlgebra::one();
+	t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight"), &bound.defs) : WeightAlgebra::one());
 	ms.trans.push_back (t);
       }
     }

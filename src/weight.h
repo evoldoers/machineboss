@@ -37,6 +37,13 @@ struct ExprStruct {
 typedef ExprPtr WeightExpr;
 typedef map<string,WeightExpr> ParamDefs;
 
+struct RefCount {
+  WeightExpr expr;
+  int order, refs;
+};
+typedef map<WeightExpr,RefCount> ExprRefCounts;
+typedef map<WeightExpr,string> ExprMemos;
+
 struct WeightAlgebra {
   static WeightExpr zero();
   static WeightExpr one();
@@ -79,13 +86,16 @@ struct WeightAlgebra {
 
   static ParamDefs exclude (const ParamDefs& defs, const string& param);
 
-  static string toJsonString (const ParamDefs& defs);
-  static string toJsonString (const WeightExpr& w);
+  static string toJsonString (const ParamDefs& defs, const ExprMemos* memos = NULL);
+  static string toJsonString (const WeightExpr& w, const ExprMemos* memos = NULL, const ExprMemos* childMemos = NULL);
 
-  static json toJson (const ParamDefs& defs);
-  static json toJson (const WeightExpr& w);
+  static json toJson (const ParamDefs& defs, const ExprMemos* memos = NULL);
+  static json toJson (const WeightExpr& w, const ExprMemos* memos = NULL, const ExprMemos* childMemos = NULL);
 
-  static WeightExpr fromJson (const json& j);
+  static WeightExpr fromJson (const json& j, const ParamDefs* defs = NULL);
+
+  // trace refcount of functions
+  static void countRefs (const WeightExpr& w, ExprRefCounts& counts);
 };
 
 #endif /* WEIGHT_INCLUDED */
