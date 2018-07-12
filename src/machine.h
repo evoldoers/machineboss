@@ -8,6 +8,8 @@
 #include "jsonio.h"
 #include "weight.h"
 #include "vguard.h"
+#include "params.h"
+#include "constraints.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -58,6 +60,8 @@ struct MachineState {
 };
 
 struct Machine {
+  ParamFuncs defs;
+  Constraints cons;
   vguard<MachineState> state;
 
   void writeJson (ostream& out, bool memoizeRepeatedExpressions = false) const;
@@ -115,6 +119,10 @@ struct Machine {
 
   size_t nSilentBackTransitions() const;
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
+
+  // import defs & constraints from other machine(s)
+  void import (const Machine& m);
+  void import (const Machine& m1, const Machine& m2);
 };
 
 typedef JsonLoader<Machine> MachineLoader;

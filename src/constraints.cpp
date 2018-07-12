@@ -66,3 +66,12 @@ Params Constraints::defaultParams() const {
     params.defs[rp] = WeightAlgebra::intConstant (1);
   return params;
 }
+
+Constraints Constraints::combine (const Constraints& cons) const {
+  Constraints result (*this);
+  result.prob.insert (result.prob.end(), cons.prob.begin(), cons.prob.end());
+  result.rate.insert (result.rate.end(), cons.rate.begin(), cons.rate.end());
+  result.norm.insert (result.norm.end(), cons.norm.begin(), cons.norm.end());
+  return result;
+}
+

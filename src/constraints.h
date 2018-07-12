@@ -19,6 +19,8 @@ struct Constraints {
   void writeJson (ostream& out) const;
 
   Params defaultParams() const;
+
+  Constraints combine (const Constraints& cons) const;
 };
 
 #endif /* CONSTRAINTS_INCLUDED */

@@ -1101,3 +1101,13 @@ void MachinePath::writeJson (ostream& out) const {
   }
   out << "]}";
 }
+
+void Machine::import (const Machine& m) {
+  defs = ParamFuncs (defs.combine (m.defs));
+  cons = cons.combine (m.cons);
+}
+
+void Machine::import (const Machine& m1, const Machine& m2) {
+  import (m1);
+  import (m2);
+}

@@ -26,6 +26,8 @@ struct ParamAssign : Params {
 };
 
 struct ParamFuncs : Params {
+  ParamFuncs() { }
+  ParamFuncs (const Params& p) : Params(p) { }
   void readJson (const json& json);
 };
 
