@@ -258,7 +258,7 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
     }
   }
   if (!cons.empty()) {
-    out << "," << endl << " \"cons\": ";
+    out << "," << endl << " \"cons\":" << endl;
     cons.writeJson (out);
   } else
     out << endl;

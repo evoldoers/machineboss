@@ -31,18 +31,18 @@ string normConsText (const vguard<string>& c) {
 }
 
 void Constraints::writeJson (ostream& out) const {
-  out << "{";
+  out << " {";
   size_t l = 0;
   if (norm.size()) {
     ++l;
-    out << "\"norm\":[";
+    out << "\"norm\":" << endl << "  [";
     size_t nc = 0;
     for (auto& c: norm)
-      out << (nc++ ? "," : "") << normConsText(c);
+      out << (nc++ ? ",\n   " : "") << normConsText(c);
     out << "]";
   }
   if (prob.size()) {
-    out << (l++ ? ",\n " : "")
+    out << (l++ ? ",\n  " : "")
 	<< "\"prob\":[";
     size_t np = 0;
     for (auto& p: prob)
@@ -50,7 +50,7 @@ void Constraints::writeJson (ostream& out) const {
     out << "]";
   }
   if (rate.size()) {
-    out << (l++ ? ",\n " : "")
+    out << (l++ ? ",\n  " : "")
 	<< "\"rate\":[";
     size_t nr = 0;
     for (auto& r: rate)

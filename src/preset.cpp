@@ -19,6 +19,7 @@ struct PresetCache {
 #include "preset/simple_introns.h"
 #include "preset/base2acgt.h"
 #include "preset/prot2dna.h"
+#include "preset/psw2dna.h"
 
 PresetCache::PresetCache() {
   addPreset(compdna);
@@ -32,6 +33,7 @@ PresetCache::PresetCache() {
   addPreset(simple_introns);
   addPreset(base2acgt);
   addPreset(prot2dna);
+  addPreset(psw2dna);
 }
 
 PresetCache presetCache;  // singleton
