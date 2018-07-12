@@ -1,1 +1,1 @@
-[{"prob":["gapOpen","gapExtend"],"norm":[["subAA","subAC","subAG","subAT"],["subCA","subCC","subCG","subCT"],["subGA","subGC","subGG","subGT"],["subTA","subTC","subTG","subTT"]]}]
+[{"prob":["gapOpen","gapExtend"],"norm":[["eqmA","eqmC","eqmG","eqmT"],["subAA","subAC","subAG","subAT"],["subCA","subCC","subCG","subCT"],["subGA","subGC","subGG","subGT"],["subTA","subTC","subTG","subTT"]]}]

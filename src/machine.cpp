@@ -244,11 +244,15 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
     out << "}";
   }
   if (showParams) {
-    const auto pset = params();
-    if (pset.size()) {
+    const map<string,string> paramConstraint = cons.byParam();
+    vguard<string> unconsParams;
+    for (const auto& p: params())
+      if (!paramConstraint.count (p))
+	unconsParams.push_back (p);
+    if (unconsParams.size()) {
       out << "," << endl << " \"params\": [";
       size_t np = 0;
-      for (auto& p: pset)
+      for (auto& p: unconsParams)
 	out << (np++ ? "," : "") << "\"" << escaped_str(p) << "\"";
       out << "]";
     }

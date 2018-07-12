@@ -22,6 +22,7 @@ struct Constraints {
 
   Params defaultParams() const;
 
+  map<string,string> byParam() const;
   Constraints combine (const Constraints& cons) const;
 };
 

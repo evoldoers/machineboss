@@ -82,9 +82,7 @@ bool checkRedundant (const map<string,string>& type, const string& p, const stri
   return count;
 }
 
-Constraints Constraints::combine (const Constraints& cons) const {
-  Constraints result (*this);
-  // check for consistency as we go
+map<string,string> Constraints::byParam() const {
   map<string,string> type;
   for (auto& p: prob)
     type[p] = probType(p);
@@ -95,6 +93,13 @@ Constraints Constraints::combine (const Constraints& cons) const {
     for (auto& p: c)
       type[p] = ctype;
   }
+  return type;
+}
+
+Constraints Constraints::combine (const Constraints& cons) const {
+  Constraints result (*this);
+  // check for consistency as we go
+  map<string,string> type = byParam();
   for (auto& p: cons.prob)
     if (!checkRedundant (type, p, probType(p)))
       result.prob.push_back (p);

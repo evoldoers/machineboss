@@ -56,6 +56,8 @@ var machine = { state: [{id: name+"-S",
 		.concat (intronStates("M"))
 		.concat (intronStates("I"))
 		.concat ([{id: name+"-E"}]),
-                cons: { prob: ["gapOpen", "gapExtend", "intron"] } }
+                cons: { prob: ["gapOpen", "gapExtend", "intron"],
+                        norm: [alph.map ((c) => "eqm"+c)]
+                        .concat (alph.map ((c) => alph.map ((d)=>"sub"+c+d)))} }
 
 console.log (JSON.stringify (machine))
