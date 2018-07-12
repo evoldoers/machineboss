@@ -27,7 +27,7 @@ Transducer construction:
   -l [ --load ] arg          load machine from file
   -p [ --preset ] arg        select preset (base2acgt, compdna, comprna, 
                              dnapsw, flankbase, null, prot2dna, protpsw, 
-                             simple_introns, translate)
+                             psw2dna, simple_introns, translate)
   -g [ --generate ] arg      sequence generator '&lt;'
   -a [ --accept ] arg        sequence acceptor '&gt;'
   -w [ --weight ] arg        weighted null transition '#'
@@ -58,6 +58,8 @@ Miscellaneous:
 Transducer application:
   -S [ --save ] arg          save machine to file
   -G [ --graphviz ]          write machine in Graphviz DOT format
+  -M [ --memoize ]           memoize repeated expressions for compactness
+  -W [ --showparams ]        show unbound parameters in final machine
   -P [ --params ] arg        load parameters
   -F [ --functions ] arg     load functions & constants
   -C [ --constraints ] arg   load constraints
