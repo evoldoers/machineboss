@@ -164,10 +164,10 @@ test-stutter2:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
 
 test-noise2:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json t/machine/bitnoise.json t/expect/bitnoise-bitnoise.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json t/machine/bitnoise.json --showparams t/expect/bitnoise-bitnoise.json
 
 test-unitindel2:
-	@$(TEST) bin/$(BOSS) t/machine/unitindel.json t/machine/unitindel.json t/expect/unitindel-unitindel.json
+	@$(TEST) bin/$(BOSS) t/machine/unitindel.json t/machine/unitindel.json --showparams t/expect/unitindel-unitindel.json
 
 # Transducer construction tests
 CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand test-hmmer
@@ -244,7 +244,7 @@ test-echo-valid:
 	@$(TEST) bin/$(BOSS) t/expect/bitecho.json -idem
 
 test-unitindel2-valid:
-	@$(TEST) bin/$(BOSS) t/expect/unitindel-unitindel.json -idem
+	@$(TEST) bin/$(BOSS) --showparams t/expect/unitindel-unitindel.json -idem
 
 # Schema validation failure tests
 INVALID_SCHEMA_TESTS = test-not-json test-no-state test-bad-state test-bad-trans test-bad-weight

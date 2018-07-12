@@ -17,5 +17,6 @@
             {"to":3,"weight":"no_ins"}]},
   {"n":3,
    "id":["E","E"]}
- ]
+ ],
+ "params": ["del","ins","no_del","no_ins"]
 }

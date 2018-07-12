@@ -46,6 +46,12 @@
     "cons": {
       "type": "object",
       "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/constraints.json"
+    },
+    "params": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false

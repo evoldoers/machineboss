@@ -64,7 +64,7 @@ struct Machine {
   Constraints cons;
   vguard<MachineState> state;
 
-  void writeJson (ostream& out, bool memoizeRepeatedExpressions = false) const;
+  void writeJson (ostream& out, bool memoizeRepeatedExpressions = false, bool showParams = false) const;
   void readJson (const json& json);
   void writeDot (ostream& out, const char* emptyLabelText = "&epsilon;") const;
 
@@ -79,6 +79,7 @@ struct Machine {
   vguard<OutputSymbol> outputAlphabet() const;  // alphabetically sorted
 
   set<StateIndex> accessibleStates() const;
+  set<string> params() const;
 
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);

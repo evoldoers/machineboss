@@ -146,11 +146,21 @@ vguard<OutputSymbol> Machine::outputAlphabet() const {
   return vguard<OutputSymbol> (alph.begin(), alph.end());
 }
 
+set<string> Machine::params() const {
+  set<string> p;
+  for (const auto& ms: state)
+    for (const auto& t: ms.trans) {
+      const auto tp = WeightAlgebra::params (t.weight, defs.defs);
+      p.insert (tp.begin(), tp.end());
+    }
+  return p;
+}
+
 bool cmpRefCounts (const RefCount* a, const RefCount* b) {
   return a->order < b->order;
 }
 
-void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
+void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool showParams) const {
   ExprMemos memo;
   ExprRefCounts counts;
   vguard<const RefCount*> common;
@@ -232,6 +242,16 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
 	  << "\"" << def.first
 	  << "\":" << WeightAlgebra::toJsonString (def.second, &memo);
     out << "}";
+  }
+  if (showParams) {
+    const auto pset = params();
+    if (pset.size()) {
+      out << "," << endl << " \"params\": [";
+      size_t np = 0;
+      for (auto& p: pset)
+	out << (np++ ? "," : "") << "\"" << escaped_str(p) << "\"";
+      out << "]";
+    }
   }
   if (!cons.empty()) {
     out << "," << endl << " \"cons\": ";

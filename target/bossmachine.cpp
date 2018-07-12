@@ -82,6 +82,7 @@ int main (int argc, char** argv) {
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
+      ("showparams,W", "show unbound parameters in final machine")
       ("params,P", po::value<vector<string> >(), "load parameters")
       ("functions,F", po::value<vector<string> >(), "load functions & constants")
       ("constraints,C", po::value<vector<string> >(), "load constraints")
@@ -303,12 +304,12 @@ int main (int argc, char** argv) {
       if (vm.count("graphviz"))
 	machine.writeDot (out);
       else
-	machine.writeJson (out, vm.count("memoize"));
+	machine.writeJson (out, vm.count("memoize"), vm.count("showparams"));
     } else if (!vm.count("train") && !vm.count("align")) {
       if (vm.count("graphviz"))
 	machine.writeDot (cout);
       else
-	machine.writeJson (cout, vm.count("memoize"));
+	machine.writeJson (cout, vm.count("memoize"), vm.count("showparams"));
     }
 
     // do some syntax checking
