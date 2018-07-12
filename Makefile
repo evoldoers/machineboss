@@ -139,11 +139,11 @@ preset/dnapsw.json constraints/dnapsw.json: node/makepsw.js
 preset/%.json: node/%.js
 	node $< >$@
 
-preset/prot2dna.json: preset/flankbase.json preset/pint.json preset/translate.json preset/simple-introns.json preset/base2acgt.json
-	bin/$(BOSS) -v6 preset/flankbase.json '.' '(' preset/pint.json '=>' preset/translate.json '=>' preset/simple-introns.json ')' '.' preset/flankbase.json '=>' preset/base2acgt.json >$@
+preset/prot2dna.json: preset/flankbase.json preset/pint.json preset/translate.json preset/simple_introns.json preset/base2acgt.json
+	bin/$(BOSS) -v6 preset/flankbase.json '.' '(' preset/pint.json '=>' preset/translate.json '=>' preset/simple_introns.json ')' '.' preset/flankbase.json '=>' preset/base2acgt.json >$@
 
-preset/psw2dna.json: preset/flankbase.json preset/pswint.json preset/translate.json preset/simple-introns.json preset/base2acgt.json
-	bin/$(BOSS) -v6 preset/flankbase.json '.' '(' preset/pswint.json '=>' preset/translate.json '=>' preset/simple-introns.json ')' '.' preset/flankbase.json '=>' preset/base2acgt.json >$@
+preset/psw2dna.json: preset/flankbase.json preset/pswint.json preset/translate.json preset/simple_introns.json preset/base2acgt.json
+	bin/$(BOSS) -v6 preset/flankbase.json '.' '(' preset/pswint.json '=>' preset/translate.json '=>' preset/simple_introns.json ')' '.' preset/flankbase.json '=>' preset/base2acgt.json >$@
 
 # valijson doesn't like the URLs, but other schema validators demand them, so strip them out for xxd
 src/schema/$(FILE).h: schema/$(FILE).json.nourl
