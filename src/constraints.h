@@ -15,6 +15,8 @@ struct Constraints {
   vguard<string> rate;
   vguard<vguard<string> > norm;
 
+  bool empty() const;
+  
   void readJson (const json& json);
   void writeJson (ostream& out) const;
 

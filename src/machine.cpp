@@ -220,13 +220,22 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
       out << "," << endl;
   }
   out << endl << " ]";
-  if (names.size()) {
+  if (names.size() || defs.defs.size()) {
     out << "," << endl << " \"defs\":";
+    size_t count = 0;
     for (size_t n = 0; n < names.size(); ++n)
-      out << (n ? ",\n  " : "\n {")
+      out << ((count++) ? ",\n  " : "\n {")
 	  << "\"" << names[n]
 	  << "\":" << name2def[names[n]];
+    for (const auto& def: defs.defs)
+      out << ((count++) ? ",\n  " : "\n {")
+	  << "\"" << def.first
+	  << "\":" << WeightAlgebra::toJsonString (def.second, &memo);
     out << "}";
+  }
+  if (!cons.empty()) {
+    out << endl << " \"cons\": ";
+    cons.writeJson (out);
   }
   out << endl << "}" << endl;
 }
@@ -234,11 +243,18 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
-  ParamFuncs funcs, bound;
+  if (pj.count("defs"))
+    defs.readJson (pj.at("defs"));
+  if (pj.count("cons"))
+    cons.readJson (pj.at("cons"));
+  // commented out code auto-binds all defined names to their values, no longer necessarily since we're explicitly preserving the names
+  /*
+  ParamFuncs funcs;
   if (pj.count("defs"))
     funcs.readJson (pj.at("defs"));
   for (auto& p_d: funcs.defs)
-    bound.defs[p_d.first] = WeightAlgebra::bind (p_d.second, funcs.defs);
+    defs.defs[p_d.first] = WeightAlgebra::bind (p_d.second, funcs.defs);
+  */
   
   json jstate = pj.at("state");
   Assert (jstate.is_array(), "state is not an array");
@@ -280,7 +296,7 @@ void Machine::readJson (const json& pj) {
 	  t.in = jt.at("in").get<string>();
 	if (jt.count("out"))
 	  t.out = jt.at("out").get<string>();
-	t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight"), &bound.defs) : WeightAlgebra::one());
+	t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight"), &defs.defs) : WeightAlgebra::one());
 	ms.trans.push_back (t);
       }
     }
@@ -419,6 +435,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
 
   // now do the composition for real
   Machine compMachine;
+  compMachine.import (first, second);
   vguard<MachineState>& comp = compMachine.state;
   LogThisAt(7,"Initializing composite machine states" << endl);
   comp.resize (keptState.size());
@@ -486,6 +503,7 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond) {
   Assert (second.isWaitingMachine(), "Attempt to intersect transducers A&B where B is not a waiting machine");
 
   Machine interMachine;
+  interMachine.import (first, second);
   vguard<MachineState>& inter = interMachine.state;
   inter = vguard<MachineState> (first.nStates() * second.nStates());
 
@@ -567,6 +585,7 @@ Machine Machine::ergodicMachine() const {
     em = *this;
     LogThisAt(5,"Machine is ergodic; no transformation necessary" << endl);
   } else {
+    em.import (*this);
     vguard<bool> keep (nStates(), false);
     for (StateIndex s : accessibleStates())
       keep[s] = true;
@@ -615,6 +634,7 @@ Machine Machine::waitingMachine() const {
     wm = *this;
     LogThisAt(5,"Machine is already a waiting machine; no transformation necessary" << endl);
   } else {
+    wm.import (*this);
     vguard<MachineState> newState (state);
     vguard<StateIndex> old2new (nStates()), new2old;
     for (StateIndex s = 0; s < nStates(); ++s) {
@@ -656,6 +676,7 @@ Machine Machine::advancingMachine() const {
     am = *this;
     LogThisAt(5,"Machine is already an advancing machine; no transformation necessary" << endl);
   } else {
+    am.import (*this);
     if (nStates()) {
       am.state.reserve (nStates());
 
@@ -801,6 +822,7 @@ Machine Machine::advanceSort() const {
       result = *this;
       LogThisAt(5,"Sorting left machine unchanged with " << nSilentBackBefore << " backward silent transitions" << endl);
     } else {
+      result.import (*this);
       result.state.reserve (nStates());
       for (const auto s: order) {
 	result.state.push_back (state[s]);
@@ -853,6 +875,7 @@ Machine Machine::eliminateSilentTransitions() const {
     return advancingMachine().eliminateSilentTransitions();
   LogThisAt(3,"Eliminating silent transitions from " << nStates() << "-state transducer" << endl);
   Machine em;
+  em.import (*this);
   if (nStates()) {
     em.state.resize (nStates());
     // Silent transitions from i->j are prepended to loud transitions from j->k.
@@ -918,6 +941,7 @@ Machine Machine::acceptor (const string& name, const vguard<InputSymbol>& seq) {
 Machine Machine::concatenate (const Machine& left, const Machine& right) {
   Assert (left.nStates() && right.nStates(), "Attempt to concatenate transducer with uninitialized transducer");
   Machine m (left);
+  m.import (left, right);
   for (auto& ms: m.state)
     if (!ms.name.is_null())
       ms.name = json::array ({"concat-l", ms.name});
@@ -944,6 +968,7 @@ Machine Machine::takeUnion (const Machine& first, const Machine& second, const W
 Machine Machine::takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond) {
   Assert (first.nStates() && second.nStates(), "Attempt to find union of transducer with uninitialized transducer");
   Machine m;
+  m.import (first, second);
   m.state.reserve (first.nStates() + second.nStates() + 2);
   m.state.push_back (MachineState());
   m.state.insert (m.state.end(), first.state.begin(), first.state.end());
@@ -1021,6 +1046,7 @@ Machine Machine::kleeneLoop (const Machine& main, const Machine& loop) {
 
 Machine Machine::reverse() const {
   Machine m;
+  m.import (*this);
   m.state.resize (nStates());
   for (StateIndex s = 0; s < nStates(); ++s) {
     const StateIndex r = nStates() - 1 - s;

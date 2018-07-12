@@ -426,9 +426,9 @@ string WeightAlgebra::toJsonString (const ParamDefs& defs, const ExprMemos* memo
   return out.str();
 }
 
-string WeightAlgebra::toJsonString (const WeightExpr& w, const ExprMemos* memos, const ExprMemos* childMemos) {
+string WeightAlgebra::toJsonString (const WeightExpr& w, const ExprMemos* memos) {
   ostringstream out;
-  out << toJson (w, memos, childMemos);
+  out << toJson (w, memos);
   return out.str();
 }
 
@@ -439,14 +439,12 @@ json WeightAlgebra::toJson (const ParamDefs& defs, const ExprMemos* memos) {
   return j;
 }
 
-json WeightAlgebra::toJson (const WeightExpr& w, const ExprMemos* memos, const ExprMemos* childMemos) {
+json WeightAlgebra::toJson (const WeightExpr& w, const ExprMemos* memos) {
   json result;
   if (memos && memos->count(w))
     result = memos->at(w);
   else {
     const ExprType op = w->type;
-    if (childMemos)
-      memos = childMemos;
     if (isZero(w))
       result = false;
     else if (isOne(w))

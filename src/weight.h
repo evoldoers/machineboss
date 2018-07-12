@@ -88,10 +88,10 @@ struct WeightAlgebra {
   static ParamDefs exclude (const ParamDefs& defs, const string& param);
 
   static string toJsonString (const ParamDefs& defs, const ExprMemos* memos = NULL);
-  static string toJsonString (const WeightExpr& w, const ExprMemos* memos = NULL, const ExprMemos* childMemos = NULL);
+  static string toJsonString (const WeightExpr& w, const ExprMemos* memos = NULL);
 
   static json toJson (const ParamDefs& defs, const ExprMemos* memos = NULL);
-  static json toJson (const WeightExpr& w, const ExprMemos* memos = NULL, const ExprMemos* childMemos = NULL);
+  static json toJson (const WeightExpr& w, const ExprMemos* memos = NULL);
 
   static WeightExpr fromJson (const json& j, const ParamDefs* defs = NULL);
 

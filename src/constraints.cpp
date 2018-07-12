@@ -75,3 +75,6 @@ Constraints Constraints::combine (const Constraints& cons) const {
   return result;
 }
 
+bool Constraints::empty() const {
+  return prob.empty() && norm.empty() && rate.empty();
+}
