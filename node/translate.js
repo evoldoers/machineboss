@@ -56,7 +56,8 @@ var machine =
       .concat (codons.sort().map ((c123) => { return { id: name+'-'+c123, trans: [ { out: c123.charAt(0), to: name+'-'+c123.substr(1) } ] } }))
       .concat (Object.keys(cod23).sort().map ((c23) => { return { id: name+'-'+c23, trans: [ { out: c23.charAt(0), to: name+'-'+c23.substr(1) } ] } }))
       .concat (Object.keys(cod3).sort().map ((c3) => { return { id: name+'-'+c3, trans: [ { out: c3, to: name+'-start' } ] } }))
-      .concat ([{id:name+'-end'}]) }
+      .concat ([{id:name+'-end'}]),
+      cons: { norm: aa.map (function (a) { return aa2codons[a].map (function (cod) { return makeParam (a, cod) }) }) }}
 
 var cons = { norm: Object.keys(aa2codons).sort().filter((aa) => (aa2codons[aa].length > 1)).map ((aa) => { return aa2codons[aa].map ((c) => { return makeParam (aa, c) }) }) }
 var param = {};

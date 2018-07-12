@@ -11,6 +11,7 @@ var machine = { state: [{ id: "si-S",
                         { id: "si-intron", trans: [{ out: "base", to: "si-intron", weight: "extendIntron" },
                                                 { out: "A", to: "si-acceptor", weight: {"-":[true,"extendIntron"]} }] },
                         { id: "si-acceptor", trans: [{ out: "G", to: "si-S" }] },
-			{ id: "si-E" }] }
+			{ id: "si-E" }],
+                cons: { prob: ["extendIntron"] } }
 
 console.log (JSON.stringify (machine))

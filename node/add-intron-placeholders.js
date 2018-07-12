@@ -18,6 +18,7 @@ var machine = { state: [{ id: "i-S",
                         { id: "i-BBI", trans: [{ out: "base", to: "i-BI" }] },
                         { id: "i-BI", trans: [{ out: "base", to: "i-I" }] },
                         { id: "i-I", trans: [{ out: "intron", to: "i-S" }] },
-			{ id: "i-E" }] }
+			{ id: "i-E" }],
+                cons: { prob: ["intron"] } }
 
 console.log (JSON.stringify (machine))

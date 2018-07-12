@@ -55,6 +55,7 @@ var machine = { state: [{id: name+"-S",
 				 {to: name+"-M", weight: not("gapExtend")}]}]
 		.concat (intronStates("M"))
 		.concat (intronStates("I"))
-		.concat ([{id: name+"-E"}]) }
+		.concat ([{id: name+"-E"}]),
+                cons: { prob: ["gapOpen", "gapExtend", "intron"] } }
 
 console.log (JSON.stringify (machine))

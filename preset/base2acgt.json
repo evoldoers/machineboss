@@ -7,4 +7,5 @@
 	    {"in":"base","out":"A","to":"bases","weight":"pA"},
 	    {"in":"base","out":"C","to":"bases","weight":"pC"},
 	    {"in":"base","out":"G","to":"bases","weight":"pG"},
-	    {"in":"base","out":"T","to":"bases","weight":"pT"}]}]}
+	    {"in":"base","out":"T","to":"bases","weight":"pT"}]}],
+ "cons":{"norm":[["pA","pC","pG","pT"]]}}
