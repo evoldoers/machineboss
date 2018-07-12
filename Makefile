@@ -122,7 +122,7 @@ clean:
 debug:
 
 # Schemas & presets
-# Targets are generate-schemas and generate-presets (biomake required)
+# The relevant pseudotargets are generate-schemas and generate-presets (biomake required)
 # Get biomake here: https://github.com/evoldoers/biomake
 generate-$(CATEGORY)s: $(patsubst $(CATEGORY)/%.json,src/$(CATEGORY)/%.h,$(wildcard $(CATEGORY)/*.json))
 	touch src/$(CATEGORY).cpp

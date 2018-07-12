@@ -234,10 +234,11 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions) const {
     out << "}";
   }
   if (!cons.empty()) {
-    out << endl << " \"cons\": ";
+    out << "," << endl << " \"cons\": ";
     cons.writeJson (out);
-  }
-  out << endl << "}" << endl;
+  } else
+    out << endl;
+  out << "}" << endl;
 }
 
 void Machine::readJson (const json& pj) {

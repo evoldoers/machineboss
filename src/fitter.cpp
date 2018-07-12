@@ -9,8 +9,9 @@
 Params MachineFitter::fit (const SeqPairList& trainingSet) const {
   Params params = seed;
   double prev;
+  Constraints cons = machine.cons.combine (constraints);
   for (size_t iter = 0; true; ++iter) {
-    const EvaluatedMachine eval (machine, constants.combine (params));
+    const EvaluatedMachine eval (machine, machine.defs.combine(constants).combine(params));
     MachineCounts counts (eval);
     double loglike = 0;
     for (const auto& seqPair: trainingSet.seqPairs)

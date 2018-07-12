@@ -42,6 +42,10 @@
       "patternProperties": {
 	".*": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
       }
+    },
+    "cons": {
+      "type": "object",
+      "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/constraints.json"
     }
   },
   "additionalProperties": false
