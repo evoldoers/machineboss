@@ -10,6 +10,12 @@
 	    "type": "string"
 	}
     },
+    "rate": {
+      "type": "array",
+	"items": {
+	    "type": "string"
+	}
+    },
     "norm": {
       "type": "array",
       "items": {

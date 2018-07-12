@@ -15,8 +15,17 @@ void Params::readJsonWithSchema (const json& pj, const char* schemaName) {
 
 Params Params::combine (const Params& p) const {
   Params c (*this);
-  for (auto it = p.defs.begin(); it != p.defs.end(); ++it)
-    c.defs[it->first] = it->second;
+  // check for consistency as we go
+  for (auto it = p.defs.begin(); it != p.defs.end(); ++it) {
+    const string& name = it->first;
+    const WeightExpr def = it->second;
+    if (c.defs.count(name)) {
+      const string cDefStr = WeightAlgebra::toJsonString (c.defs.at (name));
+      const string pDefStr = WeightAlgebra::toJsonString (def);
+      Require (cDefStr == pDefStr, "Inconsistent parameter definitions for %s: %s vs %s", name.c_str(), cDefStr.c_str(), pDefStr.c_str());
+    } else
+      c.defs[name] = def;
+  }
   return c;
 }
 
