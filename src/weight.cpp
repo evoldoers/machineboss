@@ -474,14 +474,33 @@ json WeightAlgebra::toJson (const WeightExpr& w, const ExprMemos* memos) {
 	break;
       default:
 	string opcode;
+	const WeightExpr l = w->args.binary.l, r = w->args.binary.r;
+	json jsonArg;
+	vguard<WeightExpr> args;
 	switch (op) {
 	case Mul: opcode = "*"; break;
-	case Div: opcode = "/"; break;
 	case Add: opcode = "+"; break;
-	case Sub: opcode = "-"; break;
+	case Div:
+	  if (isOne(l) && r->type == Sub && isOne(r->args.binary.l)) {
+	    opcode = "geomsum";
+	    jsonArg = toJson (r->args.binary.r, memos);
+	    break;
+	  }
+	  opcode = "/";
+	  break;
+	case Sub:
+	  if (isOne(l)) {
+	    opcode = "not";
+	    jsonArg = toJson (r, memos);
+	    break;
+	  }
+	  opcode = "-";
+	  break;
 	default: Abort ("Unknown opcode in toJson"); break;
 	}
-	result = json::object ({{ opcode, json::array ({ toJson (w->args.binary.l, memos), toJson (w->args.binary.r, memos) })}});
+	if (jsonArg.is_null())
+	  jsonArg = json::array ({ toJson(l,memos), toJson(r,memos) });
+	result = json::object ({{ opcode, jsonArg }});
 	break;
       }
   }
@@ -510,9 +529,13 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
    const string opcode = iter.key();
    const json args = iter.value();
    if (opcode == "log")
-     result = logOf (fromJson (args[0], defs));
+     result = logOf (fromJson (args, defs));
    else if (opcode == "exp")
-     result = expOf (fromJson (args[0], defs));
+     result = expOf (fromJson (args, defs));
+   else if (opcode == "not")
+     result = negate (fromJson (args, defs));
+   else if (opcode == "geomsum")
+     result = geometricSum (fromJson (args, defs));
    else if (opcode == "*")
      result = multiply (fromJson (args[0], defs), fromJson (args[1], defs));
    else if (opcode == "/")
