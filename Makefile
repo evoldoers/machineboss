@@ -153,7 +153,7 @@ schema/$(FILE).json.nourl: schema/$(FILE).json
 	grep -v '"id": "http' $< >$@
 
 # Transducer composition tests
-COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2
+COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2 test-machine-params
 test-echo:
 	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/expect/bitecho.json
 
