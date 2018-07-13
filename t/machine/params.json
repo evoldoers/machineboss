@@ -1,5 +1,5 @@
 {"state":
- [{"id":"s",
-   "trans":[{"to":0,"weight":{"log":{"+":[1,{"exp":"x"}]}}}]}
+ [{"n":0,
+   "trans":[{"to":0,"weight":{"log":{"+":[true,{"exp":"x"}]}}}]}
  ]
 }
