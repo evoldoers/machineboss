@@ -82,8 +82,10 @@ WeightExpr makeExpFunc (const string& trParam) {
   return WeightAlgebra::expOf (WeightAlgebra::minus (makeSquareFunc (trParam)));
 }
 
-MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& constraints, const Params& constants) :
-  constraints (constraints), constantDefs (constants.defs), objective (WeightAlgebra::zero())
+MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& cons, const Params& constants) :
+  constraints (machine.cons.combine (cons)),
+  constantDefs (machine.defs.combine (constants).defs),
+  objective (WeightAlgebra::zero())
 {
   for (StateIndex s = 0; s < machine.state.size(); ++s) {
     EvaluatedMachineState::TransIndex t = 0;

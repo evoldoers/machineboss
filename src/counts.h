@@ -20,7 +20,7 @@ struct MachineCounts {
 
 // M-step
 struct MachineObjective {
-  const Constraints& constraints;
+  const Constraints constraints;
   vguard<string> transformedParam;
   map<string,size_t> transformedParamIndex;
   ParamDefs constantDefs, paramTransformDefs, allDefs;

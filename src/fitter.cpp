@@ -13,9 +13,9 @@ Constraints MachineFitter::allConstraints() const {
 Params MachineFitter::fit (const SeqPairList& trainingSet) const {
   Params params = seed;
   double prev;
-  Constraints cons = allConstraints();
   for (size_t iter = 0; true; ++iter) {
-    const EvaluatedMachine eval (machine, machine.defs.combine(constants).combine(params));
+    const Params allParams = machine.defs.combine(constants).combine(params);
+    const EvaluatedMachine eval (machine, allParams);
     MachineCounts counts (eval);
     double loglike = 0;
     for (const auto& seqPair: trainingSet.seqPairs)
@@ -29,7 +29,7 @@ Params MachineFitter::fit (const SeqPairList& trainingSet) const {
       if (improvement < MinEMImprovement)
 	break;
     }
-    MachineObjective objective (machine, counts, cons, constants);
+    MachineObjective objective (machine, counts, constraints, constants);
     params = objective.optimize (params);
     prev = loglike;
   }
