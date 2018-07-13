@@ -369,7 +369,7 @@ string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs, int 
   case Param:
     {
       const string& n (*w->args.param);
-      result = defs.count(n) ? toString(defs.at(n),exclude(defs,n)) : n;
+      result = defs.count(n) ? toString(defs.at(n),exclude(defs,n),parentPrecedence) : n;
     }
     break;
   case Log:

@@ -90,10 +90,11 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
   for (StateIndex s = 0; s < machine.state.size(); ++s) {
     EvaluatedMachineState::TransIndex t = 0;
     for (TransList::const_iterator iter = machine.state[s].trans.begin();
-	 iter != machine.state[s].trans.end(); ++iter, ++t)
-      objective = WeightAlgebra::subtract (objective,
-					   WeightAlgebra::multiply (WeightAlgebra::doubleConstant (counts.count[s][t]),
-								    WeightAlgebra::logOf ((*iter).weight)));
+	 iter != machine.state[s].trans.end(); ++iter, ++t) {
+      const WeightExpr term = WeightAlgebra::multiply (WeightAlgebra::doubleConstant (counts.count[s][t]),
+						       WeightAlgebra::logOf ((*iter).weight));
+      objective = WeightAlgebra::subtract (objective, term);
+    }
   }
 
   // p_i = (1 - exp(-x_i^2)) \prod_{k=1}^{i-1} exp(-x_k^2)
@@ -112,7 +113,7 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
     WeightExpr notPrev = WeightAlgebra::one();
     for (size_t n = 0; n < c.size(); ++n) {
       const string& cParam = c[n];
-      if (n == c.size() - 1)
+      if (n + 1 == c.size())
 	paramTransformDefs[cParam] = notPrev;
       else {
 	const string trParam = makeTransformedParamName (cParam);
@@ -128,6 +129,11 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
 
   for (const auto& rParam: constraints.rate)
     paramTransformDefs[rParam] = makeSquareFunc (makeTransformedParamName (rParam));
+
+  #define ParamTransformLogLevel 9
+  if (LoggingThisAt(ParamTransformLogLevel))
+    for (const auto& p_d: paramTransformDefs)
+      LogThisAt(ParamTransformLogLevel,"Mapping " << p_d.first << " to " << WeightAlgebra::toString (p_d.second, ParamDefs()) << endl);
 
   allDefs = constantDefs;
   allDefs.insert (paramTransformDefs.begin(), paramTransformDefs.end());
@@ -206,17 +212,23 @@ Params MachineObjective::optimize (const Params& seed) const {
       const string& cParam = c[n];
       const double p = WeightAlgebra::asDouble (seed.defs.at(cParam));
       const double z = 1 - p / (1 - pSum);
+      const double val = sqrt (-log (z));
       pSum += p;
-      gsl_vector_set (x, transformedParamIndex.at(cParam), sqrt (-log (z)));
+      gsl_vector_set (x, transformedParamIndex.at(cParam), val);
+      LogThisAt(9,"Setting " << transformedParam[transformedParamIndex.at(cParam)] << " to " << val << endl);
     }
   }
   for (const auto& pParam: constraints.prob) {
       const double p = WeightAlgebra::asDouble (seed.defs.at(pParam));
-      gsl_vector_set (x, transformedParamIndex.at(pParam), sqrt (-log (1 - p)));
+      const double val = sqrt (-log (p));
+      gsl_vector_set (x, transformedParamIndex.at(pParam), val);
+      LogThisAt(9,"Setting " << transformedParam[transformedParamIndex.at(pParam)] << " to " << val << endl);
   }
   for (const auto& rParam: constraints.rate) {
       const double r = WeightAlgebra::asDouble (seed.defs.at(rParam));
-      gsl_vector_set (x, transformedParamIndex.at(rParam), sqrt (r));
+      const double val = sqrt (r);
+      gsl_vector_set (x, transformedParamIndex.at(rParam), val);
+      LogThisAt(9,"Setting " << transformedParam[transformedParamIndex.at(rParam)] << " to " << val << endl);
   }
 
   const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_vector_bfgs2;
