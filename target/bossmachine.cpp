@@ -332,13 +332,14 @@ int main (int argc, char** argv) {
     
     Params params;
     if (vm.count("train")) {
-      Require (vm.count("constraints") && vm.count("data"),
+      Require ((vm.count("constraints") || !machine.cons.empty()) && vm.count("data"),
 	       "To fit parameters, please specify a constraints file and a data file");
       MachineFitter fitter;
       fitter.machine = machine;
-      fitter.constraints = JsonLoader<Constraints>::fromFiles(vm.at("constraints").as<vector<string> >());
+      if (vm.count("constraints"))
+	fitter.constraints = JsonLoader<Constraints>::fromFiles(vm.at("constraints").as<vector<string> >());
       fitter.constants = funcs;
-      fitter.seed = vm.count("params") ? seed : fitter.constraints.defaultParams();
+      fitter.seed = vm.count("params") ? seed : fitter.allConstraints().defaultParams();
       params = fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
     }

@@ -6,10 +6,14 @@
 #define MaxEMIterations 1000
 #define MinEMImprovement .001
 
+Constraints MachineFitter::allConstraints() const {
+  return machine.cons.combine (constraints);
+}
+
 Params MachineFitter::fit (const SeqPairList& trainingSet) const {
   Params params = seed;
   double prev;
-  Constraints cons = machine.cons.combine (constraints);
+  Constraints cons = allConstraints();
   for (size_t iter = 0; true; ++iter) {
     const EvaluatedMachine eval (machine, machine.defs.combine(constants).combine(params));
     MachineCounts counts (eval);
@@ -25,7 +29,7 @@ Params MachineFitter::fit (const SeqPairList& trainingSet) const {
       if (improvement < MinEMImprovement)
 	break;
     }
-    MachineObjective objective (machine, counts, constraints, constants);
+    MachineObjective objective (machine, counts, cons, constants);
     params = objective.optimize (params);
     prev = loglike;
   }
