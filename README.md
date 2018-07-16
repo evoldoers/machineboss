@@ -3,6 +3,8 @@
 
 - Construct [weighted finite-state transducers](https://en.wikipedia.org/wiki/Finite-state_transducer) using operations like composition, intersection, union, and Kleene closure.
 - Fit to data using [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) and [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) algorithms.
+- Weight functions fit using EM; M-step uses generic optimizers and probabilistic constraints
+- Simple but powerful JSON format for automata; JSON schemas included for all formats
 
 Examples of JSON file formats:
 
