@@ -1,14 +1,33 @@
 # Boss Machine
-*Bioinformatics Open Source Sequence Machine*
 
-- Construct [weighted finite-state transducers](https://en.wikipedia.org/wiki/Finite-state_transducer) using operations like composition, intersection, union, and Kleene closure.
-- Fit to data using [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) and [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) algorithms.
+## Bioinformatics Open Source Sequence Machine
+
+In contrast to other C++ Pair HMM libraries this small, focused library emphasizes the _manipulation_ of state machines
+by concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
+Any state machine resulting from such operations can be run through the usual inference algorithms (Forward, Backward, Viterbi, EM).
+
+Boss Machine is fluent in several forms of communication:
+it can read HMMER [profiles](http://hmmer.org/),
+write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
+and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
+Its native format is a JSON description of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
+along with a few related data structures such as sequences.
+
+Boss Machine has an associated command-line tool that makes most transducer operations available through its arguments,
+defining a small expression language for weighted automata.
+
+## Features
+
+- Construct [weighted finite-state transducers](https://en.wikipedia.org/wiki/Finite-state_transducer) using operations like composition, intersection, union, and Kleene closure
+- Fit to data using [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) and [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) algorithms
 - Weight functions fit using EM; M-step uses generic optimizers and probabilistic constraints
-- Simple but powerful JSON format for automata; JSON schemas included for all formats
+- Simple but powerful JSON format for automata; JSON schemas and C++ validators included for all formats
 
-Examples of JSON file formats:
+## File formats
 
-- [transducer](https://github.com/ihh/bossmachine/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel)
+Boss Machine defines JSON schemas for the following:
+
+- [transducer](https://github.com/ihh/bossmachine/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel) from coding theory
 - [parameters](https://github.com/ihh/bossmachine/blob/master/t/io/params.json)
 - [individual sequence](https://github.com/ihh/bossmachine/blob/master/t/io/seqAGC.json) for constructing generators and acceptors
 - [list of sequence-pairs](https://github.com/ihh/bossmachine/blob/master/t/io/seqpairlist.json) for model-fitting and alignment

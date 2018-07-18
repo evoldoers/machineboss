@@ -11,6 +11,16 @@
 
 using json = nlohmann::json;
 
+struct TransAccumulator {
+  TransList* transList;  // if non-null, will accumulate transitions direct to this list, without collapsing
+  map<StateIndex,map<InputSymbol,map<OutputSymbol,WeightExpr> > > t;
+  TransAccumulator();
+  void clear();
+  void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w);
+  void accumulate (const MachineTransition&);
+  TransList transitions() const;
+};
+
 MachineTransition::MachineTransition()
 { }
 

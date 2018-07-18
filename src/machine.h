@@ -17,7 +17,6 @@ using json = nlohmann::json;
 typedef unsigned long long StateIndex;
 
 #define MachineWaitTag "wait"
-#define MachineSilentTag "silent"
 
 typedef string OutputSymbol;
 typedef string InputSymbol;
@@ -47,7 +46,7 @@ struct MachineState {
   StateName name;
   TransList trans;
   MachineState();
-  MachineTransition getTransition (size_t) const;
+  MachineTransition getTransition (size_t) const;  // gets the n'th element from trans
   bool exitsWithInput() const;  // true if this has an input transition
   bool exitsWithoutInput() const;  // true if this has a non-input transition
   bool exitsWithIO() const;  // true if this has any transitions with input and/or output
@@ -113,7 +112,7 @@ struct Machine {
   Machine projectOutputToInput() const;  // copies all output labels to input labels. Requires inputEmpty()
 
   Machine ergodicMachine() const;  // remove unreachable states
-  Machine waitingMachine() const;  // convert to waiting machine
+  Machine waitingMachine (const char* waitTag = MachineWaitTag) const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
 
   Machine eliminateSilentTransitions() const;
@@ -121,21 +120,11 @@ struct Machine {
   size_t nSilentBackTransitions() const;
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
 
-  // import defs & constraints from other machine(s)
+  // helpers to import defs & constraints from other machine(s)
   void import (const Machine& m);
   void import (const Machine& m1, const Machine& m2);
 };
 
 typedef JsonLoader<Machine> MachineLoader;
-
-struct TransAccumulator {
-  TransList* transList;  // if non-null, will accumulate transitions direct to this list, without collapsing
-  map<StateIndex,map<InputSymbol,map<OutputSymbol,WeightExpr> > > t;
-  TransAccumulator();
-  void clear();
-  void accumulate (InputSymbol in, OutputSymbol out, StateIndex dest, WeightExpr w);
-  void accumulate (const MachineTransition&);
-  TransList transitions() const;
-};
 
 #endif /* MACHINE_INCLUDED */
