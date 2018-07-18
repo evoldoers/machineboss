@@ -14,7 +14,7 @@ Boss Machine is fluent in several forms of communication:
 it can read HMMER [profiles](http://hmmer.org/),
 write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
-Its native format is a JSON description of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
+However, its native format is a simple (and validatable) JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
 along with a few related data structures such as sequences.
 
 Boss Machine has an associated command-line tool that makes most transducer operations available through its arguments,
