@@ -2,9 +2,13 @@
 
 ## Bioinformatics Open Source Sequence Machine
 
-In contrast to other C++ Pair HMM libraries this small, focused library emphasizes the _manipulation_ of state machines
-by concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
-Any state machine resulting from such operations can be run through the usual inference algorithms (Forward, Backward, Viterbi, EM).
+In contrast to other C++ HMM libraries
+which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment),
+this small, focused library emphasizes the **manipulation** of state machines
+(for example, the combination of several modular state machines into a more complex one).
+
+Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
+Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
 Boss Machine is fluent in several forms of communication:
 it can read HMMER [profiles](http://hmmer.org/),
