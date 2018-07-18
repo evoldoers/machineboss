@@ -4,18 +4,26 @@
 
 In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
-and often include extensions such as [generalized HMMs](https://www.ncbi.nlm.nih.gov/pubmed/8877513),
+and often provide extensions such as [generalized HMMs](https://www.ncbi.nlm.nih.gov/pubmed/8877513),
 this small, focused library emphasizes the **manipulation** of state machines defined to a tight specification.
 
 Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
-An illustrative application is the combination of several modular state machines into a more complex one;
-e.g. one that corrects sequencing errors, a second that removes introns, a third that translates DNA to protein,
-and a fourth that mutates a protein using the BLOSUM62 matrix with affine gaps.
-Each of these sub-models can be separately designed, trained, and (if necessary) refactored.
-In concert, they align protein sequences to DNA accounting for introns and frameshifts,
+An illustrative application is the serial combination of four modular state machines:
+a first machine that corrects sequencing errors, a second that removes introns, a third that translates DNA to protein,
+and a fourth that mutates the protein using the BLOSUM62 substitution matrix with affine gaps.
+Each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
+In concert, when used with the appropriate generic inference algorithm, they align protein sequences to DNA accounting for introns and frameshifts,
 very much like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
+
+Boss Machine is fluent in several forms of communication:
+it can read HMMER [profiles](http://hmmer.org/),
+write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
+and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
+However, its native format is a deliberately restricted (simple and validatable)
+JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
+along with a few related data structures such as sequences.
 
 ## Features
 
@@ -25,14 +33,6 @@ very much like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 - Simple but powerful JSON format for automata; JSON schemas and C++ validators included for all formats
 
 ## JSON file formats
-
-Boss Machine is fluent in several forms of communication:
-it can read HMMER [profiles](http://hmmer.org/),
-write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
-and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
-However, its native format is a deliberately restricted (simple and validatable)
-JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
-along with a few related data structures such as sequences.
 
 Boss Machine defines JSON schemas for the following:
 
