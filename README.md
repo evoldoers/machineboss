@@ -3,22 +3,19 @@
 ## Bioinformatics Open Source Sequence Machine
 
 In contrast to other C++ HMM libraries
-which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment),
-this small, focused library emphasizes the **manipulation** of state machines.
-For example: the combination of several modular state machines into a more complex one.
+which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
+and often include extensions such as [generalized HMMs](https://www.ncbi.nlm.nih.gov/pubmed/8877513),
+this small, focused library emphasizes the **manipulation** of state machines defined to a tight specification.
 
 Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
-Boss Machine is fluent in several forms of communication:
-it can read HMMER [profiles](http://hmmer.org/),
-write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
-and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
-However, its native format is a simple (and validatable) JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
-along with a few related data structures such as sequences.
-
-Boss Machine has an associated command-line tool that makes most transducer operations available through its arguments,
-defining a small expression language for weighted automata.
+An illustrative application is the combination of several modular state machines into a more complex one;
+e.g. one that corrects sequencing errors, a second that removes introns, a third that translates DNA to protein,
+and a fourth that mutates a protein using the BLOSUM62 matrix with affine gaps.
+Each of these sub-models can be separately designed, trained, and (if necessary) refactored.
+In concert, they align protein sequences to DNA accounting for introns and frameshifts,
+very much like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 
 ## Features
 
@@ -27,7 +24,15 @@ defining a small expression language for weighted automata.
 - Weight functions fit using EM; M-step uses generic optimizers and probabilistic constraints
 - Simple but powerful JSON format for automata; JSON schemas and C++ validators included for all formats
 
-## File formats
+## JSON file formats
+
+Boss Machine is fluent in several forms of communication:
+it can read HMMER [profiles](http://hmmer.org/),
+write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
+and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
+However, its native format is a deliberately restricted (simple and validatable)
+JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
+along with a few related data structures such as sequences.
 
 Boss Machine defines JSON schemas for the following:
 
@@ -37,6 +42,11 @@ Boss Machine defines JSON schemas for the following:
 - [list of sequence-pairs](https://github.com/ihh/bossmachine/blob/master/t/io/seqpairlist.json) for model-fitting and alignment
 - [constraints](https://github.com/ihh/bossmachine/blob/master/t/io/constraints.json) for model fitting. This file specifies the constraints `a+b=1` and `x+y+z=1`
 	- see also [this file](https://github.com/ihh/bossmachine/blob/master/t/io/pqcons.json) whose constraint `p+q=1` can be used to fit the binary symmetric channel, above
+
+## Command-line interface
+
+Boss Machine has an associated command-line tool that makes most transducer operations available through its arguments,
+defining a small expression language for weighted automata.
 
 ## Command-line usage
 
