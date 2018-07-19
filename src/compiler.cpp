@@ -1,13 +1,26 @@
 #include "compiler.h"
 
+static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev");
+static const string xidx ("ix"), yidx ("iy");
+static const string xsize ("sx"), ysize ("sy");
+static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
+
 JavaScriptCompiler::JavaScriptCompiler() {
   funcKeyword = "function";
+  arrayRefType = "var";
   indexType = "var";
   sizeType = "const";
   sizeMethod = "length";
-  varKeyword = "var";
-  constVarKeyword = "const";
+  weightType = "const";
   mathLibrary = "Math.";
+}
+
+string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
+  return string("var ") + arrayName + " = new Array(" + dim1 + ").fill(0).map (function() { return new Array (" + dim2 + ").fill(0) });";
+}
+
+string JavaScriptCompiler::binarySoftplus (const string& a, const string& b) const {
+  return string("Math.max (") + a + ", " + b + ") + Math.log(1 + Math.exp(-Math.abs(" + a + " - " + b + ")))";
 }
 
 CPlusPlusCompiler::CPlusPlusCompiler() {
@@ -16,39 +29,107 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   paramsType = "const map<string,double>& ";
   paramsAccessorPrefix = "string(";
   paramsAccessorSuffix = ")";
+  arrayRefType = "vector<vector<double> >&";
   indexType = "size_t";
   sizeType = "const size_t";
   sizeMethod = "size()";
-  varKeyword = "double";
-  constVarKeyword = "const double";
+  weightType = "const double";
 }
 
-static const string xvar ("x"), yvar ("y"), paramvar ("p");
-static const string xidx ("ix"), yidx ("iy");
-static const string xsize ("sx"), ysize ("sy");
-static const string tab ("  ");
-string transVar (StateIndex s, size_t t) { return string("t") + to_string(s+1) + "_" + to_string(t+1); }
-string funcVar (size_t f) { return string("f") + to_string(f+1); }
-string Compiler::compileForward (const Machine& machine, const char* funcName) const {
-  ostringstream body;
-  map<string,size_t> funcIdx;
-  body << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
-  body << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
-  body << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
-  for (const auto& f_d: machine.defs.defs) {
+Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
+  : compiler (c),
+    wm (m.isWaitingMachine() ? m : m.waitingMachine()),
+    incoming (wm.nStates())
+{
+  for (const auto& f_d: wm.defs.defs) {
     const auto f = funcIdx.size();
     funcIdx[f_d.first] = f;
-    // UNFINISHED...
-    body << tab << constVarKeyword << " " << funcVar(f) << " = " << expr2string(f_d.second,funcIdx) << ";" << endl;
   }
-  
-  //  body << "  for (" << indexType << " " << xidx << " = 0; " << xidx << " < " ...
-  // TODO: write me
-  body << "}" << endl;
-  return body.str();
+  for (StateIndex s = 0; s < wm.nStates(); ++s) {
+    TransIndex t = 0;
+    for (const auto& trans: wm.state[s].trans) {
+      incoming[trans.dest].push_back (StateTransIndex (s, t));
+      ++t;
+    }
+  }
 }
 
-string Compiler::expr2string (const WeightExpr& w, const map<string,size_t>& funcIdx, int parentPrecedence) const {
+void Compiler::MachineInfo::addTransitions (ostream& result, const string& indent, const string& currentBuf, const string& prevBuf, bool withInput, bool withOutput, vguard<bool>& touched) const {
+  for (StateIndex s = 0; s < wm.nStates(); ++s) {
+    for (const auto& s_t: incoming[s]) {
+      const auto& trans = wm.state[s_t.first].getTransition(s_t.second);
+      if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
+	const string expr = (withOutput ? prevBuf : currentBuf) + "[" + xidx + (withInput ? " - 1" : "") + "][" + to_string(s_t.first) + "] + " + transVar(s_t.first,s_t.second);
+	const string currentCell = currentBuf + "[" + xidx + "][" + to_string(s) + "]";
+	result << indent << currentCell << " = ";
+	if (!touched[s])
+	  result << expr;
+	else
+	  result << compiler.binarySoftplus (currentCell, expr);
+	result << ";" << endl;
+	touched[s] = true;
+      }
+    }
+  }
+}
+
+string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
+  return string("vector<vector<double> > ") + arrayName + " (" + dim1 + ", vector<double> (" + dim2 + "));";
+}
+
+string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) const {
+  return string("log_sum_exp (") + a + ", " + b + ")";
+}
+
+string Compiler::funcVar (FuncIndex f) { return string("f") + to_string(f+1); }
+string Compiler::transVar (StateIndex s, TransIndex t) { return string("t") + to_string(s+1) + "_" + to_string(t+1); }
+
+string Compiler::compileForward (const Machine& m, const char* funcName) const {
+  ostringstream out;
+  const MachineInfo info (*this, m);
+  const Machine& wm (info.wm);
+  out << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
+  out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
+  out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
+  for (const auto& f_d: wm.defs.defs)
+    out << tab << weightType << " " << funcVar(info.funcIdx.at(f_d.first)) << " = " << expr2string (f_d.second, info.funcIdx) << ";" << endl;
+  for (StateIndex s = 0; s < wm.nStates(); ++s) {
+    TransIndex t = 0;
+    for (const auto& trans: wm.state[s].trans) {
+      out << tab << weightType << " " << transVar(s,t) << " = " << expr2string (WeightAlgebra::logOf (trans.weight), info.funcIdx) << ";" << endl;
+      ++t;
+    }
+  }
+  out << tab << declareArray (buf0var, xsize + " + 1", to_string (info.wm.nStates())) << endl;
+  out << tab << declareArray (buf1var, xsize + " + 1", to_string (info.wm.nStates())) << endl;
+  out << tab << buf0var << "[0][0] = 0;" << endl;
+  out << tab << indexType << " " << xidx << " = 0, " << yidx << ";" << endl;
+  vguard<bool> touched (info.wm.nStates());
+  info.addTransitions (out, tab, buf0var, string(), false, false, touched);
+  out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
+  fill (touched.begin(), touched.end(), false);
+  info.addTransitions (out, tab2, buf0var, string(), true, false, touched);
+  info.addTransitions (out, tab2, buf0var, string(), false, false, touched);
+  out << tab << "}" << endl;
+  out << tab << "for (" << yidx << " = 1; " << yidx << " <= " << ysize << "; ++" << yidx << ") {" << endl;
+  out << tab2 << arrayRefType << " " << currentvar << " (" << yvar << " & 1 ? " << buf1var << " : " << buf0var << ");" << endl;
+  out << tab2 << arrayRefType << " " << prevvar << " (" << yvar << " & 1 ? " << buf0var << " : " << buf1var << ");" << endl;
+  fill (touched.begin(), touched.end(), false);
+  info.addTransitions (out, tab2, currentvar, prevvar, false, true, touched);
+  info.addTransitions (out, tab2, currentvar, prevvar, false, false, touched);
+  out << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
+  fill (touched.begin(), touched.end(), false);
+  info.addTransitions (out, tab3, currentvar, prevvar, true, true, touched);
+  info.addTransitions (out, tab3, currentvar, prevvar, true, false, touched);
+  info.addTransitions (out, tab3, currentvar, prevvar, false, true, touched);
+  info.addTransitions (out, tab3, currentvar, prevvar, false, false, touched);
+  out << tab2 << "}" << endl;  // end xidx loop
+  out << tab << "}" << endl;  // end yidx loop
+  out << "}" << endl;  // end function
+  return out.str();
+}
+
+string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence) const {
   ostringstream expr;
   const ExprType op = w->type;
   switch (op) {

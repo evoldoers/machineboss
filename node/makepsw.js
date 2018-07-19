@@ -61,9 +61,9 @@ var machine = { state: [{id: name+"-S",
 			 trans: [{to: name+"-D", weight: "gapExtend"},
 				 {to: name+"-M", weight: not("gapExtend")}]},
 		        {id: name+"-E"} ],
-                cons: [{ prob:["gapOpen","gapExtend"],
-		         norm: [alph.map ((c) => "eqm"+c)]
-                         .concat (alph.map ((c) => alph.map ((d)=>"sub"+c+d)))}] }
+                cons: { prob:["gapOpen","gapExtend"],
+		        norm: [alph.map ((c) => "eqm"+c)]
+                        .concat (alph.map ((c) => alph.map ((d)=>"sub"+c+d)))} }
 
 fs.writeFileSync ("preset/"+name+".json", JSON.stringify (machine, null, opt.options.pretty ? 2 : null))
 fs.writeFileSync ("constraints/"+name+".json", JSON.stringify (machine.cons, null, opt.options.pretty ? 2 : null))

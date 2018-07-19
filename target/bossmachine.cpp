@@ -20,6 +20,7 @@
 #include "../src/schema.h"
 #include "../src/hmmer.h"
 #include "../src/csv.h"
+#include "../src/compiler.h"
 
 using namespace std;
 
@@ -85,6 +86,8 @@ int main (int argc, char** argv) {
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
       ("showparams,W", "show unbound parameters in final machine")
+      ("cpp", "generate C++ dynamic programming code")
+      ("js", "generate JavaScript dynamic programming code")
       ("params,P", po::value<vector<string> >(), "load parameters")
       ("functions,F", po::value<vector<string> >(), "load functions & constants")
       ("constraints,C", po::value<vector<string> >(), "load constraints")
@@ -304,19 +307,31 @@ int main (int argc, char** argv) {
     }
     const Machine machine = reduceMachines();
     
-    // save transducer
-    if (vm.count("save")) {
-      const string savefile = vm.at("save").as<string>();
-      ofstream out (savefile);
+    // output transducer
+    function<void(ostream&)> showMachine = [&](ostream& out) {
       if (vm.count("graphviz"))
 	machine.writeDot (out);
       else
 	machine.writeJson (out, vm.count("memoize"), vm.count("showparams"));
-    } else if (!vm.count("train") && !vm.count("align")) {
-      if (vm.count("graphviz"))
-	machine.writeDot (cout);
-      else
-	machine.writeJson (cout, vm.count("memoize"), vm.count("showparams"));
+    };
+    if (vm.count("save")) {
+      const string savefile = vm.at("save").as<string>();
+      ofstream out (savefile);
+      showMachine (out);
+    } else if (!vm.count("train") && !vm.count("align") && !vm.count("cpp") && !vm.count("js"))
+      showMachine (cout);
+
+    // compile
+    function<void(Compiler&)> compileMachine = [&](Compiler& compiler) {
+      cout << compiler.compileForward (machine);
+    };
+    Assert (!(vm.count("cpp") && vm.count("js")), "Can specify --cpp or --js but not both");
+    if (vm.count("cpp")) {
+      CPlusPlusCompiler compiler;
+      compileMachine (compiler);
+    } else if (vm.count("js")) {
+      JavaScriptCompiler compiler;
+      compileMachine (compiler);
     }
 
     // do some syntax checking
