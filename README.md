@@ -68,6 +68,7 @@ Transducer construction:
   -a [ --accept ] arg        sequence acceptor '&gt;'
   -w [ --weight ] arg        weighted null transition '#'
   -H [ --hmmer ] arg         load machine from HMMER3 model file
+  -V [ --csv ] arg           load machine from CSV file
 
 Prefix operators:
   -e [ --reverse ]           reverse

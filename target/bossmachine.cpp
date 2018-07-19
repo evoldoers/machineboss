@@ -19,6 +19,7 @@
 #include "../src/util.h"
 #include "../src/schema.h"
 #include "../src/hmmer.h"
+#include "../src/csv.h"
 
 using namespace std;
 
@@ -45,6 +46,7 @@ int main (int argc, char** argv) {
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
+      ("csv,V", po::value<string>(), "load machine from CSV file")
       ;
 
     po::options_description prefixOpts("Prefix operators");
@@ -280,6 +282,11 @@ int main (int argc, char** argv) {
 	  ifstream infile (getArg());
 	  hmmer.read (infile);
 	  m = hmmer.machine();
+	} else if (command == "--csv") {
+	  CSVProfile csv;
+	  ifstream infile (getArg());
+	  csv.read (infile);
+	  m = csv.machine();
 	} else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);

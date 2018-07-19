@@ -663,7 +663,7 @@ Machine Machine::ergodicMachine() const {
   return em;
 }
 
-Machine Machine::waitingMachine() const {
+Machine Machine::waitingMachine (const char* waitTag) const {
   Machine wm;
   if (isWaitingMachine()) {
     wm = *this;
@@ -679,7 +679,7 @@ Machine Machine::waitingMachine() const {
       if (!ms.waits() && !ms.continues()) {
 	MachineState c, w;
 	c.name = ms.name;
-	w.name[MachineWaitTag] = ms.name;
+	w.name[waitTag] = ms.name;
 	for (const auto& t: ms.trans)
 	  if (t.inputEmpty())
 	    c.trans.push_back(t);

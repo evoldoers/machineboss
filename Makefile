@@ -176,7 +176,7 @@ test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand test-hmmer
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand test-hmmer test-csv
 test-generator:
 	@$(TEST) bin/$(BOSS) -g t/io/seq101.json t/expect/generator101.json
 
@@ -226,6 +226,9 @@ test-shorthand:
 
 test-hmmer:
 	@$(TEST) bin/$(BOSS) --hmmer t/hmmer/fn3.hmm t/expect/fn3.json
+
+test-csv:
+	@$(TEST) bin/$(BOSS) --csv t/csv/test.csv t/expect/csvtest.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
