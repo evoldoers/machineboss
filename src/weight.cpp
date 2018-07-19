@@ -476,7 +476,6 @@ json WeightAlgebra::toJson (const WeightExpr& w, const ExprMemos* memos) {
 	string opcode;
 	const WeightExpr l = w->args.binary.l, r = w->args.binary.r;
 	json jsonArg;
-	vguard<WeightExpr> args;
 	switch (op) {
 	case Mul: opcode = "*"; break;
 	case Add: opcode = "+"; break;
