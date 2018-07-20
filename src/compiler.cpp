@@ -109,20 +109,20 @@ void Compiler::MachineInfo::storeTransitions (ostream& result, const string& ind
 	addTransitions (exprs, true, true, s, outputWaiting);
       if (withNull)
 	addTransitions (exprs, false, false, s, outputWaiting);
-      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs) << ";" << endl;
+      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab) << ";" << endl;
     }
   }
 }
 
-string Compiler::logSumExpReduce (vguard<string>& exprs, bool indent) const {
-  string head, tail;
+string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent) const {
+  const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
     return neginfvar;
   else if (exprs.size() == 1)
-    return string(indent ? "\n\t" : "") + exprs[0];
+    return (indent ? newLine : string()) + exprs[0];
   const string lastExpr = exprs.back();
   exprs.pop_back();
-  return binarySoftplus (logSumExpReduce (exprs, true), string("\n\t") + lastExpr);
+  return binarySoftplus (logSumExpReduce (exprs, lineIndent, true), newLine + lastExpr);
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {

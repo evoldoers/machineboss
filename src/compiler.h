@@ -48,7 +48,7 @@ struct Compiler {
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
   virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
   
-  string logSumExpReduce (vguard<string>& exprs, bool indent = false) const;
+  string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent = false) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
 
   string compileForward (const Machine&, const char* funcName = DefaultForwardFunctionName) const;
