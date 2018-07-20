@@ -1,9 +1,9 @@
 #include "compiler.h"
 
-static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), tmpvar ("tmp");
+static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xvec ("vx"), yvec ("vy");
-static const string xsize ("sx"), ysize ("sy");
+static const string xsize ("sx"), ysize ("sy"), neginfvar ("neginf");
 static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
 
 JavaScriptCompiler::JavaScriptCompiler() {
@@ -16,8 +16,8 @@ JavaScriptCompiler::JavaScriptCompiler() {
   sizeType = "const";
   sizeMethod = "length";
   weightType = "const";
-  tmpType = "var";
   mathLibrary = "Math.";
+  negInf = "-Infinity";
 }
 
 string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -44,7 +44,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   sizeType = "const size_t";
   sizeMethod = "size()";
   weightType = "const double";
-  tmpType = "double";
+  negInf = "-numeric_limits<double>::infinity()";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -66,26 +66,20 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   }
 }
 
-void Compiler::MachineInfo::updateCell (ostream& result, const string& indent, bool& touched, StateIndex s, const string& expr) const {
-  result << indent << tmpvar << " = ";
-  if (!touched)
-    result << expr;
-  else
-    result << compiler.binarySoftplus (tmpvar, expr);
-  result << ";" << endl;
-  touched = true;
-}
-
-void Compiler::MachineInfo::addTransitions (ostream& result, const string& indent, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const {
+void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, bool outputWaiting) const {
   if (outputWaiting) {
     if (withInput && !withOutput) {
       const string expr = xcell + "[" + to_string (2*s + 1) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
-      updateCell (result, indent, touched, s, expr);
+      exprs.push_back (expr);
+    }
+    if (!withInput && !withOutput) {
+      const string expr = currentcell + "[" + to_string(2*s) + "]";
+      exprs.push_back (expr);
     }
   } else {
     if (withOutput && !withInput && wm.state[s].waits()) {
       const string expr = ycell + "[" + to_string(2*s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
-      updateCell (result, indent, touched, s, expr);
+      exprs.push_back (expr);
     }
     for (const auto& s_t: incoming[s]) {
       const auto& trans = wm.state[s_t.first].getTransition(s_t.second);
@@ -95,28 +89,38 @@ void Compiler::MachineInfo::addTransitions (ostream& result, const string& inden
 	  expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
 	if (withOutput)
 	  expr += " + " + yvec + "[" + to_string (eval.outputTokenizer.sym2tok.at(trans.out) - 1) + "]";
-	updateCell (result, indent, touched, s, expr);
+	exprs.push_back (expr);
       }
     }
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth) const {
+void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool skipStart) const {
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
-    bool touched = false;
-    for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
+    for (int outputWaiting = (skipStart && s==0) ? 1 : 0; outputWaiting < 2; ++outputWaiting) {
+      vguard<string> exprs;
       if (withIn)
-	addTransitions (result, indent, true, false, touched, s, outputWaiting);
+	addTransitions (exprs, true, false, s, outputWaiting);
       if (withOut)
-	addTransitions (result, indent, false, true, touched, s, outputWaiting);
+	addTransitions (exprs, false, true, s, outputWaiting);
       if (withBoth)
-	addTransitions (result, indent, true, true, touched, s, outputWaiting);
+	addTransitions (exprs, true, true, s, outputWaiting);
       if (withNull)
-	addTransitions (result, indent, false, false, touched, s, outputWaiting);
-      if (touched)
-	result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << tmpvar << ";" << endl;
+	addTransitions (exprs, false, false, s, outputWaiting);
+      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs) << ";" << endl;
     }
   }
+}
+
+string Compiler::logSumExpReduce (vguard<string>& exprs, bool indent) const {
+  string head, tail;
+  if (exprs.size() == 0)
+    return neginfvar;
+  else if (exprs.size() == 1)
+    return string(indent ? "\n\t" : "") + exprs[0];
+  const string lastExpr = exprs.back();
+  exprs.pop_back();
+  return binarySoftplus (logSumExpReduce (exprs, true), string("\n\t") + lastExpr);
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -139,10 +143,19 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   ostringstream out;
   const MachineInfo info (*this, m);
   const Machine& wm (info.wm);
+
+  // header
   out << "// generated automatically by bossmachine, do not edit" << endl;
+
+  // function
   out << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
+
+  // sizes, constants
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
+  out << tab << weightType << " " << neginfvar << " = " << negInf << ";" << endl;
+
+  // parameters
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
   for (const auto& p: params)
     out << tab << weightType << " " << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
@@ -153,18 +166,21 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
       ++t;
     }
   }
-  // Indexing convention: buf[yWaitFlag][xIndex][state]
+
+  // Declare DP matrix arrays
+  // Indexing convention: buf[xIndex][2*state + (yWaitFlag ? 1 : 0)]
   out << tab << declareArray (buf0var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
   out << tab << declareArray (buf1var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
   out << tab << indexType << " " << xidx << " = 0, " << yidx << ";" << endl;
-  out << tab << tmpType << " " << tmpvar << ";" << endl;
 
+  // Fill DP matrix
   // x=0, y=0
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[0];" << endl;
   out << tab2 << currentcell << "[0] = 0;" << endl;
-  out << tab2 << currentcell << "[1] = 0;" << endl;
-  info.storeTransitions (out, tab2, true, false, false, false);
+
+  info.storeTransitions (out, tab2, true, false, false, false, true);
+
   out << tab << "}" << endl;
 
   // x>0, y=0
@@ -172,7 +188,9 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab2 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[" << xidx << "];" << endl;
   out << tab2 << constCellRefType << " " << xcell << " = " << buf0var << "[" << xidx << " - 1];" << endl;
+
   info.storeTransitions (out, tab2, true, true, false, false);
+
   out << tab << "}" << endl;
 
   // y>0
@@ -185,7 +203,9 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab2 << "{" << endl;
   out << tab3 << cellRefType << " " << currentcell << " = " << currentvar << "[0];" << endl;
   out << tab3 << constCellRefType << " " << ycell << " = " << prevvar << "[0];" << endl;
+
   info.storeTransitions (out, tab3, true, false, true, false);
+
   out << tab2 << "}" << endl;
 
   // x>0, y>0
@@ -195,12 +215,16 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab3 << constCellRefType << " " << xcell << " = " << currentvar << "[" << xidx << " - 1];" << endl;
   out << tab3 << constCellRefType << " " << ycell << " = " << prevvar << "[" << xidx << "];" << endl;
   out << tab3 << constCellRefType << " " << xycell << " = " << prevvar << "[" << xidx << " - 1];" << endl;
+
   info.storeTransitions (out, tab3, true, true, true, true);
 
   out << tab2 << "}" << endl;  // end xidx loop
   out << tab << "}" << endl;  // end yidx loop
+
+  // return
   out << tab << "return (" << ysize << " & 1 ? " << buf1var << " : " << buf0var << ")[" << xsize << "][" << (2*info.wm.nStates() - 1) << "];" << endl;
   out << "}" << endl;  // end function
+
   return out.str();
 }
 

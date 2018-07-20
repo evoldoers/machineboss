@@ -21,9 +21,8 @@ struct Compiler {
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth) const;
-    void addTransitions (ostream&, const string& indent, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const;
-    void updateCell (ostream&, const string& indent, bool& touched, StateIndex s, const string& expr) const;
+    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool skipStart = false) const;
+    void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, bool outputWaiting) const;
     void showDef (ostream&, const string&, set<string>&, vguard<string>&) const;
     void showDefs (ostream&) const;
   };
@@ -39,8 +38,8 @@ struct Compiler {
   string sizeType;         // "const size_t" for C++, "const" for JS
   string sizeMethod;       // "size()" for C++, "length" for JS
   string weightType;       // "const double" for C++, "const" for JS
-  string tmpType;          // "double" for C++, "var" for JS
   string mathLibrary;      // "Math." for JS
+  string negInf;           // "-numeric_limits<double>::infinity()" for C++, "-Infinity" for JS
   
   static string transVar (StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);
@@ -49,7 +48,9 @@ struct Compiler {
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
   virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
   
+  string logSumExpReduce (vguard<string>& exprs, bool indent = false) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
+
   string compileForward (const Machine&, const char* funcName = DefaultForwardFunctionName) const;
 };
 
