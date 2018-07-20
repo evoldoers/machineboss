@@ -44,7 +44,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   : compiler (c),
-    wm (m.isWaitingMachine() ? m : m.waitingMachine()),
+    wm (m.advancingMachine().ergodicMachine().waitingMachine()),
     eval (wm),
     incoming (wm.nStates())
 {
@@ -138,7 +138,6 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
-  cerr << "PARAMS: " << join(params) << endl;
   for (const auto& p: params)
     out << tab << weightType << " " << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
