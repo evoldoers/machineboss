@@ -1,6 +1,7 @@
 #include "compiler.h"
 
 static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), tmpvar ("tmp");
+static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy");
 static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
@@ -9,6 +10,7 @@ JavaScriptCompiler::JavaScriptCompiler() {
   funcKeyword = "function";
   vecRefType = "const";
   arrayRefType = "var";
+  cellRefType = "var";
   indexType = "var";
   sizeType = "const";
   sizeMethod = "length";
@@ -17,8 +19,8 @@ JavaScriptCompiler::JavaScriptCompiler() {
   mathLibrary = "Math.";
 }
 
-string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2, const string& dim3) const {
-  return string("var ") + arrayName + " = new Array(" + dim1 + ").fill(0).map (function() { return new Array (" + dim2 + ").fill(0).map (function() { return new Array (" + dim3 + ").fill(0) }) });";
+string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
+  return string("var ") + arrayName + " = new Array(" + dim1 + ").fill(0).map (function() { return new Array (" + dim2 + ").fill(0) });";
 }
 
 string JavaScriptCompiler::binarySoftplus (const string& a, const string& b) const {
@@ -34,7 +36,8 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   matrixType = "const vector<vector<double> >& ";
   vecRefType = "const vector<double>&";
   paramsType = "const map<string,double>& ";
-  arrayRefType = "vector<vector<vector<double> > >&";
+  arrayRefType = "vector<vector<double> >&";
+  cellRefType = "vector<double>&";
   indexType = "size_t";
   sizeType = "const size_t";
   sizeMethod = "size()";
@@ -61,7 +64,7 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   }
 }
 
-void Compiler::MachineInfo::updateCell (ostream& result, const string& indent, const string& currentBuf, bool& touched, StateIndex s, const string& expr) const {
+void Compiler::MachineInfo::updateCell (ostream& result, const string& indent, bool& touched, StateIndex s, const string& expr) const {
   result << indent << tmpvar << " = ";
   if (!touched)
     result << expr;
@@ -71,51 +74,51 @@ void Compiler::MachineInfo::updateCell (ostream& result, const string& indent, c
   touched = true;
 }
 
-void Compiler::MachineInfo::addTransitions (ostream& result, const string& indent, const string& currentBuf, const string& prevBuf, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const {
+void Compiler::MachineInfo::addTransitions (ostream& result, const string& indent, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const {
   if (outputWaiting) {
     if (withInput && !withOutput) {
-      const string expr = currentBuf + "[1][" + xidx + " - 1][" + to_string(s) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
-      updateCell (result, indent, currentBuf, touched, s, expr);
+      const string expr = xcell + "[" + to_string (wm.nStates() + s) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
+      updateCell (result, indent, touched, s, expr);
     }
   } else {
     if (withOutput && !withInput && wm.state[s].waits()) {
-      const string expr = prevBuf + "[0][" + xidx + "][" + to_string(s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
-      updateCell (result, indent, currentBuf, touched, s, expr);
+      const string expr = ycell + "[" + to_string(s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
+      updateCell (result, indent, touched, s, expr);
     }
     for (const auto& s_t: incoming[s]) {
       const auto& trans = wm.state[s_t.first].getTransition(s_t.second);
       if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
-	string expr = (withOutput ? prevBuf : currentBuf) + "[1][" + xidx + (withInput ? " - 1" : "") + "][" + to_string(s_t.first) + "] + " + transVar(s_t.first,s_t.second);
+	string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (wm.nStates() + s_t.first) + "] + " + transVar(s_t.first,s_t.second);
 	if (withInput)
 	  expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
 	if (withOutput)
 	  expr += " + " + yvec + "[" + to_string (eval.outputTokenizer.sym2tok.at(trans.out) - 1) + "]";
-	updateCell (result, indent, currentBuf, touched, s, expr);
+	updateCell (result, indent, touched, s, expr);
       }
     }
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, const string& currentBuf, const string& prevBuf, bool withNull, bool withIn, bool withOut, bool withBoth) const {
+void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth) const {
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     bool touched = false;
     for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
       if (withIn)
-	addTransitions (result, indent, currentBuf, prevBuf, true, false, touched, s, outputWaiting);
+	addTransitions (result, indent, true, false, touched, s, outputWaiting);
       if (withOut)
-	addTransitions (result, indent, currentBuf, prevBuf, false, true, touched, s, outputWaiting);
+	addTransitions (result, indent, false, true, touched, s, outputWaiting);
       if (withBoth)
-	addTransitions (result, indent, currentBuf, prevBuf, true, true, touched, s, outputWaiting);
+	addTransitions (result, indent, true, true, touched, s, outputWaiting);
       if (withNull)
-	addTransitions (result, indent, currentBuf, prevBuf, false, false, touched, s, outputWaiting);
+	addTransitions (result, indent, false, false, touched, s, outputWaiting);
       if (touched)
-	result << indent << currentBuf << "[" << outputWaiting << "][" << xidx << "][" << s << "] = " << tmpvar << ";" << endl;
+	result << indent << currentcell << "[" << (outputWaiting * wm.nStates() + s) << "] = " << tmpvar << ";" << endl;
     }
   }
 }
 
-string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2, const string& dim3) const {
-  return string("vector<vector<vector<double> > > ") + arrayName + " (" + dim1 + ", vector<vector<double> > (" + dim2 + ", vector<double> (" + dim3 + ")));";
+string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
+  return string("vector<vector<double> > ") + arrayName + " (" + dim1 + ", vector<double> (" + dim2 + "));";
 }
 
 string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) const {
@@ -130,6 +133,7 @@ string Compiler::funcVar (FuncIndex f) { return string("f") + to_string(f+1); }
 string Compiler::transVar (StateIndex s, TransIndex t) { return string("t") + to_string(s+1) + "_" + to_string(t+1); }
 
 string Compiler::compileForward (const Machine& m, const char* funcName) const {
+  Assert (m.nStates() > 0, "Can't compile empty machine");
   ostringstream out;
   const MachineInfo info (*this, m);
   const Machine& wm (info.wm);
@@ -148,27 +152,48 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
     }
   }
   // Indexing convention: buf[yWaitFlag][xIndex][state]
-  out << tab << declareArray (buf0var, to_string(2), xsize + " + 1", to_string (info.wm.nStates())) << endl;
-  out << tab << declareArray (buf1var, to_string(2), xsize + " + 1", to_string (info.wm.nStates())) << endl;
-  out << tab << buf0var << "[" << (info.wm.state[0].waits() ? 1 : 0) << "][0][0] = 0;" << endl;
+  out << tab << declareArray (buf0var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
+  out << tab << declareArray (buf1var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
   out << tab << indexType << " " << xidx << " = 0, " << yidx << ";" << endl;
   out << tab << tmpType << " " << tmpvar << ";" << endl;
-  info.storeTransitions (out, tab, buf0var, string(), true, false, false, false);
+
+  // x=0, y=0
+  out << tab << "{" << endl;
+  out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[0];" << endl;
+  out << tab2 << currentcell << "[0] = 0;" << endl;
+  out << tab2 << currentcell << "[" << wm.nStates() << "] = 0;" << endl;
+  info.storeTransitions (out, tab2, true, false, false, false);
+  out << tab << "}" << endl;
+
+  // x>0, y=0
   out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
   out << tab2 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
-  info.storeTransitions (out, tab2, buf0var, string(), true, true, false, false);
+  out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[" << xidx << "];" << endl;
+  out << tab2 << cellRefType << " " << xcell << " = " << buf0var << "[" << xidx << " - 1];" << endl;
+  info.storeTransitions (out, tab2, true, true, false, false);
   out << tab << "}" << endl;
+
+  // y>0
   out << tab << "for (" << yidx << " = 1; " << yidx << " <= " << ysize << "; ++" << yidx << ") {" << endl;
   out << tab2 << vecRefType << " " << yvec << " = " << yvar << "[" << yidx << " - 1];" << endl;
   out << tab2 << arrayRefType << " " << currentvar << " = " << yidx << " & 1 ? " << buf1var << " : " << buf0var << ";" << endl;
   out << tab2 << arrayRefType << " " << prevvar << " = " << yidx << " & 1 ? " << buf0var << " : " << buf1var << ";" << endl;
-  info.storeTransitions (out, tab2, currentvar, prevvar, true, false, true, false);
+
+  // x=0, y>0
+  info.storeTransitions (out, tab2, true, false, true, false);
+
+  // x>0, y>0
   out << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
   out << tab3 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
-  info.storeTransitions (out, tab3, currentvar, prevvar, true, true, true, true);
+  out << tab3 << cellRefType << " " << currentcell << " = " << currentvar << "[" << xidx << "];" << endl;
+  out << tab3 << cellRefType << " " << xcell << " = " << currentvar << "[" << xidx << " - 1];" << endl;
+  out << tab3 << cellRefType << " " << ycell << " = " << prevvar << "[" << xidx << "];" << endl;
+  out << tab3 << cellRefType << " " << xycell << " = " << prevvar << "[" << xidx << " - 1];" << endl;
+  info.storeTransitions (out, tab3, true, true, true, true);
+
   out << tab2 << "}" << endl;  // end xidx loop
   out << tab << "}" << endl;  // end yidx loop
-  out << tab << "return (" << ysize << " & 1 ? " << buf1var << " : " << buf0var << ")[1][" << xsize << "][" << (info.wm.nStates() - 1) << "];" << endl;
+  out << tab << "return (" << ysize << " & 1 ? " << buf1var << " : " << buf0var << ")[" << xsize << "][" << (2*info.wm.nStates() - 1) << "];" << endl;
   out << "}" << endl;  // end function
   return out.str();
 }
