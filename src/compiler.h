@@ -28,18 +28,19 @@ struct Compiler {
     void showDefs (ostream&) const;
   };
 
-  string funcKeyword;    // "double" for C++, "function" for JS
-  string matrixType;     // "const vector<vector<double> >& " for C++
-  string vecRefType;     // "const vector<double>&" for C++, "const" for JS
-  string paramsType;     // "const map<string,double>& " for C++
-  string arrayRefType;   // "vector<vector<double> >&" for C++, "var" for JS
-  string cellRefType;    // "vector<double>&" for C++, "var" for JS
-  string indexType;      // "size_t" for C++, "var" for JS
-  string sizeType;       // "const size_t" for C++, "const" for JS
-  string sizeMethod;     // "size()" for C++, "length" for JS
-  string weightType;     // "const double" for C++, "const" for JS
-  string tmpType;        // "double" for C++, "var" for JS
-  string mathLibrary;    // "Math." for JS
+  string funcKeyword;      // "double" for C++, "function" for JS
+  string matrixType;       // "const vector<vector<double> >& " for C++
+  string vecRefType;       // "const vector<double>&" for C++, "const" for JS
+  string paramsType;       // "const map<string,double>& " for C++
+  string arrayRefType;     // "vector<vector<double> >&" for C++, "var" for JS
+  string cellRefType;      // "vector<double>&" for C++, "var" for JS
+  string constCellRefType; // "const vector<double>&" for C++, "const" for JS
+  string indexType;        // "size_t" for C++, "var" for JS
+  string sizeType;         // "const size_t" for C++, "const" for JS
+  string sizeMethod;       // "size()" for C++, "length" for JS
+  string weightType;       // "const double" for C++, "const" for JS
+  string tmpType;          // "double" for C++, "var" for JS
+  string mathLibrary;      // "Math." for JS
   
   static string transVar (StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);

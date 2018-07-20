@@ -11,6 +11,7 @@ JavaScriptCompiler::JavaScriptCompiler() {
   vecRefType = "const";
   arrayRefType = "var";
   cellRefType = "var";
+  constCellRefType = "const";
   indexType = "var";
   sizeType = "const";
   sizeMethod = "length";
@@ -38,6 +39,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   paramsType = "const map<string,double>& ";
   arrayRefType = "vector<vector<double> >&";
   cellRefType = "vector<double>&";
+  constCellRefType = "const vector<double>&";
   indexType = "size_t";
   sizeType = "const size_t";
   sizeMethod = "size()";
@@ -169,7 +171,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
   out << tab2 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[" << xidx << "];" << endl;
-  out << tab2 << cellRefType << " " << xcell << " = " << buf0var << "[" << xidx << " - 1];" << endl;
+  out << tab2 << constCellRefType << " " << xcell << " = " << buf0var << "[" << xidx << " - 1];" << endl;
   info.storeTransitions (out, tab2, true, true, false, false);
   out << tab << "}" << endl;
 
@@ -180,15 +182,19 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab2 << arrayRefType << " " << prevvar << " = " << yidx << " & 1 ? " << buf0var << " : " << buf1var << ";" << endl;
 
   // x=0, y>0
-  info.storeTransitions (out, tab2, true, false, true, false);
+  out << tab2 << "{" << endl;
+  out << tab3 << cellRefType << " " << currentcell << " = " << currentvar << "[0];" << endl;
+  out << tab3 << constCellRefType << " " << ycell << " = " << prevvar << "[0];" << endl;
+  info.storeTransitions (out, tab3, true, false, true, false);
+  out << tab2 << "}" << endl;
 
   // x>0, y>0
   out << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
   out << tab3 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
   out << tab3 << cellRefType << " " << currentcell << " = " << currentvar << "[" << xidx << "];" << endl;
-  out << tab3 << cellRefType << " " << xcell << " = " << currentvar << "[" << xidx << " - 1];" << endl;
-  out << tab3 << cellRefType << " " << ycell << " = " << prevvar << "[" << xidx << "];" << endl;
-  out << tab3 << cellRefType << " " << xycell << " = " << prevvar << "[" << xidx << " - 1];" << endl;
+  out << tab3 << constCellRefType << " " << xcell << " = " << currentvar << "[" << xidx << " - 1];" << endl;
+  out << tab3 << constCellRefType << " " << ycell << " = " << prevvar << "[" << xidx << "];" << endl;
+  out << tab3 << constCellRefType << " " << xycell << " = " << prevvar << "[" << xidx << " - 1];" << endl;
   info.storeTransitions (out, tab3, true, true, true, true);
 
   out << tab2 << "}" << endl;  // end xidx loop
