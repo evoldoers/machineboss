@@ -24,6 +24,8 @@ struct Compiler {
     void storeTransitions (ostream&, const string& indent, const string& currentBuf, const string& prevBuf, bool withNull, bool withIn, bool withOut, bool withBoth) const;
     void addTransitions (ostream&, const string& indent, const string& currentBuf, const string& prevBuf, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const;
     void updateCell (ostream&, const string& indent, const string& currentBuf, bool& touched, StateIndex s, const string& expr) const;
+    void showDef (ostream&, const string&, set<string>&, vguard<string>&) const;
+    void showDefs (ostream&) const;
   };
 
   string funcKeyword;    // "double" for C++, "function" for JS

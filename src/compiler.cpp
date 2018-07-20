@@ -137,9 +137,10 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
-  // TODO: toposort params to get dependency order correct. Check for circular dependencies (add tests for these)
-  for (const auto& f_d: wm.defs.defs)
-    out << tab << weightType << " " << funcVar(info.funcIdx.at(f_d.first)) << " = " << expr2string (f_d.second, info.funcIdx) << ";" << endl;
+  const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
+  cerr << "PARAMS: " << join(params) << endl;
+  for (const auto& p: params)
+    out << tab << weightType << " " << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     TransIndex t = 0;
     for (const auto& trans: wm.state[s].trans) {

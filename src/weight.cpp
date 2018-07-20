@@ -572,3 +572,31 @@ void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts, const
   }
   counts[w].refs.insert (parent);
 }
+
+void sortDeps (const ParamDefs& defs, vector<string>& deps, const string& name, set<string>& visited, vector<string>& refs) {
+  if (!visited.count (name)) {
+    visited.insert (name);
+    refs.push_back (name);
+    const WeightExpr w = defs.at (name);
+    const auto params = WeightAlgebra::params (w, ParamDefs());
+    for (const auto& dep: params)
+      if (defs.count(dep))
+	sortDeps (defs, deps, dep, visited, refs);
+    deps.push_back (name);
+    refs.pop_back();
+  } else if (refs.size()) {
+    auto first = find (refs.begin(), refs.end(), name);
+    if (first != refs.end()) {
+      const vector<string> cycle (first, refs.end());
+      Fail ("Cyclic definition: %s -> %s", join(cycle," -> ").c_str(), name.c_str());
+    }
+  }
+}
+
+vector<string> WeightAlgebra::toposortParams (const ParamDefs& defs) {
+  set<string> visited;
+  vector<string> refs, sorted;
+  for (const auto& f_d: defs)
+    sortDeps (defs, sorted, f_d.first, visited, refs);
+  return sorted;
+}

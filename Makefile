@@ -272,6 +272,9 @@ test-bad-trans:
 test-bad-weight:
 	@$(TEST) bin/$(BOSS) t/invalid/bad_weight.json -fail
 
+test-cyclic:
+	@$(TEST) bin/$(BOSS) t/invalid/cyclic.json -fail
+
 # Non-transducer I/O tests
 IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints test-dot
 test-seqpair: t/bin/testseqpair

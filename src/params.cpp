@@ -11,6 +11,7 @@ void Params::readJsonWithSchema (const json& pj, const char* schemaName) {
   MachineSchema::validateOrDie (schemaName, pj);
   for (auto iter = pj.begin(); iter != pj.end(); ++iter)
     defs[iter.key()] = WeightAlgebra::fromJson (iter.value());
+  (void) WeightAlgebra::toposortParams (defs);  // check for cyclic dependencies
 }
 
 Params Params::combine (const Params& p) const {
