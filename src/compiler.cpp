@@ -95,10 +95,12 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool skipStart) const {
+void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool start) const {
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
-    for (int outputWaiting = (skipStart && s==0) ? 1 : 0; outputWaiting < 2; ++outputWaiting) {
+    for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
       vguard<string> exprs;
+      if (start && s == 0 && outputWaiting == 0)
+	exprs.push_back ("0");
       if (withIn)
 	addTransitions (exprs, true, false, s, outputWaiting);
       if (withOut)
@@ -177,7 +179,6 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   // x=0, y=0
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[0];" << endl;
-  out << tab2 << currentcell << "[0] = 0;" << endl;
 
   info.storeTransitions (out, tab2, true, false, false, false, true);
 

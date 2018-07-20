@@ -21,7 +21,7 @@ struct Compiler {
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool skipStart = false) const;
+    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool start = false) const;
     void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, bool outputWaiting) const;
     void showDef (ostream&, const string&, set<string>&, vguard<string>&) const;
     void showDefs (ostream&) const;
