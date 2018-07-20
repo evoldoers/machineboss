@@ -79,18 +79,18 @@ void Compiler::MachineInfo::updateCell (ostream& result, const string& indent, b
 void Compiler::MachineInfo::addTransitions (ostream& result, const string& indent, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const {
   if (outputWaiting) {
     if (withInput && !withOutput) {
-      const string expr = xcell + "[" + to_string (wm.nStates() + s) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
+      const string expr = xcell + "[" + to_string (2*s + 1) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
       updateCell (result, indent, touched, s, expr);
     }
   } else {
     if (withOutput && !withInput && wm.state[s].waits()) {
-      const string expr = ycell + "[" + to_string(s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
+      const string expr = ycell + "[" + to_string(2*s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
       updateCell (result, indent, touched, s, expr);
     }
     for (const auto& s_t: incoming[s]) {
       const auto& trans = wm.state[s_t.first].getTransition(s_t.second);
       if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
-	string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (wm.nStates() + s_t.first) + "] + " + transVar(s_t.first,s_t.second);
+	string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (2*s_t.first + 1) + "] + " + transVar(s_t.first,s_t.second);
 	if (withInput)
 	  expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
 	if (withOutput)
@@ -114,7 +114,7 @@ void Compiler::MachineInfo::storeTransitions (ostream& result, const string& ind
       if (withNull)
 	addTransitions (result, indent, false, false, touched, s, outputWaiting);
       if (touched)
-	result << indent << currentcell << "[" << (outputWaiting * wm.nStates() + s) << "] = " << tmpvar << ";" << endl;
+	result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << tmpvar << ";" << endl;
     }
   }
 }
@@ -163,7 +163,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[0];" << endl;
   out << tab2 << currentcell << "[0] = 0;" << endl;
-  out << tab2 << currentcell << "[" << wm.nStates() << "] = 0;" << endl;
+  out << tab2 << currentcell << "[1] = 0;" << endl;
   info.storeTransitions (out, tab2, true, false, false, false);
   out << tab << "}" << endl;
 
