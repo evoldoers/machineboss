@@ -45,8 +45,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   : compiler (c),
     wm (m.isWaitingMachine() ? m : m.waitingMachine()),
-    inTok (wm.inputAlphabet()),
-    outTok (wm.outputAlphabet()),
+    eval (wm),
     incoming (wm.nStates())
 {
   for (const auto& f_d: wm.defs.defs) {
@@ -75,12 +74,12 @@ void Compiler::MachineInfo::updateCell (ostream& result, const string& indent, c
 void Compiler::MachineInfo::addTransitions (ostream& result, const string& indent, const string& currentBuf, const string& prevBuf, bool withInput, bool withOutput, bool& touched, StateIndex s, bool outputWaiting) const {
   if (outputWaiting) {
     if (withInput && !withOutput) {
-      const string expr = currentBuf + "[1][" + xidx + " - 1][" + to_string(s) + "] + " + xvec + "[" + to_string (inTok.tok2sym.size() - 1) + "]";
+      const string expr = currentBuf + "[1][" + xidx + " - 1][" + to_string(s) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
       updateCell (result, indent, currentBuf, touched, s, expr);
     }
   } else {
     if (withOutput && !withInput && wm.state[s].waits()) {
-      const string expr = prevBuf + "[0][" + xidx + "][" + to_string(s) + "] + " + yvec + "[" + to_string (outTok.tok2sym.size() - 1) + "]";
+      const string expr = prevBuf + "[0][" + xidx + "][" + to_string(s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
       updateCell (result, indent, currentBuf, touched, s, expr);
     }
     for (const auto& s_t: incoming[s]) {
@@ -88,9 +87,9 @@ void Compiler::MachineInfo::addTransitions (ostream& result, const string& inden
       if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
 	string expr = (withOutput ? prevBuf : currentBuf) + "[1][" + xidx + (withInput ? " - 1" : "") + "][" + to_string(s_t.first) + "] + " + transVar(s_t.first,s_t.second);
 	if (withInput)
-	  expr += " + " + xvec + "[" + to_string (inTok.sym2tok.at(trans.in) - 1) + "]";
+	  expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
 	if (withOutput)
-	  expr += " + " + yvec + "[" + to_string (outTok.sym2tok.at(trans.out) - 1) + "]";
+	  expr += " + " + yvec + "[" + to_string (eval.outputTokenizer.sym2tok.at(trans.out) - 1) + "]";
 	updateCell (result, indent, currentBuf, touched, s, expr);
       }
     }

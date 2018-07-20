@@ -13,6 +13,19 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
   outputTokenizer (machine.outputAlphabet()),
   state (machine.nStates())
 {
+  init (machine, &params);
+}
+
+EvaluatedMachine::EvaluatedMachine (const Machine& machine) :
+  inputTokenizer (machine.inputAlphabet()),
+  outputTokenizer (machine.outputAlphabet()),
+  state (machine.nStates())
+{
+  init (machine, NULL);
+}
+
+void EvaluatedMachine::init (const Machine& machine, const Params* params)
+{
   Assert (machine.isAdvancingMachine(), "Machine is not topologically sorted");
   Assert (machine.isAligningMachine(), "Machine has ambiguous transitions");
 
@@ -27,7 +40,7 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params
       const StateIndex d = trans.dest;
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
-      const LogWeight lw = log (WeightAlgebra::eval (trans.weight, params.defs));
+      const LogWeight lw = params ? log (WeightAlgebra::eval (trans.weight, params->defs)) : 0.;
       state[s].outgoing[in][out][d].init (lw, ti);
       state[d].incoming[in][out][s].init (lw, ti);
       ++ti;

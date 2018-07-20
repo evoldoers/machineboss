@@ -54,6 +54,8 @@ struct EvaluatedMachine {
   OutputTokenizer outputTokenizer;
   vguard<EvaluatedMachineState> state;
   EvaluatedMachine (const Machine&, const Params&);
+  EvaluatedMachine (const Machine&);  // if no Params are supplied, all logWeight's will be zero
+  void init (const Machine&, const Params*);
   void writeJson (ostream&) const;
   string toJsonString() const;
   StateIndex nStates() const;

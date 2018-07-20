@@ -16,8 +16,7 @@ struct Compiler {
   struct MachineInfo {
     const Compiler& compiler;
     Machine wm;
-    InputTokenizer inTok;
-    OutputTokenizer outTok;
+    EvaluatedMachine eval;
     map<string,FuncIndex> funcIdx;
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
