@@ -663,7 +663,7 @@ Machine Machine::ergodicMachine() const {
   return em;
 }
 
-Machine Machine::waitingMachine (const char* waitTag) const {
+Machine Machine::waitingMachine (const char* waitTag, const char* continueTag) const {
   Machine wm;
   if (isWaitingMachine()) {
     wm = *this;
@@ -678,7 +678,10 @@ Machine Machine::waitingMachine (const char* waitTag) const {
       new2old.push_back (s);
       if (!ms.waits() && !ms.continues()) {
 	MachineState c, w;
-	c.name = ms.name;
+	if (continueTag)
+	  c.name[continueTag] = ms.name;
+	else
+	  c.name = ms.name;
 	w.name[waitTag] = ms.name;
 	for (const auto& t: ms.trans)
 	  if (t.inputEmpty())
@@ -973,18 +976,18 @@ Machine Machine::acceptor (const string& name, const vguard<InputSymbol>& seq) {
   return m;
 }
 
-Machine Machine::concatenate (const Machine& left, const Machine& right) {
+Machine Machine::concatenate (const Machine& left, const Machine& right, const char* leftTag, const char* rightTag) {
   Assert (left.nStates() && right.nStates(), "Attempt to concatenate transducer with uninitialized transducer");
   Machine m (left);
   m.import (left, right);
   for (auto& ms: m.state)
     if (!ms.name.is_null())
-      ms.name = json::array ({"concat-l", ms.name});
+      ms.name = json::array ({leftTag, ms.name});
   m.state.insert (m.state.end(), right.state.begin(), right.state.end());
   for (StateIndex s = left.state.size(); s < m.nStates(); ++s) {
     MachineState& ms = m.state[s];
     if (!ms.name.is_null())
-      ms.name = json::array ({"concat-r", m.state[s].name});
+      ms.name = json::array ({rightTag, m.state[s].name});
     for (auto& t: ms.trans)
       t.dest += left.state.size();
   }

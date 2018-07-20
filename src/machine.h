@@ -16,7 +16,10 @@ using json = nlohmann::json;
 
 typedef unsigned long long StateIndex;
 
-#define MachineWaitTag "wait"
+#define MachineWaitTag     "wait"
+#define MachineContinueTag NULL
+#define MachineCatLeftTag  "concat-l"
+#define MachineCatRightTag "concat-r"
 
 typedef string OutputSymbol;
 typedef string InputSymbol;
@@ -85,7 +88,7 @@ struct Machine {
 
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true);
   static Machine intersect (const Machine& first, const Machine& second);
-  static Machine concatenate (const Machine& left, const Machine& right);
+  static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);
   static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
   static Machine acceptor (const string& name, const vguard<InputSymbol>& seq);
 
@@ -112,7 +115,7 @@ struct Machine {
   Machine projectOutputToInput() const;  // copies all output labels to input labels. Requires inputEmpty()
 
   Machine ergodicMachine() const;  // remove unreachable states
-  Machine waitingMachine (const char* waitTag = MachineWaitTag) const;  // convert to waiting machine
+  Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
 
   Machine eliminateSilentTransitions() const;
