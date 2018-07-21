@@ -13,12 +13,12 @@ using namespace std;
 class SoftPlus {
 
 public:
-  typedef double Prob;
-  typedef double Log;
-  typedef long   IntLog;
+  typedef double    Prob;
+  typedef double    Log;
+  typedef long long IntLog;
 
 private:
-  long* cache;
+  IntLog* cache;
 
   SoftPlus (const SoftPlus&) = delete;  // copy constructor
   SoftPlus (SoftPlus&&) = delete;  // move constructor
@@ -45,8 +45,9 @@ public:
   static inline IntLog int_log (Prob x) { return x > 0 ? log_to_int (log (x)) : numeric_limits<IntLog>::min(); }
   static inline Prob int_exp (IntLog x) { return (Prob) exp (int_to_log (x)); }
 
-  inline IntLog int_logsumexp (IntLog a, IntLog b) const {
-    return a > b ? (a + int_softplus_neg(a-b)) : (b + int_softplus_neg(b-a));
+  template<typename Int>
+  inline Int int_logsumexp (Int a, Int b) const {
+    return a > b ? (a + int_softplus_neg((IntLog)(a-b))) : (b + int_softplus_neg((IntLog)(b-a)));
   }
 };
 

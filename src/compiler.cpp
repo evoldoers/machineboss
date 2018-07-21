@@ -1,14 +1,15 @@
 #include "compiler.h"
 
-static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev");
+static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
-static const string xidx ("ix"), yidx ("iy"), xvec ("vx"), yvec ("vy");
+static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy"), neginfvar ("neginf");
 static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
 
 JavaScriptCompiler::JavaScriptCompiler() {
   funcKeyword = "function";
-  vecRefType = "const";
+  vecRefType = "var";
+  constVecRefType = "const";
   arrayRefType = "var";
   cellRefType = "var";
   constCellRefType = "const";
@@ -16,6 +17,8 @@ JavaScriptCompiler::JavaScriptCompiler() {
   sizeType = "const";
   sizeMethod = "length";
   weightType = "const";
+  logWeightType = "const";
+  resultType = "const";
   mathLibrary = "Math.";
   negInf = "-Infinity";
 }
@@ -24,8 +27,28 @@ string JavaScriptCompiler::declareArray (const string& arrayName, const string& 
   return string("var ") + arrayName + " = new Array(" + dim1 + ").fill(0).map (function() { return new Array (" + dim2 + ").fill(0) });";
 }
 
+string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim) const {
+  return string("var ") + arrayName + " = new Array(" + dim + ").fill(0);";
+}
+
+string JavaScriptCompiler::deleteArray (const string& arrayName) const {
+  return string();
+}
+
+string JavaScriptCompiler::arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const {
+  return arrayName + "[" + rowIndex + "]";
+}
+
 string JavaScriptCompiler::binarySoftplus (const string& a, const string& b) const {
   return string("Math.max (") + a + ", " + b + ") + Math.log(1 + Math.exp(-Math.abs(" + a + " - " + b + ")))";
+}
+
+string JavaScriptCompiler::unaryLog (const string& x) const {
+  return string("Math.log (") + x + ")";
+}
+
+string JavaScriptCompiler::unaryExp (const string& x) const {
+  return string("Math.exp (") + x + ")";
 }
 
 string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) const {
@@ -35,16 +58,19 @@ string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) co
 CPlusPlusCompiler::CPlusPlusCompiler() {
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
-  vecRefType = "const vector<double>&";
+  vecRefType = "long long*";
+  constVecRefType = "const long long*";
   paramsType = "const map<string,double>& ";
-  arrayRefType = "vector<vector<double> >&";
-  cellRefType = "vector<double>&";
-  constCellRefType = "const vector<double>&";
+  arrayRefType = "long long*";
+  cellRefType = "long long*";
+  constCellRefType = "const long long*";
   indexType = "size_t";
   sizeType = "const size_t";
   sizeMethod = "size()";
   weightType = "const double";
-  negInf = "-numeric_limits<double>::infinity()";
+  logWeightType = "const long long";
+  resultType = "const double";
+  negInf = "-numeric_limits<long long>::max()";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -114,6 +140,14 @@ void Compiler::MachineInfo::storeTransitions (ostream& result, const string& ind
   }
 }
 
+string Compiler::MachineInfo::bufRowAccessor (const string& a, const string& r) const {
+  return compiler.arrayRowAccessor (a, r, to_string (2*wm.nStates()));
+}
+
+string Compiler::MachineInfo::inputRowAccessor (const string& a, const string& r) const {
+  return compiler.arrayRowAccessor (a, r, to_string (eval.inputTokenizer.tok2sym.size()));
+}
+
 string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent) const {
   const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
@@ -126,11 +160,31 @@ string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineInden
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
-  return string("vector<vector<double> > ") + arrayName + " (" + dim1 + ", vector<double> (" + dim2 + "));";
+  return string("long long* ") + arrayName + " = new long long [(" + dim1 + ") * (" + dim2 + ")];";
 }
 
+string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim) const {
+  return string("long long* ") + arrayName + " = new long long [" + dim + "];";
+}
+
+string CPlusPlusCompiler::deleteArray (const string& arrayName) const {
+  return tab + "delete[] " + arrayName + ";\n";
+}
+
+string CPlusPlusCompiler::arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const {
+  return string("(") + arrayName + " + " + rowSize + " * (" + rowIndex + "))";
+}
+  
 string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) const {
   return string("log_sum_exp (") + a + ", " + b + ")";
+}
+
+string CPlusPlusCompiler::unaryLog (const string& x) const {
+  return string("int_log (") + x + ")";
+}
+
+string CPlusPlusCompiler::unaryExp (const string& x) const {
+  return string("int_exp (") + x + ")";
 }
 
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
@@ -164,11 +218,15 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     TransIndex t = 0;
     for (const auto& trans: wm.state[s].trans) {
-      out << tab << weightType << " " << transVar(s,t) << " = " << expr2string (WeightAlgebra::logOf (trans.weight), info.funcIdx) << ";" << endl;
+      out << tab << logWeightType << " " << transVar(s,t) << " = " << unaryLog (expr2string (trans.weight, info.funcIdx)) << ";" << endl;
       ++t;
     }
   }
 
+  // Declare log-probability matrix (x) & vector (y)
+  out << tab << declareArray (xmat, xsize + " + 1", to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
+  out << tab << declareArray (yvec, to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
+  
   // Declare DP matrix arrays
   // Indexing convention: buf[xIndex][2*state + (yWaitFlag ? 1 : 0)]
   out << tab << declareArray (buf0var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
@@ -178,7 +236,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   // Fill DP matrix
   // x=0, y=0
   out << tab << "{" << endl;
-  out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[0];" << endl;
+  out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0") << ";" << endl;
 
   info.storeTransitions (out, tab2, true, false, false, false, true);
 
@@ -186,9 +244,12 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
 
   // x>0, y=0
   out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
-  out << tab2 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
-  out << tab2 << cellRefType << " " << currentcell << " = " << buf0var << "[" << xidx << "];" << endl;
-  out << tab2 << constCellRefType << " " << xcell << " = " << buf0var << "[" << xidx << " - 1];" << endl;
+  out << tab2 << vecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
+  for (size_t xtok = 0; xtok < info.eval.inputTokenizer.tok2sym.size(); ++xtok)
+    out << tab2 << xvec << "[" << xtok << "] = " << unaryLog (xvar + "[" + xidx + " - 1][" + to_string(xtok) + "]") << ";" << endl;
+  
+  out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, xidx) << ";" << endl;
+  out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1") << ";" << endl;
 
   info.storeTransitions (out, tab2, true, true, false, false);
 
@@ -196,14 +257,16 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
 
   // y>0
   out << tab << "for (" << yidx << " = 1; " << yidx << " <= " << ysize << "; ++" << yidx << ") {" << endl;
-  out << tab2 << vecRefType << " " << yvec << " = " << yvar << "[" << yidx << " - 1];" << endl;
+  for (size_t ytok = 0; ytok < info.eval.outputTokenizer.tok2sym.size(); ++ytok)
+    out << tab2 << yvec << "[" << ytok << "] = " << unaryLog (yvar + "[" + yidx + " - 1][" + to_string(ytok) + "]") << ";" << endl;
+
   out << tab2 << arrayRefType << " " << currentvar << " = " << yidx << " & 1 ? " << buf1var << " : " << buf0var << ";" << endl;
   out << tab2 << arrayRefType << " " << prevvar << " = " << yidx << " & 1 ? " << buf0var << " : " << buf1var << ";" << endl;
 
   // x=0, y>0
   out << tab2 << "{" << endl;
-  out << tab3 << cellRefType << " " << currentcell << " = " << currentvar << "[0];" << endl;
-  out << tab3 << constCellRefType << " " << ycell << " = " << prevvar << "[0];" << endl;
+  out << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0") << ";" << endl;
+  out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0") << ";" << endl;
 
   info.storeTransitions (out, tab3, true, false, true, false);
 
@@ -211,19 +274,28 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
 
   // x>0, y>0
   out << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
-  out << tab3 << vecRefType << " " << xvec << " = " << xvar << "[" << xidx << " - 1];" << endl;
-  out << tab3 << cellRefType << " " << currentcell << " = " << currentvar << "[" << xidx << "];" << endl;
-  out << tab3 << constCellRefType << " " << xcell << " = " << currentvar << "[" << xidx << " - 1];" << endl;
-  out << tab3 << constCellRefType << " " << ycell << " = " << prevvar << "[" << xidx << "];" << endl;
-  out << tab3 << constCellRefType << " " << xycell << " = " << prevvar << "[" << xidx << " - 1];" << endl;
+  out << tab3 << constVecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
+  out << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, xidx) << ";" << endl;
+  out << tab3 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (currentvar, xidx + " - 1") << ";" << endl;
+  out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, xidx) << ";" << endl;
+  out << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1") << ";" << endl;
 
   info.storeTransitions (out, tab3, true, true, true, true);
 
   out << tab2 << "}" << endl;  // end xidx loop
   out << tab << "}" << endl;  // end yidx loop
 
+  // get result
+  out << tab << resultType << " " << resultvar << " = " << unaryExp (info.bufRowAccessor (string("(") + ysize + " & 1 ? " + buf1var + " : " + buf0var + ")", xsize) + "[" + to_string (2*info.wm.nStates() - 1) + "]") << ";" << endl;
+  
+  // delete
+  out << deleteArray (xmat);
+  out << deleteArray (yvec);
+  out << deleteArray (buf0var);
+  out << deleteArray (buf1var);
+  
   // return
-  out << tab << "return (" << ysize << " & 1 ? " << buf1var << " : " << buf0var << ")[" << xsize << "][" << (2*info.wm.nStates() - 1) << "];" << endl;
+  out << tab << "return " << resultvar << ";" << endl;
   out << "}" << endl;  // end function
 
   return out.str();
