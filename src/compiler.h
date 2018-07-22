@@ -45,7 +45,7 @@ struct Compiler {
   string logWeightType;    // const long, or whatever type is used to store logs internally
   string resultType;       // const double
   string mathLibrary;      // prefix/namespace for math functions
-  string negInf;           // minimum value representable as a log
+  string infinity;         // maximum value representable as a log
   
   static string transVar (StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);
@@ -56,13 +56,17 @@ struct Compiler {
   virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
   virtual string deleteArray (const string& arrayName) const = 0;
   virtual string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const = 0;
+  virtual string makeString (const string& arg) const = 0;
+  virtual string toString (const string& arg) const = 0;
   virtual string warn (const vguard<string>& args) const = 0;
 
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
+  virtual string boundLog (const string&) const = 0; // library function that constraints argument to infinity bounds
   virtual string unaryLog (const string&) const = 0;
   virtual string unaryExp (const string&) const = 0;
   
   string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent = false) const;
+  string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
 
   string compileForward (const Machine&, const char* funcName = DefaultForwardFunctionName) const;
@@ -77,9 +81,12 @@ struct JavaScriptCompiler : Compiler {
   string mapAccessor (const string& obj, const string& key) const;
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
+  string boundLog (const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
   string warn (const vguard<string>& args) const;
+  string makeString (const string& arg) const;
+  string toString (const string& arg) const;
 };
 
 struct CPlusPlusCompiler : Compiler {
@@ -91,9 +98,12 @@ struct CPlusPlusCompiler : Compiler {
   string mapAccessor (const string& obj, const string& key) const;
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
+  string boundLog (const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
   string warn (const vguard<string>& args) const;
+  string makeString (const string& arg) const;
+  string toString (const string& arg) const;
 };
 
 #endif /* COMPILER_INCLUDED */

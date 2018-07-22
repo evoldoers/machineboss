@@ -12,6 +12,11 @@ using namespace std;
 #define SOFTPLUS_INTLOG_PRECISION .0001
 #define SOFTPLUS_CACHE_ENTRIES    (((long) (SOFTPLUS_CACHE_MAX_LOG / SOFTPLUS_INTLOG_PRECISION)) + 1)
 
+// "Infinity"
+// NB this is deliberately chosen to be <1/4 of numeric_limits<long long>::max()
+#define SOFTPLUS_INTLOG_INFINITY 0x1FFFFFFFFFFFFFFF
+#define SOFTPLUS_LOG_INFINITY    (SOFTPLUS_INTLOG_PRECISION * (double) SOFTPLUS_INTLOG_INFINITY)
+
 // This can be used as a singleton object
 // Creating a new one takes ~100,000 logs, which is not all that time-consuming really
 class SoftPlus {
@@ -41,16 +46,24 @@ private:
   }
 
   static inline IntLog log_to_int (Log x) {
-    return (IntLog) (.5 + x / SOFTPLUS_INTLOG_PRECISION);
+    return (x <= -SOFTPLUS_LOG_INFINITY
+	    ? -SOFTPLUS_INTLOG_INFINITY
+	    : (x >= SOFTPLUS_LOG_INFINITY
+	       ? SOFTPLUS_INTLOG_INFINITY
+	       : (IntLog) (.5 + x / SOFTPLUS_INTLOG_PRECISION)));
   }
 
   static inline Log int_to_log (IntLog x) {
-    return (Log) (SOFTPLUS_INTLOG_PRECISION * (double) x);
+    return (Log) (x <= -SOFTPLUS_INTLOG_INFINITY
+		  ? -numeric_limits<double>::infinity()
+		  : (x >= SOFTPLUS_INTLOG_INFINITY
+		     ? numeric_limits<double>::infinity()
+		     : (SOFTPLUS_INTLOG_PRECISION * (double) x)));
   }
 
   inline IntLog int_logsumexp_canonical (IntLog larger, IntLog smaller) const {
-    return (smaller < (numeric_limits<IntLog>::min() >> 1) || larger > (numeric_limits<IntLog>::max() >> 1)
-	    ? larger
+    return (smaller < -SOFTPLUS_INTLOG_INFINITY || larger > SOFTPLUS_INTLOG_INFINITY
+	    ? bound_intlog (larger)
 	    : (larger + int_softplus_neg (larger - smaller)));
   }
 
@@ -69,7 +82,7 @@ public:
   static inline IntLog int_log (Prob x) {
     return (x > 0
 	    ? log_to_int (log (x))
-	    : numeric_limits<IntLog>::min());
+	    : -SOFTPLUS_INTLOG_INFINITY);
   }
   static inline Prob int_exp (IntLog x) {
     return (Prob) exp (int_to_log (x));
@@ -79,6 +92,14 @@ public:
     return (a > b
 	    ? int_logsumexp_canonical (a, b)
 	    : int_logsumexp_canonical (b, a));
+  }
+
+  static inline IntLog bound_intlog (IntLog x) {
+    return (x < -SOFTPLUS_INTLOG_INFINITY
+	    ? -SOFTPLUS_INTLOG_INFINITY
+	    : (x > SOFTPLUS_INTLOG_INFINITY
+	       ? SOFTPLUS_INTLOG_INFINITY
+	       : x));
   }
 };
 

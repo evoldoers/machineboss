@@ -334,7 +334,7 @@ test-align-stutter-noise:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
 # Compiler tests
-t/src/test-compiled-%.cpp: t/machine/%.json bin/$(BOSS)
+t/src/test-compiled-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiled.cpp
 	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp; cat t/src/testcompiled.cpp) >$@
 
 # Top-level test target

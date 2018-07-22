@@ -3,7 +3,7 @@
 static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
-static const string xsize ("sx"), ysize ("sy"), neginfvar ("neginf");
+static const string xsize ("sx"), ysize ("sy");
 static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
 
 JavaScriptCompiler::JavaScriptCompiler() {
@@ -20,7 +20,7 @@ JavaScriptCompiler::JavaScriptCompiler() {
   logWeightType = "const";
   resultType = "const";
   mathLibrary = "Math.";
-  negInf = "-Infinity";
+  infinity = "Infinity";
 }
 
 string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -47,12 +47,24 @@ string JavaScriptCompiler::unaryLog (const string& x) const {
   return string("Math.log (") + x + ")";
 }
 
+string JavaScriptCompiler::boundLog (const string& x) const {
+  return x;
+}
+
 string JavaScriptCompiler::unaryExp (const string& x) const {
   return string("Math.exp (") + x + ")";
 }
 
 string JavaScriptCompiler::warn (const vguard<string>& args) const {
   return string("console.warn (") + join (args, " + ") + ");";
+}
+
+string JavaScriptCompiler::makeString (const string& arg) const {
+  return arg;
+}
+
+string JavaScriptCompiler::toString (const string& arg) const {
+  return arg;
 }
 
 string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) const {
@@ -80,7 +92,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   weightType = "const double";
   logWeightType = "const long long";
   resultType = "const double";
-  negInf = "numeric_limits<long long>::min()";
+  infinity = "SOFTPLUS_INTLOG_INFINITY";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -167,19 +179,25 @@ void Compiler::MachineInfo::showCell (ostream& out, const string& indent, bool w
   desc.push_back (string("\"):\""));
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     desc.push_back (string("\" ") + escaped_str (wm.state[s].name.dump()) + " go:\"");
-    desc.push_back (currentcell + "[" + to_string(2*s) + "]");
+    desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s) + "]"));
     desc.push_back (string("\" wait:\""));
-    desc.push_back (currentcell + "[" + to_string(2*s+1) + "]");
+    desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s+1) + "]"));
   }
   out << indent << compiler.warn (desc) << endl;
+}
+
+string Compiler::valOrInf (const string& arg) const {
+  return string("(") + arg + " <= -" + infinity + " ? " + makeString("\"-inf\"") + " : "
+    + string("(") + arg + " >= " + infinity + " ? " + makeString("\"inf\"") + " : "
+    + toString(arg) + "))";
 }
 
 string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent) const {
   const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
-    return neginfvar;
+    return string("-") + infinity;
   else if (exprs.size() == 1)
-    return (indent ? newLine : string()) + exprs[0];
+    return (indent ? newLine : string()) + boundLog (exprs[0]);
   const string lastExpr = exprs.back();
   exprs.pop_back();
   return binarySoftplus (logSumExpReduce (exprs, lineIndent, true), newLine + lastExpr);
@@ -205,6 +223,10 @@ string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) cons
   return softplusvar + ".int_logsumexp (" + a + ", " + b + ")";
 }
 
+string CPlusPlusCompiler::boundLog (const string& x) const {
+  return string("SoftPlus::bound_intlog (") + x + ")";
+}
+
 string CPlusPlusCompiler::unaryLog (const string& x) const {
   return softplusvar + ".int_log (" + x + ")";
 }
@@ -217,6 +239,14 @@ string CPlusPlusCompiler::warn (const vguard<string>& args) const {
   return string("cerr << ") + join (args, " << ") + " << endl;";
 }
  
+string CPlusPlusCompiler::makeString (const string& arg) const {
+  return string("string(") + arg + ")";
+}
+
+string CPlusPlusCompiler::toString (const string& arg) const {
+  return string("to_string(") + arg + ")";
+}
+
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + ".at(string(\"" + escaped_str(key) + "\"))";
 }
@@ -245,7 +275,6 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   // sizes, constants
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
-  out << tab << logWeightType << " " << neginfvar << " = " << negInf << ";" << endl;
 
   // parameters
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
