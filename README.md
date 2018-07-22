@@ -97,13 +97,16 @@ Transducer application:
   -G [ --graphviz ]          write machine in Graphviz DOT format
   -M [ --memoize ]           memoize repeated expressions for compactness
   -W [ --showparams ]        show unbound parameters in final machine
-  --cpp                      generate C++ dynamic programming code
-  --js                       generate JavaScript dynamic programming code
   -P [ --params ] arg        load parameters
   -F [ --functions ] arg     load functions & constants
   -C [ --constraints ] arg   load constraints
   -D [ --data ] arg          load sequence-pairs
   -T [ --train ]             Baum-Welch parameter fit
   -A [ --align ]             Viterbi sequence alignment
+  -L [ --loglike ]           Forward log-likelihood calculation
+
+Compiler:
+  --cpp                      generate C++ dynamic programming code
+  --js                       generate JavaScript dynamic programming code
 
 </code></pre>

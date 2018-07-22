@@ -21,6 +21,6 @@ int main (int argc, char** argv) {
     params = json::parse (paramFile);
   } else
     params = json::object();
-  cout << computeForward (inProf.row, outProf.row, params) << endl;
+  cout << "[" << computeForward (inProf.row, outProf.row, params) << "]" << endl;
   return 0;
 }

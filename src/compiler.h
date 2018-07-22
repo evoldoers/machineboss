@@ -28,6 +28,10 @@ struct Compiler {
     void showCell (ostream&, const string& indent, bool withInput, bool withOutput) const;
   };
 
+  // general config
+  bool showCells;
+  
+  // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.
   string funcKeyword;      // keywords to declare function (return type for C++, "function" for JS)
   string matrixType;       // type of probability matrix passed into function
@@ -46,6 +50,8 @@ struct Compiler {
   string resultType;       // const double
   string mathLibrary;      // prefix/namespace for math functions
   string infinity;         // maximum value representable as a log
+
+  Compiler();
   
   static string transVar (StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);

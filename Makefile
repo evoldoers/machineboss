@@ -337,8 +337,16 @@ test-align-stutter-noise:
 t/src/test-compiled-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiled.cpp
 	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp; cat t/src/testcompiled.cpp) >$@
 
+test-101-bitnoise-001:
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
+
+test-101-bitnoise-001-compiled: test-101-bitnoise-001 t/bin/test-compiled-bitnoise
+	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiled-bitnoise t/io/prof101.csv t/io/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+
+COMPILER_TESTS = test-101-bitnoise-001-compiled
+
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(COMPILER_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 

@@ -16,6 +16,7 @@
 #include "../src/params.h"
 #include "../src/fitter.h"
 #include "../src/viterbi.h"
+#include "../src/forward.h"
 #include "../src/util.h"
 #include "../src/schema.h"
 #include "../src/hmmer.h"
@@ -86,24 +87,29 @@ int main (int argc, char** argv) {
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
       ("showparams,W", "show unbound parameters in final machine")
-      ("cpp", "generate C++ dynamic programming code")
-      ("js", "generate JavaScript dynamic programming code")
       ("params,P", po::value<vector<string> >(), "load parameters")
       ("functions,F", po::value<vector<string> >(), "load functions & constants")
       ("constraints,C", po::value<vector<string> >(), "load constraints")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs")
       ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
+      ("loglike,L", "Forward log-likelihood calculation")
+      ;
+
+    po::options_description compOpts("Compiler");
+    compOpts.add_options()
+      ("cpp", "generate C++ dynamic programming code")
+      ("js", "generate JavaScript dynamic programming code")
       ;
 
     po::options_description transOpts("");
     transOpts.add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts);
 
     po::options_description helpOpts("");
-    helpOpts.add(generalOpts).add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts).add(appOpts);
+    helpOpts.add(generalOpts).add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts).add(appOpts).add(compOpts);
 
     po::options_description parseOpts("");
-    parseOpts.add(generalOpts).add(appOpts);
+    parseOpts.add(generalOpts).add(appOpts).add(compOpts);
 
     map<string,string> alias;
     alias[string("<")] = "--generate";
@@ -305,7 +311,29 @@ int main (int argc, char** argv) {
       cout << "Please specify a transducer" << endl;
       return 1;
     }
-    const Machine machine = reduceMachines();
+    Machine machine = reduceMachines();
+
+    // load parameters and constraints
+    ParamAssign seed;
+    if (vm.count("params"))
+      JsonLoader<ParamAssign>::readFiles (seed, vm.at("params").as<vector<string> >());
+
+    ParamFuncs funcs;
+    if (vm.count("functions"))
+      JsonLoader<ParamFuncs>::readFiles (funcs, vm.at("functions").as<vector<string> >());
+
+    Constraints constraints;
+    if (vm.count("constraints"))
+      JsonLoader<Constraints>::readFiles (constraints, vm.at("constraints").as<vector<string> >());
+
+    // if constraints or parameters were specified without a training or alignment step,
+    // then add them to the model now; otherwise, save them for later
+    if ((vm.count("params") || vm.count("functions") || vm.count("constraints"))
+	&& !(vm.count("train") || vm.count("loglike") || vm.count("align"))) {
+      machine.defs = seed;
+      machine.defs.defs.insert (funcs.defs.begin(), funcs.defs.end());
+      machine.cons = constraints;
+    }
     
     // output transducer
     function<void(ostream&)> showMachine = [&](ostream& out) {
@@ -318,7 +346,7 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       showMachine (out);
-    } else if (!vm.count("train") && !vm.count("align") && !vm.count("cpp") && !vm.count("js"))
+    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("cpp") && !vm.count("js"))
       showMachine (cout);
 
     // compile
@@ -334,44 +362,48 @@ int main (int argc, char** argv) {
       compileMachine (compiler);
     }
 
-    // do some syntax checking
-    Require (!vm.count("params") || (vm.count("train") || vm.count("align")), "Can't specify --params without --train or --align");
-    Require (!vm.count("data") || (vm.count("train") || vm.count("align")), "Can't specify --data without --train or --align");
-    Require (!vm.count("constraints") || vm.count("train"), "Can't specify --constraints without --train");
-
-    // fit parameters
-    ParamAssign seed;
-    if (vm.count("params"))
-      JsonLoader<ParamAssign>::readFiles (seed, vm.at("params").as<vector<string> >());
-
-    ParamFuncs funcs;
-    if (vm.count("functions"))
-      JsonLoader<ParamFuncs>::readFiles (funcs, vm.at("functions").as<vector<string> >());
-
+    // load data
+    Require (!vm.count("data") || (vm.count("train") || vm.count("loglike") || vm.count("align")), "No point in specifying --data without --train, --loglike, or --align");
+    const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();
     SeqPairList data;
     if (vm.count("data"))
       JsonLoader<SeqPairList>::readFiles (data, vm.at("data").as<vector<string> >());
-    
+    else if (noIO)
+      data.seqPairs.push_back (SeqPair());  // if the model has no I/O, then add an automatic pair of empty, nameless sequences (the only possible evidence)
+
+    // fit parameters
     Params params;
     if (vm.count("train")) {
-      Require ((vm.count("constraints") || !machine.cons.empty()) && vm.count("data"),
-	       "To fit parameters, please specify a constraints file and a data file");
+      Require ((vm.count("constraints") || !machine.cons.empty())
+	       && (vm.count("data") || noIO),
+	       "To fit parameters, please specify a constraints file and (for machines with input/output) a data file");
       MachineFitter fitter;
       fitter.machine = machine;
       if (vm.count("constraints"))
-	fitter.constraints = JsonLoader<Constraints>::fromFiles(vm.at("constraints").as<vector<string> >());
+	fitter.constraints = constraints;
       fitter.constants = funcs;
       fitter.seed = vm.count("params") ? seed : fitter.allConstraints().defaultParams();
       params = fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
-    }
+    } else
+      params = funcs.combine (seed);
 
+    // compute sequence log-likelihoods
+    if (vm.count("loglike")) {
+      const EvaluatedMachine eval (machine, params);
+      cout << "[";
+      size_t n = 0;
+      for (const auto& seqPair: data.seqPairs) {
+	const ForwardMatrix forward (eval, seqPair);
+	cout << (n++ ? ",\n " : "")
+	     << forward.logLike();
+      }
+      cout << "]\n";
+    }
+      
     // align sequences
     if (vm.count("align")) {
-      Require ((vm.count("data") && vm.count("params")) || vm.count("train"),
-	       "To align sequences, please specify a data file and a parameter file (or fit with --train)");
-      if (!vm.count("train"))
-	params = funcs.combine (seed);
+      Require (vm.count("data"), "To align sequences, please specify a data file");
       const EvaluatedMachine eval (machine, params);
       cout << "[";
       size_t n = 0;

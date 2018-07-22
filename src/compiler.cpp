@@ -1,5 +1,9 @@
 #include "compiler.h"
 
+Compiler::Compiler()
+  : showCells (false)
+{ }
+
 static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
@@ -175,37 +179,39 @@ string Compiler::MachineInfo::inputRowAccessor (const string& a, const string& r
 }
 
 void Compiler::MachineInfo::showCell (ostream& out, const string& indent, bool withInput, bool withOutput) const {
-  vguard<string> desc;
-  desc.push_back (string("\"Cell(\""));
-  desc.push_back (withInput ? xidx : string("0"));
-  desc.push_back (string("\",\""));
-  desc.push_back (withOutput ? yidx : string("0"));
-  desc.push_back (string("\")\""));
-  if (withInput) {
-    desc.push_back (string("\" ") + xvec + "(\"");
-    const auto& xtoks = eval.inputTokenizer.tok2sym;
-    for (size_t xtok = 0; xtok < xtoks.size(); ++xtok) {
-      desc.push_back (string(xtok ? "\" " : "\"") + (xtok == xtoks.size() - 1 ? string("-") : escaped_str(xtoks[xtok+1])) + ":\"");
-      desc.push_back (compiler.valOrInf (xvec + "[" + to_string(xtok) + "]"));
-    }
+  if (compiler.showCells) {
+    vguard<string> desc;
+    desc.push_back (string("\"Cell(\""));
+    desc.push_back (withInput ? xidx : string("0"));
+    desc.push_back (string("\",\""));
+    desc.push_back (withOutput ? yidx : string("0"));
     desc.push_back (string("\")\""));
-  }
-  if (withOutput) {
-    desc.push_back (string("\" ") + yvec + "(\"");
-    const auto& ytoks = eval.outputTokenizer.tok2sym;
-    for (size_t ytok = 0; ytok < ytoks.size(); ++ytok) {
-      desc.push_back (string(ytok ? "\" " : "\"") + (ytok == ytoks.size() - 1 ? string("-") : escaped_str(ytoks[ytok+1])) + ":\"");
-      desc.push_back (compiler.valOrInf (yvec + "[" + to_string(ytok) + "]"));
+    if (withInput) {
+      desc.push_back (string("\" ") + xvec + "(\"");
+      const auto& xtoks = eval.inputTokenizer.tok2sym;
+      for (size_t xtok = 0; xtok < xtoks.size(); ++xtok) {
+	desc.push_back (string(xtok ? "\" " : "\"") + (xtok == xtoks.size() - 1 ? string("-") : escaped_str(xtoks[xtok+1])) + ":\"");
+	desc.push_back (compiler.valOrInf (xvec + "[" + to_string(xtok) + "]"));
+      }
+      desc.push_back (string("\")\""));
     }
-    desc.push_back (string("\")\""));
+    if (withOutput) {
+      desc.push_back (string("\" ") + yvec + "(\"");
+      const auto& ytoks = eval.outputTokenizer.tok2sym;
+      for (size_t ytok = 0; ytok < ytoks.size(); ++ytok) {
+	desc.push_back (string(ytok ? "\" " : "\"") + (ytok == ytoks.size() - 1 ? string("-") : escaped_str(ytoks[ytok+1])) + ":\"");
+	desc.push_back (compiler.valOrInf (yvec + "[" + to_string(ytok) + "]"));
+      }
+      desc.push_back (string("\")\""));
+    }
+    for (StateIndex s = 0; s < wm.nStates(); ++s) {
+      desc.push_back (string("\" ") + escaped_str (wm.state[s].name.dump()) + " go:\"");
+      desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s) + "]"));
+      desc.push_back (string("\" wait:\""));
+      desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s+1) + "]"));
+    }
+    out << indent << compiler.warn (desc) << endl;
   }
-  for (StateIndex s = 0; s < wm.nStates(); ++s) {
-    desc.push_back (string("\" ") + escaped_str (wm.state[s].name.dump()) + " go:\"");
-    desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s) + "]"));
-    desc.push_back (string("\" wait:\""));
-    desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s+1) + "]"));
-  }
-  out << indent << compiler.warn (desc) << endl;
 }
 
 string Compiler::valOrInf (const string& arg) const {
