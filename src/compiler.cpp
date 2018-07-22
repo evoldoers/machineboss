@@ -51,6 +51,10 @@ string JavaScriptCompiler::unaryExp (const string& x) const {
   return string("Math.exp (") + x + ")";
 }
 
+string JavaScriptCompiler::warn (const vguard<string>& args) const {
+  return string("console.warn (") + join (args, " + ") + ");";
+}
+
 string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + "[\"" + escaped_str(key) + "\"]";
 }
@@ -60,7 +64,7 @@ string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& 
 }
 
 CPlusPlusCompiler::CPlusPlusCompiler() {
-  preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n";
+  preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "using namespace std;\n";
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
   vecRefType = "long long*";
@@ -154,6 +158,22 @@ string Compiler::MachineInfo::inputRowAccessor (const string& a, const string& r
   return compiler.arrayRowAccessor (a, r, to_string (eval.inputTokenizer.tok2sym.size()));
 }
 
+void Compiler::MachineInfo::showCell (ostream& out, const string& indent, bool withInput, bool withOutput) const {
+  vguard<string> desc;
+  desc.push_back (string("\"Cell (\""));
+  desc.push_back (withInput ? xidx : string("0"));
+  desc.push_back (string("\",\""));
+  desc.push_back (withOutput ? yidx : string("0"));
+  desc.push_back (string("\"):\""));
+  for (StateIndex s = 0; s < wm.nStates(); ++s) {
+    desc.push_back (string("\" ") + escaped_str (wm.state[s].name.dump()) + " go:\"");
+    desc.push_back (currentcell + "[" + to_string(2*s) + "]");
+    desc.push_back (string("\" wait:\""));
+    desc.push_back (currentcell + "[" + to_string(2*s+1) + "]");
+  }
+  out << indent << compiler.warn (desc) << endl;
+}
+
 string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent) const {
   const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
@@ -193,6 +213,10 @@ string CPlusPlusCompiler::unaryExp (const string& x) const {
   return softplusvar + ".int_exp (" + x + ")";
 }
 
+string CPlusPlusCompiler::warn (const vguard<string>& args) const {
+  return string("cerr << ") + join (args, " << ") + " << endl;";
+}
+ 
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + ".at(string(\"" + escaped_str(key) + "\"))";
 }
@@ -251,6 +275,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0") << ";" << endl;
 
   info.storeTransitions (out, tab2, true, false, false, false, true);
+  info.showCell (out, tab2, false, false);
 
   out << tab << "}" << endl;
 
@@ -264,6 +289,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1") << ";" << endl;
 
   info.storeTransitions (out, tab2, true, true, false, false);
+  info.showCell (out, tab2, true, false);
 
   out << tab << "}" << endl;
 
@@ -281,6 +307,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0") << ";" << endl;
 
   info.storeTransitions (out, tab3, true, false, true, false);
+  info.showCell (out, tab3, false, true);
 
   out << tab2 << "}" << endl;
 
@@ -293,6 +320,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1") << ";" << endl;
 
   info.storeTransitions (out, tab3, true, true, true, true);
+  info.showCell (out, tab3, true, true);
 
   out << tab2 << "}" << endl;  // end xidx loop
   out << tab << "}" << endl;  // end yidx loop

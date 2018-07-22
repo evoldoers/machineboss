@@ -25,6 +25,7 @@ struct Compiler {
     void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, bool outputWaiting) const;
     string bufRowAccessor (const string&, const string&) const;
     string inputRowAccessor (const string&, const string&) const;
+    void showCell (ostream&, const string& indent, bool withInput, bool withOutput) const;
   };
 
   string preamble;         // #include's, helper function declarations or definitions, etc.
@@ -55,6 +56,7 @@ struct Compiler {
   virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
   virtual string deleteArray (const string& arrayName) const = 0;
   virtual string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const = 0;
+  virtual string warn (const vguard<string>& args) const = 0;
 
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
   virtual string unaryLog (const string&) const = 0;
@@ -77,6 +79,7 @@ struct JavaScriptCompiler : Compiler {
   string binarySoftplus (const string&, const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
+  string warn (const vguard<string>& args) const;
 };
 
 struct CPlusPlusCompiler : Compiler {
@@ -90,6 +93,7 @@ struct CPlusPlusCompiler : Compiler {
   string binarySoftplus (const string&, const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
+  string warn (const vguard<string>& args) const;
 };
 
 #endif /* COMPILER_INCLUDED */
