@@ -256,7 +256,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
   out << tab2 << vecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
   for (size_t xtok = 0; xtok < info.eval.inputTokenizer.tok2sym.size(); ++xtok)
-    out << tab2 << xvec << "[" << xtok << "] = " << unaryLog (xvar + "[" + xidx + " - 1][" + to_string(xtok) + "]") << ";" << endl;
+    out << tab2 << xvec << "[" << xtok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (xvar, xidx + " - 1"), to_string(xtok))) << ";" << endl;
   
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, xidx) << ";" << endl;
   out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1") << ";" << endl;
@@ -268,7 +268,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   // y>0
   out << tab << "for (" << yidx << " = 1; " << yidx << " <= " << ysize << "; ++" << yidx << ") {" << endl;
   for (size_t ytok = 0; ytok < info.eval.outputTokenizer.tok2sym.size(); ++ytok)
-    out << tab2 << yvec << "[" << ytok << "] = " << unaryLog (yvar + "[" + yidx + " - 1][" + to_string(ytok) + "]") << ";" << endl;
+    out << tab2 << yvec << "[" << ytok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (yvar, yidx + " - 1"), to_string(ytok))) << ";" << endl;
 
   out << tab2 << arrayRefType << " " << currentvar << " = " << yidx << " & 1 ? " << buf1var << " : " << buf0var << ";" << endl;
   out << tab2 << arrayRefType << " " << prevvar << " = " << yidx << " & 1 ? " << buf0var << " : " << buf1var << ";" << endl;
