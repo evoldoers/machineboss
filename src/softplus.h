@@ -53,16 +53,8 @@ private:
 	       : (IntLog) (.5 + x / SOFTPLUS_INTLOG_PRECISION)));
   }
 
-  static inline Log int_to_log (IntLog x) {
-    return (Log) (x <= -SOFTPLUS_INTLOG_INFINITY
-		  ? -numeric_limits<double>::infinity()
-		  : (x >= SOFTPLUS_INTLOG_INFINITY
-		     ? numeric_limits<double>::infinity()
-		     : (SOFTPLUS_INTLOG_PRECISION * (double) x)));
-  }
-
   inline IntLog int_logsumexp_canonical (IntLog larger, IntLog smaller) const {
-    return (smaller < -SOFTPLUS_INTLOG_INFINITY || larger > SOFTPLUS_INTLOG_INFINITY
+    return (smaller <= -SOFTPLUS_INTLOG_INFINITY || larger >= SOFTPLUS_INTLOG_INFINITY
 	    ? bound_intlog (larger)
 	    : (larger + int_softplus_neg (larger - smaller)));
   }
@@ -84,6 +76,7 @@ public:
 	    ? log_to_int (log (x))
 	    : -SOFTPLUS_INTLOG_INFINITY);
   }
+
   static inline Prob int_exp (IntLog x) {
     return (Prob) exp (int_to_log (x));
   }
@@ -100,6 +93,14 @@ public:
 	    : (x > SOFTPLUS_INTLOG_INFINITY
 	       ? SOFTPLUS_INTLOG_INFINITY
 	       : x));
+  }
+
+  static inline Log int_to_log (IntLog x) {
+    return (Log) (x <= -SOFTPLUS_INTLOG_INFINITY
+		  ? -numeric_limits<double>::infinity()
+		  : (x >= SOFTPLUS_INTLOG_INFINITY
+		     ? numeric_limits<double>::infinity()
+		     : (SOFTPLUS_INTLOG_PRECISION * (double) x)));
   }
 };
 

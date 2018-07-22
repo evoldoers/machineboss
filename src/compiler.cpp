@@ -55,6 +55,10 @@ string JavaScriptCompiler::unaryExp (const string& x) const {
   return string("Math.exp (") + x + ")";
 }
 
+string JavaScriptCompiler::realLog (const string& x) const {
+  return x;
+}
+
 string JavaScriptCompiler::warn (const vguard<string>& args) const {
   return string("console.warn (") + join (args, " + ") + ");";
 }
@@ -172,11 +176,29 @@ string Compiler::MachineInfo::inputRowAccessor (const string& a, const string& r
 
 void Compiler::MachineInfo::showCell (ostream& out, const string& indent, bool withInput, bool withOutput) const {
   vguard<string> desc;
-  desc.push_back (string("\"Cell (\""));
+  desc.push_back (string("\"Cell(\""));
   desc.push_back (withInput ? xidx : string("0"));
   desc.push_back (string("\",\""));
   desc.push_back (withOutput ? yidx : string("0"));
-  desc.push_back (string("\"):\""));
+  desc.push_back (string("\")\""));
+  if (withInput) {
+    desc.push_back (string("\" ") + xvec + "(\"");
+    const auto& xtoks = eval.inputTokenizer.tok2sym;
+    for (size_t xtok = 0; xtok < xtoks.size(); ++xtok) {
+      desc.push_back (string(xtok ? "\" " : "\"") + (xtok == xtoks.size() - 1 ? string("-") : escaped_str(xtoks[xtok+1])) + ":\"");
+      desc.push_back (compiler.valOrInf (xvec + "[" + to_string(xtok) + "]"));
+    }
+    desc.push_back (string("\")\""));
+  }
+  if (withOutput) {
+    desc.push_back (string("\" ") + yvec + "(\"");
+    const auto& ytoks = eval.outputTokenizer.tok2sym;
+    for (size_t ytok = 0; ytok < ytoks.size(); ++ytok) {
+      desc.push_back (string(ytok ? "\" " : "\"") + (ytok == ytoks.size() - 1 ? string("-") : escaped_str(ytoks[ytok+1])) + ":\"");
+      desc.push_back (compiler.valOrInf (yvec + "[" + to_string(ytok) + "]"));
+    }
+    desc.push_back (string("\")\""));
+  }
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     desc.push_back (string("\" ") + escaped_str (wm.state[s].name.dump()) + " go:\"");
     desc.push_back (compiler.valOrInf (currentcell + "[" + to_string(2*s) + "]"));
@@ -192,15 +214,15 @@ string Compiler::valOrInf (const string& arg) const {
     + toString(arg) + "))";
 }
 
-string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent) const {
+string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel) const {
   const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
     return string("-") + infinity;
   else if (exprs.size() == 1)
-    return (indent ? newLine : string()) + boundLog (exprs[0]);
+    return topLevel ? boundLog (exprs[0]) : (newLine + exprs[0]);
   const string lastExpr = exprs.back();
   exprs.pop_back();
-  return binarySoftplus (logSumExpReduce (exprs, lineIndent, true), newLine + lastExpr);
+  return binarySoftplus (logSumExpReduce (exprs, lineIndent, false), newLine + lastExpr);
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -233,6 +255,10 @@ string CPlusPlusCompiler::unaryLog (const string& x) const {
 
 string CPlusPlusCompiler::unaryExp (const string& x) const {
   return softplusvar + ".int_exp (" + x + ")";
+}
+
+string CPlusPlusCompiler::realLog (const string& x) const {
+  return softplusvar + ".int_to_log (" + x + ")";
 }
 
 string CPlusPlusCompiler::warn (const vguard<string>& args) const {
@@ -355,7 +381,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << "}" << endl;  // end yidx loop
 
   // get result
-  out << tab << resultType << " " << resultvar << " = " << unaryExp (info.bufRowAccessor (string("(") + ysize + " & 1 ? " + buf1var + " : " + buf0var + ")", xsize) + "[" + to_string (2*info.wm.nStates() - 1) + "]") << ";" << endl;
+  out << tab << resultType << " " << resultvar << " = " << realLog (info.bufRowAccessor (string("(") + ysize + " & 1 ? " + buf1var + " : " + buf0var + ")", xsize) + "[" + to_string (2*info.wm.nStates() - 1) + "]") << ";" << endl;
   
   // delete
   out << deleteArray (xmat);

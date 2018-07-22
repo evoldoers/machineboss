@@ -64,8 +64,9 @@ struct Compiler {
   virtual string boundLog (const string&) const = 0; // library function that constraints argument to infinity bounds
   virtual string unaryLog (const string&) const = 0;
   virtual string unaryExp (const string&) const = 0;
+  virtual string realLog (const string&) const = 0;
   
-  string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool indent = false) const;
+  string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel = true) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
 
@@ -84,6 +85,7 @@ struct JavaScriptCompiler : Compiler {
   string boundLog (const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
+  string realLog (const string&) const;
   string warn (const vguard<string>& args) const;
   string makeString (const string& arg) const;
   string toString (const string& arg) const;
@@ -101,6 +103,7 @@ struct CPlusPlusCompiler : Compiler {
   string boundLog (const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
+  string realLog (const string&) const;
   string warn (const vguard<string>& args) const;
   string makeString (const string& arg) const;
   string toString (const string& arg) const;
