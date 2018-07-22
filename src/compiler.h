@@ -42,13 +42,14 @@ struct Compiler {
   string weightType;       // const double
   string logWeightType;    // const long, or whatever type is used to store logs internally
   string resultType;       // const double
-  string mathLibrary;      // "Math." for JS
-  string negInf;           // "-numeric_limits<double>::max()" for C++, "-Infinity" for JS
+  string mathLibrary;      // prefix/namespace for math functions
+  string negInf;           // minimum value representable as a log
   
   static string transVar (StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);
 
   virtual string mapAccessor (const string& obj, const string& key) const = 0;
+  virtual string constArrayAccessor (const string& obj, const string& key) const = 0;
   virtual string declareArray (const string& arrayName, const string& dim) const = 0;
   virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
   virtual string deleteArray (const string& arrayName) const = 0;
@@ -71,6 +72,7 @@ struct JavaScriptCompiler : Compiler {
   string deleteArray (const string& arrayName) const;
   string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const;
   string mapAccessor (const string& obj, const string& key) const;
+  string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
@@ -83,6 +85,7 @@ struct CPlusPlusCompiler : Compiler {
   string deleteArray (const string& arrayName) const;
   string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const;
   string mapAccessor (const string& obj, const string& key) const;
+  string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;

@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result");
+static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy"), neginfvar ("neginf");
@@ -55,10 +55,15 @@ string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) co
   return obj + "[\"" + escaped_str(key) + "\"]";
 }
 
+string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& key) const {
+  return obj + "[" + key + "]";
+}
+
 CPlusPlusCompiler::CPlusPlusCompiler() {
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
   vecRefType = "long long*";
+  funcInit = tab + "const SoftPlus " + softplusvar + ";\n";
   constVecRefType = "const long long*";
   paramsType = "const map<string,double>& ";
   arrayRefType = "long long*";
@@ -70,7 +75,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   weightType = "const double";
   logWeightType = "const long long";
   resultType = "const double";
-  negInf = "-numeric_limits<long long>::max()";
+  negInf = "numeric_limits<long long>::min()";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -176,19 +181,23 @@ string CPlusPlusCompiler::arrayRowAccessor (const string& arrayName, const strin
 }
   
 string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) const {
-  return string("log_sum_exp (") + a + ", " + b + ")";
+  return softplusvar + ".int_logsumexp (" + a + ", " + b + ")";
 }
 
 string CPlusPlusCompiler::unaryLog (const string& x) const {
-  return string("int_log (") + x + ")";
+  return softplusvar + ".int_log (" + x + ")";
 }
 
 string CPlusPlusCompiler::unaryExp (const string& x) const {
-  return string("int_exp (") + x + ")";
+  return softplusvar + ".int_exp (" + x + ")";
 }
 
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + ".at(string(\"" + escaped_str(key) + "\"))";
+}
+
+string CPlusPlusCompiler::constArrayAccessor (const string& obj, const string& key) const {
+  return obj + ".at(" + key + ")";
 }
 
 string Compiler::funcVar (FuncIndex f) { return string("f") + to_string(f+1); }
@@ -205,11 +214,12 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
 
   // function
   out << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
-
+  out << funcInit;
+  
   // sizes, constants
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
-  out << tab << weightType << " " << neginfvar << " = " << negInf << ";" << endl;
+  out << tab << logWeightType << " " << neginfvar << " = " << negInf << ";" << endl;
 
   // parameters
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
