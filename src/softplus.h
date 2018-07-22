@@ -48,6 +48,12 @@ private:
     return (Log) (SOFTPLUS_INTLOG_PRECISION * (double) x);
   }
 
+  inline IntLog int_logsumexp_canonical (IntLog larger, IntLog smaller) const {
+    return (smaller < (numeric_limits<IntLog>::min() >> 1) || larger > (numeric_limits<IntLog>::max() >> 1)
+	    ? larger
+	    : (larger + int_softplus_neg (larger - smaller)));
+  }
+
 public:
   SoftPlus() {
     cache = new IntLog [SOFTPLUS_CACHE_ENTRIES];
@@ -69,10 +75,10 @@ public:
     return (Prob) exp (int_to_log (x));
   }
 
-  IntLog int_logsumexp (IntLog a, IntLog b) const {
+  inline IntLog int_logsumexp (IntLog a, IntLog b) const {
     return (a > b
-	    ? (a + int_softplus_neg (a - b))
-	    : (b + int_softplus_neg (b - a)));
+	    ? int_logsumexp_canonical (a, b)
+	    : int_logsumexp_canonical (b, a));
   }
 };
 
