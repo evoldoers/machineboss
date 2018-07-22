@@ -6,7 +6,8 @@
 
 using namespace std;
 
-// global definitions relating to the cache
+// Global definitions relating to the cache
+// Note that, at this precision, round(log(1+exp(-x))/precision) falls to zero at 9.9035
 #define SOFTPLUS_CACHE_MAX_LOG    10
 #define SOFTPLUS_INTLOG_PRECISION .0001
 #define SOFTPLUS_CACHE_ENTRIES    (((long) (SOFTPLUS_CACHE_MAX_LOG / SOFTPLUS_INTLOG_PRECISION)) + 1)
