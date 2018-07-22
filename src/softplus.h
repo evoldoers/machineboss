@@ -35,6 +35,8 @@ private:
   }
 
   inline IntLog int_softplus_neg (IntLog x) const {
+    if (x < 0)
+      throw "int_softplus_neg: negative argument";
     return x >= SOFTPLUS_CACHE_ENTRIES ? 0 : cache[x];
   }
 
