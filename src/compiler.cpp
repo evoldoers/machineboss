@@ -60,6 +60,7 @@ string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& 
 }
 
 CPlusPlusCompiler::CPlusPlusCompiler() {
+  preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n";
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
   vecRefType = "long long*";
@@ -213,6 +214,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << "// generated automatically by bossmachine, do not edit" << endl;
 
   // function
+  out << preamble;
   out << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
   out << funcInit;
   

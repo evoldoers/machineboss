@@ -7,7 +7,7 @@ Machine CSVProfile::machine() const {
   for (SeqIdx pos = 0; pos <= row.size(); ++pos)
     m.state[pos].name = to_string (pos);
   for (SeqIdx pos = 0; pos < row.size(); ++pos)
-    for (size_t col = 0; col < row[pos].size(); ++col)
+    for (size_t col = 0; col < row[pos].size() && col <= header.size(); ++col)
       m.state[pos].trans.push_back (MachineTransition (string(), col < header.size() ? header[col] : string(), pos + 1, WeightAlgebra::doubleConstant (row[pos][col])));
   return m;
 }
@@ -21,9 +21,9 @@ void CSVProfile::readHeader (ifstream& in, const char* splitChars) {
 void CSVProfile::readRows (ifstream& in, const char* splitChars) {
   string line;
   while (getline (in, line)) {
-    const vguard<string> strCols = split (line, splitChars);
+    const vector<string> strCols = split (line, splitChars);
     if (strCols.size()) {
-      vguard<double> dblCols (strCols.size());
+      vector<double> dblCols (strCols.size());
       for (size_t col = 0; col < strCols.size(); ++col)
 	dblCols[col] = stof (strCols[col].c_str());
       row.push_back (dblCols);

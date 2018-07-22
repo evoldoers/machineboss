@@ -27,6 +27,7 @@ struct Compiler {
     string inputRowAccessor (const string&, const string&) const;
   };
 
+  string preamble;         // #include's, helper function declarations or definitions, etc.
   string funcKeyword;      // keywords to declare function (return type for C++, "function" for JS)
   string matrixType;       // type of probability matrix passed into function
   string funcInit;         // create SoftPlus object, etc.
