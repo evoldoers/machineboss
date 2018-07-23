@@ -21,15 +21,15 @@ struct Compiler {
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool start = false) const;
-    void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, bool outputWaiting) const;
+    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool xSeq, bool ySeq, bool start) const;
+    void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, bool outputWaiting) const;
     string bufRowAccessor (const string&, const string&) const;
     string inputRowAccessor (const string&, const string&) const;
     void showCell (ostream&, const string& indent, bool withInput, bool withOutput) const;
   };
 
   // general config
-  bool showCells;
+  bool showCells;  // add code that displays DP matrix
   
   // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.

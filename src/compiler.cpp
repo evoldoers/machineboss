@@ -122,7 +122,7 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   }
 }
 
-void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, bool outputWaiting) const {
+void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, bool outputWaiting) const {
   if (outputWaiting) {
     if (withInput && !withOutput) {
       const string expr = xcell + "[" + to_string (2*s + 1) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
@@ -151,23 +151,27 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool start) const {
-  for (StateIndex s = 0; s < wm.nStates(); ++s) {
-    for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
-      vguard<string> exprs;
-      if (start && s == 0 && outputWaiting == 0)
-	exprs.push_back ("0");
-      if (withIn)
-	addTransitions (exprs, true, false, s, outputWaiting);
-      if (withOut)
-	addTransitions (exprs, false, true, s, outputWaiting);
-      if (withBoth)
-	addTransitions (exprs, true, true, s, outputWaiting);
-      if (withNull)
-	addTransitions (exprs, false, false, s, outputWaiting);
-      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab) << ";" << endl;
-    }
-  }
+void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool xSeq, bool ySeq, bool start) const {
+  const auto inToks = eval.inputTokenizer.tok2sym;
+  const auto outToks = eval.outputTokenizer.tok2sym;
+  for (InputToken inTok = xSeq ? 1 : 0; inTok < (xSeq ? inToks.size() : 1); ++inTok)
+    for (OutputToken outTok = ySeq ? 1 : 0; outTok < (ySeq ? outToks.size() : 1); ++outTok)
+      for (StateIndex s = 0; s < wm.nStates(); ++s) {
+	for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
+	  vguard<string> exprs;
+	  if (start && s == 0 && outputWaiting == 0)
+	    exprs.push_back ("0");
+	  if (withIn)
+	    addTransitions (exprs, true, false, s, inTok, outTok, outputWaiting);
+	  if (withOut)
+	    addTransitions (exprs, false, true, s, inTok, outTok, outputWaiting);
+	  if (withBoth)
+	    addTransitions (exprs, true, true, s, inTok, outTok, outputWaiting);
+	  if (withNull)
+	    addTransitions (exprs, false, false, s, inTok, outTok, outputWaiting);
+	  result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab) << ";" << endl;
+	}
+      }
 }
 
 string Compiler::MachineInfo::bufRowAccessor (const string& a, const string& r) const {
@@ -335,7 +339,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0") << ";" << endl;
 
-  info.storeTransitions (out, tab2, true, false, false, false, true);
+  info.storeTransitions (out, tab2, true, false, false, false, false, false, true);
   info.showCell (out, tab2, false, false);
 
   out << tab << "}" << endl;
@@ -349,7 +353,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, xidx) << ";" << endl;
   out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1") << ";" << endl;
 
-  info.storeTransitions (out, tab2, true, true, false, false);
+  info.storeTransitions (out, tab2, true, true, false, false, false, false, false);
   info.showCell (out, tab2, true, false);
 
   out << tab << "}" << endl;
@@ -367,7 +371,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0") << ";" << endl;
   out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0") << ";" << endl;
 
-  info.storeTransitions (out, tab3, true, false, true, false);
+  info.storeTransitions (out, tab3, true, false, true, false, false, false, false);
   info.showCell (out, tab3, false, true);
 
   out << tab2 << "}" << endl;
@@ -380,7 +384,7 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, xidx) << ";" << endl;
   out << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1") << ";" << endl;
 
-  info.storeTransitions (out, tab3, true, true, true, true);
+  info.storeTransitions (out, tab3, true, true, true, true, false, false, false);
   info.showCell (out, tab3, true, true);
 
   out << tab2 << "}" << endl;  // end xidx loop
