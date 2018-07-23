@@ -12,6 +12,8 @@ struct Compiler {
   typedef size_t FuncIndex;
   typedef pair<StateIndex,TransIndex> StateTransIndex;
 
+  typedef enum SeqType { Profile = 0, Int = 1 } SeqType;
+  
   // machine analysis for compiler
   struct MachineInfo {
     const Compiler& compiler;
@@ -21,7 +23,7 @@ struct Compiler {
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool xSeq, bool ySeq, bool start) const;
+    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, bool start) const;
     void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, bool outputWaiting) const;
     string bufRowAccessor (const string&, const string&) const;
     string inputRowAccessor (const string&, const string&) const;
@@ -34,7 +36,8 @@ struct Compiler {
   // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.
   string funcKeyword;      // keywords to declare function (return type for C++, "function" for JS)
-  string matrixType;       // type of probability matrix passed into function
+  string matrixType;       // type of probability matrix passed into function (for SeqType == Profile)
+  string intVecType;       // type of integer vector passed into function (for SeqType == Int)
   string funcInit;         // create SoftPlus object, etc.
   string vecRefType;       // type of log-probability vector
   string constVecRefType;  // type of constant log-probability vector
@@ -49,7 +52,8 @@ struct Compiler {
   string logWeightType;    // const long, or whatever type is used to store logs internally
   string resultType;       // const double
   string mathLibrary;      // prefix/namespace for math functions
-  string infinity;         // maximum value representable as a log
+  string infinity;         // maximum value representable using internal log type
+  string realInfinity;     // maximum value representable using floating-point type
 
   Compiler();
   
@@ -75,8 +79,8 @@ struct Compiler {
   string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel = true) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
-
-  string compileForward (const Machine&, const char* funcName = DefaultForwardFunctionName) const;
+  
+  string compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* funcName = DefaultForwardFunctionName) const;
 };
 
 struct JavaScriptCompiler : Compiler {

@@ -25,6 +25,7 @@ JavaScriptCompiler::JavaScriptCompiler() {
   resultType = "const";
   mathLibrary = "Math.";
   infinity = "Infinity";
+  realInfinity = "Infinity";
 }
 
 string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -87,6 +88,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "using namespace std;\n";
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
+  intVecType = "const vector<int>& ";
   vecRefType = "long long*";
   funcInit = tab + "const SoftPlus " + softplusvar + ";\n";
   constVecRefType = "const long long*";
@@ -101,6 +103,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   logWeightType = "const long long";
   resultType = "const double";
   infinity = "SOFTPLUS_INTLOG_INFINITY";
+  realInfinity = "numeric_limits<double>::infinity()";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -140,38 +143,37 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
     for (const auto& s_t: incoming[s]) {
       const auto& trans = wm.state[s_t.first].getTransition(s_t.second);
       if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
-	string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (2*s_t.first + 1) + "] + " + transVar(s_t.first,s_t.second);
-	if (withInput)
-	  expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
-	if (withOutput)
-	  expr += " + " + yvec + "[" + to_string (eval.outputTokenizer.sym2tok.at(trans.out) - 1) + "]";
-	exprs.push_back (expr);
+	if (!withInput || !inTok || trans.in == eval.inputTokenizer.tok2sym[inTok])
+	  if (!withOutput || !outTok || trans.out == eval.outputTokenizer.tok2sym[outTok]) {
+	    string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (2*s_t.first + 1) + "] + " + transVar(s_t.first,s_t.second);
+	    if (withInput && !inTok)
+	      expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
+	    if (withOutput && !outTok)
+	      expr += " + " + yvec + "[" + to_string (eval.outputTokenizer.sym2tok.at(trans.out) - 1) + "]";
+	    exprs.push_back (expr);
+	  }
       }
     }
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, bool xSeq, bool ySeq, bool start) const {
-  const auto inToks = eval.inputTokenizer.tok2sym;
-  const auto outToks = eval.outputTokenizer.tok2sym;
-  for (InputToken inTok = xSeq ? 1 : 0; inTok < (xSeq ? inToks.size() : 1); ++inTok)
-    for (OutputToken outTok = ySeq ? 1 : 0; outTok < (ySeq ? outToks.size() : 1); ++outTok)
-      for (StateIndex s = 0; s < wm.nStates(); ++s) {
-	for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
-	  vguard<string> exprs;
-	  if (start && s == 0 && outputWaiting == 0)
-	    exprs.push_back ("0");
-	  if (withIn)
-	    addTransitions (exprs, true, false, s, inTok, outTok, outputWaiting);
-	  if (withOut)
-	    addTransitions (exprs, false, true, s, inTok, outTok, outputWaiting);
-	  if (withBoth)
-	    addTransitions (exprs, true, true, s, inTok, outTok, outputWaiting);
-	  if (withNull)
-	    addTransitions (exprs, false, false, s, inTok, outTok, outputWaiting);
-	  result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab) << ";" << endl;
-	}
-      }
+void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, bool start) const {
+  for (StateIndex s = 0; s < wm.nStates(); ++s) {
+    for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
+      vguard<string> exprs;
+      if (start && s == 0 && outputWaiting == 0)
+	exprs.push_back ("0");
+      if (withIn)
+	addTransitions (exprs, true, false, s, inTok, outTok, outputWaiting);
+      if (withOut)
+	addTransitions (exprs, false, true, s, inTok, outTok, outputWaiting);
+      if (withBoth)
+	addTransitions (exprs, true, true, s, inTok, outTok, outputWaiting);
+      if (withNull)
+	addTransitions (exprs, false, false, s, inTok, outTok, outputWaiting);
+      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab) << ";" << endl;
+    }
+  }
 }
 
 string Compiler::MachineInfo::bufRowAccessor (const string& a, const string& r) const {
@@ -294,7 +296,7 @@ string CPlusPlusCompiler::constArrayAccessor (const string& obj, const string& k
 string Compiler::funcVar (FuncIndex f) { return string("f") + to_string(f+1); }
 string Compiler::transVar (StateIndex s, TransIndex t) { return string("t") + to_string(s+1) + "_" + to_string(t+1); }
 
-string Compiler::compileForward (const Machine& m, const char* funcName) const {
+string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, const char* funcName) const {
   Assert (m.nStates() > 0, "Can't compile empty machine");
   ostringstream out;
   const MachineInfo info (*this, m);
@@ -305,7 +307,10 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
 
   // function
   out << preamble;
-  out << funcKeyword << " " << funcName << " (" << matrixType << xvar << ", " << matrixType << yvar << ", " << paramsType << paramvar << ") {" << endl;
+  out << funcKeyword << " " << funcName << " ("
+      << (xType == Profile ? matrixType : intVecType) << xvar << ", "
+      << (yType == Profile ? matrixType : intVecType) << yvar << ", "
+      << paramsType << paramvar << ") {" << endl;
   out << funcInit;
   
   // sizes, constants
@@ -339,55 +344,132 @@ string Compiler::compileForward (const Machine& m, const char* funcName) const {
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0") << ";" << endl;
 
-  info.storeTransitions (out, tab2, true, false, false, false, false, false, true);
+  info.storeTransitions (out, tab2, true, false, false, false, 0, 0, true);
   info.showCell (out, tab2, false, false);
 
   out << tab << "}" << endl;
 
   // x>0, y=0
   out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
-  out << tab2 << vecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
-  for (size_t xtok = 0; xtok < info.eval.inputTokenizer.tok2sym.size(); ++xtok)
-    out << tab2 << xvec << "[" << xtok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (xvar, xidx + " - 1"), to_string(xtok))) << ";" << endl;
-  
+
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, xidx) << ";" << endl;
   out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1") << ";" << endl;
 
-  info.storeTransitions (out, tab2, true, true, false, false, false, false, false);
-  info.showCell (out, tab2, true, false);
+  string xtab;
+  switch (xType) {
+  case Profile:
+    out << tab2 << vecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
+    for (size_t xtok = 0; xtok < info.eval.inputTokenizer.tok2sym.size(); ++xtok)
+      out << tab2 << xvec << "[" << xtok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (xvar, xidx + " - 1"), to_string(xtok))) << ";" << endl;
+    break;
+  case Int:
+    xtab = tab2;
+    out << tab2 << "switch (" << xvar << "[" << xidx << " - 1]) {" << endl;
+    break;
+  default:
+    Abort ("Unknown sequence type");
+  }
 
-  out << tab << "}" << endl;
+  for (InputToken xTok = (xType == Profile ? 0 : 1); xTok < (xType == Profile ? 1 : info.eval.inputTokenizer.tok2sym.size()); ++xTok) {
+    if (xType == Int)
+      out << xtab << tab << "case " << (xTok - 1) << ":" << endl;
+
+    info.storeTransitions (out, xtab + tab2, true, true, false, false, xTok, 0, false);
+    info.showCell (out, xtab + tab2, true, false);
+
+    if (xType == Int)
+      out << xtab << tab2 << "break;" << endl;
+  }
+
+  if (xType != Profile)
+    out << xtab << tab << "default:" << endl
+	<< xtab << tab2 << "return " << realInfinity << ";" << endl
+	<< xtab << tab2 << "break;" << endl
+	<< xtab << tab << "}" << endl;
+
+  out << xtab << tab << "}" << endl;
 
   // y>0
   out << tab << "for (" << yidx << " = 1; " << yidx << " <= " << ysize << "; ++" << yidx << ") {" << endl;
-  for (size_t ytok = 0; ytok < info.eval.outputTokenizer.tok2sym.size(); ++ytok)
-    out << tab2 << yvec << "[" << ytok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (yvar, yidx + " - 1"), to_string(ytok))) << ";" << endl;
 
   out << tab2 << arrayRefType << " " << currentvar << " = " << yidx << " & 1 ? " << buf1var << " : " << buf0var << ";" << endl;
   out << tab2 << arrayRefType << " " << prevvar << " = " << yidx << " & 1 ? " << buf0var << " : " << buf1var << ";" << endl;
 
-  // x=0, y>0
-  out << tab2 << "{" << endl;
-  out << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0") << ";" << endl;
-  out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0") << ";" << endl;
+  string ytab;
+  switch (yType) {
+  case Profile:
+    for (size_t ytok = 0; ytok < info.eval.outputTokenizer.tok2sym.size(); ++ytok)
+      out << tab2 << yvec << "[" << ytok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (yvar, yidx + " - 1"), to_string(ytok))) << ";" << endl;
+    break;
+  case Int:
+    ytab = tab2;
+    out << tab2 << "switch (" << yvar << "[" << yidx << " - 1]) {" << endl;
+    break;
+  default:
+    Abort ("Unknown sequence type");
+  }
 
-  info.storeTransitions (out, tab3, true, false, true, false, false, false, false);
-  info.showCell (out, tab3, false, true);
+  for (OutputToken yTok = (yType == Profile ? 0 : 1); yTok < (yType == Profile ? 1 : info.eval.outputTokenizer.tok2sym.size()); ++yTok) {
+    if (yType == Int)
+      out << ytab << tab << "case " << (yTok - 1) << ":" << endl;
 
-  out << tab2 << "}" << endl;
+    // x=0, y>0
+    out << ytab << tab2 << "{" << endl;
+    out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0") << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0") << ";" << endl;
 
-  // x>0, y>0
-  out << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
-  out << tab3 << constVecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
-  out << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, xidx) << ";" << endl;
-  out << tab3 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (currentvar, xidx + " - 1") << ";" << endl;
-  out << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, xidx) << ";" << endl;
-  out << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1") << ";" << endl;
+    info.storeTransitions (out, ytab + tab3, true, false, true, false, 0, yTok, false);
+    info.showCell (out, ytab + tab3, false, true);
 
-  info.storeTransitions (out, tab3, true, true, true, true, false, false, false);
-  info.showCell (out, tab3, true, true);
+    out << ytab << tab2 << "}" << endl;
 
-  out << tab2 << "}" << endl;  // end xidx loop
+    // x>0, y>0
+    out << ytab << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
+
+    out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, xidx) << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (currentvar, xidx + " - 1") << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, xidx) << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1") << ";" << endl;
+
+    string xytab (ytab);
+    switch (xType) {
+    case Profile:
+      out << ytab << tab3 << constVecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
+      break;
+    case Int:
+      xytab = ytab + tab2;
+      out << ytab << tab3 << "switch (" << xvar << "[" << xidx << " - 1]) {" << endl;
+      break;
+    default:
+      Abort ("Unknown sequence type");
+    }
+
+    for (InputToken xTok = (xType == Profile ? 0 : 1); xTok < (xType == Profile ? 1 : info.eval.inputTokenizer.tok2sym.size()); ++xTok) {
+      if (xType == Int)
+	out << xytab << tab2 << "case " << (xTok - 1) << ":" << endl;
+
+      info.storeTransitions (out, xytab + tab3, true, true, true, true, false, false, false);
+      info.showCell (out, xytab + tab3, true, true);
+
+      if (xType == Int)
+	out << xytab << tab3 << "break;" << endl;
+    }
+
+    if (xType != Profile)
+      out << xytab << tab2 << "default:" << endl
+	  << xytab << tab3 << "return " << realInfinity << ";" << endl
+	  << xytab << tab3 << "break;" << endl
+	  << xytab << tab << "}" << endl;
+
+    out << tab2 << "}" << endl;  // end xidx loop
+  }
+
+  if (yType != Profile)
+    out << ytab << tab << "default:" << endl
+	<< ytab << tab2 << "return " << realInfinity << ";" << endl
+	<< ytab << tab2 << "break;" << endl
+	<< ytab << tab << "}" << endl;
+
   out << tab << "}" << endl;  // end yidx loop
 
   // get result
