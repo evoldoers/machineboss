@@ -289,11 +289,13 @@ int main (int argc, char** argv) {
 	else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());
+	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine();
 	} else if (command == "--csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
+	  Require (infile, "CSV file not found");
 	  csv.read (infile);
 	  m = csv.machine();
 	} else {

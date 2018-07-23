@@ -176,7 +176,7 @@ test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand test-hmmer test-csv
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
 test-generator:
 	@$(TEST) bin/$(BOSS) -g t/io/seq101.json t/expect/generator101.json
 
@@ -229,6 +229,21 @@ test-hmmer:
 
 test-csv:
 	@$(TEST) bin/$(BOSS) --csv t/csv/test.csv t/expect/csvtest.json
+
+test-csv-tiny:
+	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_uc.json --flip --csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
+
+test-csv-tiny-fail:
+	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_lc.json --flip --csv t/csv/tiny_uc.csv -fail
+
+test-csv-tiny-empty:
+	@$(TEST) bin/$(BOSS) -L --generate t/io/empty.json --flip --csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
+
+test-nanopore:
+	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --flip --csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
+
+test-nanopore-prefix:
+	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --flip --csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
@@ -341,7 +356,7 @@ test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled: test-101-bitnoise-001 t/bin/test-compiled-bitnoise
-	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiled-bitnoise t/io/prof101.csv t/io/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiled-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 COMPILER_TESTS = test-101-bitnoise-001-compiled
 

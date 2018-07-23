@@ -380,7 +380,8 @@ bool Machine::outputEmpty() const{
 }
 
 bool Machine::isErgodicMachine() const {
-  return accessibleStates().size() == nStates();
+  const auto acc = accessibleStates();
+  return acc.size() == nStates() && acc.count (nStates() - 1);
 }
 
 bool Machine::isWaitingMachine() const {
@@ -461,6 +462,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
 	toVisit.push_back(d);
       }
   }
+  Assert (keep[iStates*jStates-1], "End state of composed machine is not accessible");
 
   LogThisAt(7,"Sorting & indexing " << keptState.size() << " states" << endl);
   sort (keptState.begin(), keptState.end());
@@ -624,7 +626,8 @@ Machine Machine::ergodicMachine() const {
     vguard<bool> keep (nStates(), false);
     for (StateIndex s : accessibleStates())
       keep[s] = true;
-
+    Assert (keep[nStates()-1], "End state is not accessible");
+    
     map<StateIndex,StateIndex> nullEquiv;
     for (StateIndex s = 0; s < nStates(); ++s)
       if (keep[s]) {
@@ -829,24 +832,25 @@ Machine Machine::advanceSort() const {
     };
     addToOrder (startState());
     if (nStates() > 1) {
-      list<StateIndex> queue;
+      deque<StateIndex> queue;
       for (StateIndex s = 1; s + 1 < nStates(); ++s)
 	queue.push_back (s);
+      ProgressLog(plogSort,6);
+      plogSort.initProgress ("Advance-sorting %lu states", nStates() - 1);
       while (queue.size()) {
-	// find lowest-numbered state with no incoming (silent) transitions, or (failing that) largest difference between incoming & outgoing
-	// if more than one state has no incoming transitions, the tiebreaker is the largest incoming-outgoing difference
-	list<StateIndex>::iterator next = queue.end();
-	int nextIncoming, nextDiff;
-	for (auto iter = queue.begin(); iter != queue.end(); ++iter) {
-	  const int sIncoming = (int) silentIncoming[*iter].size(), sDiff = sIncoming - (int) silentOutgoing[*iter].size();
-	  if (next == queue.end() || (sIncoming == 0 ? (nextIncoming > 0 || sDiff < nextDiff) : (nextIncoming > 0 && sDiff < nextDiff))) {
-	    next = iter;
-	    nextIncoming = sIncoming;
-	    nextDiff = sDiff;
-	  }
-	}
-	addToOrder (*next);
-	queue.erase (next);
+	plogSort.logProgress ((nStates() - queue.size()) / (double) nStates(), "sorted %lu states", nStates() - queue.size());
+	partial_sort (queue.begin(), queue.begin() + 1, queue.end(),
+		      [&] (StateIndex a, StateIndex b) {
+			const int aIncoming = (int) silentIncoming[a].size(), aDiff = aIncoming - (int) silentOutgoing[a].size();
+			const int bIncoming = (int) silentIncoming[b].size(), bDiff = bIncoming - (int) silentOutgoing[b].size();
+			return (aIncoming == bIncoming
+				? (aDiff == bDiff
+				   ? (a < b)
+				   : (aDiff < bDiff))
+				: (aIncoming < bIncoming));
+		      });
+	addToOrder (queue.front());
+	queue.erase (queue.begin());
       }
       addToOrder (endState());
     }
