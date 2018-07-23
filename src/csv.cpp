@@ -17,7 +17,8 @@ void CSVProfile::readHeader (ifstream& in, const char* splitChars) {
   string line;
   if (getline (in, line))
     header = split (line, splitChars);
-  header.erase (remove_if (header.begin(), header.end(), [](const string& s) { return s.empty(); }), header.end());
+  while (header.size() && header.back().empty())
+    header.pop_back();
 }
 
 void CSVProfile::readRows (ifstream& in, const char* splitChars) {
