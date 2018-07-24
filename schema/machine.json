@@ -2,57 +2,82 @@
   "$schema": "http://json-schema.org/schema#",
   "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/machine.json",
   "description": "BossMachine transducer schema",
-  "type": "object",
-  "required": ["state"],
-  "properties": {
-    "state": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "not": {
-              "type": "number"
-            }
-          },
-          "n": {
-            "type": "number"
-          },
-          "trans": {
-            "type": "array",
-            "items": {
+  "definitions": {
+    "machine": {
+      "oneOf":
+      [ { "type": "object", "additionalProperties": false,
+          "required": ["compose"], "properties": { "compose": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
+        { "type": "object", "additionalProperties": false,
+          "required": ["concat"], "properties": { "concat": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
+        { "type": "object", "additionalProperties": false,
+          "required": ["and"], "properties": { "and": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
+        { "type": "object", "additionalProperties": false,
+          "required": ["or"], "properties": { "or": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
+        { "type": "object", "additionalProperties": false,
+          "required": ["loop"], "properties": { "loop": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
+        { "type": "object", "additionalProperties": false, "required": ["opt"], "properties": { "opt": { "$ref": "#/definitions/machine" } } },
+        { "type": "object", "additionalProperties": false, "required": ["star"], "properties": { "star": { "$ref": "#/definitions/machine" } } },
+        { "type": "object", "additionalProperties": false, "required": ["plus"], "properties": { "plus": { "$ref": "#/definitions/machine" } } },
+        { "type": "object", "additionalProperties": false, "required": ["eliminate"], "properties": { "eliminate": { "$ref": "#/definitions/machine" } } },
+        { "type": "object", "additionalProperties": false, "required": ["reverse"], "properties": { "reverse": { "$ref": "#/definitions/machine" } } },
+        { "type": "object", "additionalProperties": false, "required": ["revcomp"], "properties": { "revcomp": { "$ref": "#/definitions/machine" } } },
+        { "type": "object", "additionalProperties": false, "required": ["transpose"], "properties": { "transpose": { "$ref": "#/definitions/machine" } } },
+        { "type": "object",
+          "required": ["state"],
+          "properties": {
+            "state": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "not": {
+                      "type": "number"
+                    }
+                  },
+                  "n": {
+                    "type": "number"
+                  },
+                  "trans": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["to"],
+                      "properties": {
+                        "to": {},
+                        "in": { "type": "string" },
+                        "out": { "type": "string" },
+                        "weight": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "anyOf": [ {"required": ["id"]}, {"required": ["n"]} ],
+                "additionalProperties": false
+              }
+            },
+            "defs": {
               "type": "object",
-              "required": ["to"],
-              "properties": {
-                "to": {},
-                "in": { "type": "string" },
-                "out": { "type": "string" },
-                "weight": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
-              },
-              "additionalProperties": false
+              "patternProperties": {
+	        ".*": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
+              }
+            },
+            "cons": {
+              "type": "object",
+              "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/constraints.json"
+            },
+            "params": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
-          }
-        },
-        "anyOf": [ {"required": ["id"]}, {"required": ["n"]} ],
-        "additionalProperties": false
-      }
-    },
-    "defs": {
-      "type": "object",
-      "patternProperties": {
-	".*": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
-      }
-    },
-    "cons": {
-      "type": "object",
-      "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/constraints.json"
-    },
-    "params": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   },
-  "additionalProperties": false
+  "$ref": "#/definitions/machine"
 }

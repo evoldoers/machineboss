@@ -55,7 +55,7 @@ int main (int argc, char** argv) {
     prefixOpts.add_options()
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
-      ("flip,f", "flip input/output")
+      ("transpose,t", "transpose: swap input/output")
       ("eliminate,n", "eliminate silent transitions")
       ;
 
@@ -243,8 +243,8 @@ int main (int argc, char** argv) {
 				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
 							    ? "comprna"
 							    : "compdna"));
-	} else if (command == "--flip")
-	  m = nextMachine().flipInOut();
+	} else if (command == "--transpose")
+	  m = nextMachine().transpose();
 	else if (command == "--weight") {
 	  const string wArg = getArg();
 	  json wj;

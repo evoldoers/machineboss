@@ -8,6 +8,7 @@
 #include "logger.h"
 #include "schema.h"
 #include "params.h"
+#include "preset.h"
 
 using json = nlohmann::json;
 
@@ -278,61 +279,117 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
-  if (pj.count("defs"))
-    defs.readJson (pj.at("defs"));
-  if (pj.count("cons"))
-    cons.readJson (pj.at("cons"));
-  // commented out code auto-binds all defined names to their values, no longer necessarily since we're explicitly preserving the names
-  /*
-  ParamFuncs funcs;
-  if (pj.count("defs"))
-    funcs.readJson (pj.at("defs"));
-  for (auto& p_d: funcs.defs)
-    defs.defs[p_d.first] = WeightAlgebra::bind (p_d.second, funcs.defs);
-  */
-  
-  json jstate = pj.at("state");
-  Assert (jstate.is_array(), "state is not an array");
-  map<string,StateIndex> id2n;
-  for (const json& js : jstate) {
-    MachineState ms;
-    if (js.count("n")) {
-      const StateIndex n = js.at("n").get<StateIndex>();
-      Require ((StateIndex) state.size() == n, "StateIndex n=%ld out of sequence", n);
-    }
-    if (js.count("id")) {
-      const StateName id = js.at("id");
-      Assert (!id.is_number(), "id can't be a number");
-      const string idStr = id.dump();
-      Require (!id2n.count(idStr), "Duplicate state %s", idStr.c_str());
-      id2n[idStr] = state.size();
-      ms.name = id;
-    }
-    state.push_back (ms);
-  }
+  if (pj.count("compose")) {
+    const auto arg = pj["compose"];
+    *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
+			      JsonReader<Machine>::fromJson (arg[1]));
 
-  vguard<MachineState>::iterator msiter = state.begin();
-  for (const json& js : jstate) {
-    MachineState& ms = *msiter++;
-    if (js.count ("trans")) {
-      const json& jtrans = js.at("trans");
-      Assert (jtrans.is_array(), "trans is not an array");
-      for (const json& jt : jtrans) {
-	MachineTransition t;
-	const json& dest = jt.at("to");
-	if (dest.is_number())
-	  t.dest = dest.get<StateIndex>();
-	else {
-	  const string dstr = dest.dump();
-	  Require (id2n.count(dstr), "No such state in \"to\": %s", dstr.c_str());
-	  t.dest = id2n.at (dstr);
+  } else if (pj.count("concat")) {
+    const auto arg = pj["compose"];
+    *this = Machine::concatenate (JsonReader<Machine>::fromJson (arg[0]),
+				  JsonReader<Machine>::fromJson (arg[1]));
+    
+  } else if (pj.count("and")) {
+    const auto arg = pj["and"];
+    *this = Machine::intersect (JsonReader<Machine>::fromJson (arg[0]),
+				JsonReader<Machine>::fromJson (arg[1]));
+
+  } else if (pj.count("or")) {
+    const auto arg = pj["or"];
+    *this = Machine::takeUnion (JsonReader<Machine>::fromJson (arg[0]),
+				JsonReader<Machine>::fromJson (arg[1]));
+
+  } else if (pj.count("loop")) {
+    const auto arg = pj["loop"];
+    *this = Machine::kleeneLoop (JsonReader<Machine>::fromJson (arg[0]),
+				 JsonReader<Machine>::fromJson (arg[1]));
+
+  } else if (pj.count("opt")) {  // optional: zero-or-one
+    const auto arg = pj["opt"];
+    *this = Machine::zeroOrOne (JsonReader<Machine>::fromJson (pj["opt"]));
+
+  } else if (pj.count("star")) {  // Kleene star
+    *this = Machine::kleeneStar (JsonReader<Machine>::fromJson (pj["star"]));
+
+  } else if (pj.count("plus")) {  // Kleene plus
+    *this = Machine::kleenePlus (JsonReader<Machine>::fromJson (pj["plus"]));
+    
+  } else if (pj.count("eliminate")) {
+    *this = JsonReader<Machine>::fromJson (pj["eliminate"]).eliminateSilentTransitions();
+
+  } else if (pj.count("reverse")) {
+    *this = JsonReader<Machine>::fromJson (pj["eliminate"]).reverse();
+
+  } else if (pj.count("revcomp")) {
+    // convoluted... a simpler built-in revcomp would be preferable, oh well
+    const Machine m = JsonReader<Machine>::fromJson (pj["revcomp"]);
+    const vguard<OutputSymbol> outAlph = m.outputAlphabet();
+    const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
+    *this = Machine::compose (m.reverse(),
+			      MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
+							  ? "comprna"
+							  : "compdna"));
+
+  } else if (pj.count("transpose")) {
+    *this = JsonReader<Machine>::fromJson (pj["eliminate"]).transpose();
+
+  } else {
+    if (pj.count("defs"))
+      defs.readJson (pj.at("defs"));
+    if (pj.count("cons"))
+      cons.readJson (pj.at("cons"));
+    // commented out code auto-binds all defined names to their values, no longer necessarily since we're explicitly preserving the names
+    /*
+      ParamFuncs funcs;
+      if (pj.count("defs"))
+      funcs.readJson (pj.at("defs"));
+      for (auto& p_d: funcs.defs)
+      defs.defs[p_d.first] = WeightAlgebra::bind (p_d.second, funcs.defs);
+    */
+  
+    json jstate = pj.at("state");
+    Assert (jstate.is_array(), "state is not an array");
+    map<string,StateIndex> id2n;
+    for (const json& js : jstate) {
+      MachineState ms;
+      if (js.count("n")) {
+	const StateIndex n = js.at("n").get<StateIndex>();
+	Require ((StateIndex) state.size() == n, "StateIndex n=%ld out of sequence", n);
+      }
+      if (js.count("id")) {
+	const StateName id = js.at("id");
+	Assert (!id.is_number(), "id can't be a number");
+	const string idStr = id.dump();
+	Require (!id2n.count(idStr), "Duplicate state %s", idStr.c_str());
+	id2n[idStr] = state.size();
+	ms.name = id;
+      }
+      state.push_back (ms);
+    }
+
+    vguard<MachineState>::iterator msiter = state.begin();
+    for (const json& js : jstate) {
+      MachineState& ms = *msiter++;
+      if (js.count ("trans")) {
+	const json& jtrans = js.at("trans");
+	Assert (jtrans.is_array(), "trans is not an array");
+	for (const json& jt : jtrans) {
+	  MachineTransition t;
+	  const json& dest = jt.at("to");
+	  if (dest.is_number())
+	    t.dest = dest.get<StateIndex>();
+	  else {
+	    const string dstr = dest.dump();
+	    Require (id2n.count(dstr), "No such state in \"to\": %s", dstr.c_str());
+	    t.dest = id2n.at (dstr);
+	  }
+	  if (jt.count("in"))
+	    t.in = jt.at("in").get<string>();
+	  if (jt.count("out"))
+	    t.out = jt.at("out").get<string>();
+	  t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight"), &defs.defs) : WeightAlgebra::one());
+	  ms.trans.push_back (t);
 	}
-	if (jt.count("in"))
-	  t.in = jt.at("in").get<string>();
-	if (jt.count("out"))
-	  t.out = jt.at("out").get<string>();
-	t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight"), &defs.defs) : WeightAlgebra::one());
-	ms.trans.push_back (t);
       }
     }
   }
@@ -1100,7 +1157,7 @@ Machine Machine::reverse() const {
   return m;
 }
 
-Machine Machine::flipInOut() const {
+Machine Machine::transpose() const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)

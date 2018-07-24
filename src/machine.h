@@ -102,7 +102,7 @@ struct Machine {
   static Machine kleeneLoop (const Machine&, const Machine&);
 
   Machine reverse() const;
-  Machine flipInOut() const;
+  Machine transpose() const;
 
   bool inputEmpty() const;
   bool outputEmpty() const;

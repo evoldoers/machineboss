@@ -153,12 +153,15 @@ schema/$(FILE).json.nourl: schema/$(FILE).json
 	grep -v '"id": "http' $< >$@
 
 # Transducer composition tests
-COMPOSE_TESTS = test-echo test-echo2 test-echo-stutter test-stutter2 test-noise2 test-unitindel2 test-machine-params
+COMPOSE_TESTS = test-echo test-echo2 test-echo2-expr test-echo-stutter test-stutter2 test-noise2 test-unitindel2 test-machine-params
 test-echo:
 	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/expect/bitecho.json
 
 test-echo2:
 	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/machine/bitecho.json t/expect/bitecho-bitecho.json
+
+test-echo2-expr:
+	@$(TEST) bin/$(BOSS) t/machine/compose-bitecho-bitecho.json t/expect/bitecho-bitecho.json
 
 test-echo-stutter:
 	@$(TEST) bin/$(BOSS) t/machine/bitecho.json t/machine/bitstutter.json t/expect/bitecho-bitstutter.json
@@ -176,7 +179,7 @@ test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-flip test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
+CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
 test-generator:
 	@$(TEST) bin/$(BOSS) -g t/io/seq101.json t/expect/generator101.json
 
@@ -215,8 +218,8 @@ test-reverse:
 test-revcomp:
 	@$(TEST) bin/$(BOSS) -r -g t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
 
-test-flip:
-	@$(TEST) bin/$(BOSS) -f -g t/io/seq001.json t/expect/acceptor001.json
+test-transpose:
+	@$(TEST) bin/$(BOSS) -t -g t/io/seq001.json t/expect/acceptor001.json
 
 test-weight:
 	@$(TEST) bin/$(BOSS) -w p t/expect/null-p.json
@@ -231,19 +234,19 @@ test-csv:
 	@$(TEST) bin/$(BOSS) --csv t/csv/test.csv t/expect/csvtest.json
 
 test-csv-tiny:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_uc.json --flip --csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
+	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_uc.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
 
 test-csv-tiny-fail:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_lc.json --flip --csv t/csv/tiny_uc.csv -fail
+	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_lc.json --transpose --csv t/csv/tiny_uc.csv -fail
 
 test-csv-tiny-empty:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/empty.json --flip --csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
+	@$(TEST) bin/$(BOSS) -L --generate t/io/empty.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
 
 test-nanopore:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --flip --csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
+	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
 
 test-nanopore-prefix:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --flip --csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
+	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine

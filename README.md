@@ -72,7 +72,7 @@ Transducer construction:
 Prefix operators:
   -e [ --reverse ]           reverse
   -r [ --revcomp ]           reverse-complement '~'
-  -f [ --flip ]              flip input/output
+  -t [ --transpose ]         transpose: swap input/output
   -n [ --eliminate ]         eliminate silent transitions
 
 Postfix operators:
@@ -107,5 +107,7 @@ Transducer application:
 Compiler:
   --cpp                      generate C++ dynamic programming code
   --js                       generate JavaScript dynamic programming code
+  --inseq arg                input sequence type (String, Intvec, Profile)
+  --outseq arg               output sequence type (String, Intvec, Profile)
 
 </code></pre>
