@@ -172,7 +172,7 @@ void Compiler::MachineInfo::storeTransitions (ostream& result, const string& ind
 	addTransitions (exprs, true, true, s, inTok, outTok, outputWaiting);
       if (withNull)
 	addTransitions (exprs, false, false, s, inTok, outTok, outputWaiting);
-      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab) << ";" << endl;
+      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab, true, outputWaiting) << ";" << endl;
     }
   }
 }
@@ -227,15 +227,15 @@ string Compiler::valOrInf (const string& arg) const {
     + toString(arg) + "))";
 }
 
-string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel) const {
+string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const {
   const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
     return string("-") + infinity;
   else if (exprs.size() == 1)
-    return topLevel ? boundLog (exprs[0]) : (newLine + exprs[0]);
+    return topLevel ? (alreadyBounded ? exprs[0] : boundLog (exprs[0])) : (newLine + exprs[0]);
   const string lastExpr = exprs.back();
   exprs.pop_back();
-  return binarySoftplus (logSumExpReduce (exprs, lineIndent, false), newLine + lastExpr);
+  return binarySoftplus (logSumExpReduce (exprs, lineIndent, false, false), newLine + lastExpr);
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {

@@ -79,7 +79,7 @@ struct Compiler {
 
   static bool isCharAlphabet (const vguard<string>&);
 
-  string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel = true) const;
+  string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
   
