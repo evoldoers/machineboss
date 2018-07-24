@@ -350,7 +350,7 @@ test-align-stutter-noise:
 
 # Compiler tests
 t/src/test-compiled-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiled.cpp
-	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp; cat t/src/testcompiled.cpp) >$@
+	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inprof --outprof; cat t/src/testcompiled.cpp) >$@
 
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json

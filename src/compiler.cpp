@@ -127,7 +127,7 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
 
 void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, bool outputWaiting) const {
   if (outputWaiting) {
-    if (withInput && !withOutput) {
+    if (withInput && !withOutput && !inTok) {
       const string expr = xcell + "[" + to_string (2*s + 1) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
       exprs.push_back (expr);
     }
@@ -136,7 +136,7 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
       exprs.push_back (expr);
     }
   } else {
-    if (withOutput && !withInput && wm.state[s].waits()) {
+    if (withOutput && !withInput && wm.state[s].waits() && !outTok) {
       const string expr = ycell + "[" + to_string(2*s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
       exprs.push_back (expr);
     }
@@ -381,13 +381,13 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
       out << xtab << tab2 << "break;" << endl;
   }
 
-  if (xType != Profile)
+  if (xType == Int)
     out << xtab << tab << "default:" << endl
 	<< xtab << tab2 << "return " << realInfinity << ";" << endl
 	<< xtab << tab2 << "break;" << endl
-	<< xtab << tab << "}" << endl;
+	<< tab2 << "}" << endl;
 
-  out << xtab << tab << "}" << endl;
+  out << tab << "}" << endl;
 
   // y>0
   out << tab << "for (" << yidx << " = 1; " << yidx << " <= " << ysize << "; ++" << yidx << ") {" << endl;
@@ -448,23 +448,26 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
       if (xType == Int)
 	out << xytab << tab2 << "case " << (xTok - 1) << ":" << endl;
 
-      info.storeTransitions (out, xytab + tab3, true, true, true, true, false, false, false);
+      info.storeTransitions (out, xytab + tab3, true, true, true, true, xTok, yTok, false);
       info.showCell (out, xytab + tab3, true, true);
 
       if (xType == Int)
 	out << xytab << tab3 << "break;" << endl;
     }
 
-    if (xType != Profile)
+    if (xType == Int)
       out << xytab << tab2 << "default:" << endl
 	  << xytab << tab3 << "return " << realInfinity << ";" << endl
 	  << xytab << tab3 << "break;" << endl
 	  << xytab << tab << "}" << endl;
 
-    out << tab2 << "}" << endl;  // end xidx loop
+    out << ytab << tab2 << "}" << endl;  // end xidx loop
+
+    if (yType == Int)
+      out << ytab << tab2 << "break;" << endl;
   }
 
-  if (yType != Profile)
+  if (yType == Int)
     out << ytab << tab << "default:" << endl
 	<< ytab << tab2 << "return " << realInfinity << ";" << endl
 	<< ytab << tab2 << "break;" << endl

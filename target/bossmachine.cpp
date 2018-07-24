@@ -100,6 +100,8 @@ int main (int argc, char** argv) {
     compOpts.add_options()
       ("cpp", "generate C++ dynamic programming code")
       ("js", "generate JavaScript dynamic programming code")
+      ("inprof", "input arg is gapped profile weight matrix, not sequence")
+      ("outprof", "output arg is gapped profile weight matrix, not sequence")
       ;
 
     po::options_description transOpts("");
@@ -353,7 +355,9 @@ int main (int argc, char** argv) {
 
     // compile
     function<void(Compiler&)> compileMachine = [&](Compiler& compiler) {
-      cout << compiler.compileForward (machine);
+      const Compiler::SeqType xSeqType = vm.count("inprof") ? Compiler::SeqType::Profile : Compiler::SeqType::Int;
+      const Compiler::SeqType ySeqType = vm.count("outprof") ? Compiler::SeqType::Profile : Compiler::SeqType::Int;
+      cout << compiler.compileForward (machine, xSeqType, ySeqType);
     };
     Assert (!(vm.count("cpp") && vm.count("js")), "Can specify --cpp or --js but not both");
     if (vm.count("cpp")) {
