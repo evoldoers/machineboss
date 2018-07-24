@@ -522,9 +522,9 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
  } else if (w.is_array())
     Abort ("Unexpected type in WeightExpr: array");
  else {
-   if (!w.is_object())
-     Abort ("Unexpected type (%d) in WeightExpr", w.type());
+   Assert (w.is_object(), "WeightExpr must be JSON object");
    auto iter = w.begin();
+   Assert (!(iter == w.end()), "No opcode in WeightExpr");
    const string opcode = iter.key();
    const json args = iter.value();
    if (opcode == "log")
