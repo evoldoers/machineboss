@@ -61,9 +61,8 @@ General options:
 
 Transducer construction:
   -l [ --load ] arg          load machine from file
-  -p [ --preset ] arg        select preset (base2acgt, compdna, comprna, 
-                             dnapsw, flankbase, null, prot2dna, protpsw, 
-                             psw2dna, simple_introns, translate)
+  -p [ --preset ] arg        select preset (compdna, comprna, dnapsw, null, 
+                             prot2dna, protpsw, psw2dna, translate)
   -g [ --generate ] arg      sequence generator '&lt;'
   -a [ --accept ] arg        sequence acceptor '&gt;'
   -w [ --weight ] arg        weighted null transition '#'

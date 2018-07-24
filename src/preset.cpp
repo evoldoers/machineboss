@@ -14,10 +14,7 @@ struct PresetCache {
 #include "preset/dnapsw.h"
 #include "preset/protpsw.h"
 
-#include "preset/flankbase.h"
 #include "preset/translate.h"
-#include "preset/simple_introns.h"
-#include "preset/base2acgt.h"
 #include "preset/prot2dna.h"
 #include "preset/psw2dna.h"
 
@@ -28,10 +25,7 @@ PresetCache::PresetCache() {
   addPreset(dnapsw);
   addPreset(protpsw);
 
-  addPreset(flankbase);
   addPreset(translate);
-  addPreset(simple_introns);
-  addPreset(base2acgt);
   addPreset(prot2dna);
   addPreset(psw2dna);
 }
