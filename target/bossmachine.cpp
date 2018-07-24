@@ -356,11 +356,11 @@ int main (int argc, char** argv) {
     // compile
     function<Compiler::SeqType(const char*,const vguard<string>&)> getSeqType = [&](const char* tag, const vguard<string>& alph) {
       if (!vm.count(tag))
-	return Compiler::isCharAlphabet(alph) ? Compiler::String : Compiler::Int;
+	return Compiler::isCharAlphabet(alph) ? Compiler::SeqType::String : Compiler::SeqType::IntVec;
       const char c = tolower (vm.at(tag).as<string>()[0]);
       if (c != 's' && c != 'i' && c != 'p')
 	Fail ("Sequence type must be S (string), I (integer vector) or P (profile weight matrix)");
-      return c == 's' ? Compiler::String : (c == 'i' ? Compiler::Int : Compiler::Profile);
+      return c == 's' ? Compiler::SeqType::String : (c == 'i' ? Compiler::SeqType::IntVec : Compiler::SeqType::Profile);
     };
     function<void(Compiler&)> compileMachine = [&](Compiler& compiler) {
       const Compiler::SeqType xSeqType = getSeqType ("inseq", machine.inputAlphabet());

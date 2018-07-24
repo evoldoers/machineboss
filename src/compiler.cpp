@@ -373,7 +373,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     for (InputToken xTok = 0; xTok < info.eval.inputTokenizer.tok2sym.size(); ++xTok)
       out << tab2 << xvec << "[" << xTok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (xvar, xidx + " - 1"), to_string(xTok))) << ";" << endl;
     break;
-  case Int:
+  case IntVec:
   case String:
     xtab = tab2;
     out << tab2 << "switch (" << xvar << "[" << xidx << " - 1]) {" << endl;
@@ -383,7 +383,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   }
 
   for (InputToken xTok = (xType == Profile ? 0 : 1); xTok < (xType == Profile ? 1 : info.eval.inputTokenizer.tok2sym.size()); ++xTok) {
-    if (xType == Int)
+    if (xType == IntVec)
       out << xtab << tab << "case " << (xTok - 1) << ":" << endl;
     else if (xType == String)
       out << xtab << tab << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
@@ -415,7 +415,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     for (OutputToken yTok = 0; yTok < info.eval.outputTokenizer.tok2sym.size(); ++yTok)
       out << tab2 << yvec << "[" << yTok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (yvar, yidx + " - 1"), to_string(yTok))) << ";" << endl;
     break;
-  case Int:
+  case IntVec:
   case String:
     ytab = tab2;
     out << tab2 << "switch (" << yvar << "[" << yidx << " - 1]) {" << endl;
@@ -425,7 +425,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   }
 
   for (OutputToken yTok = (yType == Profile ? 0 : 1); yTok < (yType == Profile ? 1 : info.eval.outputTokenizer.tok2sym.size()); ++yTok) {
-    if (yType == Int)
+    if (yType == IntVec)
       out << ytab << tab << "case " << (yTok - 1) << ":" << endl;
     else if (yType == String)
       out << ytab << tab << "case '" << info.eval.outputTokenizer.tok2sym[yTok] << "':" << endl;
@@ -453,7 +453,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     case Profile:
       out << ytab << tab3 << constVecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
       break;
-    case Int:
+    case IntVec:
     case String:
       xytab = ytab + tab2;
       out << ytab << tab3 << "switch (" << xvar << "[" << xidx << " - 1]) {" << endl;
@@ -463,7 +463,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     }
 
     for (InputToken xTok = (xType == Profile ? 0 : 1); xTok < (xType == Profile ? 1 : info.eval.inputTokenizer.tok2sym.size()); ++xTok) {
-      if (xType == Int)
+      if (xType == IntVec)
 	out << xytab << tab2 << "case " << (xTok - 1) << ":" << endl;
       else if (xType == String)
 	out << xytab << tab2 << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
@@ -515,10 +515,10 @@ string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& 
   ostringstream expr;
   const ExprType op = w->type;
   switch (op) {
-  case Null: expr << 0; break;
-  case Int: expr << w->args.intValue; break;
-  case Dbl: expr << w->args.doubleValue; break;
-  case Param:
+  case ExprType::Null: expr << 0; break;
+  case ExprType::Int: expr << w->args.intValue; break;
+  case ExprType::Dbl: expr << w->args.doubleValue; break;
+  case ExprType::Param:
     {
       const string& n (*w->args.param);
       if (funcIdx.count(n))
@@ -527,11 +527,11 @@ string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& 
 	expr << mapAccessor (paramvar, n);
     }
     break;
-  case Log:
-  case Exp:
+  case ExprType::Log:
+  case ExprType::Exp:
     expr << mathLibrary << (op == Log ? "log" : "exp") << "(" << expr2string(w->args.arg,funcIdx) << ")";
     break;
-  case Pow:
+  case ExprType::Pow:
     expr << mathLibrary << "pow(" << expr2string(w->args.binary.l,funcIdx) << "," << expr2string(w->args.binary.r,funcIdx) << ")";
     break;
   default:

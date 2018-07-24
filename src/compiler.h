@@ -12,7 +12,7 @@ struct Compiler {
   typedef size_t FuncIndex;
   typedef pair<StateIndex,TransIndex> StateTransIndex;
 
-  typedef enum SeqType { Profile = 0, Int = 1, String = 2 } SeqType;
+  typedef enum SeqType { Profile = 0, IntVec = 1, String = 2 } SeqType;
   
   // machine analysis for compiler
   struct MachineInfo {
