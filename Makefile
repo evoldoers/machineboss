@@ -361,8 +361,8 @@ t/src/test-compiledseq2prof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled: test-101-bitnoise-001 t/bin/test-compiled-bitnoise
-	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiled-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled: test-101-bitnoise-001 t/bin/test-compiledprof-bitnoise
+	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledprof-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq: t/bin/test-compiledseq-bitnoise
 	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledseq-bitnoise 101 001 t/io/params.json t/expect/101-bitnoise-001.json
