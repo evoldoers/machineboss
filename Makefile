@@ -349,8 +349,14 @@ test-align-stutter-noise:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
 # Compiler tests
-t/src/test-compiled-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiled.cpp
-	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inprof --outprof; cat t/src/testcompiled.cpp) >$@
+t/src/test-compiledprof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledprof.cpp
+	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq profile --outseq profile; cat t/src/testcompiledprof.cpp) >$@
+
+t/src/test-compiledseq-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq.cpp
+	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq string; cat t/src/testcompiledseq.cpp) >$@
+
+t/src/test-compiledseq2prof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq2prof.cpp
+	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq profile; cat t/src/testcompiledseq2prof.cpp) >$@
 
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
@@ -358,7 +364,13 @@ test-101-bitnoise-001:
 test-101-bitnoise-001-compiled: test-101-bitnoise-001 t/bin/test-compiled-bitnoise
 	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiled-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
-COMPILER_TESTS = test-101-bitnoise-001-compiled
+test-101-bitnoise-001-compiled-seq: t/bin/test-compiledseq-bitnoise
+	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledseq-bitnoise 101 001 t/io/params.json t/expect/101-bitnoise-001.json
+
+test-101-bitnoise-001-compiled-seq2prof: t/bin/test-compiledseq2prof-bitnoise
+	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledseq2prof-bitnoise 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+
+COMPILER_TESTS = test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(COMPILER_TESTS)

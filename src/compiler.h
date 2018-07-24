@@ -12,7 +12,7 @@ struct Compiler {
   typedef size_t FuncIndex;
   typedef pair<StateIndex,TransIndex> StateTransIndex;
 
-  typedef enum SeqType { Profile = 0, Int = 1 } SeqType;
+  typedef enum SeqType { Profile = 0, Int = 1, String = 2 } SeqType;
   
   // machine analysis for compiler
   struct MachineInfo {
@@ -38,6 +38,7 @@ struct Compiler {
   string funcKeyword;      // keywords to declare function (return type for C++, "function" for JS)
   string matrixType;       // type of probability matrix passed into function (for SeqType == Profile)
   string intVecType;       // type of integer vector passed into function (for SeqType == Int)
+  string stringType;       // type of string passed into function (for SeqType == String)
   string funcInit;         // create SoftPlus object, etc.
   string vecRefType;       // type of log-probability vector
   string constVecRefType;  // type of constant log-probability vector
@@ -75,7 +76,9 @@ struct Compiler {
   virtual string unaryLog (const string&) const = 0;
   virtual string unaryExp (const string&) const = 0;
   virtual string realLog (const string&) const = 0;
-  
+
+  static bool isCharAlphabet (const vguard<string>&);
+
   string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel = true) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;

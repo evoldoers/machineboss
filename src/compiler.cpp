@@ -89,6 +89,7 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
   intVecType = "const vector<int>& ";
+  stringType = "const string& ";
   vecRefType = "long long*";
   funcInit = tab + "const SoftPlus " + softplusvar + ";\n";
   constVecRefType = "const long long*";
@@ -194,19 +195,19 @@ void Compiler::MachineInfo::showCell (ostream& out, const string& indent, bool w
     desc.push_back (string("\")\""));
     if (withInput) {
       desc.push_back (string("\" ") + xvec + "(\"");
-      const auto& xtoks = eval.inputTokenizer.tok2sym;
-      for (size_t xtok = 0; xtok < xtoks.size(); ++xtok) {
-	desc.push_back (string(xtok ? "\" " : "\"") + (xtok == xtoks.size() - 1 ? string("-") : escaped_str(xtoks[xtok+1])) + ":\"");
-	desc.push_back (compiler.valOrInf (xvec + "[" + to_string(xtok) + "]"));
+      const auto& xToks = eval.inputTokenizer.tok2sym;
+      for (size_t xTok = 0; xTok < xToks.size(); ++xTok) {
+	desc.push_back (string(xTok ? "\" " : "\"") + (xTok == xToks.size() - 1 ? string("-") : escaped_str(xToks[xTok+1])) + ":\"");
+	desc.push_back (compiler.valOrInf (xvec + "[" + to_string(xTok) + "]"));
       }
       desc.push_back (string("\")\""));
     }
     if (withOutput) {
       desc.push_back (string("\" ") + yvec + "(\"");
-      const auto& ytoks = eval.outputTokenizer.tok2sym;
-      for (size_t ytok = 0; ytok < ytoks.size(); ++ytok) {
-	desc.push_back (string(ytok ? "\" " : "\"") + (ytok == ytoks.size() - 1 ? string("-") : escaped_str(ytoks[ytok+1])) + ":\"");
-	desc.push_back (compiler.valOrInf (yvec + "[" + to_string(ytok) + "]"));
+      const auto& yToks = eval.outputTokenizer.tok2sym;
+      for (size_t yTok = 0; yTok < yToks.size(); ++yTok) {
+	desc.push_back (string(yTok ? "\" " : "\"") + (yTok == yToks.size() - 1 ? string("-") : escaped_str(yToks[yTok+1])) + ":\"");
+	desc.push_back (compiler.valOrInf (yvec + "[" + to_string(yTok) + "]"));
       }
       desc.push_back (string("\")\""));
     }
@@ -296,8 +297,18 @@ string CPlusPlusCompiler::constArrayAccessor (const string& obj, const string& k
 string Compiler::funcVar (FuncIndex f) { return string("f") + to_string(f+1); }
 string Compiler::transVar (StateIndex s, TransIndex t) { return string("t") + to_string(s+1) + "_" + to_string(t+1); }
 
+bool Compiler::isCharAlphabet (const vguard<string>& alph) {
+  for (const auto& s: alph)
+    if (s.size() != 1)
+      return false;
+  return true;
+}
+
 string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, const char* funcName) const {
   Assert (m.nStates() > 0, "Can't compile empty machine");
+  Assert (xType != String || isCharAlphabet (m.inputAlphabet()), "Can't use string type for input when input alphabet contains multi-char tokens");
+  Assert (yType != String || isCharAlphabet (m.outputAlphabet()), "Can't use string type for output when output alphabet contains multi-char tokens");
+
   ostringstream out;
   const MachineInfo info (*this, m);
   const Machine& wm (info.wm);
@@ -308,8 +319,8 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   // function
   out << preamble;
   out << funcKeyword << " " << funcName << " ("
-      << (xType == Profile ? matrixType : intVecType) << xvar << ", "
-      << (yType == Profile ? matrixType : intVecType) << yvar << ", "
+      << (xType == Profile ? matrixType : (xType == String ? stringType : intVecType)) << xvar << ", "
+      << (yType == Profile ? matrixType : (yType == String ? stringType : intVecType)) << yvar << ", "
       << paramsType << paramvar << ") {" << endl;
   out << funcInit;
   
@@ -359,10 +370,11 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   switch (xType) {
   case Profile:
     out << tab2 << vecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
-    for (size_t xtok = 0; xtok < info.eval.inputTokenizer.tok2sym.size(); ++xtok)
-      out << tab2 << xvec << "[" << xtok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (xvar, xidx + " - 1"), to_string(xtok))) << ";" << endl;
+    for (InputToken xTok = 0; xTok < info.eval.inputTokenizer.tok2sym.size(); ++xTok)
+      out << tab2 << xvec << "[" << xTok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (xvar, xidx + " - 1"), to_string(xTok))) << ";" << endl;
     break;
   case Int:
+  case String:
     xtab = tab2;
     out << tab2 << "switch (" << xvar << "[" << xidx << " - 1]) {" << endl;
     break;
@@ -373,15 +385,17 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   for (InputToken xTok = (xType == Profile ? 0 : 1); xTok < (xType == Profile ? 1 : info.eval.inputTokenizer.tok2sym.size()); ++xTok) {
     if (xType == Int)
       out << xtab << tab << "case " << (xTok - 1) << ":" << endl;
+    else if (xType == String)
+      out << xtab << tab << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
     info.storeTransitions (out, xtab + tab2, true, true, false, false, xTok, 0, false);
     info.showCell (out, xtab + tab2, true, false);
 
-    if (xType == Int)
+    if (xType != Profile)
       out << xtab << tab2 << "break;" << endl;
   }
 
-  if (xType == Int)
+  if (xType != Profile)
     out << xtab << tab << "default:" << endl
 	<< xtab << tab2 << "return " << realInfinity << ";" << endl
 	<< xtab << tab2 << "break;" << endl
@@ -398,10 +412,11 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   string ytab;
   switch (yType) {
   case Profile:
-    for (size_t ytok = 0; ytok < info.eval.outputTokenizer.tok2sym.size(); ++ytok)
-      out << tab2 << yvec << "[" << ytok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (yvar, yidx + " - 1"), to_string(ytok))) << ";" << endl;
+    for (OutputToken yTok = 0; yTok < info.eval.outputTokenizer.tok2sym.size(); ++yTok)
+      out << tab2 << yvec << "[" << yTok << "] = " << unaryLog (constArrayAccessor (constArrayAccessor (yvar, yidx + " - 1"), to_string(yTok))) << ";" << endl;
     break;
   case Int:
+  case String:
     ytab = tab2;
     out << tab2 << "switch (" << yvar << "[" << yidx << " - 1]) {" << endl;
     break;
@@ -412,6 +427,8 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   for (OutputToken yTok = (yType == Profile ? 0 : 1); yTok < (yType == Profile ? 1 : info.eval.outputTokenizer.tok2sym.size()); ++yTok) {
     if (yType == Int)
       out << ytab << tab << "case " << (yTok - 1) << ":" << endl;
+    else if (yType == String)
+      out << ytab << tab << "case '" << info.eval.outputTokenizer.tok2sym[yTok] << "':" << endl;
 
     // x=0, y>0
     out << ytab << tab2 << "{" << endl;
@@ -437,6 +454,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
       out << ytab << tab3 << constVecRefType << " " << xvec << " = " << info.inputRowAccessor (xmat, xidx + " - 1") << ";" << endl;
       break;
     case Int:
+    case String:
       xytab = ytab + tab2;
       out << ytab << tab3 << "switch (" << xvar << "[" << xidx << " - 1]) {" << endl;
       break;
@@ -447,15 +465,17 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     for (InputToken xTok = (xType == Profile ? 0 : 1); xTok < (xType == Profile ? 1 : info.eval.inputTokenizer.tok2sym.size()); ++xTok) {
       if (xType == Int)
 	out << xytab << tab2 << "case " << (xTok - 1) << ":" << endl;
+      else if (xType == String)
+	out << xytab << tab2 << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
       info.storeTransitions (out, xytab + tab3, true, true, true, true, xTok, yTok, false);
       info.showCell (out, xytab + tab3, true, true);
 
-      if (xType == Int)
+      if (xType != Profile)
 	out << xytab << tab3 << "break;" << endl;
     }
 
-    if (xType == Int)
+    if (xType != Profile)
       out << xytab << tab2 << "default:" << endl
 	  << xytab << tab3 << "return " << realInfinity << ";" << endl
 	  << xytab << tab3 << "break;" << endl
@@ -463,11 +483,11 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
 
     out << ytab << tab2 << "}" << endl;  // end xidx loop
 
-    if (yType == Int)
+    if (yType != Profile)
       out << ytab << tab2 << "break;" << endl;
   }
 
-  if (yType == Int)
+  if (yType != Profile)
     out << ytab << tab << "default:" << endl
 	<< ytab << tab2 << "return " << realInfinity << ";" << endl
 	<< ytab << tab2 << "break;" << endl

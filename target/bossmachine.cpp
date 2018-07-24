@@ -100,8 +100,8 @@ int main (int argc, char** argv) {
     compOpts.add_options()
       ("cpp", "generate C++ dynamic programming code")
       ("js", "generate JavaScript dynamic programming code")
-      ("inprof", "input arg is gapped profile weight matrix, not sequence")
-      ("outprof", "output arg is gapped profile weight matrix, not sequence")
+      ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
+      ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
 
     po::options_description transOpts("");
@@ -354,9 +354,17 @@ int main (int argc, char** argv) {
       showMachine (cout);
 
     // compile
+    function<Compiler::SeqType(const char*,const vguard<string>&)> getSeqType = [&](const char* tag, const vguard<string>& alph) {
+      if (!vm.count(tag))
+	return Compiler::isCharAlphabet(alph) ? Compiler::String : Compiler::Int;
+      const char c = tolower (vm.at(tag).as<string>()[0]);
+      if (c != 's' && c != 'i' && c != 'p')
+	Fail ("Sequence type must be S (string), I (integer vector) or P (profile weight matrix)");
+      return c == 's' ? Compiler::String : (c == 'i' ? Compiler::Int : Compiler::Profile);
+    };
     function<void(Compiler&)> compileMachine = [&](Compiler& compiler) {
-      const Compiler::SeqType xSeqType = vm.count("inprof") ? Compiler::SeqType::Profile : Compiler::SeqType::Int;
-      const Compiler::SeqType ySeqType = vm.count("outprof") ? Compiler::SeqType::Profile : Compiler::SeqType::Int;
+      const Compiler::SeqType xSeqType = getSeqType ("inseq", machine.inputAlphabet());
+      const Compiler::SeqType ySeqType = getSeqType ("outseq", machine.outputAlphabet());
       cout << compiler.compileForward (machine, xSeqType, ySeqType);
     };
     Assert (!(vm.count("cpp") && vm.count("js")), "Can specify --cpp or --js but not both");
