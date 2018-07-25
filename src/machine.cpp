@@ -338,14 +338,6 @@ void Machine::readJson (const json& pj) {
       defs.readJson (pj.at("defs"));
     if (pj.count("cons"))
       cons.readJson (pj.at("cons"));
-    // commented out code auto-binds all defined names to their values, no longer necessarily since we're explicitly preserving the names
-    /*
-      ParamFuncs funcs;
-      if (pj.count("defs"))
-      funcs.readJson (pj.at("defs"));
-      for (auto& p_d: funcs.defs)
-      defs.defs[p_d.first] = WeightAlgebra::bind (p_d.second, funcs.defs);
-    */
   
     json jstate = pj.at("state");
     Assert (jstate.is_array(), "state is not an array");
