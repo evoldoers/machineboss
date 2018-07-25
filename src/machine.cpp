@@ -279,6 +279,7 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
+  // Check for composite, concatenated, tranposed, reversed, etc etc transducers
   if (pj.count("compose")) {
     const auto arg = pj["compose"];
     *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
@@ -334,6 +335,11 @@ void Machine::readJson (const json& pj) {
     *this = JsonReader<Machine>::fromJson (pj["eliminate"]).transpose();
 
   } else {
+
+    // Basic transducer with the following properties:
+    // (mandatory) state: list of states with transitions
+    //  (optional)  defs: function definitions
+    //  (optional)  cons: parameter-fitting constraints
     if (pj.count("defs"))
       defs.readJson (pj.at("defs"));
     if (pj.count("cons"))
