@@ -77,6 +77,8 @@ struct Compiler {
   virtual string unaryExp (const string&) const = 0;
   virtual string realLog (const string&) const = 0;
 
+  virtual string postamble (const vguard<string>& funcNames) const = 0;
+  
   static bool isCharAlphabet (const vguard<string>&);
 
   string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
@@ -102,6 +104,7 @@ struct JavaScriptCompiler : Compiler {
   string warn (const vguard<string>& args) const;
   string makeString (const string& arg) const;
   string toString (const string& arg) const;
+  string postamble (const vguard<string>& funcNames) const;
 };
 
 struct CPlusPlusCompiler : Compiler {
@@ -120,6 +123,7 @@ struct CPlusPlusCompiler : Compiler {
   string warn (const vguard<string>& args) const;
   string makeString (const string& arg) const;
   string toString (const string& arg) const;
+  string postamble (const vguard<string>& funcNames) const;
 };
 
 #endif /* COMPILER_INCLUDED */

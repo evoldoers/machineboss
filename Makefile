@@ -130,13 +130,13 @@ generate-$(CATEGORY)s: $(patsubst $(CATEGORY)/%.json,src/$(CATEGORY)/%.h,$(wildc
 src/preset/$(FILE).h: preset/$(FILE).json
 	xxd -i $< >$@
 
-preset/protpsw.json constraints/protpsw.json: node/makepsw.js
-	node/makepsw.js -a ACDEFGHIKLMNPQRSTVWY -n protpsw >$@
+preset/protpsw.json constraints/protpsw.json: js/makepsw.js
+	js/makepsw.js -a ACDEFGHIKLMNPQRSTVWY -n protpsw >$@
 
-preset/dnapsw.json constraints/dnapsw.json: node/makepsw.js
-	node/makepsw.js -a ACGT -n dnapsw >$@
+preset/dnapsw.json constraints/dnapsw.json: js/makepsw.js
+	js/makepsw.js -a ACGT -n dnapsw >$@
 
-preset/%.json: node/%.js
+preset/%.json: js/%.js
 	node $< >$@
 
 preset/prot2dna.json: preset/flankbase.json preset/pint.json preset/translate.json preset/simple_introns.json preset/base2acgt.json

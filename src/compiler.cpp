@@ -11,6 +11,7 @@ static const string xsize ("sx"), ysize ("sy");
 static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
 
 JavaScriptCompiler::JavaScriptCompiler() {
+  preamble = string("var ") + softplusvar + " = require('./softplus.js')\n";
   funcKeyword = "function";
   vecRefType = "var";
   constVecRefType = "const";
@@ -45,23 +46,23 @@ string JavaScriptCompiler::arrayRowAccessor (const string& arrayName, const stri
 }
 
 string JavaScriptCompiler::binarySoftplus (const string& a, const string& b) const {
-  return string("Math.max (") + a + ", " + b + ") + Math.log(1 + Math.exp(-Math.abs(" + a + " - " + b + ")))";
+  return softplusvar + ".int_logsumexp (" + a + ", " + b + ")";
 }
 
 string JavaScriptCompiler::unaryLog (const string& x) const {
-  return string("Math.log (") + x + ")";
+  return softplusvar + ".int_log (" + x + ")";
 }
 
 string JavaScriptCompiler::boundLog (const string& x) const {
-  return x;
+  return softplusvar + ".bound_intlog (" + x + ")";
 }
 
 string JavaScriptCompiler::unaryExp (const string& x) const {
-  return string("Math.exp (") + x + ")";
+  return softplusvar + ".int_exp (" + x + ")";
 }
 
 string JavaScriptCompiler::realLog (const string& x) const {
-  return x;
+  return softplusvar + ".int_to_log (" + x + ")";
 }
 
 string JavaScriptCompiler::warn (const vguard<string>& args) const {
@@ -74,6 +75,13 @@ string JavaScriptCompiler::makeString (const string& arg) const {
 
 string JavaScriptCompiler::toString (const string& arg) const {
   return arg;
+}
+
+string JavaScriptCompiler::postamble (const vguard<string>& funcs) const {
+  vguard<string> pairs;
+  for (const auto& f: funcs)
+    pairs.push_back (f + ": " + f);
+  return string ("module.exports = { ") + join (pairs, ", ") + " }\n";
 }
 
 string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) const {
@@ -284,6 +292,10 @@ string CPlusPlusCompiler::makeString (const string& arg) const {
 
 string CPlusPlusCompiler::toString (const string& arg) const {
   return string("to_string(") + arg + ")";
+}
+
+string CPlusPlusCompiler::postamble (const vguard<string>& funcs) const {
+  return string();
 }
 
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
@@ -508,6 +520,10 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << tab << "return " << resultvar << ";" << endl;
   out << "}" << endl;  // end function
 
+  vguard<string> funcNames;
+  funcNames.push_back (string (funcName));
+  out << postamble (funcNames);
+  
   return out.str();
 }
 
