@@ -361,10 +361,13 @@ t/src/test-compiledseq-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/
 t/src/test-compiledseq2prof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq2prof.cpp
 	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq profile; cat t/src/testcompiledseq2prof.cpp) >$@
 
+js/lib/%.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+	@bin/$(BOSS) t/machine/$*.json --js --inseq profile --outseq profile > js/lib/$*.js
+
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled: test-101-bitnoise-001 t/bin/test-compiledprof-bitnoise
+test-101-bitnoise-001-compiled: t/bin/test-compiledprof-bitnoise
 	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledprof-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq: t/bin/test-compiledseq-bitnoise
@@ -373,7 +376,10 @@ test-101-bitnoise-001-compiled-seq: t/bin/test-compiledseq-bitnoise
 test-101-bitnoise-001-compiled-seq2prof: t/bin/test-compiledseq2prof-bitnoise
 	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledseq2prof-bitnoise 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
-COMPILER_TESTS = test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof
+test-101-bitnoise-001-compiled-js: js/lib/bitnoise.js
+	@$(TEST) t/roundfloats.pl 4 node js/lib/testcompiledprof.js --module bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+
+COMPILER_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(COMPILER_TESTS)

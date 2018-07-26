@@ -107,6 +107,7 @@ Transducer application:
 Compiler:
   --cpp                      generate C++ dynamic programming code
   --js                       generate JavaScript dynamic programming code
+  --showcells                include debugging output in generated code
   --inseq arg                input sequence type (String, Intvec, Profile)
   --outseq arg               output sequence type (String, Intvec, Profile)
 

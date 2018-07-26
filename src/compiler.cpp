@@ -25,7 +25,7 @@ JavaScriptCompiler::JavaScriptCompiler() {
   logWeightType = "const";
   resultType = "const";
   mathLibrary = "Math.";
-  infinity = "Infinity";
+  infinity = softplusvar + ".SOFTPLUS_INTLOG_INFINITY";
   realInfinity = "Infinity";
 }
 

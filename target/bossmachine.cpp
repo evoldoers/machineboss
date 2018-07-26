@@ -100,6 +100,7 @@ int main (int argc, char** argv) {
     compOpts.add_options()
       ("cpp", "generate C++ dynamic programming code")
       ("js", "generate JavaScript dynamic programming code")
+      ("showcells", "include debugging output in generated code")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -365,6 +366,7 @@ int main (int argc, char** argv) {
     function<void(Compiler&)> compileMachine = [&](Compiler& compiler) {
       const Compiler::SeqType xSeqType = getSeqType ("inseq", machine.inputAlphabet());
       const Compiler::SeqType ySeqType = getSeqType ("outseq", machine.outputAlphabet());
+      compiler.showCells = vm.count("showcells");
       cout << compiler.compileForward (machine, xSeqType, ySeqType);
     };
     Assert (!(vm.count("cpp") && vm.count("js")), "Can specify --cpp or --js but not both");
