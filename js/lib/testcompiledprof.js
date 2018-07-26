@@ -6,16 +6,15 @@ var fs = require('fs'),
 
 var getopt = Getopt.create([
   ['m' , 'module=FILE'      , 'specify bossmachine-generated module'],
+  ['p' , 'params=FILE'      , 'specify parameters as JSON file'],
+  ['x' , 'inprof=FILE'      , 'specify input profile as CSV file'],
+  ['y' , 'outprof=FILE'     , 'specify output profile as CSV file'],
+  ['i' , 'inseq=STRING'     , 'specify input sequence as string'],
+  ['o' , 'outseq=STRING'    , 'specify output sequence as string'],
   ['h' , 'help'             , 'display this help message']
 ])              // create Getopt instance
 .bindHelp()     // bind option 'help' to default action
 var opt = getopt.parseSystem() // parse command line
-
-var argv = opt.argv, argc = argv.length
-if (argc != 2 && argc != 3) {
-  console.warn ("Usage: " + path.basename (__filename) + " [--help] inputProfile.csv outputProfile.csv [params.json]")
-  process.exit(1)
-}
 
 var module = opt.options.module
 if (!module) {
@@ -24,17 +23,30 @@ if (!module) {
 }
 var computeForward = require('./'+module).computeForward
 
+var input, output, params
+
 function readCSV (filename) {
   var rows = fs.readFileSync(filename).toString().split('\n').filter (function (line) { return line.length }).map (function (line) { return line.split(',') })
   return { header: rows[0], row: rows.slice(1).map (function (row) { return row.map (parseFloat) }) }
 }
 
-var inProf = readCSV (argv[0])
-var outProf = readCSV (argv[1])
-var params
-if (argc > 2) {
-  params = JSON.parse (fs.readFileSync (argv[2]).toString())
-} else
+if (opt.options.inprof)
+  input = readCSV (opt.options.inprof).row
+else if (opt.options.inseq)
+  input = opt.options.inseq
+else
+  throw new Error ("You must specify an input sequence with --inprof or --inseq")
+
+if (opt.options.outprof)
+  output = readCSV (opt.options.outprof).row
+else if (opt.options.outseq)
+  output = opt.options.outseq
+else
+  throw new Error ("You must specify an output sequence with --outprof or --outseq")
+
+if (opt.options.params)
+  params = JSON.parse (fs.readFileSync (opt.options.params).toString())
+else
   params = {}
 
-console.log (JSON.stringify ([computeForward (inProf.row, outProf.row, params)]))
+console.log (JSON.stringify ([computeForward (input, output, params)]))
