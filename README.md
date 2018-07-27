@@ -64,7 +64,9 @@ Transducer construction:
   -p [ --preset ] arg        select preset (compdna, comprna, dnapsw, null, 
                              prot2dna, protpsw, psw2dna, translate)
   -g [ --generate ] arg      sequence generator '&lt;'
+  --generate-fasta arg       generator for FASTA-format sequence
   -a [ --accept ] arg        sequence acceptor '&gt;'
+  --accept-fasta arg         acceptor for FASTA-format sequence
   -w [ --weight ] arg        weighted null transition '#'
   -H [ --hmmer ] arg         load machine from HMMER3 model file
   -V [ --csv ] arg           load machine from CSV file
@@ -100,6 +102,8 @@ Transducer application:
   -F [ --functions ] arg     load functions & constants
   -C [ --constraints ] arg   load constraints
   -D [ --data ] arg          load sequence-pairs
+  -I [ --input-fasta ] arg   load input sequences from FASTA file
+  -O [ --output-fasta ] arg  load output sequences from FASTA file
   -T [ --train ]             Baum-Welch parameter fit
   -A [ --align ]             Viterbi sequence alignment
   -L [ --loglike ]           Forward log-likelihood calculation

@@ -45,7 +45,9 @@ int main (int argc, char** argv) {
       ("load,l", po::value<string>(), "load machine from file")
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate,g", po::value<string>(), "sequence generator '<'")
+      ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("accept,a", po::value<string>(), "sequence acceptor '>'")
+      ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
       ("csv,V", po::value<string>(), "load machine from CSV file")
@@ -91,6 +93,8 @@ int main (int argc, char** argv) {
       ("functions,F", po::value<vector<string> >(), "load functions & constants")
       ("constraints,C", po::value<vector<string> >(), "load constraints")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs")
+      ("input-fasta,I", po::value<string>(), "load input sequences from FASTA file")
+      ("output-fasta,O", po::value<string>(), "load output sequences from FASTA file")
       ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
@@ -213,9 +217,17 @@ int main (int argc, char** argv) {
 	else if (command == "--generate") {
 	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
 	  m = Machine::generator (inSeq.name, inSeq.seq);
+	} else if (command == "--generate-fasta") {
+	  const vguard<FastSeq> inSeqs = readFastSeqs (getArg().c_str());
+	  Require (inSeqs.size() == 1, "--generate-fasta file must contain exactly one FASTA-format sequence");
+	  m = Machine::generator (inSeqs[0].name, splitToChars (inSeqs[0].seq));
 	} else if (command == "--accept") {
 	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.name, outSeq.seq);
+	} else if (command == "--accept-fasta") {
+	  const vguard<FastSeq> outSeqs = readFastSeqs (getArg().c_str());
+	  Require (outSeqs.size() == 1, "--accept-fasta file must contain exactly one FASTA-format sequence");
+	  m = Machine::acceptor (outSeqs[0].name, splitToChars (outSeqs[0].seq));
 	} else if (command == "--compose")
 	  m = Machine::compose (popMachine(), nextMachine());
 	else if (command == "--concat")
@@ -379,19 +391,27 @@ int main (int argc, char** argv) {
     }
 
     // load data
-    Require (!vm.count("data") || (vm.count("train") || vm.count("loglike") || vm.count("align")), "No point in specifying --data without --train, --loglike, or --align");
+    const bool gotData = vm.count("data") || (vm.count("input-fasta") && vm.count("output-fasta"));
+    const bool needData = vm.count("train") || vm.count("loglike") || vm.count("align");
+    Require (!gotData || needData, "No point in specifying --data without --train, --loglike, or --align");
     const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();
     SeqPairList data;
     if (vm.count("data"))
       JsonLoader<SeqPairList>::readFiles (data, vm.at("data").as<vector<string> >());
-    else if (noIO)
+    else if (vm.count("input-fasta") && vm.count("output-fasta")) {
+      const vguard<FastSeq> inSeqs = readFastSeqs (vm.at("input-fasta").as<string>().c_str());
+      const vguard<FastSeq> outSeqs = readFastSeqs (vm.at("output-fasta").as<string>().c_str());
+      for (const auto& inSeq: inSeqs)
+	for (const auto& outSeq: outSeqs)
+	  data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
+    } else if (noIO)
       data.seqPairs.push_back (SeqPair());  // if the model has no I/O, then add an automatic pair of empty, nameless sequences (the only possible evidence)
 
     // fit parameters
     Params params;
     if (vm.count("train")) {
       Require ((vm.count("constraints") || !machine.cons.empty())
-	       && (vm.count("data") || noIO),
+	       && (gotData || noIO),
 	       "To fit parameters, please specify a constraints file and (for machines with input/output) a data file");
       MachineFitter fitter;
       fitter.machine = machine;
@@ -419,7 +439,7 @@ int main (int argc, char** argv) {
       
     // align sequences
     if (vm.count("align")) {
-      Require (vm.count("data"), "To align sequences, please specify a data file");
+      Require (gotData, "To align sequences, please specify a data file");
       const EvaluatedMachine eval (machine, params);
       cout << "[";
       size_t n = 0;

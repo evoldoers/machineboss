@@ -82,6 +82,14 @@ std::vector<std::string> split (const std::string& s, const char* splitChars) {
   return result;
 }
 
+std::vector<std::string> splitToChars (const std::string& s) {
+  std::vector<std::string> result;
+  result.reserve (s.size());
+  for (const char c: s)
+    result.push_back (string (1, c));
+  return result;
+}
+
 std::string toupper (const std::string& s) {
   std::string r (s);
   for (size_t n = 0; n < r.size(); ++n)

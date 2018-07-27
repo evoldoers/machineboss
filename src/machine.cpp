@@ -1219,8 +1219,8 @@ void MachinePath::writeJson (ostream& out) const {
     if (!t.inputEmpty())
       out << ",\"in\":\"" << t.in << "\"";
     if (!t.outputEmpty())
-      out << ",\"out\":\"" << t.out;
-    out << "\"}";
+      out << ",\"out\":\"" << t.out << "\"";
+    out << "}";
   }
   out << "]}";
 }

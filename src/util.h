@@ -81,6 +81,7 @@ std::vector<S> transform_container (const Container& v, S (op) (typename Contain
 
 /* split */
 std::vector<std::string> split (const std::string& s, const char* splitChars = " \t\n");
+std::vector<std::string> splitToChars (const std::string& s);
 
 /* toupper */
 std::string toupper (const std::string& s);
