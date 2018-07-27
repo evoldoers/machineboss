@@ -1,0 +1,1 @@
+{"state":[{"n":0,"trans":[{"to":0,"in":"A","out":"A","weight":{"/":[1,"pA"]}},{"to":0,"in":"C","out":"C","weight":{"/":[1,"pC"]}},{"to":0,"in":"G","out":"G","weight":{"/":[1,"pG"]}},{"to":0,"in":"T","out":"T","weight":{"/":[1,"pT"]}}]}]}
