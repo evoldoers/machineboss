@@ -134,8 +134,11 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   }
 }
 
-void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, bool outputWaiting) const {
+void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, SeqType outType, bool outputWaiting) const {
+  const int mul = outType == Profile ? 2 : 1;
+  const int inc = outType == Profile ? 1 : 0;
   if (outputWaiting) {
+    Assert (outType == Profile, "should not get here, can't have outputWaiting==1 && outType!=Profile");
     if (withInput && !withOutput && !inTok) {
       const string expr = xcell + "[" + to_string (2*s + 1) + "] + " + xvec + "[" + to_string (eval.inputTokenizer.tok2sym.size() - 1) + "]";
       exprs.push_back (expr);
@@ -145,7 +148,7 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
       exprs.push_back (expr);
     }
   } else {
-    if (withOutput && !withInput && wm.state[s].waits() && !outTok) {
+    if (withOutput && !withInput && wm.state[s].waits() && !outTok && outType == Profile) {
       const string expr = ycell + "[" + to_string(2*s) + "] + " + yvec + "[" + to_string (eval.outputTokenizer.tok2sym.size() - 1) + "]";
       exprs.push_back (expr);
     }
@@ -154,7 +157,7 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
       if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
 	if (!withInput || !inTok || trans.in == eval.inputTokenizer.tok2sym[inTok])
 	  if (!withOutput || !outTok || trans.out == eval.outputTokenizer.tok2sym[outTok]) {
-	    string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (2*s_t.first + 1) + "] + " + transVar(s_t.first,s_t.second);
+	    string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (mul*s_t.first + inc) + "] + " + transVar(s_t.first,s_t.second);
 	    if (withInput && !inTok)
 	      expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
 	    if (withOutput && !outTok)
@@ -166,27 +169,29 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, bool start) const {
+void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
+  const int mul = outType == Profile ? 2 : 1;
+  const int inc = outType == Profile ? 1 : 0;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
-    for (int outputWaiting = 0; outputWaiting < 2; ++outputWaiting) {
+    for (int outputWaiting = 0; outputWaiting < (outType == Profile ? 2 : 1); ++outputWaiting) {
       vguard<string> exprs;
       if (start && s == 0 && outputWaiting == 0)
 	exprs.push_back ("0");
       if (withIn)
-	addTransitions (exprs, true, false, s, inTok, outTok, outputWaiting);
+	addTransitions (exprs, true, false, s, inTok, outTok, outType, outputWaiting);
       if (withOut)
-	addTransitions (exprs, false, true, s, inTok, outTok, outputWaiting);
+	addTransitions (exprs, false, true, s, inTok, outTok, outType, outputWaiting);
       if (withBoth)
-	addTransitions (exprs, true, true, s, inTok, outTok, outputWaiting);
+	addTransitions (exprs, true, true, s, inTok, outTok, outType, outputWaiting);
       if (withNull)
-	addTransitions (exprs, false, false, s, inTok, outTok, outputWaiting);
-      result << indent << currentcell << "[" << (2*s + outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab, true, outputWaiting) << ";" << endl;
+	addTransitions (exprs, false, false, s, inTok, outTok, outType, outputWaiting);
+      result << indent << currentcell << "[" << (mul*s + inc*outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab, true, outputWaiting) << ";" << endl;
     }
   }
 }
 
-string Compiler::MachineInfo::bufRowAccessor (const string& a, const string& r) const {
-  return compiler.arrayRowAccessor (a, r, to_string (2*wm.nStates()));
+string Compiler::MachineInfo::bufRowAccessor (const string& a, const string& r, const SeqType outType) const {
+  return compiler.arrayRowAccessor (a, r, to_string ((outType == Profile ? 2 : 1) * wm.nStates()));
 }
 
 string Compiler::MachineInfo::inputRowAccessor (const string& a, const string& r) const {
@@ -357,17 +362,17 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << tab << declareArray (yvec, to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
   
   // Declare DP matrix arrays
-  // Indexing convention: buf[xIndex][2*state + (yWaitFlag ? 1 : 0)]
-  out << tab << declareArray (buf0var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
-  out << tab << declareArray (buf1var, xsize + " + 1", to_string (2*info.wm.nStates())) << endl;
+  // Indexing convention: buf[xIndex][(yType == Profile ? 2 : 1)*state + (yWaitFlag ? 1 : 0)]
+  out << tab << declareArray (buf0var, xsize + " + 1", to_string ((yType == Profile ? 2 : 1)*info.wm.nStates())) << endl;
+  out << tab << declareArray (buf1var, xsize + " + 1", to_string ((yType == Profile ? 2 : 1)*info.wm.nStates())) << endl;
   out << tab << indexType << " " << xidx << " = 0, " << yidx << ";" << endl;
 
   // Fill DP matrix
   // x=0, y=0
   out << tab << "{" << endl;
-  out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0") << ";" << endl;
+  out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0", yType) << ";" << endl;
 
-  info.storeTransitions (out, tab2, true, false, false, false, 0, 0, true);
+  info.storeTransitions (out, tab2, true, false, false, false, 0, 0, yType, true);
   info.showCell (out, tab2, false, false);
 
   out << tab << "}" << endl;
@@ -375,8 +380,8 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   // x>0, y=0
   out << tab << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
 
-  out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, xidx) << ";" << endl;
-  out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1") << ";" << endl;
+  out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, xidx, yType) << ";" << endl;
+  out << tab2 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (buf0var, xidx + " - 1", yType) << ";" << endl;
 
   string xtab;
   switch (xType) {
@@ -400,7 +405,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     else if (xType == String)
       out << xtab << tab << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
-    info.storeTransitions (out, xtab + tab2, true, true, false, false, xTok, 0, false);
+    info.storeTransitions (out, xtab + tab2, true, true, false, false, xTok, 0, yType, false);
     info.showCell (out, xtab + tab2, true, false);
 
     if (xType != Profile)
@@ -409,7 +414,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
 
   if (xType != Profile)
     out << xtab << tab << "default:" << endl
-	<< xtab << tab2 << "return " << realInfinity << ";" << endl
+	<< xtab << tab2 << "return -" << realInfinity << ";" << endl
 	<< xtab << tab2 << "break;" << endl
 	<< tab2 << "}" << endl;
 
@@ -444,10 +449,10 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
 
     // x=0, y>0
     out << ytab << tab2 << "{" << endl;
-    out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0") << ";" << endl;
-    out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0") << ";" << endl;
+    out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0", yType) << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0", yType) << ";" << endl;
 
-    info.storeTransitions (out, ytab + tab3, true, false, true, false, 0, yTok, false);
+    info.storeTransitions (out, ytab + tab3, true, false, true, false, 0, yTok, yType, false);
     info.showCell (out, ytab + tab3, false, true);
 
     out << ytab << tab2 << "}" << endl;
@@ -455,10 +460,10 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     // x>0, y>0
     out << ytab << tab2 << "for (" << xidx << " = 1; " << xidx << " <= " << xsize << "; ++" << xidx << ") {" << endl;
 
-    out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, xidx) << ";" << endl;
-    out << ytab << tab3 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (currentvar, xidx + " - 1") << ";" << endl;
-    out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, xidx) << ";" << endl;
-    out << ytab << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1") << ";" << endl;
+    out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, xidx, yType) << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << xcell << " = " << info.bufRowAccessor (currentvar, xidx + " - 1", yType) << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, xidx, yType) << ";" << endl;
+    out << ytab << tab3 << constCellRefType << " " << xycell << " = " << info.bufRowAccessor (prevvar, xidx + " - 1", yType) << ";" << endl;
 
     string xytab (ytab);
     switch (xType) {
@@ -480,7 +485,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
       else if (xType == String)
 	out << xytab << tab2 << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
-      info.storeTransitions (out, xytab + tab3, true, true, true, true, xTok, yTok, false);
+      info.storeTransitions (out, xytab + tab3, true, true, true, true, xTok, yTok, yType, false);
       info.showCell (out, xytab + tab3, true, true);
 
       if (xType != Profile)
@@ -489,7 +494,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
 
     if (xType != Profile)
       out << xytab << tab2 << "default:" << endl
-	  << xytab << tab3 << "return " << realInfinity << ";" << endl
+	  << xytab << tab3 << "return -" << realInfinity << ";" << endl
 	  << xytab << tab3 << "break;" << endl
 	  << xytab << tab << "}" << endl;
 
@@ -501,14 +506,14 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
 
   if (yType != Profile)
     out << ytab << tab << "default:" << endl
-	<< ytab << tab2 << "return " << realInfinity << ";" << endl
+	<< ytab << tab2 << "return -" << realInfinity << ";" << endl
 	<< ytab << tab2 << "break;" << endl
 	<< ytab << tab << "}" << endl;
 
   out << tab << "}" << endl;  // end yidx loop
 
   // get result
-  out << tab << resultType << " " << resultvar << " = " << realLog (info.bufRowAccessor (string("(") + ysize + " & 1 ? " + buf1var + " : " + buf0var + ")", xsize) + "[" + to_string (2*info.wm.nStates() - 1) + "]") << ";" << endl;
+  out << tab << resultType << " " << resultvar << " = " << realLog (info.bufRowAccessor (string("(") + ysize + " & 1 ? " + buf1var + " : " + buf0var + ")", xsize, yType) + "[" + to_string ((yType == Profile ? 2 : 1)*info.wm.nStates() - 1) + "]") << ";" << endl;
   
   // delete
   out << deleteArray (xmat);
