@@ -364,6 +364,9 @@ t/src/test-compiledseq-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/
 t/src/test-compiledseq2prof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq2prof.cpp
 	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq profile; cat t/src/testcompiledseq2prof.cpp) >$@
 
+t/src/test-compiledfasta-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledfasta.cpp
+	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq string; cat t/src/testcompiledfasta.cpp) >$@
+
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 

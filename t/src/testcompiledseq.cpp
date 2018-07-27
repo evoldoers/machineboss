@@ -1,7 +1,6 @@
 // #include "../../src/softplus.h"
 // include a compiled computeForward() as well
 
-#include "../../src/csv.h"
 #include "../../src/params.h"
 #include <fstream>
 
