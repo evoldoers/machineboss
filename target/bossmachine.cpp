@@ -89,12 +89,14 @@ int main (int argc, char** argv) {
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
       ("showparams,W", "show unbound parameters in final machine")
+
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
       ("functions,F", po::value<vector<string> >(), "load functions & constants (JSON)")
       ("norms,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
+
       ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
