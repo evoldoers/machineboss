@@ -8,9 +8,11 @@
 // E-step
 struct MachineCounts {
   vguard<vguard<double> > count;  // indexed: count[state][nTrans]
+  double loglike;
   MachineCounts();
   MachineCounts (const EvaluatedMachine&);
   MachineCounts (const EvaluatedMachine&, const SeqPair&);
+  MachineCounts (const EvaluatedMachine&, const SeqPairList&);
   void init (const EvaluatedMachine&);
   double add (const EvaluatedMachine&, const SeqPair&);  // returns log-likelihood
   MachineCounts& operator+= (const MachineCounts&);

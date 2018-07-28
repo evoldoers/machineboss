@@ -27,6 +27,13 @@ MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPair& se
   (void) add (machine, seqPair);
 }
 
+MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPairList& seqPairList)
+{
+  init (machine);
+  for (const auto& seqPair: seqPairList.seqPairs)
+    (void) add (machine, seqPair);
+}
+
 void MachineCounts::init (const EvaluatedMachine& machine) {
   count = vguard<vguard<double> > (machine.nStates());
   for (StateIndex s = 0; s < machine.nStates(); ++s)
@@ -37,7 +44,9 @@ double MachineCounts::add (const EvaluatedMachine& machine, const SeqPair& seqPa
   const ForwardMatrix forward (machine, seqPair);
   const BackwardMatrix backward (machine, seqPair);
   backward.getCounts (forward, *this);
-  return forward.logLike();
+  const double result = forward.logLike();
+  loglike += result;
+  return result;
 }
 
 MachineCounts& MachineCounts::operator+= (const MachineCounts& counts) {

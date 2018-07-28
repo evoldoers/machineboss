@@ -17,6 +17,7 @@
 #include "../src/fitter.h"
 #include "../src/viterbi.h"
 #include "../src/forward.h"
+#include "../src/counts.h"
 #include "../src/util.h"
 #include "../src/schema.h"
 #include "../src/hmmer.h"
@@ -100,6 +101,7 @@ int main (int argc, char** argv) {
       ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
+      ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ;
 
     po::options_description compOpts("Compiler");
@@ -438,7 +440,14 @@ int main (int argc, char** argv) {
       }
       cout << "]\n";
     }
-      
+
+    // compute counts
+    if (vm.count("counts")) {
+      const EvaluatedMachine eval (machine, params);
+      const MachineCounts counts (eval, data);
+      counts.writeJson (cout);
+    }
+
     // align sequences
     if (vm.count("align")) {
       Require (gotData, "To align sequences, please specify a data file");
