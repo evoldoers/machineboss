@@ -98,12 +98,12 @@ Transducer application:
   -G [ --graphviz ]          write machine in Graphviz DOT format
   -M [ --memoize ]           memoize repeated expressions for compactness
   -W [ --showparams ]        show unbound parameters in final machine
-  -P [ --params ] arg        load parameters
-  -F [ --functions ] arg     load functions & constants
-  -C [ --constraints ] arg   load constraints
-  -D [ --data ] arg          load sequence-pairs
-  -I [ --input-fasta ] arg   load input sequences from FASTA file
-  -O [ --output-fasta ] arg  load output sequences from FASTA file
+  -P [ --params ] arg        load parameters (JSON)
+  -F [ --functions ] arg     load functions & constants (JSON)
+  -N [ --norms ] arg         load normalization constraints (JSON)
+  -D [ --data ] arg          load sequence-pairs (JSON)
+  -I [ --input-fasta ] arg   load input sequence(s) from FASTA file
+  -O [ --output-fasta ] arg  load output sequence(s) from FASTA file
   -T [ --train ]             Baum-Welch parameter fit
   -A [ --align ]             Viterbi sequence alignment
   -L [ --loglike ]           Forward log-likelihood calculation

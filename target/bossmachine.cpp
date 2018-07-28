@@ -89,12 +89,12 @@ int main (int argc, char** argv) {
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
       ("showparams,W", "show unbound parameters in final machine")
-      ("params,P", po::value<vector<string> >(), "load parameters")
-      ("functions,F", po::value<vector<string> >(), "load functions & constants")
-      ("constraints,C", po::value<vector<string> >(), "load constraints")
-      ("data,D", po::value<vector<string> >(), "load sequence-pairs")
-      ("input-fasta,I", po::value<string>(), "load input sequences from FASTA file")
-      ("output-fasta,O", po::value<string>(), "load output sequences from FASTA file")
+      ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
+      ("functions,F", po::value<vector<string> >(), "load functions & constants (JSON)")
+      ("norms,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
+      ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
+      ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
+      ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
       ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
@@ -340,12 +340,12 @@ int main (int argc, char** argv) {
       JsonLoader<ParamFuncs>::readFiles (funcs, vm.at("functions").as<vector<string> >());
 
     Constraints constraints;
-    if (vm.count("constraints"))
-      JsonLoader<Constraints>::readFiles (constraints, vm.at("constraints").as<vector<string> >());
+    if (vm.count("norms"))
+      JsonLoader<Constraints>::readFiles (constraints, vm.at("norms").as<vector<string> >());
 
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
-    if ((vm.count("params") || vm.count("functions") || vm.count("constraints"))
+    if ((vm.count("params") || vm.count("functions") || vm.count("norms"))
 	&& !(vm.count("train") || vm.count("loglike") || vm.count("align"))) {
       machine.defs = seed;
       machine.defs.defs.insert (funcs.defs.begin(), funcs.defs.end());
@@ -410,12 +410,12 @@ int main (int argc, char** argv) {
     // fit parameters
     Params params;
     if (vm.count("train")) {
-      Require ((vm.count("constraints") || !machine.cons.empty())
+      Require ((vm.count("norms") || !machine.cons.empty())
 	       && (gotData || noIO),
 	       "To fit parameters, please specify a constraints file and (for machines with input/output) a data file");
       MachineFitter fitter;
       fitter.machine = machine;
-      if (vm.count("constraints"))
+      if (vm.count("norms"))
 	fitter.constraints = constraints;
       fitter.constants = funcs;
       fitter.seed = vm.count("params") ? seed : fitter.allConstraints().defaultParams();
@@ -447,7 +447,7 @@ int main (int argc, char** argv) {
 	const ViterbiMatrix viterbi (eval, seqPair);
 	const MachinePath path = viterbi.path (machine);
 	cout << (n++ ? ",\n " : "");
-	path.writeJson (cout);
+	path.writeJson (cout, machine);
       }
       cout << "]\n";
     }

@@ -340,13 +340,13 @@ test-max-bitnoise-params-tiny: t/bin/testmaximize
 	@$(TEST) t/roundfloats.pl 4 t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
-	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
 
 test-funcs:
-	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -C t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
 
 test-single-param:
-	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json t/machine/bsc.json -C t/io/econs.json -D t/io/seqpairlist.json -T -F t/io/params.json t/expect/single-param.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json t/machine/bsc.json -N t/io/econs.json -D t/io/seqpairlist.json -T -F t/io/params.json t/expect/single-param.json
 
 test-align-stutter-noise:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
@@ -368,7 +368,7 @@ t/src/test-compiledfasta-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/sr
 	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq string; cat t/src/testcompiledfasta.cpp) >$@
 
 test-101-bitnoise-001:
-	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -C t/io/pqcons.json -L t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled: t/bin/test-compiledprof-bitnoise
 	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledprof-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json

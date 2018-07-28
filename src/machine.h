@@ -40,11 +40,6 @@ struct MachineTransition {
 };
 typedef list<MachineTransition> TransList;
 
-struct MachinePath {
-  TransList trans;
-  void writeJson (ostream&) const;
-};
-
 struct MachineState {
   StateName name;
   TransList trans;
@@ -129,5 +124,10 @@ struct Machine {
 };
 
 typedef JsonLoader<Machine> MachineLoader;
+
+struct MachinePath {
+  TransList trans;
+  void writeJson (ostream&, const Machine&) const;
+};
 
 #endif /* MACHINE_INCLUDED */

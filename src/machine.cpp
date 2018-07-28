@@ -1210,12 +1210,17 @@ TransList TransAccumulator::transitions() const {
   return trans;
 }
 
-void MachinePath::writeJson (ostream& out) const {
-  out << "{\"start\":0,\"trans\":[";
+void MachinePath::writeJson (ostream& out, const Machine& m) const {
+  out << "{\"start\":" << m.startState();
+  if (!m.state[m.startState()].name.is_null())
+    out << ",\"id\":" << m.state[m.startState()].name;
+  out << ",\"trans\":[";
   size_t n = 0;
   for (const auto& t: trans) {
     out << (n++ ? "," : "")
 	<< "{\"to\":" << t.dest;
+    if (!m.state[t.dest].name.is_null())
+      out << ",\"id\":" << m.state[t.dest].name;
     if (!t.inputEmpty())
       out << ",\"in\":\"" << t.in << "\"";
     if (!t.outputEmpty())
