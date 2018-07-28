@@ -445,6 +445,8 @@ int main (int argc, char** argv) {
     if (vm.count("counts")) {
       const EvaluatedMachine eval (machine, params);
       const MachineCounts counts (eval, data);
+      // TODO: this should write counts.paramCounts() instead
+      // e.g. new method MachineCounts::writeParamCountsJson()
       counts.writeJson (cout);
     }
 
