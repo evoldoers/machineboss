@@ -107,6 +107,8 @@ Transducer application:
   -T [ --train ]             Baum-Welch parameter fit
   -A [ --align ]             Viterbi sequence alignment
   -L [ --loglike ]           Forward log-likelihood calculation
+  -C [ --counts ]            Forward-Backward counts (derivatives of 
+                             log-likelihood with respect to logs of parameters)
 
 Compiler:
   --cpp                      generate C++ dynamic programming code
