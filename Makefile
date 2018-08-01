@@ -181,31 +181,31 @@ test-machine-params:
 # Transducer construction tests
 CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
 test-generator:
-	@$(TEST) bin/$(BOSS) -g t/io/seq101.json t/expect/generator101.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seq101.json t/expect/generator101.json
 
 test-acceptor:
-	@$(TEST) bin/$(BOSS) -a t/io/seq001.json t/expect/acceptor001.json
+	@$(TEST) bin/$(BOSS) --accept t/io/seq001.json t/expect/acceptor001.json
 
 test-union:
-	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
 
 test-intersection:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m -a t/io/seq001.json -i -a t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m --accept t/io/seq001.json -i --accept t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-brackets:
-	@$(TEST) bin/$(BOSS) --begin t/machine/bitnoise.json -a t/io/seq001.json --end -i -a t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(BOSS) --begin t/machine/bitnoise.json --accept t/io/seq001.json --end -i --accept t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-kleene:
-	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -K t/expect/generate-multiple-001.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -K t/expect/generate-multiple-001.json
 
 test-loop:
-	@$(TEST) bin/$(BOSS) -a t/io/seq101.json -o -a t/io/seq001.json t/expect/101-loop-001.json
+	@$(TEST) bin/$(BOSS) --accept t/io/seq101.json -o --accept t/io/seq001.json t/expect/101-loop-001.json
 
 test-noisy-loop:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -a t/io/seq101.json -o -a t/io/seq001.json t/expect/noisy-101-loop-001.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --accept t/io/seq101.json -o --accept t/io/seq001.json t/expect/noisy-101-loop-001.json
 
 test-concat:
-	@$(TEST) bin/$(BOSS) -g t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
 
 test-eliminate:
 	@$(TEST) bin/$(BOSS) -n t/machine/silent.json t/expect/silent-elim.json
@@ -213,19 +213,19 @@ test-eliminate:
 	@$(TEST) bin/$(BOSS) -n t/machine/silent3.json t/expect/silent3-elim.json
 
 test-reverse:
-	@$(TEST) bin/$(BOSS) -e -g t/io/seq001.json t/expect/generator001-reversed.json
+	@$(TEST) bin/$(BOSS) -e --generate t/io/seq001.json t/expect/generator001-reversed.json
 
 test-revcomp:
-	@$(TEST) bin/$(BOSS) -r -g t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
+	@$(TEST) bin/$(BOSS) -r --generate t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
 
 test-transpose:
-	@$(TEST) bin/$(BOSS) -t -g t/io/seq001.json t/expect/acceptor001.json
+	@$(TEST) bin/$(BOSS) -t --generate t/io/seq001.json t/expect/acceptor001.json
 
 test-weight:
 	@$(TEST) bin/$(BOSS) -w p t/expect/null-p.json
 
 test-shorthand:
-	@$(TEST) bin/$(BOSS) '(' t/machine/bitnoise.json '>' t/io/seq101.json ')' '&&' '>' t/io/seq001.json '.' '>' t/io/seqAGC.json '#' x t/expect/shorthand.json
+	@$(TEST) bin/$(BOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' x t/expect/shorthand.json
 
 test-hmmer:
 	@$(TEST) bin/$(BOSS) --hmmer t/hmmer/fn3.hmm t/expect/fn3.json
@@ -263,7 +263,7 @@ test-missing-machine:
 	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -a t/io/seq001.json -i -a t/io/seq101.json -fail
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --accept t/io/seq001.json -i --accept t/io/seq101.json -fail
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
@@ -326,7 +326,7 @@ test-eval-1plus2: t/bin/testeval
 	@$(TEST) t/bin/testeval t/algebra/x_plus_y.json t/algebra/params.json t/expect/1_plus_2.json
 
 # Dynamic programming tests
-DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-funcs test-single-param test-align-stutter-noise
+DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-funcs test-single-param test-align-stutter-noise test-counts test-counts2
 test-fwd-bitnoise-params-tiny: t/bin/testforward
 	@$(TEST) t/bin/testforward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwd-bitnoise-params-tiny.json
 
@@ -351,6 +351,12 @@ test-single-param:
 test-align-stutter-noise:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
+test-counts:
+	@$(TEST) bin/$(BOSS) --generate-chars 101 -m t/machine/bitnoise.json --accept-chars 001 -P t/io/params.json -N t/io/pqcons.json -C t/expect/counts.json
+
+test-counts2:
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --input-chars 101 --output-chars 001 -P t/io/params.json -N t/io/pqcons.json -C t/expect/counts.json
+
 # Compiler tests
 COMPILER_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
 
@@ -368,7 +374,7 @@ t/src/test-compiledfasta-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/sr
 	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp --inseq string --outseq string; cat t/src/testcompiledfasta.cpp) >$@
 
 test-101-bitnoise-001:
-	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -g t/io/seq101.json -m t/machine/bitnoise.json -a t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) --generate t/io/seq101.json -m t/machine/bitnoise.json --accept t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled: t/bin/test-compiledprof-bitnoise
 	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledprof-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json

@@ -63,6 +63,15 @@ void MachineCounts::writeJson (ostream& outs) const {
   outs << "[" << join (s, ",\n ") << "]" << endl;
 }
 
+void MachineCounts::writeParamCountsJson (ostream& outs, const Machine& machine, const ParamAssign& prob) const {
+  const auto pc = paramCounts (machine, prob);
+  outs << "{";
+  size_t n = 0;
+  for (const auto& name_count: pc)
+    outs << (n++ ? "," : "") << "\"" << escaped_str(name_count.first) << "\":" << name_count.second;
+  outs << "}";
+}
+
 map<string,double> MachineCounts::paramCounts (const Machine& machine, const ParamAssign& prob) const {
   map<string,double> paramCount;
   Assert (count.size() == machine.state.size(), "Number of states mismatch");

@@ -6,6 +6,13 @@
 
 KSEQ_INIT(gzFile, gzread)
 
+FastSeq FastSeq::fromSeq (const string& seq, const string& name) {
+  FastSeq fs;
+  fs.name = name;
+  fs.seq = seq;
+  return fs;
+}
+
 UnvalidatedAlphTok tokenize (char c, const string& alphabet) {
   const char* alphStr = alphabet.c_str();
   const char* ptok = strchr (alphStr, c);
@@ -181,3 +188,4 @@ KmerIndex::KmerIndex (const FastSeq& seq, const string& alphabet, SeqIdx kmerLen
     }
   }
 }
+

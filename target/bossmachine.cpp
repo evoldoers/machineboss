@@ -45,10 +45,12 @@ int main (int argc, char** argv) {
     createOpts.add_options()
       ("load,l", po::value<string>(), "load machine from file")
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
-      ("generate,g", po::value<string>(), "sequence generator '<'")
+      ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
-      ("accept,a", po::value<string>(), "sequence acceptor '>'")
+      ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
+      ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
+      ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
       ("csv,V", po::value<string>(), "load machine from CSV file")
@@ -96,7 +98,9 @@ int main (int argc, char** argv) {
       ("norms,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
+      ("input-chars", po::value<string>(), "specify input character sequence explicitly")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
+      ("output-chars", po::value<string>(), "specify output character sequence explicitly")
 
       ("train,T", "Baum-Welch parameter fit")
       ("align,A", "Viterbi sequence alignment")
@@ -123,8 +127,8 @@ int main (int argc, char** argv) {
     parseOpts.add(generalOpts).add(appOpts).add(compOpts);
 
     map<string,string> alias;
-    alias[string("<")] = "--generate";
-    alias[string(">")] = "--accept";
+    alias[string("<<")] = "--generate-chars";
+    alias[string(">>")] = "--accept-chars";
     alias[string("=>")] = "--compose";
     alias[string(".")] = "--concat";
     alias[string("&&")] = "--and";
@@ -220,18 +224,24 @@ int main (int argc, char** argv) {
 	  m = MachinePresets::makePreset (getArg().c_str());
 	else if (command == "--generate") {
 	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
-	  m = Machine::generator (inSeq.name, inSeq.seq);
+	  m = Machine::generator (inSeq.seq, inSeq.name);
 	} else if (command == "--generate-fasta") {
 	  const vguard<FastSeq> inSeqs = readFastSeqs (getArg().c_str());
 	  Require (inSeqs.size() == 1, "--generate-fasta file must contain exactly one FASTA-format sequence");
-	  m = Machine::generator (inSeqs[0].name, splitToChars (inSeqs[0].seq));
+	  m = Machine::generator (splitToChars (inSeqs[0].seq), inSeqs[0].name);
+	} else if (command == "--generate-chars") {
+	  const string seq = getArg();
+	  m = Machine::generator (splitToChars (seq), seq);
 	} else if (command == "--accept") {
 	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
-	  m = Machine::acceptor (outSeq.name, outSeq.seq);
+	  m = Machine::acceptor (outSeq.seq, outSeq.name);
 	} else if (command == "--accept-fasta") {
 	  const vguard<FastSeq> outSeqs = readFastSeqs (getArg().c_str());
 	  Require (outSeqs.size() == 1, "--accept-fasta file must contain exactly one FASTA-format sequence");
-	  m = Machine::acceptor (outSeqs[0].name, splitToChars (outSeqs[0].seq));
+	  m = Machine::acceptor (splitToChars (outSeqs[0].seq), outSeqs[0].name);
+	} else if (command == "--accept-chars") {
+	  const string seq = getArg();
+	  m = Machine::acceptor (splitToChars (seq), seq);
 	} else if (command == "--compose")
 	  m = Machine::compose (popMachine(), nextMachine());
 	else if (command == "--concat")
@@ -367,7 +377,7 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       showMachine (out);
-    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("cpp") && !vm.count("js"))
+    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("counts") && !vm.count("cpp") && !vm.count("js"))
       showMachine (cout);
 
     // compile
@@ -395,21 +405,38 @@ int main (int argc, char** argv) {
     }
 
     // load data
-    const bool gotData = vm.count("data") || (vm.count("input-fasta") && vm.count("output-fasta"));
-    const bool needData = vm.count("train") || vm.count("loglike") || vm.count("align");
-    Require (!gotData || needData, "No point in specifying --data without --train, --loglike, or --align");
-    const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();
     SeqPairList data;
+    // list of I/O pairs specified?
     if (vm.count("data"))
       JsonLoader<SeqPairList>::readFiles (data, vm.at("data").as<vector<string> >());
-    else if (vm.count("input-fasta") && vm.count("output-fasta")) {
-      const vguard<FastSeq> inSeqs = readFastSeqs (vm.at("input-fasta").as<string>().c_str());
-      const vguard<FastSeq> outSeqs = readFastSeqs (vm.at("output-fasta").as<string>().c_str());
-      for (const auto& inSeq: inSeqs)
-	for (const auto& outSeq: outSeqs)
-	  data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
-    } else if (noIO)
+
+    // individual inputs or outputs specified?
+    vguard<FastSeq> inSeqs, outSeqs;
+    if (vm.count("input-fasta"))
+      readFastSeqs (vm.at("input-fasta").as<string>().c_str(), inSeqs);
+    if (vm.count("output-fasta"))
+      readFastSeqs (vm.at("output-fasta").as<string>().c_str(), outSeqs);
+    if (vm.count("input-chars")) {
+      const string seq = vm.at("input-chars").as<string>();
+      inSeqs.push_back (FastSeq::fromSeq (seq, seq));
+    }
+    if (vm.count("output-chars")) {
+      const string seq = vm.at("output-chars").as<string>();
+      outSeqs.push_back (FastSeq::fromSeq (seq, seq));
+    }
+
+    // if inputs/outputs specified individually, create all input-output pairs
+    for (const auto& inSeq: inSeqs)
+      for (const auto& outSeq: outSeqs)
+	data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
+
+    // after all that, do we have data? did we need data?
+    const bool needData = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts");
+    const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();
+    if (needData && data.seqPairs.empty() && noIO)
       data.seqPairs.push_back (SeqPair());  // if the model has no I/O, then add an automatic pair of empty, nameless sequences (the only possible evidence)
+    const bool gotData = !data.seqPairs.empty();
+    Require (!gotData || needData, "No point in specifying input/output data without --train, --loglike, --align, or --counts");
 
     // fit parameters
     Params params;
@@ -445,9 +472,8 @@ int main (int argc, char** argv) {
     if (vm.count("counts")) {
       const EvaluatedMachine eval (machine, params);
       const MachineCounts counts (eval, data);
-      // TODO: this should write counts.paramCounts() instead
-      // e.g. new method MachineCounts::writeParamCountsJson()
-      counts.writeJson (cout);
+      counts.writeParamCountsJson (cout, machine, params);
+      cout << endl;
     }
 
     // align sequences

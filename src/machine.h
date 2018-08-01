@@ -16,10 +16,11 @@ using json = nlohmann::json;
 
 typedef unsigned long long StateIndex;
 
-#define MachineWaitTag     "wait"
-#define MachineContinueTag NULL
-#define MachineCatLeftTag  "concat-l"
-#define MachineCatRightTag "concat-r"
+#define MachineWaitTag       "wait"
+#define MachineContinueTag   NULL
+#define MachineCatLeftTag    "concat-l"
+#define MachineCatRightTag   "concat-r"
+#define MachineDefaultSeqTag "seq"
 
 typedef string OutputSymbol;
 typedef string InputSymbol;
@@ -84,8 +85,9 @@ struct Machine {
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true);
   static Machine intersect (const Machine& first, const Machine& second);
   static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);
-  static Machine generator (const string& name, const vguard<OutputSymbol>& seq);
-  static Machine acceptor (const string& name, const vguard<InputSymbol>& seq);
+
+  static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
+  static Machine acceptor (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
 
   static Machine takeUnion (const Machine& first, const Machine& second);
   static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst);

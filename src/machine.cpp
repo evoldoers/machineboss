@@ -1015,7 +1015,7 @@ Machine Machine::eliminateSilentTransitions() const {
   return elimMachine;
 }
 
-Machine Machine::generator (const string& name, const vguard<OutputSymbol>& seq) {
+Machine Machine::generator (const vguard<OutputSymbol>& seq, const string& name) {
   Machine m;
   m.state.resize (seq.size() + 1);
   for (SeqIdx pos = 0; pos <= seq.size(); ++pos)
@@ -1025,7 +1025,7 @@ Machine Machine::generator (const string& name, const vguard<OutputSymbol>& seq)
   return m;
 }
 
-Machine Machine::acceptor (const string& name, const vguard<InputSymbol>& seq) {
+Machine Machine::acceptor (const vguard<InputSymbol>& seq, const string& name) {
   Machine m;
   m.state.resize (seq.size() + 1);
   for (SeqIdx pos = 0; pos <= seq.size(); ++pos)

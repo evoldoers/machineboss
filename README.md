@@ -54,67 +54,72 @@ defining a small expression language for weighted automata.
 <pre><code>
 
 General options:
-  -h [ --help ]              display this help message
-  -v [ --verbose ] arg (=2)  verbosity level
-  -d [ --debug ] arg         log specified function
-  -b [ --monochrome ]        log in black & white
+  -h [ --help ]                display this help message
+  -v [ --verbose ] arg (=2)    verbosity level
+  -d [ --debug ] arg           log specified function
+  -b [ --monochrome ]          log in black & white
 
 Transducer construction:
-  -l [ --load ] arg          load machine from file
-  -p [ --preset ] arg        select preset (compdna, comprna, dnapsw, null, 
-                             prot2dna, protpsw, psw2dna, translate)
-  -g [ --generate ] arg      sequence generator '&lt;'
-  --generate-fasta arg       generator for FASTA-format sequence
-  -a [ --accept ] arg        sequence acceptor '&gt;'
-  --accept-fasta arg         acceptor for FASTA-format sequence
-  -w [ --weight ] arg        weighted null transition '#'
-  -H [ --hmmer ] arg         load machine from HMMER3 model file
-  -V [ --csv ] arg           load machine from CSV file
+  -l [ --load ] arg            load machine from file
+  -p [ --preset ] arg          select preset (compdna, comprna, dnapsw, null, 
+                               prot2dna, protpsw, psw2dna, translate)
+  -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
+  --generate-fasta arg         generator for FASTA-format sequence
+  --generate arg               sequence generator for JSON-format sequence
+  -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
+  --accept-fasta arg           acceptor for FASTA-format sequence
+  --accept arg                 sequence acceptor for JSON-format sequence
+  -w [ --weight ] arg          weighted null transition '#'
+  -H [ --hmmer ] arg           load machine from HMMER3 model file
+  -V [ --csv ] arg             load machine from CSV file
 
 Prefix operators:
-  -e [ --reverse ]           reverse
-  -r [ --revcomp ]           reverse-complement '~'
-  -t [ --transpose ]         transpose: swap input/output
-  -n [ --eliminate ]         eliminate silent transitions
+  -e [ --reverse ]             reverse
+  -r [ --revcomp ]             reverse-complement '~'
+  -t [ --transpose ]           transpose: swap input/output
+  -n [ --eliminate ]           eliminate silent transitions
 
 Postfix operators:
-  -z [ --zero-or-one ]       union with null '?'
-  -k [ --kleene-star ]       Kleene star '*'
-  -K [ --kleene-plus ]       Kleene plus '+'
+  -z [ --zero-or-one ]         union with null '?'
+  -k [ --kleene-star ]         Kleene star '*'
+  -K [ --kleene-plus ]         Kleene plus '+'
 
 Infix operators:
-  -m [ --compose ]           compose '=&gt;'
-  -c [ --concat ]            concatenate '.'
-  -i [ --and ]               intersect '&&'
-  -u [ --or ]                union '||'
-  -o [ --loop ]              loop: x '?+' y = x(y.x)*
+  -m [ --compose ]             compose '=&gt;'
+  -c [ --concat ]              concatenate '.'
+  -i [ --and ]                 intersect '&&'
+  -u [ --or ]                  union '||'
+  -o [ --loop ]                loop: x '?+' y = x(y.x)*
 
 Miscellaneous:
-  -B [ --begin ]             left bracket '('
-  -E [ --end ]               right bracket ')'
+  -B [ --begin ]               left bracket '('
+  -E [ --end ]                 right bracket ')'
 
 Transducer application:
-  -S [ --save ] arg          save machine to file
-  -G [ --graphviz ]          write machine in Graphviz DOT format
-  -M [ --memoize ]           memoize repeated expressions for compactness
-  -W [ --showparams ]        show unbound parameters in final machine
-  -P [ --params ] arg        load parameters (JSON)
-  -F [ --functions ] arg     load functions & constants (JSON)
-  -N [ --norms ] arg         load normalization constraints (JSON)
-  -D [ --data ] arg          load sequence-pairs (JSON)
-  -I [ --input-fasta ] arg   load input sequence(s) from FASTA file
-  -O [ --output-fasta ] arg  load output sequence(s) from FASTA file
-  -T [ --train ]             Baum-Welch parameter fit
-  -A [ --align ]             Viterbi sequence alignment
-  -L [ --loglike ]           Forward log-likelihood calculation
-  -C [ --counts ]            Forward-Backward counts (derivatives of 
-                             log-likelihood with respect to logs of parameters)
+  -S [ --save ] arg            save machine to file
+  -G [ --graphviz ]            write machine in Graphviz DOT format
+  -M [ --memoize ]             memoize repeated expressions for compactness
+  -W [ --showparams ]          show unbound parameters in final machine
+  -P [ --params ] arg          load parameters (JSON)
+  -F [ --functions ] arg       load functions & constants (JSON)
+  -N [ --norms ] arg           load normalization constraints (JSON)
+  -D [ --data ] arg            load sequence-pairs (JSON)
+  -I [ --input-fasta ] arg     load input sequence(s) from FASTA file
+  --input-chars arg            specify input character sequence explicitly
+  -O [ --output-fasta ] arg    load output sequence(s) from FASTA file
+  --output-chars arg           specify output character sequence explicitly
+  -T [ --train ]               Baum-Welch parameter fit
+  -A [ --align ]               Viterbi sequence alignment
+  -L [ --loglike ]             Forward log-likelihood calculation
+  -C [ --counts ]              Forward-Backward counts (derivatives of 
+                               log-likelihood with respect to logs of 
+                               parameters)
 
 Compiler:
-  --cpp                      generate C++ dynamic programming code
-  --js                       generate JavaScript dynamic programming code
-  --showcells                include debugging output in generated code
-  --inseq arg                input sequence type (String, Intvec, Profile)
-  --outseq arg               output sequence type (String, Intvec, Profile)
+  --cpp                        generate C++ dynamic programming code
+  --js                         generate JavaScript dynamic programming code
+  --showcells                  include debugging output in generated code
+  --inseq arg                  input sequence type (String, Intvec, Profile)
+  --outseq arg                 output sequence type (String, Intvec, Profile)
 
 </code></pre>

@@ -16,8 +16,9 @@ struct MachineCounts {
   void init (const EvaluatedMachine&);
   double add (const EvaluatedMachine&, const SeqPair&);  // returns log-likelihood
   MachineCounts& operator+= (const MachineCounts&);
-  void writeJson (ostream&) const;
   map<string,double> paramCounts (const Machine&, const ParamAssign&) const;  // expectation of d(logLike)/d(logParam)
+  void writeJson (ostream&) const;
+  void writeParamCountsJson (ostream&, const Machine&, const ParamAssign&) const;
 };
 
 // M-step

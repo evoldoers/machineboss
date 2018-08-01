@@ -12,6 +12,7 @@
 using namespace std;
 
 #define DefaultFastaCharsPerLine 50
+#define DefaultSeqName "Sequence"
 
 typedef unsigned int SeqIdx;
 typedef unsigned int AlphTok;
@@ -38,6 +39,7 @@ struct FastSeq {
   static const char minQualityChar, maxQualityChar;
   static const QualScore qualScoreRange;
   // methods
+  static FastSeq fromSeq (const string& seq, const string& name = string(DefaultSeqName));
   SeqIdx length() const { return (SeqIdx) seq.size(); }
   bool hasQual() const { return qual.size() == length(); }
   static inline QualScore qualScoreForChar (char c) {
