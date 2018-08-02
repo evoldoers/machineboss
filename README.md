@@ -1,4 +1,4 @@
-# Boss Machine
+# BossMachine
 
 ## Bioinformatics Open Source Sequence Machine
 
@@ -10,14 +10,16 @@ this small, focused library emphasizes the **manipulation** of state machines de
 Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
-An illustrative application is the serial combination of four modular state machines:
-a first machine that corrects sequencing errors, a second that removes introns, a third that translates DNA to protein,
-and a fourth that mutates the protein using the BLOSUM62 substitution matrix with affine gaps.
-Each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
-In concert, when used with the appropriate generic inference algorithm, they align protein sequences to DNA accounting for introns and frameshifts,
-very much like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
+For example, a protein-to-DNA alignment algorithm like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)
+can be thought of as the combination of four state machines with the following roles
+1 model sequencing errors
+1 splice out introns
+1 translate DNA to protein
+1 mutate the protein using the BLOSUM62 substitution matrix with affine gaps
 
-Boss Machine is fluent in several forms of communication:
+With BossMachine, each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
+
+BossMachine is fluent in several forms of communication:
 it can read HMMER [profiles](http://hmmer.org/),
 write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
@@ -34,7 +36,7 @@ along with a few related data structures such as sequences.
 
 ## JSON file formats
 
-Boss Machine defines JSON schemas for several data structures.
+BossMachine defines JSON schemas for several data structures.
 Here are some examples:
 
 - [transducer](https://github.com/ihh/bossmachine/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel) from coding theory
@@ -46,7 +48,7 @@ Here are some examples:
 
 ## Command-line interface
 
-Boss Machine has an associated command-line tool that makes most transducer operations available through its arguments,
+BossMachine has an associated command-line tool that makes most transducer operations available through its arguments,
 defining a small expression language for weighted automata.
 
 ## Command-line usage
