@@ -11,11 +11,12 @@ Manipulations can include concatenating, composing, intersecting, reverse comple
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
 For example, a protein-to-DNA alignment algorithm like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)
-can be thought of as the combination of four state machines with the following roles
-1 model sequencing errors
-1 splice out introns
-1 translate DNA to protein
-1 mutate the protein using the BLOSUM62 substitution matrix with affine gaps
+can be thought of as the combination of four state machines with the following roles:
+
+1. model sequencing errors
+2. splice out introns
+3. translate DNA to protein
+4. mutate the protein using the BLOSUM62 substitution matrix with affine gaps
 
 With BossMachine, each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
 
