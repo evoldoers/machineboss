@@ -11,22 +11,20 @@ Manipulations can include concatenating, composing, intersecting, reverse comple
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
 For example, a protein-to-DNA alignment algorithm like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)
-can be thought of as the combination of four state machines with the following roles:
+can be thought of as the combination of four state machines accounting for the following effects:
 
-1. model sequencing errors
-2. splice out introns
-3. translate DNA to protein
-4. mutate the protein using the BLOSUM62 substitution matrix with affine gaps
+1. sequencing errors (e.g. substitutions)
+2. splicing of introns
+3. translation of DNA to protein
+4. mutation of the protein (e.g. using the BLOSUM62 substitution matrix with affine gaps)
 
 With BossMachine, each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
 
-BossMachine is fluent in several forms of communication:
-it can read HMMER [profiles](http://hmmer.org/),
+BossMachine can read HMMER [profiles](http://hmmer.org/),
 write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
-However, its native format is a deliberately restricted (simple and validatable)
-JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer),
-along with a few related data structures such as sequences.
+Its native format is a deliberately restricted (simple and validatable)
+JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
 ## Features
 
