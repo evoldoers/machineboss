@@ -6,6 +6,7 @@ In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
 and often provide extensions such as [generalized HMMs](https://www.ncbi.nlm.nih.gov/pubmed/8877513),
 this small, focused library emphasizes the **manipulation** of state machines defined to a tight specification.
+(It does offer inference and parser-generation too.)
 
 Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
