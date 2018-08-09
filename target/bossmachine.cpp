@@ -46,9 +46,11 @@ int main (int argc, char** argv) {
       ("load,l", po::value<string>(), "load machine from file")
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
+      ("generate-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
+      ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
@@ -232,6 +234,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--generate-chars") {
 	  const string seq = getArg();
 	  m = Machine::generator (splitToChars (seq), seq);
+	} else if (command == "--generate-wild") {
+	  const string chars = getArg();
+	  m = Machine::wildGenerator (splitToChars (chars));
 	} else if (command == "--accept") {
 	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.seq, outSeq.name);
@@ -242,6 +247,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-chars") {
 	  const string seq = getArg();
 	  m = Machine::acceptor (splitToChars (seq), seq);
+	} else if (command == "--accept-wild") {
+	  const string chars = getArg();
+	  m = Machine::wildAcceptor (splitToChars (chars));
 	} else if (command == "--compose")
 	  m = Machine::compose (popMachine(), nextMachine());
 	else if (command == "--concat")

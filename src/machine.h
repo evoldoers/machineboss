@@ -89,6 +89,9 @@ struct Machine {
   static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
   static Machine acceptor (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
 
+  static Machine wildGenerator (const vguard<OutputSymbol>& symbols);
+  static Machine wildAcceptor (const vguard<InputSymbol>& symbols);
+
   static Machine takeUnion (const Machine& first, const Machine& second);
   static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst);
   static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst, const WeightExpr& pSecond);

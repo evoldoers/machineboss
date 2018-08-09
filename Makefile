@@ -179,12 +179,18 @@ test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
+CONSTRUCT_TESTS = test-generator test-acceptor test-wild-generator test-wild-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
 test-generator:
 	@$(TEST) bin/$(BOSS) --generate t/io/seq101.json t/expect/generator101.json
 
 test-acceptor:
 	@$(TEST) bin/$(BOSS) --accept t/io/seq001.json t/expect/acceptor001.json
+
+test-wild-generator:
+	@$(TEST) bin/$(BOSS) --generate-wild ACGT t/expect/ACGT_generator.json
+
+test-wild-acceptor:
+	@$(TEST) bin/$(BOSS) --accept-wild ACGT t/expect/ACGT_acceptor.json
 
 test-union:
 	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
