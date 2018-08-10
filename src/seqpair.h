@@ -40,8 +40,25 @@ struct SeqPair {
   void writeJson (ostream&) const;
 };
 
+struct Envelope {
+  typedef long InputIndex;
+  typedef long OutputIndex;
+
+  InputIndex inLen;
+  OutputIndex outLen;
+  vguard<InputIndex> inStart, inEnd;
+
+  inline bool contains (InputIndex x, OutputIndex y) const {
+    return y >= 0 && y <= outLen && x >= inStart[y] && x < inEnd[y];
+  }
+
+  vguard<long long> offsets() const;  // offsets[n] = sum_{i=0}^n (inEnd[i] - inStart[i])
+  Envelope (const SeqPair& sp);
+};
+
 struct SeqPairList {
   list<SeqPair> seqPairs;
+  list<Envelope> fullEnvelopes() const;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };

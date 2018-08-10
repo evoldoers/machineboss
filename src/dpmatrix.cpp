@@ -19,12 +19,26 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   inLen (input.size()),
   outLen (output.size()),
   nStates (machine.nStates()),
-  env (inLen, outLen)
+  env (seqPair)
+{
+  alloc();
+}
+
+DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& envelope) :
+  machine (machine),
+  seqPair (seqPair),
+  input (machine.inputTokenizer.tokenize (seqPair.input.seq)),
+  output (machine.outputTokenizer.tokenize (seqPair.output.seq)),
+  inLen (input.size()),
+  outLen (output.size()),
+  nStates (machine.nStates()),
+  env (envelope)
 {
   alloc();
 }
 
 void DPMatrix::alloc() {
+  Assert (inLen == env.inLen && outLen == env.outLen, "Envelope/sequence mismatch");
   LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());

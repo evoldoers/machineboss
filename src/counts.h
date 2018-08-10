@@ -12,9 +12,10 @@ struct MachineCounts {
   MachineCounts();
   MachineCounts (const EvaluatedMachine&);
   MachineCounts (const EvaluatedMachine&, const SeqPair&);
-  MachineCounts (const EvaluatedMachine&, const SeqPairList&);
+  MachineCounts (const EvaluatedMachine&, const SeqPairList&, const list<Envelope>& = list<Envelope>());
   void init (const EvaluatedMachine&);
   double add (const EvaluatedMachine&, const SeqPair&);  // returns log-likelihood
+  double add (const EvaluatedMachine&, const SeqPair&, const Envelope&);  // returns log-likelihood
   MachineCounts& operator+= (const MachineCounts&);
   map<string,double> paramCounts (const Machine&, const ParamAssign&) const;  // expectation of d(logLike)/d(logParam)
   void writeJson (ostream&) const;

@@ -19,6 +19,20 @@ void SeqPair::writeJson (ostream& out) const {
   out << "}";
 }
 
+Envelope::Envelope (const SeqPair& sp) :
+  inLen (sp.input.seq.size()),
+  outLen (sp.output.seq.size()),
+  inStart (outLen + 1, 0),
+  inEnd (outLen + 1, inLen + 2)
+{ }
+
+list<Envelope> SeqPairList::fullEnvelopes() const {
+  list<Envelope> envs;
+  for (const auto& sp: seqPairs)
+    envs.push_back (Envelope (sp));
+  return envs;
+}
+
 void SeqPairList::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpairlist", pj);
   for (const auto& j: pj)

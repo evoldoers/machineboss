@@ -11,12 +11,17 @@ Constraints MachineFitter::allConstraints() const {
 }
 
 Params MachineFitter::fit (const SeqPairList& trainingSet) const {
+  return fit (trainingSet, trainingSet.fullEnvelopes());
+}
+
+Params MachineFitter::fit (const SeqPairList& trainingSet, const list<Envelope>& envelopes) const {
+  Assert (envelopes.size() == trainingSet.seqPairs.size(), "Envelope/training set mismatch");
   Params params = seed;
   double prev;
   for (size_t iter = 0; true; ++iter) {
     const Params allParams = machine.defs.combine(constants).combine(params);
     const EvaluatedMachine eval (machine, allParams);
-    const MachineCounts counts (eval, trainingSet);
+    const MachineCounts counts (eval, trainingSet, envelopes);
     LogThisAt(2,"Baum-Welch iteration #" << (iter+1) << ": log-likelihood " << counts.loglike << endl);
     LogThisAt(4,"Parameters:" << endl << JsonWriter<Params>::toJsonString(params) << endl);
     if (iter > 0) {

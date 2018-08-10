@@ -16,8 +16,11 @@ private:
     iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
+  void fill();
+  
 public:
-  ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
+  ViterbiMatrix (const EvaluatedMachine&, const SeqPair&);
+  ViterbiMatrix (const EvaluatedMachine&, const SeqPair&, const Envelope&);
   double logLike() const;
   MachinePath path (const Machine&) const;
 };

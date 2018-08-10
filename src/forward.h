@@ -3,8 +3,12 @@
 
 #include "dpmatrix.h"
 
-struct ForwardMatrix : DPMatrix {
-  ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
+class ForwardMatrix : public DPMatrix {
+private:
+  void fill();
+public:
+  ForwardMatrix (const EvaluatedMachine&, const SeqPair&);
+  ForwardMatrix (const EvaluatedMachine&, const SeqPair&, const Envelope&);
   double logLike() const;
 };
 

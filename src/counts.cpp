@@ -27,11 +27,12 @@ MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPair& se
   (void) add (machine, seqPair);
 }
 
-MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPairList& seqPairList)
+MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPairList& seqPairList, const list<Envelope>& envelopes)
 {
   init (machine);
+  auto env = envelopes.begin();
   for (const auto& seqPair: seqPairList.seqPairs)
-    (void) add (machine, seqPair);
+    (void) add (machine, seqPair, env == envelopes.end() ? Envelope(seqPair) : *(env++));
 }
 
 void MachineCounts::init (const EvaluatedMachine& machine) {
@@ -41,8 +42,13 @@ void MachineCounts::init (const EvaluatedMachine& machine) {
 }
 
 double MachineCounts::add (const EvaluatedMachine& machine, const SeqPair& seqPair) {
-  const ForwardMatrix forward (machine, seqPair);
-  const BackwardMatrix backward (machine, seqPair);
+  const Envelope env (seqPair);
+  return add (machine, seqPair, env);
+}
+
+double MachineCounts::add (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& env) {
+  const ForwardMatrix forward (machine, seqPair, env);
+  const BackwardMatrix backward (machine, seqPair, env);
   backward.getCounts (forward, *this);
   const double result = forward.logLike();
   loglike += result;

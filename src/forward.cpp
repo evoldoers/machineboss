@@ -4,6 +4,16 @@
 ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
 {
+  fill();
+}
+
+ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& env) :
+  DPMatrix (machine, seqPair, env)
+{
+  fill();
+}
+
+void ForwardMatrix::fill() {
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     for (InputIndex inPos = 0; inPos <= inLen; ++inPos) {

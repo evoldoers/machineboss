@@ -11,8 +11,11 @@ private:
     iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
+  void fill();
+  
 public:
-  BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
+  BackwardMatrix (const EvaluatedMachine&, const SeqPair&);
+  BackwardMatrix (const EvaluatedMachine&, const SeqPair&, const Envelope&);
   void getCounts (const ForwardMatrix&, MachineCounts&) const;
   double logLike() const;
 };

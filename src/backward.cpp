@@ -4,6 +4,16 @@
 BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
 {
+  fill();
+}
+
+BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& env) :
+  DPMatrix (machine, seqPair, env)
+{
+  fill();
+}
+
+void BackwardMatrix::fill() {
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];

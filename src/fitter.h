@@ -12,7 +12,8 @@ struct MachineFitter {
   Params seed, constants;
 
   Constraints allConstraints() const;  // combines machine.cons and constraints
-  Params fit (const SeqPairList& trainingSet) const;
+  Params fit (const SeqPairList&) const;
+  Params fit (const SeqPairList&, const list<Envelope>&) const;
 };
 
 #endif /* FITTER_INCLUDED */
