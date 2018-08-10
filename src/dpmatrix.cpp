@@ -18,8 +18,13 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   output (machine.outputTokenizer.tokenize (seqPair.output.seq)),
   inLen (input.size()),
   outLen (output.size()),
-  nStates (machine.nStates())
+  nStates (machine.nStates()),
+  env (inLen, outLen)
 {
+  alloc();
+}
+
+void DPMatrix::alloc() {
   LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());

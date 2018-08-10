@@ -42,6 +42,8 @@ private:
     return (inPos * (outLen + 1) + outPos) * nStates + state;
   }
 
+  void alloc();
+  
 protected:
   inline void accumulate (double& ll, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<double(double,double)> reduce) const {
     auto visit = [&] (StateIndex, EvaluatedMachineState::TransIndex, double t) { ll = reduce(ll,t); };
@@ -70,8 +72,9 @@ public:
   const InputIndex inLen;
   const OutputIndex outLen;
   const StateIndex nStates;
+  const Envelope env;
 
-  DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair);
+  DPMatrix (const EvaluatedMachine& machine, const SeqPair& sp);
 
   void writeJson (ostream& out) const;
   friend ostream& operator<< (ostream&, const DPMatrix&);
