@@ -5,10 +5,29 @@
 #include "seqpair.h"
 #include "logsumexp.h"
 
-class DPMatrix {
-public:
+struct Envelope {
   typedef long InputIndex;
   typedef long OutputIndex;
+
+  InputIndex inLen;
+  OutputIndex outLen;
+  vguard<InputIndex> inStart, inEnd;
+
+  inline bool contains (InputIndex x, OutputIndex y) const {
+    return y >= 0 && y <= outLen && x >= inStart[y] && x < inEnd[y];
+  }
+
+  vguard<long long> offsets() const;
+  
+  Envelope (InputIndex x, OutputIndex y)
+    : inLen (x), outLen (y), inStart (y + 1, 0), inEnd (y + 1, x + 2)
+  { }
+};
+
+class DPMatrix {
+public:
+  typedef Envelope::InputIndex InputIndex;
+  typedef Envelope::OutputIndex OutputIndex;
 
 private:
   typedef long long CellIndex;

@@ -4,10 +4,10 @@
 ViterbiMatrix::ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
 {
-  for (InputIndex inPos = 0; inPos <= inLen; ++inPos) {
-    const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
-    for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
-      const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
+  for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
+    const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
+    for (InputIndex inPos = 0; inPos <= inLen; ++inPos) {
+      const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
       for (StateIndex d = 0; d < nStates; ++d) {
 	const EvaluatedMachineState& state = machine.state[d];
 	double ll = (inPos || outPos || d) ? -numeric_limits<double>::infinity() : 0;

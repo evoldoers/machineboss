@@ -2,6 +2,15 @@
 #include "dpmatrix.h"
 #include "logger.h"
 
+vguard<long long> Envelope::offsets() const {
+  vguard<long long> result;
+  result.reserve (outLen + 2);
+  result.push_back (0);
+  for (OutputIndex y = 0; y <= outLen; ++y)
+    result.push_back (result.back() + inEnd[y] - inStart[y]);
+  return result;
+}
+
 DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   machine (machine),
   seqPair (seqPair),
