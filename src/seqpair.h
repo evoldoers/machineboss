@@ -14,6 +14,17 @@ template<typename Symbol>
 struct NamedSeq {
   string name;
   vguard<Symbol> seq;
+  void readJsonWithDefaultSeq (const json& json, const vguard<Symbol>& defaultSeq) {
+    if (json.count("name"))
+      name = json.at("name").get<string>();
+    if (json.count("sequence")) {
+      seq.clear();
+      for (const auto& js: json.at("sequence"))
+	seq.push_back (js.get<Symbol>());
+      Assert (seq.size() == defaultSeq.size() && mismatch (seq.begin(), seq.end(), defaultSeq.begin()).first == seq.end(), "Sequence pair mismatch");
+    } else
+      seq = defaultSeq;
+  }
   void readJson (const json& json) {
     MachineSchema::validateOrDie ("namedsequence", json);
     if (json.count("name"))

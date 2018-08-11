@@ -7,8 +7,6 @@ void SeqPair::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpair", pj);
   input.name = "input";
   output.name = "output";
-  input.readJson (pj.at("input"));
-  output.readJson (pj.at("output"));
   if (pj.count("alignment")) {
     vguard<InputSymbol> in;
     vguard<OutputSymbol> out;
@@ -22,8 +20,13 @@ void SeqPair::readJson (const json& pj) {
       if (gotOutput)
 	out.push_back (alignment.back().second);
     }
-    Assert (in.size() == input.seq.size() && mismatch (in.begin(), in.end(), input.seq.begin()).first == in.end(), "Input mismatch in alignment of sequence pair");
-    Assert (out.size() == output.seq.size() && mismatch (out.begin(), out.end(), output.seq.begin()).first == out.end(), "Output mismatch in alignment of sequence pair");
+    if (pj.count("input"))
+      input.readJsonWithDefaultSeq (pj.at("input"), in);
+    if (pj.count("output"))
+      output.readJsonWithDefaultSeq (pj.at("output"), in);
+  } else {
+    input.readJson (pj.at("input"));
+    output.readJson (pj.at("output"));
   }
 }
 

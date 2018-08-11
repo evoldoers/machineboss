@@ -3,25 +3,51 @@
   "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/seqpair.json",
   "description": "BossMachine sequence-pair schema",
   "type": "object",
-  "required": ["input","output"],
-  "properties": {
-    "input": {
-      "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
-    },
-    "output": {
-      "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
-    },
-    "alignment": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "in": { "type": "string" },
-          "out": { "type": "string" }
+  "oneOf": [
+    {
+      "required": ["input","output"],
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
         },
-        "additionalProperties": false
+        "output": {
+          "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
+        }
+      }
+    },
+    {
+      "required": ["alignment"],
+      "additionalProperties": false,
+      "properties": {
+        "input": { "$ref": "nameWithOptionalSequence" },
+        "output": { "$ref": "nameWithOptionalSequence" },
+        "alignment": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "in": { "type": "string" },
+              "out": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
       }
     }
-  },
-  "additionalProperties": false
+  ],
+  "definitions": {
+    "nameWithOptionalSequence": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "sequence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
 }
