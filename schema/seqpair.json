@@ -25,12 +25,10 @@
         "alignment": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "in": { "type": "string" },
-              "out": { "type": "string" }
-            },
-            "additionalProperties": false
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "string" }
           }
         }
       }

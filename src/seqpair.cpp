@@ -11,14 +11,9 @@ void SeqPair::readJson (const json& pj) {
     vguard<InputSymbol> in;
     vguard<OutputSymbol> out;
     for (const auto& col: pj.at("alignment")) {
-      const bool gotInput = col.count("in"), gotOutput = col.count("out");
-      if (gotInput || gotOutput)
-	alignment.push_back (AlignCol (gotInput ? col.at("in").get<string>() : string(),
-				       gotOutput ? col.at("out").get<string>() : string()));
-      if (gotInput)
-	in.push_back (alignment.back().first);
-      if (gotOutput)
-	out.push_back (alignment.back().second);
+      in.push_back (col[0]);
+      out.push_back (col[1]);
+      alignment.push_back (AlignCol (col[0], col[1]));
     }
     if (pj.count("input"))
       input.readJsonWithDefaultSeq (pj.at("input"), in);
@@ -42,15 +37,10 @@ void SeqPair::writeJson (ostream& out) const {
   if (alignment.size()) {
     out << ",\"alignment\":[";
     size_t n = 0;
-    for (const auto& col: alignment) {
-      out << (n++ ? "," : "") << "{";
-      if (col.first.size())
-	out << "\"in\":\"" << escaped_str(col.first) << "\"";
-      if (col.second.size())
-	out << (col.first.size() ? "," : "")
-	    << "\"out\":\"" << escaped_str(col.second) << "\"";
-      out << "}";
-    }
+    for (const auto& col: alignment)
+      out << (n++ ? "," : "")
+	  << "[\"" << escaped_str(col.first)
+	  << "\",\"" << escaped_str(col.second) << "\"]";
     out << "]";
   }
   out << "}";

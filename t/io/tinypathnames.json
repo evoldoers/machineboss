@@ -1,1 +1,1 @@
-{"input":{"name":"001"},"output":{"name":"101"},"alignment":[{"in":"0","out":"1"},{"in":"0","out":"0"},{"in":"1","out":"1"}]}
+{"input":{"name":"001"},"output":{"name":"101"},"alignment":[["0","1"],["0","0"],["1","1"]]}
