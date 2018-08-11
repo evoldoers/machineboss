@@ -22,8 +22,12 @@ void SeqPair::readJson (const json& pj) {
     }
     if (pj.count("input"))
       input.readJsonWithDefaultSeq (pj.at("input"), in);
+    else
+      input.seq = in;
     if (pj.count("output"))
       output.readJsonWithDefaultSeq (pj.at("output"), out);
+    else
+      output.seq = out;
   } else {
     input.readJson (pj.at("input"));
     output.readJson (pj.at("output"));

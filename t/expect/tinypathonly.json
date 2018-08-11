@@ -1,0 +1,1 @@
+{"input":{"name":"input","sequence":["0","0","1"]},"output":{"name":"output","sequence":["1","0","1"]},"alignment":[{"in":"0","out":"1"},{"in":"0","out":"0"},{"in":"1","out":"1"}]}

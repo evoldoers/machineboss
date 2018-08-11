@@ -305,6 +305,8 @@ test-seqpair: t/bin/testseqpair
 	@$(TEST) t/bin/testseqpair t/io/tiny.json -idem
 	@$(TEST) t/bin/testseqpair t/io/tinypath.json -idem
 	@$(TEST) t/bin/testseqpair t/io/tinyfail.json -fail
+	@$(TEST) t/bin/testseqpair t/io/tinypathnames.json t/io/tinypath.json
+	@$(TEST) t/bin/testseqpair t/io/tinypathonly.json t/expect/tinypathonly.json
 
 test-seqpairlist: t/bin/testseqpairlist
 	@$(TEST) t/bin/testseqpairlist t/io/seqpairlist.json -idem
