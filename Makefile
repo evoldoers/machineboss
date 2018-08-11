@@ -351,6 +351,7 @@ test-max-bitnoise-params-tiny: t/bin/testmaximize
 
 test-fit-bitnoise-seqpairlist:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/pathlist.json -T t/expect/fit-bitnoise-seqpairlist.json
 
 test-funcs:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json

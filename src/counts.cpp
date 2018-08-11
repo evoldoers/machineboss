@@ -36,6 +36,7 @@ MachineCounts::MachineCounts (const EvaluatedMachine& machine, const SeqPairList
 }
 
 void MachineCounts::init (const EvaluatedMachine& machine) {
+  loglike = 0;
   count = vguard<vguard<double> > (machine.nStates());
   for (StateIndex s = 0; s < machine.nStates(); ++s)
     count[s].resize (machine.state[s].nTransitions, 0.);
