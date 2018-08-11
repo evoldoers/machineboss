@@ -34,8 +34,11 @@ typedef NamedSeq<InputSymbol> NamedInputSeq;
 typedef NamedSeq<OutputSymbol> NamedOutputSeq;
 
 struct SeqPair {
+  typedef pair<InputSymbol,OutputSymbol> AlignCol;
+  typedef list<AlignCol> AlignPath;
   NamedInputSeq input;
   NamedOutputSeq output;
+  AlignPath alignment;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };
@@ -63,13 +66,21 @@ struct Envelope {
   vguard<Offset> offsets() const;  // offsets[y] = sum_{k=0}^{y-1} (inEnd[k] - inStart[k])
   bool fits (const SeqPair&) const;
   bool connected() const;
+
+  Envelope();
+  Envelope (const SeqPair& sp);   // calls initPath if sp.trans is nonempty, otherwise calls initFull
+
+  void clear();
+  void initFull (const SeqPair&);
+  void initPath (const SeqPair::AlignPath&);
+  
   static Envelope fullEnvelope (const SeqPair&);
-  Envelope (const SeqPair& sp);
+  static Envelope pathEnvelope (const SeqPair::AlignPath&);
 };
 
 struct SeqPairList {
   list<SeqPair> seqPairs;
-  list<Envelope> fullEnvelopes() const;
+  list<Envelope> envelopes() const;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };

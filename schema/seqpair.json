@@ -10,21 +10,18 @@
     },
     "output": {
       "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
+    },
+    "alignment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "in": { "type": "string" },
+          "out": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
     }
   },
-  "additionalProperties": false,
-  "definitions": {
-    "namedsequence": {
-      "type": "object",
-      "required": ["sequence"],
-      "properties": {
-	"sequence": {
-	  "type": "array",
-	  "items": { "type": "string" }
-	},
-	"name": { "type": "string" }
-      },
-      "additionalProperties": false
-    }
-  }
+  "additionalProperties": false
 }

@@ -11,7 +11,7 @@ Constraints MachineFitter::allConstraints() const {
 }
 
 Params MachineFitter::fit (const SeqPairList& trainingSet) const {
-  return fit (trainingSet, trainingSet.fullEnvelopes());
+  return fit (trainingSet, trainingSet.envelopes());
 }
 
 Params MachineFitter::fit (const SeqPairList& trainingSet, const list<Envelope>& envelopes) const {
