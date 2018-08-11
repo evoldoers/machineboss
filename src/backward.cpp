@@ -17,7 +17,7 @@ void BackwardMatrix::fill() {
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
-    for (InputIndex inPos = inLen; inPos >= 0; --inPos) {
+    for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
       const bool endOfInput = (inPos == inLen);
       const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
       for (int s = nStates - 1; s >= 0; --s) {
