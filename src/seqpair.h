@@ -14,14 +14,18 @@ template<typename Symbol>
 struct NamedSeq {
   string name;
   vguard<Symbol> seq;
-  void readJsonWithDefaultSeq (const json& json, const vguard<Symbol>& defaultSeq) {
-    if (json.count("name"))
-      name = json.at("name").get<string>();
-    if (json.count("sequence")) {
+  void readJsonWithDefaultSeq (const json& j, const vguard<Symbol>& defaultSeq) {
+    if (j.count("name"))
+      name = j.at("name").get<string>();
+    if (j.count("sequence")) {
       seq.clear();
-      for (const auto& js: json.at("sequence"))
+      for (const auto& js: j.at("sequence"))
 	seq.push_back (js.get<Symbol>());
-      Assert (seq.size() == defaultSeq.size() && mismatch (seq.begin(), seq.end(), defaultSeq.begin()).first == seq.end(), "Sequence pair mismatch");
+      Require (seq.size() == defaultSeq.size()
+	       && mismatch (seq.begin(), seq.end(), defaultSeq.begin()).first == seq.end(),
+	       "Sequence pair mismatch\nSequence: %s\nExpected: %s\n",
+	       json(seq).dump().c_str(),
+	       json(defaultSeq).dump().c_str());
     } else
       seq = defaultSeq;
   }

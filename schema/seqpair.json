@@ -20,8 +20,8 @@
       "required": ["alignment"],
       "additionalProperties": false,
       "properties": {
-        "input": { "$ref": "nameWithOptionalSequence" },
-        "output": { "$ref": "nameWithOptionalSequence" },
+        "input": { "$ref": "#/definitions/nameWithOptionalSequence" },
+        "output": { "$ref": "#/definitions/nameWithOptionalSequence" },
         "alignment": {
           "type": "array",
           "items": {

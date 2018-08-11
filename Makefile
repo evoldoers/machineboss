@@ -303,6 +303,8 @@ test-cyclic:
 IO_TESTS = test-seqpair test-seqpairlist test-params test-constraints test-dot
 test-seqpair: t/bin/testseqpair
 	@$(TEST) t/bin/testseqpair t/io/tiny.json -idem
+	@$(TEST) t/bin/testseqpair t/io/tinypath.json -idem
+	@$(TEST) t/bin/testseqpair t/io/tinyfail.json -fail
 
 test-seqpairlist: t/bin/testseqpairlist
 	@$(TEST) t/bin/testseqpairlist t/io/seqpairlist.json -idem

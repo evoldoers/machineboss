@@ -228,8 +228,8 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 	if (nt++)
 	  out << "," << endl << "            ";
 	out << "{\"to\":" << t.dest;
-	if (!t.inputEmpty()) out << ",\"in\":\"" << t.in << "\"";
-	if (!t.outputEmpty()) out << ",\"out\":\"" << t.out << "\"";
+	if (!t.inputEmpty()) out << ",\"in\":\"" << escaped_str(t.in) << "\"";
+	if (!t.outputEmpty()) out << ",\"out\":\"" << escaped_str(t.out) << "\"";
 	if (!WeightAlgebra::isOne (t.weight))
 	  out << ",\"weight\":" << WeightAlgebra::toJsonString (t.weight, &memo);
 	out << "}";
@@ -1240,9 +1240,9 @@ void MachinePath::writeJson (ostream& out, const Machine& m) const {
     if (!m.state[t.dest].name.is_null())
       out << ",\"id\":" << m.state[t.dest].name;
     if (!t.inputEmpty())
-      out << ",\"in\":\"" << t.in << "\"";
+      out << ",\"in\":\"" << escaped_str(t.in) << "\"";
     if (!t.outputEmpty())
-      out << ",\"out\":\"" << t.out << "\"";
+      out << ",\"out\":\"" << escaped_str(t.out) << "\"";
     out << "}";
   }
   out << "]}";

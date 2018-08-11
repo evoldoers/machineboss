@@ -23,7 +23,7 @@ void SeqPair::readJson (const json& pj) {
     if (pj.count("input"))
       input.readJsonWithDefaultSeq (pj.at("input"), in);
     if (pj.count("output"))
-      output.readJsonWithDefaultSeq (pj.at("output"), in);
+      output.readJsonWithDefaultSeq (pj.at("output"), out);
   } else {
     input.readJson (pj.at("input"));
     output.readJson (pj.at("output"));
@@ -35,6 +35,20 @@ void SeqPair::writeJson (ostream& out) const {
   input.writeJson (out);
   out << ",\"output\":";
   output.writeJson (out);
+  if (alignment.size()) {
+    out << ",\"alignment\":[";
+    size_t n = 0;
+    for (const auto& col: alignment) {
+      out << (n++ ? "," : "") << "{";
+      if (col.first.size())
+	out << "\"in\":\"" << escaped_str(col.first) << "\"";
+      if (col.second.size())
+	out << (col.first.size() ? "," : "")
+	    << "\"out\":\"" << escaped_str(col.second) << "\"";
+      out << "}";
+    }
+    out << "]";
+  }
   out << "}";
 }
 
