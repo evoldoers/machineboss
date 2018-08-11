@@ -23,8 +23,23 @@ Envelope::Envelope (const SeqPair& sp) :
   inLen (sp.input.seq.size()),
   outLen (sp.output.seq.size()),
   inStart (outLen + 1, 0),
-  inEnd (outLen + 1, inLen + 2)
+  inEnd (outLen + 1, inLen + 1)
 { }
+
+bool Envelope::fits (const SeqPair& sp) const {
+  return inLen == sp.input.seq.size() && outLen == sp.output.seq.size();
+}
+
+bool Envelope::connected() const {
+  bool conn = intersects (inStart[0], inEnd[0], 0, 1);
+  for (OutputIndex y = 1; conn && y <= outLen; ++y)
+    conn = conn && intersects (inStart[y-1], inEnd[y-1], inStart[y], inEnd[y]);
+  return conn && intersects (inStart[outLen], inEnd[outLen], inLen, inLen + 1);
+}
+
+Envelope Envelope::fullEnvelope (const SeqPair& sp) {
+  return Envelope (sp);
+}
 
 list<Envelope> SeqPairList::fullEnvelopes() const {
   list<Envelope> envs;

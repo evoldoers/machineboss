@@ -46,13 +46,23 @@ struct Envelope {
 
   InputIndex inLen;
   OutputIndex outLen;
+  // (x,y) is contained within the envelope <==> x is in the half-open interval [i,j) where i=inStart[y], j=inEnd[y]
   vguard<InputIndex> inStart, inEnd;
 
   inline bool contains (InputIndex x, OutputIndex y) const {
     return y >= 0 && y <= outLen && x >= inStart[y] && x < inEnd[y];
   }
 
-  vguard<long long> offsets() const;  // offsets[n] = sum_{i=0}^n (inEnd[i] - inStart[i])
+  inline static bool intersects (InputIndex start1, InputIndex end1, InputIndex start2, InputIndex end2) {
+    // two intervals overlap if neither strictly precedes the other
+    // in this case the intervals are half-open [start,end) (c.f. STL iterators) so #1 strictly precedes #2 if start2 >= end1
+    return !(start1 >= end2 || start2 >= end1);
+  }
+
+  vguard<long long> offsets() const;  // offsets[y] = sum_{k=0}^{y-1} (inEnd[k] - inStart[k])
+  bool fits (const SeqPair&) const;
+  bool connected() const;
+  static Envelope fullEnvelope (const SeqPair&);
   Envelope (const SeqPair& sp);
 };
 

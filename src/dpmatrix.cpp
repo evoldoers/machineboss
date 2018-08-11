@@ -38,7 +38,8 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, con
 }
 
 void DPMatrix::alloc() {
-  Assert (inLen == env.inLen && outLen == env.outLen, "Envelope/sequence mismatch");
+  Assert (env.fits(seqPair), "Envelope/sequence mismatch");
+  Assert (env.connected(), "Envelope is not connected");
   LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
