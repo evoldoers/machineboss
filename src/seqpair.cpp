@@ -31,10 +31,21 @@ bool Envelope::fits (const SeqPair& sp) const {
 }
 
 bool Envelope::connected() const {
-  bool conn = intersects (inStart[0], inEnd[0], 0, 1);
+  bool conn = overlapping (inStart[0], inEnd[0], 0, 1);
   for (OutputIndex y = 1; conn && y <= outLen; ++y)
-    conn = conn && intersects (inStart[y-1], inEnd[y-1], inStart[y], inEnd[y]);
-  return conn && intersects (inStart[outLen], inEnd[outLen], inLen, inLen + 1);
+    conn = conn && overlapping (inStart[y-1], inEnd[y-1], inStart[y], inEnd[y]);
+  return conn && overlapping (inStart[outLen], inEnd[outLen], inLen, inLen + 1);
+}
+
+vguard<Envelope::Offset> Envelope::offsets() const {
+  // offsets[y] = sum_{k=0}^{y-1} (inEnd[k] - inStart[k])
+  // where 0 <= y <= outLen
+  vguard<Envelope::Offset> result;
+  result.reserve (outLen + 2);
+  result.push_back (0);
+  for (OutputIndex y = 0; y <= outLen; ++y)
+    result.push_back (result.back() + inEnd[y] - inStart[y]);
+  return result;
 }
 
 Envelope Envelope::fullEnvelope (const SeqPair& sp) {

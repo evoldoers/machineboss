@@ -43,6 +43,7 @@ struct SeqPair {
 struct Envelope {
   typedef long InputIndex;
   typedef long OutputIndex;
+  typedef long long Offset;
 
   InputIndex inLen;
   OutputIndex outLen;
@@ -53,13 +54,13 @@ struct Envelope {
     return y >= 0 && y <= outLen && x >= inStart[y] && x < inEnd[y];
   }
 
-  inline static bool intersects (InputIndex start1, InputIndex end1, InputIndex start2, InputIndex end2) {
-    // two intervals overlap if neither strictly precedes the other
+  inline static bool overlapping (InputIndex start1, InputIndex end1, InputIndex start2, InputIndex end2) {
+    // two input intervals overlap if neither strictly precedes the other
     // in this case the intervals are half-open [start,end) (c.f. STL iterators) so #1 strictly precedes #2 if start2 >= end1
     return !(start1 >= end2 || start2 >= end1);
   }
 
-  vguard<long long> offsets() const;  // offsets[y] = sum_{k=0}^{y-1} (inEnd[k] - inStart[k])
+  vguard<Offset> offsets() const;  // offsets[y] = sum_{k=0}^{y-1} (inEnd[k] - inStart[k])
   bool fits (const SeqPair&) const;
   bool connected() const;
   static Envelope fullEnvelope (const SeqPair&);

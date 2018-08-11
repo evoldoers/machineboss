@@ -2,15 +2,6 @@
 #include "dpmatrix.h"
 #include "logger.h"
 
-vguard<long long> Envelope::offsets() const {
-  vguard<long long> result;
-  result.reserve (outLen + 2);
-  result.push_back (0);
-  for (OutputIndex y = 0; y <= outLen; ++y)
-    result.push_back (result.back() + inEnd[y] - inStart[y]);
-  return result;
-}
-
 DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   machine (machine),
   seqPair (seqPair),
@@ -42,6 +33,7 @@ void DPMatrix::alloc() {
   Assert (env.connected(), "Envelope is not connected");
   LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
+  offsets = env.offsets();
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
 }
 

@@ -11,16 +11,21 @@ public:
   typedef Envelope::OutputIndex OutputIndex;
 
 private:
-  typedef long long CellIndex;
+  typedef Envelope::Offset CellIndex;
 
+  vguard<CellIndex> offsets;
   vguard<double> cellStorage;
 
   inline CellIndex nCells() const {
-    return nStates * (inLen + 1) * (outLen + 1);
+    return nStates * offsets.back();
   }
 
   inline CellIndex cellIndex (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
-    return (inPos * (outLen + 1) + outPos) * nStates + state;
+#ifdef USE_VECTOR_GUARDS
+    if (!env.contains (inPos, outPos))
+      throw runtime_error ("Envelope out-of-bounds access error");
+#endif
+    return (offsets[outPos] + inPos - env.inStart[outPos]) * nStates + state;
   }
 
   void alloc();
@@ -61,8 +66,13 @@ public:
   void writeJson (ostream& out) const;
   friend ostream& operator<< (ostream&, const DPMatrix&);
   
-  inline double& cell (InputIndex inPos, OutputIndex outPos, StateIndex state) { return cellStorage[cellIndex(inPos,outPos,state)]; }
-  inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const { return cellStorage[cellIndex(inPos,outPos,state)]; }
+  inline double& cell (InputIndex inPos, OutputIndex outPos, StateIndex state) {
+    return cellStorage[cellIndex(inPos,outPos,state)];
+  }
+
+  inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
+    return env.contains(inPos,outPos) ? cellStorage[cellIndex(inPos,outPos,state)] : -numeric_limits<double>::infinity();
+  }
 };
 
 #endif /* DPMATRIX_INCLUDED */
