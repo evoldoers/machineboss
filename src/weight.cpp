@@ -329,34 +329,34 @@ WeightExpr WeightAlgebra::deriv (const WeightExpr& w, const ParamDefs& defs, con
 
 set<string> WeightAlgebra::params (const WeightExpr& w, const ParamDefs& defs) {
   set<string> p;
-  const ExprType op = w->type;
-  switch (op) {
+  addParams (p, w, defs);
+  return p;
+}
+
+void WeightAlgebra::addParams (set<string>& p, const WeightExpr& w, const ParamDefs& defs) {
+  switch (w->type) {
   case Null:
   case Int:
   case Dbl:
-    // p is empty
     break;
   case Param:
     {
       const string& n (*w->args.param);
       if (defs.count(n))
-	p = params (defs.at(n), exclude(defs,n));
+	addParams (p, defs.at(n), exclude(defs,n));
       else
 	p.insert (n);
     }
     break;
   case Exp:
   case Log:
-    p = params (w->args.arg, defs);
+    addParams (p, w->args.arg, defs);
     break;
   default:
-    const set<string> lParams = params (w->args.binary.l, defs);
-    const set<string> rParams = params (w->args.binary.r, defs);
-    p.insert (lParams.begin(), lParams.end());
-    p.insert (rParams.begin(), rParams.end());
+    addParams (p, w->args.binary.l, defs);
+    addParams (p, w->args.binary.r, defs);
     break;
   }
-  return p;
 }
 
 string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence) {

@@ -82,6 +82,7 @@ struct WeightAlgebra {
 
   static WeightExpr deriv (const WeightExpr& w, const ParamDefs& defs, const string& param);
   static set<string> params (const WeightExpr& w, const ParamDefs& defs);
+  static void addParams (set<string>&, const WeightExpr& w, const ParamDefs& defs);
   static vector<string> toposortParams (const ParamDefs& defs);
   
   static string toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence = 0);
