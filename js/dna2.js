@@ -9,8 +9,6 @@ function times (expr1,expr2) {
     return {"*":[expr1,expr2]}
 }
 
-var contexts = alph.concat (['X'])
-
 var startState = { name: 'start', trans: [] },
     endState = { name: 'end' }
 
@@ -18,30 +16,35 @@ function matchState (leftContext, rightContext) { return 'M' + leftContext + rig
 function insertState (leftContext, rightContext) { return 'I' + leftContext + rightContext }
 function deleteState (leftContext, rightContext) { return 'D' + leftContext + rightContext }
 
+function eqmProb (i) { return 'p' + i }
 function subProb (i, j, leftContext, rightContext) { return 'q' + i + j + '_' + leftContext + rightContext }
-function insOpen (leftContext, rightContext) { return 'i' + '_' + leftContext + rightContext }
-function insExtend (leftContext, rightContext) { return 'j' + '_' + leftContext + rightContext }
-function insEmit (i, leftContext, rightContext) { return 'k' + i + '_' + leftContext + rightContext }
-function delOpen (leftContext, rightContext) { return 'd' + '_' + leftContext + rightContext }
-function delExtend (leftContext, rightContext) { return 'e' + '_' + leftContext + rightContext }
-function delConfirm (j, leftContext, rightContext) { return 'f' + j + '_' + leftContext + rightContext }
+function insOpen (leftContext, rightContext) { return 'io' + '_' + leftContext + rightContext }
+function insExtend (leftContext, rightContext) { return 'ix' + '_' + leftContext + rightContext }
+function insChar (i, leftContext, rightContext) { return 'ic' + i + '_' + leftContext + rightContext }
+function delOpen (leftContext, rightContext) { return 'do' + '_' + leftContext + rightContext }
+function delExtend (leftContext, rightContext) { return 'dx' + '_' + leftContext + rightContext }
+function delConfirm (j, leftContext, rightContext) { return 'dc' + j + '_' + leftContext + rightContext }
 
 var states = [startState]
-contexts.forEach (function (leftContext) {
-  contexts.forEach (function (rightContext) {
+var norms = [], probs = []
+alph.forEach (function (l) {
+  alph.forEach (function (r) {
     // declare states & transitions
+    startState.trans.push ({ to: matchState(l,r),
+                             weight: eqmProb(l) })
+    states.push ({ name: matchState(l,r),
+                   trans: [] },
+                 { name: insertState(l,r),
+                   trans: [] },
+                 { name: deleteState(l,r),
+                   trans: [] })
+    // declare parameter groups
   })
 })
 states.push (endState)
 
-var norms = []
-alph.forEach (function (leftContext) {
-  alph.forEach (function (rightContext) {
-    // declare parameter groups
-  })
-})
-
 var machine = { state: states,
-                cons: { norm: norms } }
+                cons: { norm: norms,
+                        prob: probs } }
 
 console.log (JSON.stringify (machine))
