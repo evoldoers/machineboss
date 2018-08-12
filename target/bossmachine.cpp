@@ -461,7 +461,7 @@ int main (int argc, char** argv) {
       if (vm.count("norms"))
 	fitter.constraints = constraints;
       fitter.constants = funcs;
-      fitter.seed = vm.count("params") ? seed : fitter.allConstraints().defaultParams();
+      fitter.seed = fitter.allConstraints().defaultParams().combine (seed);
       params = fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
     } else

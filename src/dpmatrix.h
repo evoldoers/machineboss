@@ -10,15 +10,16 @@ public:
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
 
-private:
+protected:
   typedef Envelope::Offset CellIndex;
-
   vguard<CellIndex> offsets;
-  vguard<double> cellStorage;
-
+  
   inline CellIndex nCells() const {
     return nStates * offsets.back();
   }
+
+private:
+  vguard<double> cellStorage;
 
   inline CellIndex cellIndex (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
 #ifdef USE_VECTOR_GUARDS

@@ -14,7 +14,10 @@ BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& 
 }
 
 void BackwardMatrix::fill() {
+  ProgressLog(plogDP,7);
+  plogDP.initProgress ("Filling Backward matrix (%lu cells)", nCells());
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
+    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / nCells(), "filled %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
     for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
@@ -43,13 +46,16 @@ double BackwardMatrix::logLike() const {
 }
 
 void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& counts) const {
+  ProgressLog(plogDP,6);
+  plogDP.initProgress ("Calculating Forward-Backward counts (%lu cells)", nCells());
   const double ll = logLike();
-  for (InputIndex inPos = inLen; inPos >= 0; --inPos) {
-    const bool endOfInput = (inPos == inLen);
-    const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
-    for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
-      const bool endOfOutput = (outPos == outLen);
-      const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
+  for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
+    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / nCells(), "counted %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
+    const bool endOfOutput = (outPos == outLen);
+    const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
+    for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
+      const bool endOfInput = (inPos == inLen);
+      const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
       for (int s = nStates - 1; s >= 0; --s) {
 	const bool endState = (s == nStates - 1);
 	const EvaluatedMachineState& state = machine.state[(StateIndex) s];

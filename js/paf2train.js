@@ -104,48 +104,48 @@ fastaPromise (queryFile, stride, group)
     fastaPromise (targetFile)
       .then (function (target) {
         var nAlign = 0
-        readline.createInterface ({ input: fs.createReadStream (pafFile) })
-          .on ('line', function (line) {
-            var fields = line.split ('\t')
-            var q = getSeq (query, fields[0], fields[2], fields[3])
-            var t = getSeq (target, fields[5], fields[7], fields[8])
-            if (q && t) {
-              if (fields[4] === '-')
-                t = revcomp (t)
-              var cigar
-              fields.slice(12).forEach (function (field) {
-                if (field.substr(0,3) === 'cg:')
-                  cigar = field.substr(3)
-              })
-              var align = decodeCigar (q, t, cigar)
-              ++nAlign
-              var qName = 'q' + nAlign, tName = 't' + nAlign
-              if (json) {
-                var qRow = align[0].split(''), tRow = align[1].split('')
-                console.log ((nAlign ? ',' : '[')
-                             + JSON.stringify ({ input: { name: qName },
-                                                 output: { name: tName },
-                                                 alignment: qRow.map (function (qCol, n) {
-                                                   var tCol = tRow[n]
-                                                   return [qCol === '-' ? '' : qCol,
-                                                           tCol === '-' ? '' : tCol]
-                                                 })}))
-              } else {
-                console.log ('# STOCKHOLM 1.0')
-                console.log (qName + ' ' + align[0])
-                console.log (tName + ' ' + align[1])
-                console.log ('//')
-              }
+        var rl = readline.createInterface ({ input: fs.createReadStream (pafFile) })
+        rl.on ('line', function (line) {
+          var fields = line.split ('\t')
+          var q = getSeq (query, fields[0], fields[2], fields[3])
+          var t = getSeq (target, fields[5], fields[7], fields[8])
+          if (q && t) {
+            if (fields[4] === '-')
+              t = revcomp (t)
+            var cigar
+            fields.slice(12).forEach (function (field) {
+              if (field.substr(0,3) === 'cg:')
+                cigar = field.substr(3)
+            })
+            var align = decodeCigar (q, t, cigar)
+            ++nAlign
+            var qName = 'q' + nAlign, tName = 't' + nAlign
+            if (json) {
+              var qRow = align[0].split(''), tRow = align[1].split('')
+              console.log ((nAlign > 1 ? ',' : '[')
+                           + JSON.stringify ({ input: { name: qName },
+                                               output: { name: tName },
+                                               alignment: qRow.map (function (qCol, n) {
+                                                 var tCol = tRow[n]
+                                                 return [qCol === '-' ? '' : qCol,
+                                                         tCol === '-' ? '' : tCol]
+                                               })}))
             } else {
-              if (!q && q !== null)
-                console.warn ('query sequence not found: ' + fields[0])
-              if (!t)
-                console.warn ('target sequence not found: ' + fields[5])
+              console.log ('# STOCKHOLM 1.0')
+              console.log (qName + ' ' + align[0])
+              console.log (tName + ' ' + align[1])
+              console.log ('//')
             }
-          })
-          .on ('end', function() {
-            if (json)
-              console.log (']')
-          })
+          } else {
+            if (!q && q !== null)
+              console.warn ('query sequence not found: ' + fields[0])
+            if (!t)
+              console.warn ('target sequence not found: ' + fields[5])
+          }
+        })
+        rl.on ('close', function() {
+          if (json)
+            console.log (']')
+        })
       })
   })

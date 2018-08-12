@@ -14,7 +14,10 @@ ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& se
 }
 
 void ForwardMatrix::fill() {
+  ProgressLog(plogDP,6);
+  plogDP.initProgress ("Filling Forward matrix (%lu cells)", nCells());
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
+    plogDP.logProgress (nStates * offsets[outPos] / nCells(), "filled %lu cells", nStates * offsets[outPos]);
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     for (InputIndex inPos = env.inStart[outPos]; inPos < env.inEnd[outPos]; ++inPos) {
       const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();

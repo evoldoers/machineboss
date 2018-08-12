@@ -14,6 +14,11 @@
 #define EpsilonAbsolute 1e-3
 #define MaxIterations 100
 
+// log levels
+#define ParamTransformLogLevel 9
+#define ObjectiveFunctionLogLevel 8
+#define OptimizationParamsLogLevel 7
+
 MachineCounts::MachineCounts()
 { }
 
@@ -155,7 +160,6 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
   for (const auto& rParam: constraints.rate)
     paramTransformDefs[rParam] = makeSquareFunc (makeTransformedParamName (rParam));
 
-  #define ParamTransformLogLevel 9
   if (LoggingThisAt(ParamTransformLogLevel))
     for (const auto& p_d: paramTransformDefs)
       LogThisAt(ParamTransformLogLevel,"Mapping " << p_d.first << " to " << WeightAlgebra::toString (p_d.second, ParamDefs()) << endl);
@@ -167,7 +171,7 @@ MachineObjective::MachineObjective (const Machine& machine, const MachineCounts&
   for (const auto& p: transformedParam)
     deriv.push_back (WeightAlgebra::deriv (objective, allDefs, p));
 
-  LogThisAt (5, toString());
+  LogThisAt (ObjectiveFunctionLogLevel, toString());
 }
 
 string MachineObjective::toString() const {
@@ -192,8 +196,8 @@ double gsl_machine_objective (const gsl_vector *v, void *voidML)
 
   const double f = WeightAlgebra::eval (ml.objective, pv.defs);
 
-  LogThisAt (4, JsonLoader<Params>::toJsonString(pv) << endl);
-  LogThisAt (5, "gsl_machine_objective(" << to_string_join(gsl_vector_to_stl(v)) << ") = " << f << endl);
+  LogThisAt (OptimizationParamsLogLevel, JsonLoader<Params>::toJsonString(pv) << endl);
+  LogThisAt (ObjectiveFunctionLogLevel, "gsl_machine_objective(" << to_string_join(gsl_vector_to_stl(v)) << ") = " << f << endl);
 
   return f;
 }
@@ -207,7 +211,7 @@ void gsl_machine_objective_deriv (const gsl_vector *v, void *voidML, gsl_vector 
     gsl_vector_set (df, n, WeightAlgebra::eval (ml.deriv[n], pv.defs));
 
   const vguard<double> v_stl = gsl_vector_to_stl(v), df_stl = gsl_vector_to_stl(df);
-  LogThisAt (5, "gsl_machine_objective_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl);
+  LogThisAt (ObjectiveFunctionLogLevel, "gsl_machine_objective_deriv(" << to_string_join(v_stl) << ") = (" << to_string_join(df_stl) << ")" << endl);
 }
 
 void gsl_machine_objective_with_deriv (const gsl_vector *x, void *voidML, double *f, gsl_vector *df)
@@ -240,20 +244,20 @@ Params MachineObjective::optimize (const Params& seed) const {
       const double val = sqrt (-log (z));
       pSum += p;
       gsl_vector_set (x, transformedParamIndex.at(cParam), val);
-      LogThisAt(9,"Setting " << transformedParam[transformedParamIndex.at(cParam)] << " to " << val << endl);
+      LogThisAt(ParamTransformLogLevel,"Setting " << transformedParam[transformedParamIndex.at(cParam)] << " to " << val << endl);
     }
   }
   for (const auto& pParam: constraints.prob) {
       const double p = WeightAlgebra::asDouble (seed.defs.at(pParam));
       const double val = sqrt (-log (p));
       gsl_vector_set (x, transformedParamIndex.at(pParam), val);
-      LogThisAt(9,"Setting " << transformedParam[transformedParamIndex.at(pParam)] << " to " << val << endl);
+      LogThisAt(ParamTransformLogLevel,"Setting " << transformedParam[transformedParamIndex.at(pParam)] << " to " << val << endl);
   }
   for (const auto& rParam: constraints.rate) {
       const double r = WeightAlgebra::asDouble (seed.defs.at(rParam));
       const double val = sqrt (r);
       gsl_vector_set (x, transformedParamIndex.at(rParam), val);
-      LogThisAt(9,"Setting " << transformedParam[transformedParamIndex.at(rParam)] << " to " << val << endl);
+      LogThisAt(ParamTransformLogLevel,"Setting " << transformedParam[transformedParamIndex.at(rParam)] << " to " << val << endl);
   }
 
   const gsl_multimin_fdfminimizer_type *T = gsl_multimin_fdfminimizer_vector_bfgs2;
@@ -269,7 +273,7 @@ Params MachineObjective::optimize (const Params& seed) const {
       status = gsl_multimin_fdfminimizer_iterate (s);
 
       const vguard<double> x_stl = gsl_vector_to_stl(s->x);
-      LogThisAt (5, "iteration #" << iter << ": x=(" << to_string_join(x_stl) << ")" << endl);
+      LogThisAt (OptimizationParamsLogLevel, "iteration #" << iter << ": x=(" << to_string_join(x_stl) << ")" << endl);
 
       if (status)
         break;

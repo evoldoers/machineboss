@@ -11,9 +11,13 @@ void SeqPair::readJson (const json& pj) {
     vguard<InputSymbol> in;
     vguard<OutputSymbol> out;
     for (const auto& col: pj.at("alignment")) {
-      in.push_back (col[0]);
-      out.push_back (col[1]);
-      alignment.push_back (AlignCol (col[0], col[1]));
+      const InputSymbol inSym = col[0];
+      const OutputSymbol outSym = col[1];
+      if (inSym.size())
+	in.push_back (inSym);
+      if (outSym.size())
+	out.push_back (outSym);
+      alignment.push_back (AlignCol (inSym, outSym));
     }
     if (pj.count("input"))
       input.readJsonWithDefaultSeq (pj.at("input"), in);
@@ -55,6 +59,7 @@ Envelope::Envelope (const SeqPair& sp) {
     initPath (sp.alignment);
   else
     initFull (sp);
+  Assert (fits(sp), "Envelope/sequence mismatch");
 }
 
 void Envelope::clear() {

@@ -31,7 +31,9 @@ Params MachineFitter::fit (const SeqPairList& trainingSet, const list<Envelope>&
       if (improvement < MinEMImprovement)
 	break;
     }
+    LogThisAt(5,"Constructing M-step objective function" << endl);
     MachineObjective objective (machine, counts, constraints, constants);
+    LogThisAt(5,"Optimizing M-step objective function" << endl);
     params = objective.optimize (params);
     prev = counts.loglike;
   }

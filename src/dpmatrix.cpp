@@ -31,9 +31,9 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, con
 void DPMatrix::alloc() {
   Assert (env.fits(seqPair), "Envelope/sequence mismatch");
   Assert (env.connected(), "Envelope is not connected");
-  LogThisAt(7,"Creating " << (inLen+1) << "*" << (outLen+1) << "*" << nStates << " matrix" << endl);
+  offsets = env.offsets();  // initializes nCells()
+  LogThisAt(7,"Creating matrix with " << nCells() << " cells (<=" << (inLen+1) << "*" << (outLen+1) << "*" << nStates << ")" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
-  offsets = env.offsets();
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
 }
 
