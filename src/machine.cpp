@@ -766,6 +766,47 @@ Machine Machine::waitingMachine (const char* waitTag, const char* continueTag) c
   return wm;
 }
 
+// fwdTrans[i][jMin] = set of effective transitions { (i,j): i <= jMin <= j }
+typedef map<StateIndex,map<StateIndex,TransList> > FwdTransMap;
+
+// updateFwdTrans(machine,fwdTrans,i,newMin) populates fwdTrans[i][newMin]
+void updateFwdTrans (const Machine& machine, FwdTransMap& fwdTrans, size_t& nElim, StateIndex i, StateIndex newMin) {
+  if (!(fwdTrans.count(i) && fwdTrans.at(i).count(newMin))) {
+    TransList oldTrans;
+    if (newMin > i) {
+      updateFwdTrans (machine, fwdTrans, nElim, i, newMin - 1);
+      oldTrans = fwdTrans[i][newMin-1];
+    } else if (newMin == i)
+      oldTrans = machine.state[newMin].trans;
+
+    TransList newFwdTrans;
+    StateIndex newMinDest = machine.nStates();
+    for (const auto& t_ij: oldTrans) {
+      if (t_ij.isLoud())
+	newFwdTrans.push_back(t_ij);
+      else {
+	const StateIndex j = t_ij.dest;
+	if (j >= newMin) {
+	  newMinDest = min (newMinDest, j);
+	  newFwdTrans.push_back(t_ij);
+	} else {
+	  if (i != j)
+	    updateFwdTrans (machine, fwdTrans, nElim, j, newMin);
+	  for (const auto& t_jk: i == j ? oldTrans : fwdTrans[j][newMin]) {
+	    const StateIndex k = t_jk.dest;
+	    Assert (t_jk.isLoud() || (k>j && (k > i || (k == i && i == newMin))), "oops: cycle. i=%d j=%d k=%d", i, j, k);
+	    newMinDest = min (newMinDest, k);
+	    newFwdTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
+	  }
+	  if (i > j)
+	    ++nElim;
+	}
+      }
+    }
+    fwdTrans[i][newMin] = newFwdTrans;
+  }
+}
+
 Machine Machine::advancingMachine() const {
   Machine am;
   if (isAdvancingMachine()) {
@@ -776,47 +817,8 @@ Machine Machine::advancingMachine() const {
     if (nStates()) {
       am.state.reserve (nStates());
 
-      // fwdTrans[i][jMin] = set of effective transitions { (i,j): i <= jMin <= j }
-      map<StateIndex,map<StateIndex,TransList> > fwdTrans;
+      FwdTransMap fwdTrans;
       size_t nElim = 0;
-
-      // updateFwdTrans(i,newMin) calculates fwdTrans[i][newMin]
-      function<void(StateIndex,StateIndex)> updateFwdTrans = [&](StateIndex i, StateIndex newMin) {
-	if (!(fwdTrans.count(i) && fwdTrans.at(i).count(newMin))) {
-	  TransList oldTrans;
-	  if (newMin > i) {
-	    updateFwdTrans (i, newMin - 1);
-	    oldTrans = fwdTrans[i][newMin-1];
-	  } else if (newMin == i)
-	    oldTrans = state[newMin].trans;
-
-	  TransList newFwdTrans;
-	  StateIndex newMinDest = nStates();
-	  for (const auto& t_ij: oldTrans) {
-	    if (t_ij.isLoud())
-	      newFwdTrans.push_back(t_ij);
-	    else {
-	      const StateIndex j = t_ij.dest;
-	      if (j >= newMin) {
-		newMinDest = min (newMinDest, j);
-		newFwdTrans.push_back(t_ij);
-	      } else {
-		if (i != j)
-		  updateFwdTrans (j, newMin);
-		for (const auto& t_jk: i == j ? oldTrans : fwdTrans[j][newMin]) {
-		  const StateIndex k = t_jk.dest;
-		  Assert (t_jk.isLoud() || (k>j && (k > i || (k == i && i == newMin))), "oops: cycle. i=%d j=%d k=%d", i, j, k);
-		  newMinDest = min (newMinDest, k);
-		  newFwdTrans.push_back (MachineTransition (t_jk.in, t_jk.out, k, WeightAlgebra::multiply (t_ij.weight, t_jk.weight)));
-		}
-		if (i > j)
-		  ++nElim;
-	      }
-	    }
-	  }
-	  fwdTrans[i][newMin] = newFwdTrans;
-	}
-      };
 
       const size_t totalElim = nSilentBackTransitions();
 
@@ -832,7 +834,7 @@ Machine Machine::advancingMachine() const {
 	ams.name = ms.name;
 
 	// recursive call to updateFwdTrans
-	updateFwdTrans(s,s);
+	updateFwdTrans (*this, fwdTrans, nElim, s, s);
 
 	// aggregate all transitions that go to the same place
 	TransAccumulator ta;
