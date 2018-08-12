@@ -550,25 +550,25 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
 }
 
 void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts, const WeightExpr parent) {
-  switch (w->type) {
-  case Null:
-  case Int:
-  case Dbl:
-  case Param:
-    break;
-  case Log:
-  case Exp:
-    countRefs (w->args.arg, counts, w);
-    break;
-  default:
-    countRefs (w->args.binary.l, counts, w);
-    countRefs (w->args.binary.r, counts, w);
-    break;
-  }
-
   if (!counts.count(w)) {
     counts[w].order = counts.size();
     counts[w].expr = w;
+
+    switch (w->type) {
+    case Null:
+    case Int:
+    case Dbl:
+    case Param:
+      break;
+    case Log:
+    case Exp:
+      countRefs (w->args.arg, counts, w);
+      break;
+    default:
+      countRefs (w->args.binary.l, counts, w);
+      countRefs (w->args.binary.r, counts, w);
+      break;
+    }
   }
   counts[w].refs.insert (parent);
 }
