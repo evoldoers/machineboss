@@ -17,7 +17,7 @@ function insertState (leftContext, rightContext) { return 'I' + leftContext + ri
 function deleteState (leftContext, rightContext) { return 'D' + leftContext + rightContext }
 
 function eqmProb (i) { return 'p' + i }
-function subProb (i, j, leftContext, rightContext) { return 'q' + i + j + '_' + leftContext + rightContext }
+function subProb (i, j, leftContext, rightContext) { return 'sub' + i + j + '_' + leftContext + rightContext }
 function insOpen (leftContext, rightContext) { return 'io' + '_' + leftContext + rightContext }
 function insExtend (leftContext, rightContext) { return 'ix' + '_' + leftContext + rightContext }
 function insChar (i, leftContext, rightContext) { return 'ic' + i + '_' + leftContext + rightContext }
