@@ -1,18 +1,24 @@
 #!/usr/bin/env node
 // emacs mode -*-JavaScript-*-
 
-// Convert a PAF file, plus FASTA files for query & reference, to BossMachine JSON training data
+// Convert a PAF file (including CIGAR strings for the alignment), together with FASTA files for query & reference, to a BossMachine JSON-format training dataset
+// PAF: https://github.com/lh3/miniasm/blob/master/PAF.md
+// FASTA: https://en.wikipedia.org/wiki/FASTA_format
 
 var fs = require('fs'),
     getopt = require('node-getopt'),
     readline = require('readline'),
     fasta = require('bionode-fasta')
 
+const cigarPrefix = 'cg:'  // the prefix for the CIGAR string field at the end of each PAF line
+
 // parse command-line options
 var opt = getopt.create([
   ['p' , 'paf=PATH'         , 'PAF file'],
   ['q' , 'query=PATH'       , 'query FASTA'],
   ['t' , 'target=PATH'      , 'target FASTA'],
+  ['u' , 'unaligned'        , 'do not preserve alignment'],
+  ['i' , 'query-input'      , 'use query as input, target as output (default is other way around)'],
   ['s' , 'stride=N'         , 'keep only 1 in N of query sequences'],
   ['g' , 'group=G'          , 'which 1 in N to keep (0,1,2...)'],
   ['j' , 'json'             , 'JSON, not Stockholm, output'],
@@ -28,6 +34,8 @@ if (!(pafFile && queryFile && targetFile))
 var stride = opt.options.stride ? parseInt(opt.options.stride) : 1
 var group = opt.options.group ? parseInt(opt.options.group) : 0
 var json = opt.options.json
+var unaligned = opt.options.unaligned
+var queryInput = opt.options['query-input']
 
 function fastaPromise (filename, stride, group) {
   var promise = new Promise (function (resolve, reject) {
@@ -112,29 +120,48 @@ fastaPromise (queryFile, stride, group)
           if (q && t) {
             if (fields[4] === '-')
               t = revcomp (t)
-            var cigar
-            fields.slice(12).forEach (function (field) {
-              if (field.substr(0,3) === 'cg:')
-                cigar = field.substr(3)
-            })
-            var align = decodeCigar (q, t, cigar)
+            var align
+            if (!unaligned)
+              fields.slice(12).forEach (function (field) {
+                if (field.substr(0,cigarPrefix.length) === cigarPrefix)
+                  align = decodeCigar (q, t, field.substr(cigarPrefix.length))
+              })
             ++nAlign
             var qName = 'q' + nAlign, tName = 't' + nAlign
             if (json) {
               var qRow = align[0].split(''), tRow = align[1].split('')
+              var seqPair = { input: { name: tName },
+                              output: { name: qName } }
+              if (align)
+                seqPair.alignment = qRow.map (function (qCol, n) {
+                  var tCol = tRow[n]
+                  return [tCol === '-' ? '' : tCol,
+                          qCol === '-' ? '' : qCol]
+                })
+              else {
+                seqPair.input.seq = t.split('')
+                seqPair.output.seq = q.split('')
+              }
+              if (queryInput) {
+                var newSeqPair = { input: seqPair.output,
+                                   output: seqPair.input }
+                if (align)
+                  newSeqPair.alignment = seqPair.alignment.map (function (col) { return [col[1], col[0]] })
+                seqPair = newSeqPair
+              }
               console.log ((nAlign > 1 ? ',' : '[')
-                           + JSON.stringify ({ input: { name: qName },
-                                               output: { name: tName },
-                                               alignment: qRow.map (function (qCol, n) {
-                                                 var tCol = tRow[n]
-                                                 return [qCol === '-' ? '' : qCol,
-                                                         tCol === '-' ? '' : tCol]
-                                               })}))
+                           + JSON.stringify (seqPair))
             } else {
-              console.log ('# STOCKHOLM 1.0')
-              console.log (qName + ' ' + align[0])
-              console.log (tName + ' ' + align[1])
-              console.log ('//')
+              if (align) {
+                var stock = [tName + ' ' + align[1],
+                             qName + ' ' + align[0]]
+                if (queryInput)
+                  stock = [stock[1], stock[0]]
+                console.log ('# STOCKHOLM 1.0')
+                console.log (stock[0])
+                console.log (stock[1])
+                console.log ('//')
+              }
             }
           } else {
             if (!q && q !== null)
