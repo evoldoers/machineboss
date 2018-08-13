@@ -329,33 +329,37 @@ WeightExpr WeightAlgebra::deriv (const WeightExpr& w, const ParamDefs& defs, con
 
 set<string> WeightAlgebra::params (const WeightExpr& w, const ParamDefs& defs) {
   set<string> p;
-  addParams (p, w, defs);
+  set<WeightExpr> visited;
+  addParams (p, visited, w, defs);
   return p;
 }
 
-void WeightAlgebra::addParams (set<string>& p, const WeightExpr& w, const ParamDefs& defs) {
-  switch (w->type) {
-  case Null:
-  case Int:
-  case Dbl:
-    break;
-  case Param:
-    {
-      const string& n (*w->args.param);
-      if (defs.count(n))
-	addParams (p, defs.at(n), exclude(defs,n));
-      else
-	p.insert (n);
+void WeightAlgebra::addParams (set<string>& p, set<WeightExpr>& visited, const WeightExpr& w, const ParamDefs& defs) {
+  if (!visited.count(w)) {
+    visited.insert (w);
+    switch (w->type) {
+    case Null:
+    case Int:
+    case Dbl:
+      break;
+    case Param:
+      {
+	const string& n (*w->args.param);
+	if (defs.count(n))
+	  addParams (p, visited, defs.at(n), exclude(defs,n));
+	else
+	  p.insert (n);
+      }
+      break;
+    case Exp:
+    case Log:
+      addParams (p, visited, w->args.arg, defs);
+      break;
+    default:
+      addParams (p, visited, w->args.binary.l, defs);
+      addParams (p, visited, w->args.binary.r, defs);
+      break;
     }
-    break;
-  case Exp:
-  case Log:
-    addParams (p, w->args.arg, defs);
-    break;
-  default:
-    addParams (p, w->args.binary.l, defs);
-    addParams (p, w->args.binary.r, defs);
-    break;
   }
 }
 
