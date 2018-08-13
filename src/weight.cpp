@@ -1,5 +1,6 @@
 #include <math.h>
 #include <list>
+#include <iomanip>
 #include "weight.h"
 #include "logsumexp.h"
 #include "util.h"
@@ -407,88 +408,121 @@ ParamDefs WeightAlgebra::exclude (const ParamDefs& defs, const string& param) {
 
 string WeightAlgebra::toJsonString (const ParamDefs& defs, const ExprMemos* memos) {
   ostringstream out;
-  out << toJson (defs, memos);
+  toJsonStream (out, defs, memos);
   return out.str();
 }
 
 string WeightAlgebra::toJsonString (const WeightExpr& w, const ExprMemos* memos) {
   ostringstream out;
-  out << toJson (w, memos);
+  toJsonStream (out, w, memos);
   return out.str();
 }
 
 json WeightAlgebra::toJson (const ParamDefs& defs, const ExprMemos* memos) {
-  json j = json::object();
-  for (const auto& def: defs)
-    j[def.first] = toJson (def.second, memos);
+  ostringstream out;
+  toJsonStream (out, defs, memos);
+  istringstream in (out.str());
+  json j;
+  in >> j;
   return j;
 }
 
 json WeightAlgebra::toJson (const WeightExpr& w, const ExprMemos* memos) {
-  json result;
+  ostringstream out;
+  toJsonStream (out, w, memos);
+  istringstream in (out.str());
+  json j;
+  in >> j;
+  return j;
+}
+
+void WeightAlgebra::toJsonStream (ostream& out, const ParamDefs& defs, const ExprMemos* memos) {
+  out << "{";
+  size_t n = 0;
+  for (const auto& def: defs) {
+    out << (n++ ? "," : "") << "\"" << escaped_str(def.first) << "\":";
+    toJsonStream (out, def.second, memos);
+  }
+  out << "}";
+}
+
+void WeightAlgebra::toJsonStream (ostream& out, const WeightExpr& w, const ExprMemos* memos) {
   if (memos && memos->count(w))
-    result = memos->at(w);
+    out << memos->at(w);
   else {
     const ExprType op = w->type;
     if (isZero(w))
-      result = false;
+      out << "false";
     else if (isOne(w))
-      result = true;
+      out << "true";
     else
       switch (op) {
       case Null:
-	// result = null (implicit)
 	break;
       case Int:
-	result = w->args.intValue;
+	out << w->args.intValue;
 	break;
       case Dbl:
-	result = w->args.doubleValue;
+	out << setprecision(std::numeric_limits<double>::digits10) << w->args.doubleValue;
 	break;
       case Param:
-	result = *w->args.param;
+	out << "\"" << escaped_str(*w->args.param) << "\"";
 	break;
       case Log:
-	result = json::object ({{"log", toJson (w->args.arg, memos)}});
+	out << "{\"log\":";
+	toJsonStream (out, w->args.arg, memos);
+	out << "}";
 	break;
       case Exp:
-	result = json::object ({{"exp", toJson (w->args.arg, memos)}});
+	out << "{\"exp\":";
+	toJsonStream (out, w->args.arg, memos);
+	out << "}";
 	break;
       case Pow:
-	result = json::object ({{"pow", json::array ({ toJson (w->args.binary.l, memos), toJson (w->args.binary.r, memos) })}});
+	out << "{\"pow\":[";
+	toJsonStream (out, w->args.binary.l, memos);
+	out << ",";
+	toJsonStream (out, w->args.binary.r, memos);
+	out << "]}";
 	break;
       default:
-	string opcode;
+	out << "{\"";
 	const WeightExpr l = w->args.binary.l, r = w->args.binary.r;
-	json jsonArg;
+	bool showedArg = false;
 	switch (op) {
-	case Mul: opcode = "*"; break;
-	case Add: opcode = "+"; break;
+	case Mul: out << "*"; break;
+	case Add: out << "+"; break;
 	case Div:
 	  if (isOne(l) && r->type == Sub && isOne(r->args.binary.l)) {
-	    opcode = "geomsum";
-	    jsonArg = toJson (r->args.binary.r, memos);
+	    out << "geomsum\":";
+	    toJsonStream (out, r->args.binary.r, memos);
+	    showedArg = true;
 	    break;
 	  }
-	  opcode = "/";
+	  out << "/";
 	  break;
 	case Sub:
 	  if (isOne(l)) {
-	    opcode = "not";
-	    jsonArg = toJson (r, memos);
+	    out << "not\":";
+	    toJsonStream (out, r, memos);
+	    showedArg = true;
 	    break;
 	  }
-	  opcode = "-";
+	  out << "-";
 	  break;
-	default: Abort ("Unknown opcode in toJson"); break;
+	default: Abort ("Unknown opcode in toJsonStream"); break;
 	}
-	if (jsonArg.is_null())
-	  jsonArg = json::array ({ toJson(l,memos), toJson(r,memos) });
-	result = json::object ({{ opcode, jsonArg }});
+	if (!showedArg) {
+	  out << "\":[";
+	  toJsonStream (out, l, memos);
+	  out << ",";
+	  toJsonStream (out, r, memos);
+	  out << "]";
+	}
+        out << "}";
 	break;
       }
   }
-  return result;
 }
 
 WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {

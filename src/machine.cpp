@@ -229,8 +229,10 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 	out << "{\"to\":" << t.dest;
 	if (!t.inputEmpty()) out << ",\"in\":\"" << escaped_str(t.in) << "\"";
 	if (!t.outputEmpty()) out << ",\"out\":\"" << escaped_str(t.out) << "\"";
-	if (!WeightAlgebra::isOne (t.weight))
-	  out << ",\"weight\":" << WeightAlgebra::toJsonString (t.weight, &memo);
+	if (!WeightAlgebra::isOne (t.weight)) {
+	  out << ",\"weight\":";
+	  WeightAlgebra::toJsonStream (out, t.weight, &memo);
+	}
 	out << "}";
       }
       out << "]";
@@ -247,10 +249,12 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
       out << ((count++) ? ",\n  " : "\n {")
 	  << "\"" << names[n]
 	  << "\":" << name2def[names[n]];
-    for (const auto& def: defs.defs)
+    for (const auto& def: defs.defs) {
       out << ((count++) ? ",\n  " : "\n {")
 	  << "\"" << def.first
-	  << "\":" << WeightAlgebra::toJsonString (def.second, &memo);
+	  << "\":";
+      WeightAlgebra::toJsonStream (out, def.second, &memo);
+    }
     out << "}";
   }
   if (showParams) {

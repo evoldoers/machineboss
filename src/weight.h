@@ -87,6 +87,9 @@ struct WeightAlgebra {
 
   static ParamDefs exclude (const ParamDefs& defs, const string& param);
 
+  static void toJsonStream (ostream&, const WeightExpr& w, const ExprMemos* memos = NULL);
+  static void toJsonStream (ostream&, const ParamDefs& defs, const ExprMemos* memos = NULL);
+
   static string toJsonString (const ParamDefs& defs, const ExprMemos* memos = NULL);
   static string toJsonString (const WeightExpr& w, const ExprMemos* memos = NULL);
 
