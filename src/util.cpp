@@ -3,6 +3,7 @@
 
 // includes
 #include <fstream>
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -97,8 +98,32 @@ std::string toupper (const std::string& s) {
   return r;
 }
 
+char const* const hexdig = "0123456789ABCDEF";
+void write_escaped (std::string const& s, std::ostream& out) {
+  for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
+    unsigned char c = *i;
+    if (' ' <= c and c <= '~' and c != '\\' and c != '"') {
+      out << c;
+    }
+    else {
+      out << '\\';
+      switch(c) {
+      case '"':  out << '"';  break;
+      case '\\': out << '\\'; break;
+      case '\t': out << 't';  break;
+      case '\r': out << 'r';  break;
+      case '\n': out << 'n';  break;
+      default:
+        out << 'x';
+        out << hexdig[c >> 4];
+        out << hexdig[c & 0xF];
+      }
+    }
+  }
+}
+
 std::string escaped_str (std::string const& s) {
-  std::string outs;
-  write_escaped (s, back_inserter (outs));
-  return outs;
+  std::ostringstream outs;
+  write_escaped (s, outs);
+  return outs.str();
 }

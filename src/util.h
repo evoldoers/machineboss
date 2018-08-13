@@ -89,32 +89,7 @@ std::string toupper (const std::string& s);
 /* escaping a string
    http://stackoverflow.com/questions/2417588/escaping-a-c-string
  */
-template<class OutIter>
-OutIter write_escaped(std::string const& s, OutIter out) {
-  for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
-    unsigned char c = *i;
-    if (' ' <= c and c <= '~' and c != '\\' and c != '"') {
-      *out++ = c;
-    }
-    else {
-      *out++ = '\\';
-      switch(c) {
-      case '"':  *out++ = '"';  break;
-      case '\\': *out++ = '\\'; break;
-      case '\t': *out++ = 't';  break;
-      case '\r': *out++ = 'r';  break;
-      case '\n': *out++ = 'n';  break;
-      default:
-        char const* const hexdig = "0123456789ABCDEF";
-        *out++ = 'x';
-        *out++ = hexdig[c >> 4];
-        *out++ = hexdig[c & 0xF];
-      }
-    }
-  }
-  return out;
-}
-
+void write_escaped (std::string const& s, std::ostream& out);
 std::string escaped_str (std::string const& s);
 
 /* random_double */

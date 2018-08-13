@@ -440,16 +440,20 @@ void WeightAlgebra::toJsonStream (ostream& out, const ParamDefs& defs, const Exp
   out << "{";
   size_t n = 0;
   for (const auto& def: defs) {
-    out << (n++ ? "," : "") << "\"" << escaped_str(def.first) << "\":";
+    out << (n++ ? "," : "") << "\"";
+    write_escaped (def.first, out);
+    out << "\":";
     toJsonStream (out, def.second, memos);
   }
   out << "}";
 }
 
 void WeightAlgebra::toJsonStream (ostream& out, const WeightExpr& w, const ExprMemos* memos) {
-  if (memos && memos->count(w))
-    out << "\"" << escaped_str(memos->at(w)) << "\"";
-  else {
+  if (memos && memos->count(w)) {
+    out << "\"";
+    write_escaped (memos->at(w), out);
+    out << "\"";
+  } else {
     const ExprType op = w->type;
     if (isZero(w))
       out << "false";
@@ -466,7 +470,9 @@ void WeightAlgebra::toJsonStream (ostream& out, const WeightExpr& w, const ExprM
 	out << setprecision(std::numeric_limits<double>::digits10) << w->args.doubleValue;
 	break;
       case Param:
-	out << "\"" << escaped_str(*w->args.param) << "\"";
+	out << "\"";
+	write_escaped (*w->args.param, out);
+	out << "\"";
 	break;
       case Log:
 	out << "{\"log\":";
