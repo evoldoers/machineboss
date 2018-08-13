@@ -178,13 +178,14 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
   map<string,string> name2def;
   vguard<string> names;
   if (memoizeRepeatedExpressions) {
+    LogThisAt(6,"Analyzing expressions to find duplicates" << endl);
     set<string> params;
+    set<WeightExpr> visited;
     ParamDefs dummyDefs;
     for (StateIndex s = 0; s < nStates(); ++s)
       for (const auto& t: state[s].trans) {
 	WeightAlgebra::countRefs (t.weight, counts);
-	const auto tp = WeightAlgebra::params (t.weight, dummyDefs);
-	params.insert (tp.begin(), tp.end());
+	WeightAlgebra::addParams (params, visited, t.weight, dummyDefs);
       }
 
     for (const auto& t_c: counts) {
@@ -213,6 +214,7 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 	names.push_back (name);
       }
     }
+    LogThisAt(6,"Memoized " << names.size() << " duplicate expressions" << endl);
   }
 
   out << "{\"state\":" << endl << " [";
