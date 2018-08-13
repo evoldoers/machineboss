@@ -11,6 +11,7 @@ private:
   list<ExprStruct> exprStructStorage;
   list<string> paramStorage;
   ExprStruct zeroStr, oneStr;
+  ExprIndex nExprStructs;
 public:
   ExprPtr zero, one;
   ExprStructFactory() {
@@ -19,16 +20,19 @@ public:
     oneStr.args.intValue = 1;
     zero = &zeroStr;
     one = &oneStr;
+    nExprStructs = 0;
   }
   ExprPtr newExpr() {
     exprStructStorage.push_front (ExprStruct());
-    return &exprStructStorage.front();
+    ExprPtr result = &exprStructStorage.front();
+    ((ExprStruct*)result)->index = nExprStructs++;
+    return result;
   }
   ExprPtr newParam (const string& param) {
     paramStorage.push_front (param);
     ExprPtr e = newExpr();
-    e->type = Param;
-    e->args.param = &paramStorage.front();
+    ((ExprStruct*)e)->type = Param;
+    ((ExprStruct*)e)->args.param = &paramStorage.front();
     return e;
   }
   ExprPtr newInt (int val) {
@@ -37,8 +41,8 @@ public:
     if (val == 1)
       return one;
     ExprPtr e = newExpr();
-    e->type = Int;
-    e->args.intValue = val;
+    ((ExprStruct*)e)->type = Int;
+    ((ExprStruct*)e)->args.intValue = val;
     return e;
   }
   ExprPtr newDouble (double val) {
@@ -47,24 +51,30 @@ public:
     if (val == 1.)
       return one;
     ExprPtr e = newExpr();
-    e->type = Dbl;
-    e->args.doubleValue = val;
+    ((ExprStruct*)e)->type = Dbl;
+    ((ExprStruct*)e)->args.doubleValue = val;
     return e;
   }
   ExprPtr newUnary (ExprType type, ExprPtr arg) {
     Assert (arg, "Null argument to unary function");
     ExprPtr e = newExpr();
-    e->type = type;
-    e->args.arg = arg;
+    ((ExprStruct*)e)->type = type;
+    ((ExprStruct*)e)->args.arg = arg;
     return e;
   }
   ExprPtr newBinary (ExprType type, ExprPtr l, ExprPtr r) {
     Assert (l && r, "Null argument to binary function");
     ExprPtr e = newExpr();
-    e->type = type;
-    e->args.binary.l = l;
-    e->args.binary.r = r;
+    ((ExprStruct*)e)->type = type;
+    ((ExprStruct*)e)->args.binary.l = l;
+    ((ExprStruct*)e)->args.binary.r = r;
     return e;
+  }
+  ExprRefCounts zeroRefCounts() const {
+    return ExprRefCounts (nExprStructs, 0);
+  }
+  ExprIter exprBegin() const {
+    return exprStructStorage.begin();
   }
 };
 ExprStructFactory factory;
@@ -329,38 +339,9 @@ WeightExpr WeightAlgebra::deriv (const WeightExpr& w, const ParamDefs& defs, con
 
 set<string> WeightAlgebra::params (const WeightExpr& w, const ParamDefs& defs) {
   set<string> p;
-  set<WeightExpr> visited;
-  addParams (p, visited, w, defs);
+  ExprRefCounts refCounts = zeroRefCounts();
+  countRefs (w, refCounts, p, defs, NULL);
   return p;
-}
-
-void WeightAlgebra::addParams (set<string>& p, set<WeightExpr>& visited, const WeightExpr& w, const ParamDefs& defs) {
-  if (!visited.count(w)) {
-    visited.insert (w);
-    switch (w->type) {
-    case Null:
-    case Int:
-    case Dbl:
-      break;
-    case Param:
-      {
-	const string& n (*w->args.param);
-	if (defs.count(n))
-	  addParams (p, visited, defs.at(n), exclude(defs,n));
-	else
-	  p.insert (n);
-      }
-      break;
-    case Exp:
-    case Log:
-      addParams (p, visited, w->args.arg, defs);
-      break;
-    default:
-      addParams (p, visited, w->args.binary.l, defs);
-      addParams (p, visited, w->args.binary.r, defs);
-      break;
-    }
-  }
 }
 
 string WeightAlgebra::toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence) {
@@ -553,28 +534,40 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
  return result;
 }
 
-void WeightAlgebra::countRefs (const WeightExpr& w, ExprRefCounts& counts, const WeightExpr parent) {
-  if (!counts.count(w)) {
-    counts[w].order = counts.size();
-    counts[w].expr = w;
+ExprRefCounts WeightAlgebra::zeroRefCounts() {
+  return factory.zeroRefCounts();
+}
 
+ExprIter WeightAlgebra::exprBegin() {
+  return factory.exprBegin();
+}
+
+void WeightAlgebra::countRefs (const WeightExpr w, ExprRefCounts& counts, set<string>& params, const ParamDefs& defs, const WeightExpr parent) {
+  if (!(counts[w->index]++)) {
     switch (w->type) {
     case Null:
     case Int:
     case Dbl:
-    case Param:
       break;
-    case Log:
+    case Param:
+      {
+	const string& n (*w->args.param);
+	if (defs.count(n))
+	  countRefs (defs.at(n), counts, params, exclude(defs,n), w);
+	else
+	  params.insert (n);
+      }
+      break;
     case Exp:
-      countRefs (w->args.arg, counts, w);
+    case Log:
+      countRefs (w->args.arg, counts, params, defs, w);
       break;
     default:
-      countRefs (w->args.binary.l, counts, w);
-      countRefs (w->args.binary.r, counts, w);
+      countRefs (w->args.binary.l, counts, params, defs, w);
+      countRefs (w->args.binary.r, counts, params, defs, w);
       break;
     }
   }
-  counts[w].refs.insert (parent);
 }
 
 void sortDeps (const ParamDefs& defs, vector<string>& deps, const string& name, set<string>& visited, vector<string>& refs) {

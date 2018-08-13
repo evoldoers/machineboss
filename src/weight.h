@@ -1,13 +1,16 @@
 #ifndef WEIGHT_INCLUDED
 #define WEIGHT_INCLUDED
 
+#include <list>
 #include <set>
 #include <json.hpp>
 
 using namespace std;
 using json = nlohmann::json;
 
-typedef struct ExprStruct* ExprPtr;
+typedef struct ExprStruct const* ExprPtr;
+typedef size_t ExprIndex;
+typedef list<ExprStruct>::const_iterator ExprIter;
 
 struct BinaryExprArgs {
   ExprPtr l, r;
@@ -31,18 +34,14 @@ enum ExprType {
 struct ExprStruct {
   ExprType type;
   ExprArgs args;
+  ExprIndex index;
   ExprStruct() : type(Null) { }
 };
 
 typedef ExprPtr WeightExpr;
 typedef map<string,WeightExpr> ParamDefs;
 
-struct RefCount {
-  WeightExpr expr;
-  int order;
-  set<WeightExpr> refs;
-};
-typedef map<WeightExpr,RefCount> ExprRefCounts;
+typedef vector<size_t> ExprRefCounts;
 typedef map<WeightExpr,string> ExprMemos;
 
 struct WeightAlgebra {
@@ -82,7 +81,6 @@ struct WeightAlgebra {
 
   static WeightExpr deriv (const WeightExpr& w, const ParamDefs& defs, const string& param);
   static set<string> params (const WeightExpr& w, const ParamDefs& defs);
-  static void addParams (set<string>&, set<WeightExpr>&, const WeightExpr& w, const ParamDefs& defs);
   static vector<string> toposortParams (const ParamDefs& defs);
   
   static string toString (const WeightExpr& w, const ParamDefs& defs, int parentPrecedence = 0);
@@ -97,8 +95,10 @@ struct WeightAlgebra {
 
   static WeightExpr fromJson (const json& j, const ParamDefs* defs = NULL);
 
-  // trace refcount of functions
-  static void countRefs (const WeightExpr& w, ExprRefCounts& counts, const WeightExpr parent = NULL);
+  // trace refcount of functions. also used by params()
+  static ExprRefCounts zeroRefCounts();
+  static void countRefs (const WeightExpr w, ExprRefCounts& counts, set<string>& params, const ParamDefs& defs, const WeightExpr parent = NULL);
+  static ExprIter exprBegin();
 };
 
 #endif /* WEIGHT_INCLUDED */

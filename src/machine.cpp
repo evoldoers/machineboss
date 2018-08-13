@@ -167,48 +167,45 @@ set<string> Machine::params() const {
   return p;
 }
 
-bool cmpRefCounts (const RefCount* a, const RefCount* b) {
-  return a->order < b->order;
-}
-
 void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool showParams) const {
   ExprMemos memo;
-  ExprRefCounts counts;
-  vguard<const RefCount*> common;
+  ExprRefCounts counts = WeightAlgebra::zeroRefCounts();
+  vguard<WeightExpr> common;
   map<string,string> name2def;
   vguard<string> names;
   if (memoizeRepeatedExpressions) {
-    LogThisAt(6,"Analyzing expressions to find duplicates" << endl);
     set<string> params;
     set<WeightExpr> visited;
     ParamDefs dummyDefs;
-    for (StateIndex s = 0; s < nStates(); ++s)
-      for (const auto& t: state[s].trans) {
-	WeightAlgebra::countRefs (t.weight, counts);
-	WeightAlgebra::addParams (params, visited, t.weight, dummyDefs);
-      }
+    ProgressLog(plogMemo,6);
+    plogMemo.initProgress ("Analyzing transition weights to find repeated sub-expressions");
+    for (StateIndex s = 0; s < nStates(); ++s) {
+      plogMemo.logProgress (s / (double) nStates(), "finished %lu/%lu states", s, nStates());
+      for (const auto& t: state[s].trans)
+	WeightAlgebra::countRefs (t.weight, counts, params, dummyDefs, NULL);
+    }
 
-    for (const auto& t_c: counts) {
-      const WeightExpr expr = t_c.second.expr;
-      if (t_c.second.refs.size() > 1
+    auto iter = WeightAlgebra::exprBegin();
+    for (ExprIndex n = 0; n < counts.size(); ++iter, ++n) {
+      const WeightExpr expr = &*iter;
+      if (counts[n] > 1
 	  && expr->type != Dbl && expr->type != Int && expr->type != Param && expr->type != Null
 	  && !WeightAlgebra::isOne (expr))
-	common.push_back (&t_c.second);
+	common.push_back (expr);
     }
-    sort (common.begin(), common.end(), cmpRefCounts);
 
     map<string,string> def2name;
     size_t n = 0;
-    for (const auto& c: common) {
-      const string def = WeightAlgebra::toJsonString (c->expr, &memo);
+    for (const auto& expr: common) {
+      const string def = WeightAlgebra::toJsonString (expr, &memo);
       if (def2name.count(def))
-	memo[c->expr] = def2name.at(def);
+	memo[expr] = def2name.at(def);
       else {
 	string prefix, name;
 	do {
 	  prefix = prefix + "_";
 	} while (params.count (name = prefix + to_string(++n)));
-	memo[c->expr] = name;
+	memo[expr] = name;
 	name2def[name] = def;
 	def2name[def] = name;
 	names.push_back (name);
