@@ -448,7 +448,7 @@ void WeightAlgebra::toJsonStream (ostream& out, const ParamDefs& defs, const Exp
 
 void WeightAlgebra::toJsonStream (ostream& out, const WeightExpr& w, const ExprMemos* memos) {
   if (memos && memos->count(w))
-    out << memos->at(w);
+    out << "\"" << escaped_str(memos->at(w)) << "\"";
   else {
     const ExprType op = w->type;
     if (isZero(w))
