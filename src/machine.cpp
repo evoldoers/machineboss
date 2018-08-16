@@ -286,25 +286,46 @@ void Machine::readJson (const json& pj) {
   if (pj.count("compose")) {
     const auto arg = pj["compose"];
     *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
-			      JsonReader<Machine>::fromJson (arg[1]));
+			      JsonReader<Machine>::fromJson (arg[1]),
+			      true, true, Machine::BreakSilentCycles);
 
-  } else if (pj.count("compose")) {
-    const auto arg = pj["compose"];
+  } else if (pj.count("compose-sum")) {
+    const auto arg = pj["compose-sum"];
     *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
-			      JsonReader<Machine>::fromJson (arg[1]));
+			      JsonReader<Machine>::fromJson (arg[1]),
+			      true, true, Machine::SumSilentCycles);
+
+  } else if (pj.count("compose-unsort")) {
+    const auto arg = pj["compose-unsort"];
+    *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
+			      JsonReader<Machine>::fromJson (arg[1]),
+			      true, true, Machine::LeaveSilentCycles);
 
   } else if (pj.count("concat")) {
-    const auto arg = pj["compose"];
+    const auto arg = pj["concat"];
     *this = Machine::concatenate (JsonReader<Machine>::fromJson (arg[0]),
 				  JsonReader<Machine>::fromJson (arg[1]));
     
-  } else if (pj.count("and")) {
-    const auto arg = pj["and"];
+  } else if (pj.count("intersect")) {
+    const auto arg = pj["intersect"];
     *this = Machine::intersect (JsonReader<Machine>::fromJson (arg[0]),
-				JsonReader<Machine>::fromJson (arg[1]));
+				JsonReader<Machine>::fromJson (arg[1]),
+				Machine::BreakSilentCycles);
+    
+  } else if (pj.count("intersect-sum")) {
+    const auto arg = pj["intersect-sum"];
+    *this = Machine::intersect (JsonReader<Machine>::fromJson (arg[0]),
+				JsonReader<Machine>::fromJson (arg[1]),
+				Machine::SumSilentCycles);
 
-  } else if (pj.count("or")) {
-    const auto arg = pj["or"];
+  } else if (pj.count("intersect-unsort")) {
+    const auto arg = pj["intersect-unsort"];
+    *this = Machine::intersect (JsonReader<Machine>::fromJson (arg[0]),
+				JsonReader<Machine>::fromJson (arg[1]),
+				Machine::LeaveSilentCycles);
+
+  } else if (pj.count("union")) {
+    const auto arg = pj["union"];
     *this = Machine::takeUnion (JsonReader<Machine>::fromJson (arg[0]),
 				JsonReader<Machine>::fromJson (arg[1]));
 
@@ -322,6 +343,12 @@ void Machine::readJson (const json& pj) {
 
   } else if (pj.count("plus")) {  // Kleene plus
     *this = Machine::kleenePlus (JsonReader<Machine>::fromJson (pj["plus"]));
+
+  } else if (pj.count("sort-sum")) {  // toposort, summing out silent cycles
+    *this = Machine::kleeneStar (JsonReader<Machine>::fromJson (pj["sort-sum"]));
+
+  } else if (pj.count("sort-break")) {  // toposort, breaking silent cycles
+    *this = Machine::kleeneStar (JsonReader<Machine>::fromJson (pj["sort-break"]));
     
   } else if (pj.count("eliminate")) {
     *this = JsonReader<Machine>::fromJson (pj["eliminate"]).eliminateSilentTransitions();
@@ -483,7 +510,7 @@ inline StateIndex compState2j (StateIndex comp, StateIndex jStates) {
   return comp % jStates;
 }
 
-Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignCompositeStateNames, bool collapseDegenerateTransitions, bool sumSilentBackTransitions) {
+Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignCompositeStateNames, bool collapseDegenerateTransitions, SilentCycleStrategy cycleStrategy) {
   LogThisAt(3,"Composing " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to compose transducers A*B where B is not a waiting machine");
@@ -593,10 +620,10 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
   }
 
   LogThisAt(3,"Transducer composition yielded " << compMachine.nStates() << "-state machine" << endl);
-  return compMachine.ergodicMachine().advanceSort().removeSilentBackTransitions(sumSilentBackTransitions).ergodicMachine();
+  return compMachine.ergodicMachine().advanceSort().processCycles(cycleStrategy).ergodicMachine();
 }
 
-Machine Machine::intersect (const Machine& first, const Machine& origSecond, bool sumSilentBackTransitions) {
+Machine Machine::intersect (const Machine& first, const Machine& origSecond, SilentCycleStrategy cycleStrategy) {
   LogThisAt(3,"Intersecting " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   Assert (first.outputAlphabet().empty() && origSecond.outputAlphabet().empty(), "Attempt to intersect transducers A&B with nonempty output alphabets");
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
@@ -635,7 +662,7 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond, boo
     }
 
   LogThisAt(3,"Transducer intersection yielded " << interMachine.nStates() << "-state machine" << endl);
-  return interMachine.ergodicMachine().advanceSort().removeSilentBackTransitions(sumSilentBackTransitions).ergodicMachine();
+  return interMachine.ergodicMachine().advanceSort().processCycles(cycleStrategy).ergodicMachine();
 }
 
 set<StateIndex> Machine::accessibleStates() const {
@@ -815,8 +842,12 @@ void updateFwdTrans (const Machine& machine, FwdTransMap& fwdTrans, size_t& nEli
   }
 }
 
-Machine Machine::removeSilentBackTransitions (bool sumThemOut) const {
-  return sumThemOut ? advancingMachine() : dropSilentBackTransitions();
+Machine Machine::processCycles (SilentCycleStrategy cycleStrategy) const {
+  return (cycleStrategy == LeaveSilentCycles
+	  ? *this
+	  : (cycleStrategy == SumSilentCycles
+	     ? advancingMachine()
+	     : dropSilentBackTransitions()));
 }
 
 Machine Machine::dropSilentBackTransitions() const {
@@ -1011,9 +1042,9 @@ bool Machine::isAligningMachine() const {
   return true;
 }
 
-Machine Machine::eliminateSilentTransitions (bool sumSilentBackTransitions) const {
+Machine Machine::eliminateSilentTransitions (SilentCycleStrategy cycleStrategy) const {
   if (!isAdvancingMachine())
-    return removeSilentBackTransitions(sumSilentBackTransitions).eliminateSilentTransitions();
+    return processCycles(cycleStrategy).eliminateSilentTransitions();
   LogThisAt(3,"Eliminating silent transitions from " << nStates() << "-state transducer" << endl);
   Machine em;
   em.import (*this);
