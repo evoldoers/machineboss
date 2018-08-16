@@ -66,9 +66,13 @@ Transducer construction:
   -p [ --preset ] arg          select preset (compdna, comprna, dnapsw, null, 
                                prot2dna, protpsw, psw2dna, translate)
   -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
+  --generate-wild arg          acceptor for Kleene closure over specified 
+                               characters
   --generate-fasta arg         generator for FASTA-format sequence
   --generate arg               sequence generator for JSON-format sequence
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
+  --accept-wild arg            acceptor for Kleene closure over specified 
+                               characters
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept arg                 sequence acceptor for JSON-format sequence
   -w [ --weight ] arg          weighted null transition '#'
@@ -79,7 +83,9 @@ Prefix operators:
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
   -t [ --transpose ]           transpose: swap input/output
-  -n [ --eliminate ]           eliminate silent transitions
+  --sort                       topologically sort, eliminate silent backward 
+                               transitions
+  -n [ --eliminate ]           eliminate all silent transitions
 
 Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
@@ -88,8 +94,10 @@ Postfix operators:
 
 Infix operators:
   -m [ --compose ]             compose '=&gt;'
+  --compose-fast               compose, dropping backward silent transitions
   -c [ --concat ]              concatenate '.'
   -i [ --and ]                 intersect '&&'
+  --intersect-fast             intersect, dropping backward silent transitions
   -u [ --or ]                  union '||'
   -o [ --loop ]                loop: x '?+' y = x(y.x)*
 

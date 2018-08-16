@@ -63,7 +63,8 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
-      ("eliminate,n", "eliminate silent transitions")
+      ("sort", "topologically sort, eliminate silent backward transitions")
+      ("eliminate,n", "eliminate all silent transitions")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -76,8 +77,10 @@ int main (int argc, char** argv) {
     po::options_description infixOpts("Infix operators");
     infixOpts.add_options()
       ("compose,m", "compose '=>'")
+      ("compose-fast", "compose, dropping backward silent transitions")
       ("concat,c", "concatenate '.'")
       ("and,i", "intersect '&&'")
+      ("intersect-fast", "intersect, dropping backward silent transitions")
       ("or,u", "union '||'")
       ("loop,o", "loop: x '?+' y = x(y.x)*")
       ;
@@ -163,7 +166,7 @@ int main (int argc, char** argv) {
       do {
 	machines.pop_back();
 	if (machines.size())
-	  machine = Machine::compose (machines.back(), machine);
+	  machine = Machine::compose (machines.back(), machine, true, true, true);
       } while (machines.size());
       return machine;
     };
@@ -250,12 +253,18 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
-	} else if (command == "--compose")
-	  m = Machine::compose (popMachine(), nextMachine());
+	} else if (command == "--sort")
+	  m = nextMachine().advancingMachine();
+	else if (command == "--compose")
+	  m = Machine::compose (popMachine(), nextMachine(), true, true, true);
+	else if (command == "--compose-fast")
+          m = Machine::compose (popMachine(), nextMachine(), true, true, false);
 	else if (command == "--concat")
 	  m = Machine::concatenate (popMachine(), nextMachine());
 	else if (command == "--and")
-	  m = Machine::intersect (popMachine(), nextMachine());
+	  m = Machine::intersect (popMachine(), nextMachine(), true);
+	else if (command == "--intersect-fast")
+	  m = Machine::intersect (popMachine(), nextMachine(), false);
 	else if (command == "--or")
 	  m = Machine::takeUnion (popMachine(), nextMachine());
 	else if (command == "--zero-or-one")
@@ -277,7 +286,8 @@ int main (int argc, char** argv) {
 	  m = Machine::compose (r.reverse(),
 				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
 							    ? "comprna"
-							    : "compdna"));
+							    : "compdna"),
+				true, true, true);
 	} else if (command == "--transpose")
 	  m = nextMachine().transpose();
 	else if (command == "--weight") {

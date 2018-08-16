@@ -82,8 +82,8 @@ struct Machine {
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
 
-  static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true);
-  static Machine intersect (const Machine& first, const Machine& second);
+  static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, bool sumSilentBackTransitions = false);
+  static Machine intersect (const Machine& first, const Machine& second, bool sumSilentBackTransitions = false);
   static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);
 
   static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
@@ -117,8 +117,9 @@ struct Machine {
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
   Machine advancingMachine() const;  // convert to advancing machine
+  Machine dropSilentBackTransitions() const;
 
-  Machine eliminateSilentTransitions() const;
+  Machine eliminateSilentTransitions (bool sumSilentBackTransitions = false) const;
 
   size_t nSilentBackTransitions() const;
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i

@@ -478,7 +478,7 @@ inline StateIndex compState2j (StateIndex comp, StateIndex jStates) {
   return comp % jStates;
 }
 
-Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignCompositeStateNames, bool collapseDegenerateTransitions) {
+Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignCompositeStateNames, bool collapseDegenerateTransitions, bool sumSilentBackTransitions) {
   LogThisAt(3,"Composing " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to compose transducers A*B where B is not a waiting machine");
@@ -588,10 +588,11 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
   }
 
   LogThisAt(3,"Transducer composition yielded " << compMachine.nStates() << "-state machine" << endl);
-  return compMachine.ergodicMachine().advanceSort().advancingMachine().ergodicMachine();
+  const Machine sorted = compMachine.ergodicMachine().advanceSort();
+  return (sumSilentBackTransitions ? sorted.advancingMachine() : sorted.dropSilentBackTransitions()).ergodicMachine();
 }
 
-Machine Machine::intersect (const Machine& first, const Machine& origSecond) {
+Machine Machine::intersect (const Machine& first, const Machine& origSecond, bool sumSilentBackTransitions) {
   LogThisAt(3,"Intersecting " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   Assert (first.outputAlphabet().empty() && origSecond.outputAlphabet().empty(), "Attempt to intersect transducers A&B with nonempty output alphabets");
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
@@ -630,7 +631,8 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond) {
     }
 
   LogThisAt(3,"Transducer intersection yielded " << interMachine.nStates() << "-state machine" << endl);
-  return interMachine.ergodicMachine().advanceSort().advancingMachine().ergodicMachine();
+  const Machine sorted = interMachine.ergodicMachine().advanceSort();
+  return (sumSilentBackTransitions ? sorted.advancingMachine() : sorted.dropSilentBackTransitions()).ergodicMachine();
 }
 
 set<StateIndex> Machine::accessibleStates() const {
@@ -810,6 +812,34 @@ void updateFwdTrans (const Machine& machine, FwdTransMap& fwdTrans, size_t& nEli
   }
 }
 
+Machine Machine::dropSilentBackTransitions() const {
+  Machine am;
+  if (isAdvancingMachine()) {
+    am = *this;
+    LogThisAt(5,"Machine is already an advancing machine; no transformation necessary" << endl);
+  } else {
+    am.import (*this);
+    if (nStates()) {
+      am.state.reserve (nStates());
+      for (StateIndex s = 0; s < nStates(); ++s) {
+	const MachineState& ms = state[s];
+	am.state.push_back (MachineState());
+	MachineState& ams = am.state.back();
+	ams.name = ms.name;
+
+	for (const auto& t: ms.trans)
+	  if (!(t.isSilent() && t.dest <= s))
+	    ams.trans.push_back (t);
+      }
+      
+      Assert (am.isAdvancingMachine(), "failed to create advancing machine");
+      LogThisAt(5,"Converted " << nTransitions() << "-transition transducer into " << am.nTransitions() << "-transition advancing machine" << endl);
+      LogThisAt(7,MachineLoader::toJsonString(am) << endl);
+    }
+  }
+  return am;
+}
+
 Machine Machine::advancingMachine() const {
   Machine am;
   if (isAdvancingMachine()) {
@@ -972,9 +1002,9 @@ bool Machine::isAligningMachine() const {
   return true;
 }
 
-Machine Machine::eliminateSilentTransitions() const {
+Machine Machine::eliminateSilentTransitions (bool sumSilentBackTransitions) const {
   if (!isAdvancingMachine())
-    return advancingMachine().eliminateSilentTransitions();
+    return (sumSilentBackTransitions ? advancingMachine() : dropSilentBackTransitions()).eliminateSilentTransitions();
   LogThisAt(3,"Eliminating silent transitions from " << nStates() << "-state transducer" << endl);
   Machine em;
   em.import (*this);
