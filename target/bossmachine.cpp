@@ -63,7 +63,8 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
-      ("sort", "topologically sort, eliminate silent backward transitions")
+      ("sort-sum", "topologically sort, eliminate silent backward transitions")
+      ("sort-drop", "topologically sort, drop silent backward transitions")
       ("eliminate,n", "eliminate all silent transitions")
       ;
 
@@ -76,11 +77,11 @@ int main (int argc, char** argv) {
 
     po::options_description infixOpts("Infix operators");
     infixOpts.add_options()
-      ("compose,m", "compose '=>'")
-      ("compose-fast", "compose, dropping backward silent transitions")
+      ("compose-sum,m", "compose, summing out backward silent transitions '=>'")
+      ("compose", "compose, dropping backward silent transitions")
       ("concat,c", "concatenate '.'")
-      ("and,i", "intersect '&&'")
-      ("intersect-fast", "intersect, dropping backward silent transitions")
+      ("intersect-sum,i", "intersect, summing out backward silent transitions '&&'")
+      ("intersect", "intersect, dropping backward silent transitions")
       ("or,u", "union '||'")
       ("loop,o", "loop: x '?+' y = x(y.x)*")
       ;
@@ -134,9 +135,9 @@ int main (int argc, char** argv) {
     map<string,string> alias;
     alias[string("<<")] = "--generate-chars";
     alias[string(">>")] = "--accept-chars";
-    alias[string("=>")] = "--compose";
+    alias[string("=>")] = "--compose-sum";
     alias[string(".")] = "--concat";
-    alias[string("&&")] = "--and";
+    alias[string("&&")] = "--intersect-sum";
     alias[string("||")] = "--or";
     alias[string("?")] = "--zero-or-one";
     alias[string("*")] = "--kleene-star";
@@ -253,17 +254,19 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
-	} else if (command == "--sort")
-	  m = nextMachine().advancingMachine();
-	else if (command == "--compose")
+	} else if (command == "--sort-sum")
+	  m = nextMachine().advanceSort().advancingMachine();
+	else if (command == "--sort-drop")
+	  m = nextMachine().advanceSort().dropSilentBackTransitions();
+	else if (command == "--compose-sum")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, true);
-	else if (command == "--compose-fast")
+	else if (command == "--compose")
           m = Machine::compose (popMachine(), nextMachine(), true, true, false);
 	else if (command == "--concat")
 	  m = Machine::concatenate (popMachine(), nextMachine());
-	else if (command == "--and")
+	else if (command == "--intersect-sum")
 	  m = Machine::intersect (popMachine(), nextMachine(), true);
-	else if (command == "--intersect-fast")
+	else if (command == "--intersect")
 	  m = Machine::intersect (popMachine(), nextMachine(), false);
 	else if (command == "--or")
 	  m = Machine::takeUnion (popMachine(), nextMachine());

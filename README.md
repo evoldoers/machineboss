@@ -85,6 +85,8 @@ Prefix operators:
   -t [ --transpose ]           transpose: swap input/output
   --sort                       topologically sort, eliminate silent backward 
                                transitions
+  --drop                       topologically sort, drop silent backward 
+                               transitions
   -n [ --eliminate ]           eliminate all silent transitions
 
 Postfix operators:
@@ -93,11 +95,13 @@ Postfix operators:
   -K [ --kleene-plus ]         Kleene plus '+'
 
 Infix operators:
-  -m [ --compose ]             compose '=&gt;'
-  --compose-fast               compose, dropping backward silent transitions
+  -m [ --compose-sort ]        compose, summing out backward silent transitions
+                               '=&gt;'
+  --compose                    compose, dropping backward silent transitions
   -c [ --concat ]              concatenate '.'
-  -i [ --and ]                 intersect '&&'
-  --intersect-fast             intersect, dropping backward silent transitions
+  -i [ --intersect-sort ]      intersect, summing out backward silent 
+                               transitions '&&'
+  --intersect                  intersect, dropping backward silent transitions
   -u [ --or ]                  union '||'
   -o [ --loop ]                loop: x '?+' y = x(y.x)*
 

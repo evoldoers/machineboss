@@ -96,7 +96,7 @@ alph.forEach (function (l) {
       norms.push (alph.map (function (d) { return subProb(c,d,l,r) }))
     })
     norms.push (alph.map (function (c) { return insChar(c,l,r) }))
-    probs.push (insOpen(l,r), insExtend(l,r), delOpen(l,r), /* delExtend(l,r) */ )
+    probs.push (insOpen(l,r), insExtend(l,r), delOpen(l,r) /* , delExtend(l,r) */ )
     probs = probs.concat (alph.map (function (c) { return delChar(c,l,r) }))
   })
 })

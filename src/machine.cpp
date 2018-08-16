@@ -288,6 +288,11 @@ void Machine::readJson (const json& pj) {
     *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
 			      JsonReader<Machine>::fromJson (arg[1]));
 
+  } else if (pj.count("compose")) {
+    const auto arg = pj["compose"];
+    *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
+			      JsonReader<Machine>::fromJson (arg[1]));
+
   } else if (pj.count("concat")) {
     const auto arg = pj["compose"];
     *this = Machine::concatenate (JsonReader<Machine>::fromJson (arg[0]),
@@ -588,8 +593,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
   }
 
   LogThisAt(3,"Transducer composition yielded " << compMachine.nStates() << "-state machine" << endl);
-  const Machine sorted = compMachine.ergodicMachine().advanceSort();
-  return (sumSilentBackTransitions ? sorted.advancingMachine() : sorted.dropSilentBackTransitions()).ergodicMachine();
+  return compMachine.ergodicMachine().advanceSort().removeSilentBackTransitions(sumSilentBackTransitions).ergodicMachine();
 }
 
 Machine Machine::intersect (const Machine& first, const Machine& origSecond, bool sumSilentBackTransitions) {
@@ -631,8 +635,7 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond, boo
     }
 
   LogThisAt(3,"Transducer intersection yielded " << interMachine.nStates() << "-state machine" << endl);
-  const Machine sorted = interMachine.ergodicMachine().advanceSort();
-  return (sumSilentBackTransitions ? sorted.advancingMachine() : sorted.dropSilentBackTransitions()).ergodicMachine();
+  return interMachine.ergodicMachine().advanceSort().removeSilentBackTransitions(sumSilentBackTransitions).ergodicMachine();
 }
 
 set<StateIndex> Machine::accessibleStates() const {
@@ -812,6 +815,10 @@ void updateFwdTrans (const Machine& machine, FwdTransMap& fwdTrans, size_t& nEli
   }
 }
 
+Machine Machine::removeSilentBackTransitions (bool sumThemOut) const {
+  return sumThemOut ? advancingMachine() : dropSilentBackTransitions();
+}
+
 Machine Machine::dropSilentBackTransitions() const {
   Machine am;
   if (isAdvancingMachine()) {
@@ -830,10 +837,12 @@ Machine Machine::dropSilentBackTransitions() const {
 	for (const auto& t: ms.trans)
 	  if (!(t.isSilent() && t.dest <= s))
 	    ams.trans.push_back (t);
+	  else
+	    LogThisAt(6,"Dropping silent transition from #" << s << " to #" << t.dest << ": " << ms.name << "  -->  " << state[t.dest].name << endl);
       }
-      
+
       Assert (am.isAdvancingMachine(), "failed to create advancing machine");
-      LogThisAt(5,"Converted " << nTransitions() << "-transition transducer into " << am.nTransitions() << "-transition advancing machine" << endl);
+      LogThisAt(5,"Converted " << nTransitions() << "-transition transducer into " << am.nTransitions() << "-transition advancing machine by dropping silent back-transitions" << endl);
       LogThisAt(7,MachineLoader::toJsonString(am) << endl);
     }
   }
@@ -1004,7 +1013,7 @@ bool Machine::isAligningMachine() const {
 
 Machine Machine::eliminateSilentTransitions (bool sumSilentBackTransitions) const {
   if (!isAdvancingMachine())
-    return (sumSilentBackTransitions ? advancingMachine() : dropSilentBackTransitions()).eliminateSilentTransitions();
+    return removeSilentBackTransitions(sumSilentBackTransitions).eliminateSilentTransitions();
   LogThisAt(3,"Eliminating silent transitions from " << nStates() << "-state transducer" << endl);
   Machine em;
   em.import (*this);

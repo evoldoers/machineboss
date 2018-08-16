@@ -116,9 +116,10 @@ struct Machine {
 
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
-  Machine advancingMachine() const;  // convert to advancing machine
-  Machine dropSilentBackTransitions() const;
+  Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
 
+  Machine removeSilentBackTransitions (bool sumThemOut = false) const;
+  Machine dropSilentBackTransitions() const;
   Machine eliminateSilentTransitions (bool sumSilentBackTransitions = false) const;
 
   size_t nSilentBackTransitions() const;
