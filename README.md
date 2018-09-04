@@ -66,7 +66,7 @@ Transducer construction:
   -p [ --preset ] arg          select preset (compdna, comprna, dnapsw, null, 
                                prot2dna, protpsw, psw2dna, translate)
   -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
-  --generate-wild arg          acceptor for Kleene closure over specified 
+  --generate-wild arg          generator for Kleene closure over specified 
                                characters
   --generate-fasta arg         generator for FASTA-format sequence
   --generate arg               sequence generator for JSON-format sequence
