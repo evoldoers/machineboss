@@ -58,6 +58,8 @@ struct MachineState {
 };
 
 struct Machine {
+  typedef enum SilentCycleStrategy { LeaveSilentCycles = 0, BreakSilentCycles = 1, SumSilentCycles = 2 } SilentCycleStrategy;
+
   ParamFuncs defs;
   Constraints cons;
   vguard<MachineState> state;
@@ -82,8 +84,8 @@ struct Machine {
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
 
-  static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, bool sumSilentBackTransitions = false);
-  static Machine intersect (const Machine& first, const Machine& second, bool sumSilentBackTransitions = false);
+  static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, SilentCycleStrategy cycleStrategy = SumSilentCycles);
+  static Machine intersect (const Machine& first, const Machine& second, SilentCycleStrategy cycleStrategy = SumSilentCycles);
   static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);
 
   static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
@@ -116,13 +118,14 @@ struct Machine {
 
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
-  Machine advancingMachine() const;  // convert to advancing machine
-  Machine dropSilentBackTransitions() const;
-
-  Machine eliminateSilentTransitions (bool sumSilentBackTransitions = false) const;
 
   size_t nSilentBackTransitions() const;
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
+  Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
+
+  Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;
+  Machine dropSilentBackTransitions() const;
+  Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;
 
   // helpers to import defs & constraints from other machine(s)
   void import (const Machine& m);

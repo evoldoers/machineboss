@@ -63,7 +63,8 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
-      ("sort", "topologically sort, eliminate silent backward transitions")
+      ("sort-sum", "topologically sort, eliminating silent cycles")
+      ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
       ("eliminate,n", "eliminate all silent transitions")
       ;
 
@@ -76,12 +77,14 @@ int main (int argc, char** argv) {
 
     po::options_description infixOpts("Infix operators");
     infixOpts.add_options()
-      ("compose,m", "compose '=>'")
-      ("compose-fast", "compose, dropping backward silent transitions")
+      ("compose-sum,m", "compose, summing out silent cycles '=>'")
+      ("compose", "compose, breaking silent cycles (faster)")
+      ("compose-unsort", "compose, leaving silent cycles")
       ("concat,c", "concatenate '.'")
-      ("and,i", "intersect '&&'")
-      ("intersect-fast", "intersect, dropping backward silent transitions")
-      ("or,u", "union '||'")
+      ("intersect-sum,i", "intersect, summing out silent cycles '&&'")
+      ("intersect", "intersect, breaking silent cycles (faster)")
+      ("intersect-unsort", "intersect, leaving silent cycles")
+      ("union,u", "union '||'")
       ("loop,o", "loop: x '?+' y = x(y.x)*")
       ;
 
@@ -134,10 +137,10 @@ int main (int argc, char** argv) {
     map<string,string> alias;
     alias[string("<<")] = "--generate-chars";
     alias[string(">>")] = "--accept-chars";
-    alias[string("=>")] = "--compose";
+    alias[string("=>")] = "--compose-sum";
     alias[string(".")] = "--concat";
-    alias[string("&&")] = "--and";
-    alias[string("||")] = "--or";
+    alias[string("&&")] = "--intersect-sum";
+    alias[string("||")] = "--union";
     alias[string("?")] = "--zero-or-one";
     alias[string("*")] = "--kleene-star";
     alias[string("+")] = "--kleene-plus";
@@ -166,7 +169,7 @@ int main (int argc, char** argv) {
       do {
 	machines.pop_back();
 	if (machines.size())
-	  machine = Machine::compose (machines.back(), machine, true, true, true);
+	  machine = Machine::compose (machines.back(), machine, true, true, Machine::SumSilentCycles);
       } while (machines.size());
       return machine;
     };
@@ -253,19 +256,25 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
-	} else if (command == "--sort")
-	  m = nextMachine().advancingMachine();
+	} else if (command == "--sort-sum")
+	  m = nextMachine().advanceSort().advancingMachine();
+	else if (command == "--sort-break")
+	  m = nextMachine().advanceSort().dropSilentBackTransitions();
+	else if (command == "--compose-sum")
+	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose")
-	  m = Machine::compose (popMachine(), nextMachine(), true, true, true);
-	else if (command == "--compose-fast")
-          m = Machine::compose (popMachine(), nextMachine(), true, true, false);
+          m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::BreakSilentCycles);
+	else if (command == "--compose-unsort")
+	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::LeaveSilentCycles);
 	else if (command == "--concat")
 	  m = Machine::concatenate (popMachine(), nextMachine());
-	else if (command == "--and")
-	  m = Machine::intersect (popMachine(), nextMachine(), true);
-	else if (command == "--intersect-fast")
-	  m = Machine::intersect (popMachine(), nextMachine(), false);
-	else if (command == "--or")
+	else if (command == "--intersect-sum")
+	  m = Machine::intersect (popMachine(), nextMachine(), Machine::SumSilentCycles);
+	else if (command == "--intersect")
+	  m = Machine::intersect (popMachine(), nextMachine(), Machine::BreakSilentCycles);
+	else if (command == "--intersect-unsort")
+	  m = Machine::intersect (popMachine(), nextMachine(), Machine::LeaveSilentCycles);
+	else if (command == "--union")
 	  m = Machine::takeUnion (popMachine(), nextMachine());
 	else if (command == "--zero-or-one")
 	  m = Machine::zeroOrOne (popMachine());
@@ -287,7 +296,7 @@ int main (int argc, char** argv) {
 				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
 							    ? "comprna"
 							    : "compdna"),
-				true, true, true);
+				true, true, Machine::SumSilentCycles);
 	} else if (command == "--transpose")
 	  m = nextMachine().transpose();
 	else if (command == "--weight") {
