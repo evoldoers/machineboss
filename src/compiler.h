@@ -55,13 +55,16 @@ struct Compiler {
   string mathLibrary;      // prefix/namespace for math functions
   string infinity;         // maximum value representable using internal log type
   string realInfinity;     // maximum value representable using floating-point type
-
+  string boolType;         // bool
+  string abort;            // throw runtime_error()
+  
   Compiler();
   
   static string transVar (StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);
 
   virtual string mapAccessor (const string& obj, const string& key) const = 0;
+  virtual string mapContains (const string& obj, const string& key) const = 0;
   virtual string constArrayAccessor (const string& obj, const string& key) const = 0;
   virtual string declareArray (const string& arrayName, const string& dim) const = 0;
   virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
@@ -84,6 +87,7 @@ struct Compiler {
   string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
+  string assertParamDefined (const string& p) const;
   
   string compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* funcName = DefaultForwardFunctionName) const;
 };
@@ -95,6 +99,7 @@ struct JavaScriptCompiler : Compiler {
   string deleteArray (const string& arrayName) const;
   string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const;
   string mapAccessor (const string& obj, const string& key) const;
+  string mapContains (const string& obj, const string& key) const;
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
   string boundLog (const string&) const;
@@ -114,6 +119,7 @@ struct CPlusPlusCompiler : Compiler {
   string deleteArray (const string& arrayName) const;
   string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const;
   string mapAccessor (const string& obj, const string& key) const;
+  string mapContains (const string& obj, const string& key) const;
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
   string boundLog (const string&) const;

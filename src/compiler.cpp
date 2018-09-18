@@ -4,7 +4,7 @@ Compiler::Compiler()
   : showCells (false)
 { }
 
-static const string xvar ("x"), yvar ("y"), paramvar ("p"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
+static const string xvar ("x"), yvar ("y"), paramvar ("p"), gotparamsvar = "gotparams", buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy");
@@ -27,6 +27,8 @@ JavaScriptCompiler::JavaScriptCompiler() {
   mathLibrary = "Math.";
   infinity = softplusvar + ".SOFTPLUS_INTLOG_INFINITY";
   realInfinity = "Infinity";
+  boolType = "var";
+  abort = "throw new Error()";
 }
 
 string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -88,6 +90,10 @@ string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) co
   return obj + "[\"" + escaped_str(key) + "\"]";
 }
 
+string JavaScriptCompiler::mapContains (const string& obj, const string& key) const {
+  return obj + ".hasOwnProperty (\"" + escaped_str(key) + "\")";
+}
+
 string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& key) const {
   return obj + "[" + key + "]";
 }
@@ -113,6 +119,8 @@ CPlusPlusCompiler::CPlusPlusCompiler() {
   resultType = "const double";
   infinity = "SOFTPLUS_INTLOG_INFINITY";
   realInfinity = "numeric_limits<double>::infinity()";
+  boolType = "bool";
+  abort = "throw runtime_error(\"Abort\")";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -307,6 +315,10 @@ string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) con
   return obj + ".at(string(\"" + escaped_str(key) + "\"))";
 }
 
+string CPlusPlusCompiler::mapContains (const string& obj, const string& key) const {
+  return obj + ".count(string(\"" + escaped_str(key) + "\"))";
+}
+
 string CPlusPlusCompiler::constArrayAccessor (const string& obj, const string& key) const {
   return obj + ".at(" + key + ")";
 }
@@ -345,7 +357,13 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
 
-  // parameters
+  // validate parameters
+  out << tab << boolType << " " << gotparamsvar << " = true;" << endl;
+  for (const auto& p: wm.params())
+    out << tab << assertParamDefined (p) << endl;
+  out << tab << "if (!" << gotparamsvar << ") " << abort << ";" << endl;
+
+  // evaluate parameters
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
   for (const auto& p: params)
     out << tab << weightType << " " << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
@@ -589,3 +607,8 @@ string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& 
   }
   return expr.str();
 }
+
+string Compiler::assertParamDefined (const string& p) const {
+  return string("if (!") + mapContains (paramvar, p) + ") { " + warn (vguard<string> (1, string("\"Please define parameter: ") + escaped_str(p) + "\"")) + " " + gotparamsvar + " = false; }";
+}
+
