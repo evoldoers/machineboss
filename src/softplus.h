@@ -35,10 +35,6 @@ private:
   SoftPlus& operator= (const SoftPlus&) = delete;  // assignment operator
   SoftPlus& operator= (SoftPlus&&) = delete;  // move assignment operator
 
-  static inline Log softplus (Log x) {
-    return (Log) log (1 + exp(x));
-  }
-
   inline IntLog int_softplus_neg (IntLog x) const {
     if (x < 0)
       throw "int_softplus_neg: negative argument";
@@ -59,11 +55,15 @@ private:
 	    : (larger + int_softplus_neg (larger - smaller)));
   }
 
+  static inline Log slow_logsumexp_canonical (Log larger, Log smaller) {
+    return larger + slow_softplus (larger - smaller);
+  }
+
 public:
   SoftPlus() {
     cache = new IntLog [SOFTPLUS_CACHE_ENTRIES];
     for (IntLog n = 0; n < SOFTPLUS_CACHE_ENTRIES; ++n)
-      cache[n] = log_to_int (softplus (-int_to_log (n)));
+      cache[n] = log_to_int (slow_softplus (-int_to_log (n)));
   }
 
   // destructor
@@ -101,6 +101,16 @@ public:
 		  : (x >= SOFTPLUS_INTLOG_INFINITY
 		     ? numeric_limits<double>::infinity()
 		     : (SOFTPLUS_INTLOG_PRECISION * (double) x)));
+  }
+
+  static inline Log slow_softplus (Log x) {
+    return (Log) log (1 + exp(x));
+  }
+
+  static inline Log slow_logsumexp (Log a, Log b) {
+    return (a > b
+	    ? slow_logsumexp_canonical (a, b)
+	    : slow_logsumexp_canonical (b, a));
   }
 };
 

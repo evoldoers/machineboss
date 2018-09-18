@@ -27,7 +27,7 @@ function matchState (leftContext, rightContext) { return 'mat' + leftContext + r
 function insertState (leftContext, rightContext) { return 'ins' + leftContext + rightContext }
 function deleteState (leftContext, rightContext) { return 'del' + leftContext + rightContext }
 
-function eqmProb (i) { return 'p' + i }
+function eqmProb (i) { return 'eqm' + i }
 function subProb (i, j, leftContext, rightContext) { return 'pSub' + i + j + '_' + leftContext + rightContext }
 function insOpen (leftContext, rightContext) { return 'pInsOpen' + '_' + leftContext + rightContext }
 function insExtend (leftContext, rightContext) { return 'pInsExt' + '_' + leftContext + rightContext }

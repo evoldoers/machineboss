@@ -1128,6 +1128,15 @@ Machine Machine::wildAcceptor (const vguard<InputSymbol>& symbols) {
   return m;
 }
 
+Machine Machine::wildEcho (const vguard<InputSymbol>& symbols) {
+  Machine m;
+  m.state.resize (1);
+  m.state[0].name = json (symbols);
+  for (const auto& sym: symbols)
+    m.state[0].trans.push_back (MachineTransition (sym, sym, 0, WeightAlgebra::one()));
+  return m;
+}
+
 Machine Machine::concatenate (const Machine& left, const Machine& right, const char* leftTag, const char* rightTag) {
   Assert (left.nStates() && right.nStates(), "Attempt to concatenate transducer with uninitialized transducer");
   Machine m (left);

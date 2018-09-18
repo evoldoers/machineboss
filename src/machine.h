@@ -93,6 +93,7 @@ struct Machine {
 
   static Machine wildGenerator (const vguard<OutputSymbol>& symbols);
   static Machine wildAcceptor (const vguard<InputSymbol>& symbols);
+  static Machine wildEcho (const vguard<InputSymbol>& symbols);
 
   static Machine takeUnion (const Machine& first, const Machine& second);
   static Machine takeUnion (const Machine& first, const Machine& second, const WeightExpr& pFirst);

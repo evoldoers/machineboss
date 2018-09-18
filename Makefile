@@ -107,12 +107,12 @@ obj/%.o: target/%.cpp
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp
-	@test -e $(dir $@) || mkdir -p $(dir $@)
-	@$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
+	test -e $(dir $@) || mkdir -p $(dir $@)
+	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
 
 obj/%.o: t/src/%.cpp
-	@test -e $(dir $@) || mkdir -p $(dir $@)
-	@$(CPP) $(CPP_FLAGS) -c -o $@ $<
+	test -e $(dir $@) || mkdir -p $(dir $@)
+	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 $(BOSS): bin/$(BOSS)
 

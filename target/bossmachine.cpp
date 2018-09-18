@@ -53,6 +53,7 @@ int main (int argc, char** argv) {
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
+      ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
       ("csv,V", po::value<string>(), "load machine from CSV file")
@@ -256,6 +257,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
+	} else if (command == "--echo-wild") {
+	  const string chars = getArg();
+	  m = Machine::wildEcho (splitToChars (chars));
 	} else if (command == "--sort-sum")
 	  m = nextMachine().advanceSort().advancingMachine();
 	else if (command == "--sort-break")

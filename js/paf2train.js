@@ -127,7 +127,7 @@ fastaPromise (queryFile, stride, group)
                   align = decodeCigar (q, t, field.substr(cigarPrefix.length))
               })
             ++nAlign
-            var qName = 'q' + nAlign, tName = 't' + nAlign
+            var qName = fields[0], tName = fields[5]
             if (json) {
               var qRow = align[0].split(''), tRow = align[1].split('')
               var seqPair = { input: { name: tName },
