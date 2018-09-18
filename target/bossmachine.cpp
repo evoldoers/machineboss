@@ -46,7 +46,7 @@ int main (int argc, char** argv) {
       ("load,l", po::value<string>(), "load machine from file")
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
-      ("generate-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
+      ("generate-wild", po::value<string>(), "generator for Kleene closure over specified characters")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
