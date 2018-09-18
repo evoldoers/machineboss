@@ -13,8 +13,13 @@ using namespace std;
 #define SOFTPLUS_CACHE_ENTRIES    (((long) (SOFTPLUS_CACHE_MAX_LOG / SOFTPLUS_INTLOG_PRECISION)) + 1)
 
 // "Infinity"
-// NB this is deliberately chosen to be <1/4 of numeric_limits<long long>::max()
+#ifdef IS32BIT
+// This is deliberately chosen to be <1/4 of numeric_limits<long long>::max()
 #define SOFTPLUS_INTLOG_INFINITY 0x1FFFFFFFFFFFFFFF
+#else /* IS32BIT */
+// This is deliberately chosen to be <1/4 of numeric_limits<long>::max()
+#define SOFTPLUS_INTLOG_INFINITY 0x1FFFFFFF
+#endif /* IS32BIT */
 #define SOFTPLUS_LOG_INFINITY    (SOFTPLUS_INTLOG_PRECISION * (double) SOFTPLUS_INTLOG_INFINITY)
 
 // This can be used as a singleton object
@@ -24,7 +29,11 @@ class SoftPlus {
 public:
   typedef double    Prob;
   typedef double    Log;
+#ifdef IS32BIT
+  typedef long      IntLog;
+#else /* IS32BIT */
   typedef long long IntLog;
+#endif /* IS32BIT */
 
 private:
   IntLog* cache;

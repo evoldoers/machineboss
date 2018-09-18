@@ -75,6 +75,8 @@ Transducer construction:
                                characters
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept arg                 sequence acceptor for JSON-format sequence
+  --echo-wild arg              identity for Kleene closure over specified 
+                               characters
   -w [ --weight ] arg          weighted null transition '#'
   -H [ --hmmer ] arg           load machine from HMMER3 model file
   -V [ --csv ] arg             load machine from CSV file
@@ -83,8 +85,9 @@ Prefix operators:
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
   -t [ --transpose ]           transpose: swap input/output
-  --sort-sum                   topologically sort, eliminate silent cycles
-  --sort-break                 topologically sort, break silent cycles
+  --sort-sum                   topologically sort, eliminating silent cycles
+  --sort-break                 topologically sort, breaking silent cycles 
+                               (faster than --sort-sum, but less precise)
   -n [ --eliminate ]           eliminate all silent transitions
 
 Postfix operators:
@@ -100,7 +103,7 @@ Infix operators:
   -i [ --intersect-sum ]       intersect, summing out silent cycles '&&'
   --intersect                  intersect, breaking silent cycles (faster)
   --intersect-unsort           intersect, leaving silent cycles
-  -u [ --or ]                  union '||'
+  -u [ --union ]               union '||'
   -o [ --loop ]                loop: x '?+' y = x(y.x)*
 
 Miscellaneous:
@@ -128,7 +131,8 @@ Transducer application:
                                parameters)
 
 Compiler:
-  --cpp                        generate C++ dynamic programming code
+  --cpp64                      generate C++ dynamic programming code (64-bit)
+  --cpp32                      generate C++ dynamic programming code (32-bit)
   --js                         generate JavaScript dynamic programming code
   --showcells                  include debugging output in generated code
   --inseq arg                  input sequence type (String, Intvec, Profile)

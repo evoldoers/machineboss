@@ -61,18 +61,25 @@ PREFIX = /usr/local
 INSTALL_BIN = $(PREFIX)/bin
 
 # other flags
+ifneq (,$(findstring 32bit,$(MAKECMDGOALS)))
+BUILD_FLAGS = -DIS32BIT
+else
+BUILD_FLAGS =
+endif
+
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
-CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSL_FLAGS) $(BOOST_FLAGS)
+CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
 else
 ifneq (,$(findstring unoptimized,$(MAKECMDGOALS)))
-CPP_FLAGS = -std=c++11 -g $(GSL_FLAGS) $(BOOST_FLAGS)
+CPP_FLAGS = -std=c++11 -g $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
 else
-CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS)
+CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
 endif
 endif
 CPP_FLAGS += -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz $(GSL_LIBS) $(BOOST_LIBS)
 
+# files
 CPP_FILES = $(wildcard src/*.cpp)
 OBJ_FILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES)))
 
@@ -123,7 +130,7 @@ $(BOSS): bin/$(BOSS)
 clean:
 	rm -rf bin/* t/bin/* obj/*
 
-debug unoptimized:
+debug unoptimized 32bit:
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)

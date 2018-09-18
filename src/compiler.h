@@ -114,7 +114,8 @@ struct JavaScriptCompiler : Compiler {
 };
 
 struct CPlusPlusCompiler : Compiler {
-  CPlusPlusCompiler();
+  string cellType;  // "long" (32-bit) or "long long" (64-bit)
+  CPlusPlusCompiler (bool is64bit);
   string declareArray (const string& arrayName, const string& dim1, const string& dim2) const;
   string declareArray (const string& arrayName, const string& dim) const;
   string deleteArray (const string& arrayName) const;

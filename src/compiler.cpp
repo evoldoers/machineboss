@@ -98,24 +98,25 @@ string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& 
   return obj + "[" + key + "]";
 }
 
-CPlusPlusCompiler::CPlusPlusCompiler() {
+CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
+  cellType = is64bit ? "long long" : "long";
   preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "using namespace std;\n";
   funcKeyword = "double";
   matrixType = "const vector<vector<double> >& ";
   intVecType = "const vector<int>& ";
   stringType = "const string& ";
-  vecRefType = "long long*";
+  vecRefType = cellType + "*";
   funcInit = tab + "const SoftPlus " + softplusvar + ";\n";
-  constVecRefType = "const long long*";
+  constVecRefType = "const " + cellType + "*";
   paramsType = "const map<string,double>& ";
-  arrayRefType = "long long*";
-  cellRefType = "long long*";
-  constCellRefType = "const long long*";
+  arrayRefType = cellType + "*";
+  cellRefType = cellType + "*";
+  constCellRefType = "const " + cellType + "*";
   indexType = "size_t";
   sizeType = "const size_t";
   sizeMethod = "size()";
   weightType = "const double";
-  logWeightType = "const long long";
+  logWeightType = "const " + cellType;
   resultType = "const double";
   infinity = "SOFTPLUS_INTLOG_INFINITY";
   realInfinity = "numeric_limits<double>::infinity()";
@@ -277,11 +278,11 @@ string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineInden
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
-  return string("long long* ") + arrayName + " = new long long [(" + dim1 + ") * (" + dim2 + ")];";
+  return cellType + "* " + arrayName + " = new " + cellType + " [(" + dim1 + ") * (" + dim2 + ")];";
 }
 
 string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim) const {
-  return string("long long* ") + arrayName + " = new long long [" + dim + "];";
+  return cellType + "* " + arrayName + " = new " + cellType + " [" + dim + "];";
 }
 
 string CPlusPlusCompiler::deleteArray (const string& arrayName) const {

@@ -119,7 +119,8 @@ int main (int argc, char** argv) {
 
     po::options_description compOpts("Compiler");
     compOpts.add_options()
-      ("cpp", "generate C++ dynamic programming code")
+      ("cpp64", "generate C++ dynamic programming code (64-bit)")
+      ("cpp32", "generate C++ dynamic programming code (32-bit)")
       ("js", "generate JavaScript dynamic programming code")
       ("showcells", "include debugging output in generated code")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
@@ -408,7 +409,7 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       showMachine (out);
-    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("counts") && !vm.count("cpp") && !vm.count("js"))
+    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("counts") && !vm.count("cpp64") && !vm.count("cpp32") && !vm.count("js"))
       showMachine (cout);
 
     // compile
@@ -426,9 +427,9 @@ int main (int argc, char** argv) {
       compiler.showCells = vm.count("showcells");
       cout << compiler.compileForward (machine, xSeqType, ySeqType);
     };
-    Assert (!(vm.count("cpp") && vm.count("js")), "Can specify --cpp or --js but not both");
-    if (vm.count("cpp")) {
-      CPlusPlusCompiler compiler;
+    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") < 2, "Options --cpp32, --cpp64 and --js are mutually incompatible; choose a target language");
+    if (vm.count("cpp32") || vm.count("cpp64")) {
+      CPlusPlusCompiler compiler (vm.count("cpp64"));
       compileMachine (compiler);
     } else if (vm.count("js")) {
       JavaScriptCompiler compiler;
