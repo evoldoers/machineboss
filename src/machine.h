@@ -113,7 +113,7 @@ struct Machine {
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
   bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
-  bool isAligningMachine() const;  // at most i->j transition with given input & output labels
+  bool isAligningMachine() const;  // at most one i->j transition with given input & output labels
 
   Machine projectOutputToInput() const;  // copies all output labels to input labels. Requires inputEmpty()
 

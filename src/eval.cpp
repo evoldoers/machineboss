@@ -27,7 +27,6 @@ EvaluatedMachine::EvaluatedMachine (const Machine& machine) :
 void EvaluatedMachine::init (const Machine& machine, const Params* params)
 {
   Assert (machine.isAdvancingMachine(), "Machine is not topologically sorted");
-  Assert (machine.isAligningMachine(), "Machine has ambiguous transitions");
 
   ProgressLog(plog,6);
   plog.initProgress ("Evaluating transition weights");
