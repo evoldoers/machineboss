@@ -64,7 +64,11 @@ INSTALL_BIN = $(PREFIX)/bin
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
 CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSL_FLAGS) $(BOOST_FLAGS)
 else
+ifneq (,$(findstring unoptimized,$(MAKECMDGOALS)))
+CPP_FLAGS = -std=c++11 -g $(GSL_FLAGS) $(BOOST_FLAGS)
+else
 CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS)
+endif
 endif
 CPP_FLAGS += -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz $(GSL_LIBS) $(BOOST_LIBS)
@@ -119,7 +123,7 @@ $(BOSS): bin/$(BOSS)
 clean:
 	rm -rf bin/* t/bin/* obj/*
 
-debug:
+debug unoptimized:
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)
