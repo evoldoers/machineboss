@@ -178,6 +178,7 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
 }
 
 void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
+  string lvalue, rvalue;
   const int mul = outType == Profile ? 2 : 1;
   const int inc = outType == Profile ? 1 : 0;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
@@ -193,9 +194,25 @@ void Compiler::MachineInfo::storeTransitions (ostream& result, const string& ind
 	addTransitions (exprs, true, true, s, inTok, outTok, outType, outputWaiting);
       if (withNull)
 	addTransitions (exprs, false, false, s, inTok, outTok, outType, outputWaiting);
-      result << indent << currentcell << "[" << (mul*s + inc*outputWaiting) << "] = " << compiler.logSumExpReduce (exprs, indent + tab, true, outputWaiting) << ";" << endl;
+      const string new_lvalue = currentcell + "[" + to_string(mul*s + inc*outputWaiting) + "]";
+      const string new_rvalue = compiler.logSumExpReduce (exprs, indent + tab, true, outputWaiting);
+      if (new_rvalue == rvalue)
+	lvalue = lvalue + " =\n" + indent + new_lvalue;
+      else {
+	flushTransitions (result, lvalue, rvalue, indent);
+	lvalue = new_lvalue;
+	rvalue = new_rvalue;
+      }
     }
   }
+  flushTransitions (result, lvalue, rvalue, indent);
+}
+
+void Compiler::MachineInfo::flushTransitions (ostream& result, string& lvalue, string& rvalue, const string& indent) const {
+  if (lvalue.size())
+    result << indent << lvalue << " = " << rvalue << ";" << endl;
+  lvalue.clear();
+  rvalue.clear();
 }
 
 string Compiler::MachineInfo::bufRowAccessor (const string& a, const string& r, const SeqType outType) const {

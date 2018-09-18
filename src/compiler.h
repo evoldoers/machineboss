@@ -25,6 +25,7 @@ struct Compiler {
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
     void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
     void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, SeqType outType, bool outputWaiting) const;
+    void flushTransitions (ostream&, string& lvalue, string& rvalue, const string& indent) const;
     string bufRowAccessor (const string&, const string&, const SeqType) const;
     string inputRowAccessor (const string&, const string&) const;
     void showCell (ostream&, const string& indent, bool withInput, bool withOutput) const;
