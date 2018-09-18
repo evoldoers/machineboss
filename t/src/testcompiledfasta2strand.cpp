@@ -9,7 +9,7 @@ string revcomp (const string& fwd) {
   string rev (fwd);
   for (size_t pos = 0; pos < fwd.size(); ++pos) {
     char& rc = rev[pos];
-    const char c = fwd[pos];
+    const char c = fwd[fwd.size() - pos - 1];
     switch (c) {
     case 'A': rc = 'T'; break;
     case 'C': rc = 'G'; break;

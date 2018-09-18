@@ -56,7 +56,7 @@ private:
   }
 
   static inline Log slow_logsumexp_canonical (Log larger, Log smaller) {
-    return larger + slow_softplus (larger - smaller);
+    return larger + slow_softplus (smaller - larger);
   }
 
 public:
