@@ -31,6 +31,7 @@ void EvaluatedMachine::init (const Machine& machine, const Params* params)
   ProgressLog(plog,6);
   plog.initProgress ("Evaluating transition weights");
 
+  EvaluatedMachineState::TransIndex tiCum = 0;
   for (StateIndex s = 0; s < nStates(); ++s) {
     plog.logProgress (s / (double) nStates(), "state %lu/%lu", s, nStates());
     state[s].name = machine.state[s].name;
@@ -45,6 +46,8 @@ void EvaluatedMachine::init (const Machine& machine, const Params* params)
       ++ti;
     }
     state[s].nTransitions = ti;
+    state[s].transOffset = tiCum;
+    tiCum += ti;
   }
 }
 

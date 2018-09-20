@@ -45,7 +45,7 @@ struct EvaluatedMachineState {
   typedef map<InputToken,OutStateTransMap> InOutStateTransMap;
   
   StateName name;
-  TransIndex nTransitions;
+  TransIndex nTransitions, transOffset;
   InOutStateTransMap incoming, outgoing;  // indexed by input token, output token, and (source or destination) state
 };
 
