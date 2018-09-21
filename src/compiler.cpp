@@ -4,7 +4,7 @@ Compiler::Compiler()
   : showCells (false)
 { }
 
-static const string xvar ("x"), yvar ("y"), paramvar ("p"), gotparamsvar = "gotparams", buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
+static const string xvar ("x"), yvar ("y"), paramvar ("params"), gotparamsvar = "gotparams", paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy");
@@ -13,6 +13,7 @@ static const string tab ("  "), tab2 ("    "), tab3 ("      "), tab4 ("      ");
 JavaScriptCompiler::JavaScriptCompiler() {
   preamble = string("var ") + softplusvar + " = require('./softplus.js')\n";
   funcKeyword = "function";
+  voidFuncKeyword = "function";
   vecRefType = "var";
   constVecRefType = "const";
   arrayRefType = "var";
@@ -25,6 +26,7 @@ JavaScriptCompiler::JavaScriptCompiler() {
   logWeightType = "const";
   resultType = "const";
   mathLibrary = "Math.";
+  nullValue = "null";
   infinity = softplusvar + ".SOFTPLUS_INTLOG_INFINITY";
   realInfinity = "Infinity";
   boolType = "var";
@@ -102,22 +104,27 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   cellType = is64bit ? "long long" : "long";
   preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "using namespace std;\n";
   funcKeyword = "double";
-  matrixType = "const vector<vector<double> >& ";
-  intVecType = "const vector<int>& ";
-  stringType = "const string& ";
+  voidFuncKeyword = "void";
+  matrixArgType = "const vector<vector<double> >& ";
+  intVecArgType = "const vector<int>& ";
+  stringArgType = "const string& ";
+  softplusArgType = "const SoftPlus& ";
   vecRefType = cellType + "*";
   funcInit = tab + "const SoftPlus " + softplusvar + ";\n";
   constVecRefType = "const " + cellType + "*";
   paramsType = "const map<string,double>& ";
   arrayRefType = cellType + "*";
   cellRefType = cellType + "*";
-  constCellRefType = "const " + cellType + "*";
+  constCellRefType = "const " + cellType + "* const";
+  cellArgType = cellRefType + " ";
+  constCellArgType = constCellRefType + " ";
   indexType = "size_t";
   sizeType = "const size_t";
   sizeMethod = "size()";
   weightType = "const double";
   logWeightType = "const " + cellType;
   resultType = "const double";
+  nullValue = "NULL";
   infinity = "SOFTPLUS_INTLOG_INFINITY";
   realInfinity = "numeric_limits<double>::infinity()";
   boolType = "bool";
@@ -166,7 +173,7 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
       if (withInput != trans.inputEmpty() && withOutput != trans.outputEmpty()) {
 	if (!withInput || !inTok || trans.in == eval.inputTokenizer.tok2sym[inTok])
 	  if (!withOutput || !outTok || trans.out == eval.outputTokenizer.tok2sym[outTok]) {
-	    string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (mul*s_t.first + inc) + "] + " + transVar(s_t.first,s_t.second);
+	    string expr = (withOutput ? (withInput ? xycell : ycell) : (withInput ? xcell: currentcell)) + "[" + to_string (mul*s_t.first + inc) + "] + " + transVar(eval,s_t.first,s_t.second);
 	    if (withInput && !inTok)
 	      expr += " + " + xvec + "[" + to_string (eval.inputTokenizer.sym2tok.at(trans.in) - 1) + "]";
 	    if (withOutput && !outTok)
@@ -178,7 +185,34 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
   }
 }
 
-void Compiler::MachineInfo::storeTransitions (ostream& result, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
+string Compiler::MachineInfo::storeTransitions (ostream& header, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
+  ostringstream funcCall;
+  const string funcName = string(funcPrefix)
+    + "_" + (withIn ? (inTok ? to_string(inTok) : "tok") : string("gap"))
+    + "_" + (withOut ? (outTok ? to_string(outTok) : "tok") : string("gap"));
+  funcCall << funcName
+	   << " (" << softplusvar
+	   << ", " << currentcell
+	   << (withIn ? (string(", ") + xcell) : string())
+	   << (withOut ? (string(", ") + ycell) : string())
+	   << (withBoth ? (string(", ") + xycell) : string())
+	   << ", " << paramcachevar
+	   << ", " << transcachevar
+	   << (withIn && !inTok ? (string(", ") + xvec) : string())
+	   << (withOut && !outTok ? (string(", ") + yvec) : string())
+	   << ");";
+  header << compiler.voidFuncKeyword
+	 << " " << funcName
+	 << " (" << compiler.softplusArgType << softplusvar
+	 << ", " << compiler.cellArgType << currentcell
+	 << (withIn ? (string(", ") + compiler.constCellArgType + " " + xcell) : string())
+	 << (withOut ? (string(", ") + compiler.constCellArgType + " " + ycell) : string())
+	 << (withBoth ? (string(", ") + compiler.constCellArgType + " " + xycell) : string())
+	 << ", " << compiler.constCellArgType << paramcachevar
+	 << ", " << compiler.constCellArgType << transcachevar
+	 << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
+	 << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
+	 << ") {" << endl;
   string lvalue, rvalue;
   const int mul = outType == Profile ? 2 : 1;
   const int inc = outType == Profile ? 1 : 0;
@@ -196,17 +230,19 @@ void Compiler::MachineInfo::storeTransitions (ostream& result, const string& ind
       if (withNull)
 	addTransitions (exprs, false, false, s, inTok, outTok, outType, outputWaiting);
       const string new_lvalue = currentcell + "[" + to_string(mul*s + inc*outputWaiting) + "]";
-      const string new_rvalue = compiler.logSumExpReduce (exprs, indent + tab, true, outputWaiting);
+      const string new_rvalue = compiler.logSumExpReduce (exprs, tab2, true, outputWaiting);
       if (new_rvalue == rvalue)
-	lvalue = lvalue + " =\n" + indent + new_lvalue;
+	lvalue = lvalue + " =\n" + tab + new_lvalue;
       else {
-	flushTransitions (result, lvalue, rvalue, indent);
+	flushTransitions (header, lvalue, rvalue, tab);
 	lvalue = new_lvalue;
 	rvalue = new_rvalue;
       }
     }
   }
-  flushTransitions (result, lvalue, rvalue, indent);
+  flushTransitions (header, lvalue, rvalue, tab);
+  header << "}" << endl;
+  return funcCall.str();
 }
 
 void Compiler::MachineInfo::flushTransitions (ostream& result, string& lvalue, string& rvalue, const string& indent) const {
@@ -341,8 +377,13 @@ string CPlusPlusCompiler::constArrayAccessor (const string& obj, const string& k
   return obj + ".at(" + key + ")";
 }
 
-string Compiler::funcVar (FuncIndex f) { return string("f") + to_string(f+1); }
-string Compiler::transVar (StateIndex s, TransIndex t) { return string("t") + to_string(s+1) + "_" + to_string(t+1); }
+string Compiler::funcVar (FuncIndex f) {
+  return paramcachevar + "[" + to_string(f) + "]";
+}
+
+string Compiler::transVar (const EvaluatedMachine& eval, StateIndex s, TransIndex t) {
+  return transcachevar + "[" + to_string(eval.state[s].transOffset + t) + "]";
+}
 
 bool Compiler::isCharAlphabet (const vguard<string>& alph) {
   for (const auto& s: alph)
@@ -356,7 +397,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   Assert (xType != String || isCharAlphabet (m.inputAlphabet()), "Can't use string type for input when input alphabet contains multi-char tokens");
   Assert (yType != String || isCharAlphabet (m.outputAlphabet()), "Can't use string type for output when output alphabet contains multi-char tokens");
 
-  ostringstream out;
+  ostringstream out, hdr;
   const MachineInfo info (*this, m);
   const Machine& wm (info.wm);
 
@@ -364,10 +405,10 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << "// generated automatically by bossmachine, do not edit" << endl;
 
   // function
-  out << preamble;
+  hdr << preamble;
   out << funcKeyword << " " << funcName << " ("
-      << (xType == Profile ? matrixType : (xType == String ? stringType : intVecType)) << xvar << ", "
-      << (yType == Profile ? matrixType : (yType == String ? stringType : intVecType)) << yvar << ", "
+      << (xType == Profile ? matrixArgType : (xType == String ? stringArgType : intVecArgType)) << xvar << ", "
+      << (yType == Profile ? matrixArgType : (yType == String ? stringArgType : intVecArgType)) << yvar << ", "
       << paramsType << paramvar << ") {" << endl;
   out << funcInit;
   
@@ -383,12 +424,14 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
 
   // evaluate parameters
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
+  out << tab << declareArray (paramcachevar, to_string(params.size())) << endl;
   for (const auto& p: params)
-    out << tab << weightType << " " << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
+    out << tab << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
+  out << tab << declareArray (transcachevar, to_string(info.eval.nTransitions)) << endl;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     TransIndex t = 0;
     for (const auto& trans: wm.state[s].trans) {
-      out << tab << logWeightType << " " << transVar(s,t) << " = " << unaryLog (expr2string (trans.weight, info.funcIdx)) << ";" << endl;
+      out << tab << transVar(info.eval,s,t) << " = " << unaryLog (expr2string (trans.weight, info.funcIdx)) << ";" << endl;
       ++t;
     }
   }
@@ -408,7 +451,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0", yType) << ";" << endl;
 
-  info.storeTransitions (out, tab2, true, false, false, false, 0, 0, yType, true);
+  out << tab2 << info.storeTransitions (hdr, funcName, true, false, false, false, 0, 0, yType, true) << endl;
   info.showCell (out, tab2, false, false);
 
   out << tab << "}" << endl;
@@ -441,7 +484,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     else if (xType == String)
       out << xtab << tab << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
-    info.storeTransitions (out, xtab + tab2, true, true, false, false, xTok, 0, yType, false);
+    out << xtab << tab2 << info.storeTransitions (hdr, funcName, true, true, false, false, xTok, 0, yType, false) << endl;
     info.showCell (out, xtab + tab2, true, false);
 
     if (xType != Profile)
@@ -488,7 +531,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0", yType) << ";" << endl;
     out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0", yType) << ";" << endl;
 
-    info.storeTransitions (out, ytab + tab3, true, false, true, false, 0, yTok, yType, false);
+    out << ytab << tab3 << info.storeTransitions (hdr, funcName, true, false, true, false, 0, yTok, yType, false) << endl;
     info.showCell (out, ytab + tab3, false, true);
 
     out << ytab << tab2 << "}" << endl;
@@ -521,7 +564,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
       else if (xType == String)
 	out << xytab << tab2 << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
-      info.storeTransitions (out, xytab + tab3, true, true, true, true, xTok, yTok, yType, false);
+      out << xytab << tab3 << info.storeTransitions (hdr, funcName, true, true, true, true, xTok, yTok, yType, false) << endl;
       info.showCell (out, xytab + tab3, true, true);
 
       if (xType != Profile)
@@ -556,6 +599,8 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << deleteArray (yvec);
   out << deleteArray (buf0var);
   out << deleteArray (buf1var);
+  out << deleteArray (transcachevar);
+  out << deleteArray (paramcachevar);
   
   // return
   out << tab << "return " << resultvar << ";" << endl;
@@ -564,8 +609,8 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   vguard<string> funcNames;
   funcNames.push_back (string (funcName));
   out << postamble (funcNames);
-  
-  return out.str();
+
+  return hdr.str() + out.str();
 }
 
 string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence) const {

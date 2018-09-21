@@ -23,7 +23,7 @@ struct Compiler {
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    void storeTransitions (ostream&, const string& indent, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
+    string storeTransitions (ostream&, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
     void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, SeqType outType, bool outputWaiting) const;
     void flushTransitions (ostream&, string& lvalue, string& rvalue, const string& indent) const;
     string bufRowAccessor (const string&, const string&, const SeqType) const;
@@ -36,10 +36,14 @@ struct Compiler {
   
   // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.
-  string funcKeyword;      // keywords to declare function (return type for C++, "function" for JS)
-  string matrixType;       // type of probability matrix passed into function (for SeqType == Profile)
-  string intVecType;       // type of integer vector passed into function (for SeqType == Int)
-  string stringType;       // type of string passed into function (for SeqType == String)
+  string funcKeyword;      // keywords to declare function returning number (return type for C++, "function" for JS)
+  string voidFuncKeyword;  // keywords to declare function returning void ("void" for C++, "function" for JS)
+  string matrixArgType;    // type of probability matrix passed into function (for SeqType == Profile)
+  string intVecArgType;    // type of integer vector passed into function (for SeqType == Int)
+  string stringArgType;    // type of string passed into function (for SeqType == String)
+  string softplusArgType;  // type of SoftPlus reference ("const SoftPlus&" for C++)
+  string cellArgType;      // type of DP matrix cell pointer passed as argument
+  string constCellArgType; // type of DP matrix cell pointer passed as argument
   string funcInit;         // create SoftPlus object, etc.
   string vecRefType;       // type of log-probability vector
   string constVecRefType;  // type of constant log-probability vector
@@ -54,6 +58,7 @@ struct Compiler {
   string logWeightType;    // const long, or whatever type is used to store logs internally
   string resultType;       // const double
   string mathLibrary;      // prefix/namespace for math functions
+  string nullValue;        // NULL (C++) or null (JS)
   string infinity;         // maximum value representable using internal log type
   string realInfinity;     // maximum value representable using floating-point type
   string boolType;         // bool
@@ -61,7 +66,7 @@ struct Compiler {
   
   Compiler();
   
-  static string transVar (StateIndex s, TransIndex t);
+  static string transVar (const EvaluatedMachine&, StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);
 
   virtual string mapAccessor (const string& obj, const string& key) const = 0;
