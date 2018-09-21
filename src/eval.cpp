@@ -49,6 +49,7 @@ void EvaluatedMachine::init (const Machine& machine, const Params* params)
     state[s].transOffset = tiCum;
     tiCum += ti;
   }
+  nTransitions = tiCum;
 }
 
 StateIndex EvaluatedMachine::nStates() const {

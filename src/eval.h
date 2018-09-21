@@ -53,6 +53,7 @@ struct EvaluatedMachine {
   InputTokenizer inputTokenizer;
   OutputTokenizer outputTokenizer;
   vguard<EvaluatedMachineState> state;
+  EvaluatedMachineState::TransIndex nTransitions;
   EvaluatedMachine (const Machine&, const Params&);
   EvaluatedMachine (const Machine&);  // if no Params are supplied, all logWeight's will be zero
   void init (const Machine&, const Params*);
