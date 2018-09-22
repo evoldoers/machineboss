@@ -31,6 +31,8 @@ JavaScriptCompiler::JavaScriptCompiler() {
   realInfinity = "Infinity";
   boolType = "var";
   abort = "throw new Error()";
+  filenameSuffix = ".js";
+  headerSuffix = ".dummy_js_hdr";
 }
 
 string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -88,6 +90,14 @@ string JavaScriptCompiler::postamble (const vguard<string>& funcs) const {
   return string ("module.exports = { ") + join (pairs, ", ") + " }\n";
 }
 
+string JavaScriptCompiler::include (const string& filename) const {
+  return string();
+}
+
+string JavaScriptCompiler::declareFunction (const string& proto) const {
+  return string();
+}
+
 string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + "[\"" + escaped_str(key) + "\"]";
 }
@@ -129,6 +139,8 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   realInfinity = "numeric_limits<double>::infinity()";
   boolType = "bool";
   abort = "throw runtime_error(\"Abort\")";
+  filenameSuffix = ".cpp";
+  headerSuffix = ".h";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -185,11 +197,13 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
   }
 }
 
-string Compiler::MachineInfo::storeTransitions (ostream& header, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
+string Compiler::MachineInfo::storeTransitions (ostream& header, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
   ostringstream funcCall;
   const string funcName = string(funcPrefix)
     + "_" + (withIn ? (inTok ? to_string(inTok) : "tok") : string("gap"))
     + "_" + (withOut ? (outTok ? to_string(outTok) : "tok") : string("gap"));
+  const string filename = string(dir) + DirectorySeparator + funcName + compiler.filenameSuffix;
+  ofstream code (filename);
   funcCall << funcName
 	   << " (" << softplusvar
 	   << ", " << currentcell
@@ -201,18 +215,23 @@ string Compiler::MachineInfo::storeTransitions (ostream& header, const char* fun
 	   << (withIn && !inTok ? (string(", ") + xvec) : string())
 	   << (withOut && !outTok ? (string(", ") + yvec) : string())
 	   << ");";
-  header << compiler.voidFuncKeyword
-	 << " " << funcName
-	 << " (" << compiler.softplusArgType << softplusvar
-	 << ", " << compiler.cellArgType << currentcell
-	 << (withIn ? (string(", ") + compiler.constCellArgType + " " + xcell) : string())
-	 << (withOut ? (string(", ") + compiler.constCellArgType + " " + ycell) : string())
-	 << (withBoth ? (string(", ") + compiler.constCellArgType + " " + xycell) : string())
-	 << ", " << compiler.constCellArgType << paramcachevar
-	 << ", " << compiler.constCellArgType << transcachevar
-	 << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
-	 << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
-	 << ") {" << endl;
+  ostringstream funcProto;
+  funcProto << compiler.voidFuncKeyword
+	    << " " << funcName
+	    << " (" << compiler.softplusArgType << softplusvar
+	    << ", " << compiler.cellArgType << currentcell
+	    << (withIn ? (string(", ") + compiler.constCellArgType + " " + xcell) : string())
+	    << (withOut ? (string(", ") + compiler.constCellArgType + " " + ycell) : string())
+	    << (withBoth ? (string(", ") + compiler.constCellArgType + " " + xycell) : string())
+	    << ", " << compiler.constCellArgType << paramcachevar
+	    << ", " << compiler.constCellArgType << transcachevar
+	    << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
+	    << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
+	    << ")";
+  header << compiler.declareFunction (funcProto.str());
+  code << compiler.include (compiler.headerFilename (NULL, funcPrefix))
+       << compiler.include (compiler.privateHeaderFilename (NULL, funcPrefix))
+       << funcProto.str() << " {" << endl;
   string lvalue, rvalue;
   const int mul = outType == Profile ? 2 : 1;
   const int inc = outType == Profile ? 1 : 0;
@@ -234,14 +253,14 @@ string Compiler::MachineInfo::storeTransitions (ostream& header, const char* fun
       if (new_rvalue == rvalue)
 	lvalue = lvalue + " =\n" + tab + new_lvalue;
       else {
-	flushTransitions (header, lvalue, rvalue, tab);
+	flushTransitions (code, lvalue, rvalue, tab);
 	lvalue = new_lvalue;
 	rvalue = new_rvalue;
       }
     }
   }
-  flushTransitions (header, lvalue, rvalue, tab);
-  header << "}" << endl;
+  flushTransitions (code, lvalue, rvalue, tab);
+  code << "}" << endl;
   return funcCall.str();
 }
 
@@ -365,6 +384,14 @@ string CPlusPlusCompiler::postamble (const vguard<string>& funcs) const {
   return string();
 }
 
+string CPlusPlusCompiler::include (const string& filename) const {
+  return string("#include \"") + filename + "\"\n";
+}
+
+string CPlusPlusCompiler::declareFunction (const string& proto) const {
+  return proto + ";\n";
+}
+
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + ".at(string(\"" + escaped_str(key) + "\"))";
 }
@@ -392,25 +419,37 @@ bool Compiler::isCharAlphabet (const vguard<string>& alph) {
   return true;
 }
 
-string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, const char* funcName) const {
+string Compiler::headerFilename (const char* dir, const char* funcName) const {
+  return (dir ? (string(dir) + DirectorySeparator) : string()) + funcName + headerSuffix;
+}
+
+string Compiler::privateHeaderFilename (const char* dir, const char* funcName) const {
+  return (dir ? (string(dir) + DirectorySeparator) : string()) + funcName + "_internal" + headerSuffix;
+}
+
+void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, const char* compileDir, const char* funcName) const {
   Assert (m.nStates() > 0, "Can't compile empty machine");
   Assert (xType != String || isCharAlphabet (m.inputAlphabet()), "Can't use string type for input when input alphabet contains multi-char tokens");
   Assert (yType != String || isCharAlphabet (m.outputAlphabet()), "Can't use string type for output when output alphabet contains multi-char tokens");
 
-  ostringstream out, hdr;
+  ofstream out (string(compileDir) + DirectorySeparator + funcName + filenameSuffix);
+  ofstream hdr (headerFilename (compileDir, funcName));
+  ofstream privhdr (privateHeaderFilename (compileDir, funcName));
+  const string inc = include (headerFilename (NULL, funcName));
+  out << inc << include (privateHeaderFilename (NULL, funcName));
+  privhdr << inc;
+
   const MachineInfo info (*this, m);
   const Machine& wm (info.wm);
 
-  // header
-  out << "// generated automatically by bossmachine, do not edit" << endl;
-
   // function
-  hdr << preamble;
-  out << funcKeyword << " " << funcName << " ("
-      << (xType == Profile ? matrixArgType : (xType == String ? stringArgType : intVecArgType)) << xvar << ", "
-      << (yType == Profile ? matrixArgType : (yType == String ? stringArgType : intVecArgType)) << yvar << ", "
-      << paramsType << paramvar << ") {" << endl;
-  out << funcInit;
+  ostringstream proto;
+  proto << funcKeyword << " " << funcName << " ("
+	<< (xType == Profile ? matrixArgType : (xType == String ? stringArgType : intVecArgType)) << xvar << ", "
+	<< (yType == Profile ? matrixArgType : (yType == String ? stringArgType : intVecArgType)) << yvar << ", "
+	<< paramsType << paramvar << ")";
+  hdr << preamble << declareFunction(proto.str()) << endl;
+  out << proto.str() << " {" << endl << funcInit;
   
   // sizes, constants
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
@@ -451,7 +490,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   out << tab << "{" << endl;
   out << tab2 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (buf0var, "0", yType) << ";" << endl;
 
-  out << tab2 << info.storeTransitions (hdr, funcName, true, false, false, false, 0, 0, yType, true) << endl;
+  out << tab2 << info.storeTransitions (privhdr, compileDir, funcName, true, false, false, false, 0, 0, yType, true) << endl;
   info.showCell (out, tab2, false, false);
 
   out << tab << "}" << endl;
@@ -484,7 +523,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     else if (xType == String)
       out << xtab << tab << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
-    out << xtab << tab2 << info.storeTransitions (hdr, funcName, true, true, false, false, xTok, 0, yType, false) << endl;
+    out << xtab << tab2 << info.storeTransitions (privhdr, compileDir, funcName, true, true, false, false, xTok, 0, yType, false) << endl;
     info.showCell (out, xtab + tab2, true, false);
 
     if (xType != Profile)
@@ -531,7 +570,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
     out << ytab << tab3 << cellRefType << " " << currentcell << " = " << info.bufRowAccessor (currentvar, "0", yType) << ";" << endl;
     out << ytab << tab3 << constCellRefType << " " << ycell << " = " << info.bufRowAccessor (prevvar, "0", yType) << ";" << endl;
 
-    out << ytab << tab3 << info.storeTransitions (hdr, funcName, true, false, true, false, 0, yTok, yType, false) << endl;
+    out << ytab << tab3 << info.storeTransitions (privhdr, compileDir, funcName, true, false, true, false, 0, yTok, yType, false) << endl;
     info.showCell (out, ytab + tab3, false, true);
 
     out << ytab << tab2 << "}" << endl;
@@ -564,7 +603,7 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
       else if (xType == String)
 	out << xytab << tab2 << "case '" << info.eval.inputTokenizer.tok2sym[xTok] << "':" << endl;
 
-      out << xytab << tab3 << info.storeTransitions (hdr, funcName, true, true, true, true, xTok, yTok, yType, false) << endl;
+      out << xytab << tab3 << info.storeTransitions (privhdr, compileDir, funcName, true, true, true, true, xTok, yTok, yType, false) << endl;
       info.showCell (out, xytab + tab3, true, true);
 
       if (xType != Profile)
@@ -609,8 +648,6 @@ string Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType,
   vguard<string> funcNames;
   funcNames.push_back (string (funcName));
   out << postamble (funcNames);
-
-  return hdr.str() + out.str();
 }
 
 string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence) const {

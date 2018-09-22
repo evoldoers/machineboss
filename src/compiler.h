@@ -5,6 +5,8 @@
 #include "eval.h"
 
 #define DefaultForwardFunctionName "computeForward"
+#define DefaultCodeGenDir          "."
+#define DirectorySeparator         "/"
 
 // dual-purpose C++/JavaScript compiler
 struct Compiler {
@@ -23,7 +25,7 @@ struct Compiler {
     vguard<vguard<StateTransIndex> > incoming;
     MachineInfo (const Compiler&, const Machine&);
     string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    string storeTransitions (ostream&, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
+    string storeTransitions (ostream&, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
     void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, SeqType outType, bool outputWaiting) const;
     void flushTransitions (ostream&, string& lvalue, string& rvalue, const string& indent) const;
     string bufRowAccessor (const string&, const string&, const SeqType) const;
@@ -63,6 +65,8 @@ struct Compiler {
   string realInfinity;     // maximum value representable using floating-point type
   string boolType;         // bool
   string abort;            // throw runtime_error()
+  string filenameSuffix;   // .cpp, .js
+  string headerSuffix;     // .h, .js
   
   Compiler();
   
@@ -79,6 +83,8 @@ struct Compiler {
   virtual string makeString (const string& arg) const = 0;
   virtual string toString (const string& arg) const = 0;
   virtual string warn (const vguard<string>& args) const = 0;
+  virtual string include (const string& filename) const = 0;
+  virtual string declareFunction (const string& proto) const = 0;
 
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
   virtual string boundLog (const string&) const = 0; // library function that constraints argument to infinity bounds
@@ -95,7 +101,10 @@ struct Compiler {
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
   string assertParamDefined (const string& p) const;
   
-  string compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* funcName = DefaultForwardFunctionName) const;
+  string headerFilename (const char* dir, const char* funcName) const;
+  string privateHeaderFilename (const char* dir, const char* funcName) const;
+
+  void compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* dir = DefaultCodeGenDir, const char* funcName = DefaultForwardFunctionName) const;
 };
 
 struct JavaScriptCompiler : Compiler {
@@ -116,6 +125,8 @@ struct JavaScriptCompiler : Compiler {
   string makeString (const string& arg) const;
   string toString (const string& arg) const;
   string postamble (const vguard<string>& funcNames) const;
+  string include (const string& filename) const;
+  string declareFunction (const string& proto) const;
 };
 
 struct CPlusPlusCompiler : Compiler {
@@ -137,6 +148,8 @@ struct CPlusPlusCompiler : Compiler {
   string makeString (const string& arg) const;
   string toString (const string& arg) const;
   string postamble (const vguard<string>& funcNames) const;
+  string include (const string& filename) const;
+  string declareFunction (const string& proto) const;
 };
 
 #endif /* COMPILER_INCLUDED */

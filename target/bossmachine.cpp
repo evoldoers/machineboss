@@ -117,8 +117,9 @@ int main (int argc, char** argv) {
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ;
 
-    po::options_description compOpts("Compiler");
+    po::options_description compOpts("Parser-generator");
     compOpts.add_options()
+      ("codegen", po::value<string>(), "generate parser code, save to specified filename prefix")
       ("cpp64", "generate C++ dynamic programming code (64-bit)")
       ("cpp32", "generate C++ dynamic programming code (32-bit)")
       ("js", "generate JavaScript dynamic programming code")
@@ -409,10 +410,10 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       showMachine (out);
-    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("counts") && !vm.count("cpp64") && !vm.count("cpp32") && !vm.count("js"))
+    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("counts") && !vm.count("codegen"))
       showMachine (cout);
 
-    // compile
+    // code generation
     function<Compiler::SeqType(const char*,const vguard<string>&)> getSeqType = [&](const char* tag, const vguard<string>& alph) {
       if (!vm.count(tag))
 	return Compiler::isCharAlphabet(alph) ? Compiler::SeqType::String : Compiler::SeqType::IntVec;
@@ -424,16 +425,19 @@ int main (int argc, char** argv) {
     function<void(Compiler&)> compileMachine = [&](Compiler& compiler) {
       const Compiler::SeqType xSeqType = getSeqType ("inseq", machine.inputAlphabet());
       const Compiler::SeqType ySeqType = getSeqType ("outseq", machine.outputAlphabet());
+      const string filenamePrefix = vm.at("codegen").as<string>();
       compiler.showCells = vm.count("showcells");
-      cout << compiler.compileForward (machine, xSeqType, ySeqType);
+      compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
     Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") < 2, "Options --cpp32, --cpp64 and --js are mutually incompatible; choose a target language");
-    if (vm.count("cpp32") || vm.count("cpp64")) {
-      CPlusPlusCompiler compiler (vm.count("cpp64"));
-      compileMachine (compiler);
-    } else if (vm.count("js")) {
-      JavaScriptCompiler compiler;
-      compileMachine (compiler);
+    if (vm.count("codegen")) {
+      if (vm.count("js")) {
+	JavaScriptCompiler compiler;
+	compileMachine (compiler);
+      } else {
+	CPlusPlusCompiler compiler (vm.count("cpp64"));
+	compileMachine (compiler);
+      }
     }
 
     // load data
