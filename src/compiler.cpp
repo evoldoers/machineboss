@@ -1,5 +1,8 @@
 #include "compiler.h"
 
+#define InternalHeaderSuffix  "_internal"
+#define EvalTransWeightSuffix "_eval"
+
 Compiler::Compiler()
   : showCells (false)
 { }
@@ -197,12 +200,24 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
 }
 
 string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
-  ostringstream funcCall;
+  ostringstream funcProto, funcCall;
   const string funcName = string(funcPrefix)
     + "_" + (withIn ? (inTok ? to_string(inTok) : "tok") : string("gap"))
     + "_" + (withOut ? (outTok ? to_string(outTok) : "tok") : string("gap"));
   const string filename = string(dir) + DirectorySeparator + funcName + compiler.filenameSuffix;
   ofstream code (filename);
+  funcProto << compiler.voidFuncKeyword
+	    << " " << funcName
+	    << " (" << compiler.softplusArgType << softplusvar
+	    << ", " << compiler.cellArgType << currentcell
+	    << (withIn ? (string(", ") + compiler.constCellArgType + xcell) : string())
+	    << (withOut ? (string(", ") + compiler.constCellArgType + ycell) : string())
+	    << (withBoth ? (string(", ") + compiler.constCellArgType + xycell) : string())
+	    << ", " << compiler.constCellArgType << paramcachevar
+	    << ", " << compiler.constCellArgType << transcachevar
+	    << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
+	    << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
+	    << ")";
   funcCall << funcName
 	   << " (" << softplusvar
 	   << ", " << currentcell
@@ -214,19 +229,6 @@ string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir
 	   << (withIn && !inTok ? (string(", ") + xvec) : string())
 	   << (withOut && !outTok ? (string(", ") + yvec) : string())
 	   << ");";
-  ostringstream funcProto;
-  funcProto << compiler.voidFuncKeyword
-	    << " " << funcName
-	    << " (" << compiler.softplusArgType << softplusvar
-	    << ", " << compiler.cellArgType << currentcell
-	    << (withIn ? (string(", ") + compiler.constCellArgType + " " + xcell) : string())
-	    << (withOut ? (string(", ") + compiler.constCellArgType + " " + ycell) : string())
-	    << (withBoth ? (string(", ") + compiler.constCellArgType + " " + xycell) : string())
-	    << ", " << compiler.constCellArgType << paramcachevar
-	    << ", " << compiler.constCellArgType << transcachevar
-	    << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
-	    << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
-	    << ")";
   if (header) {
     *header << compiler.declareFunction (funcProto.str());
     code << compiler.include (compiler.headerFilename (NULL, funcPrefix))
@@ -425,7 +427,7 @@ string Compiler::headerFilename (const char* dir, const char* funcName) const {
 }
 
 string Compiler::privateHeaderFilename (const char* dir, const char* funcName) const {
-  return (dir ? (string(dir) + DirectorySeparator) : string()) + funcName + "_internal" + headerSuffix;
+  return (dir ? (string(dir) + DirectorySeparator) : string()) + funcName + InternalHeaderSuffix + headerSuffix;
 }
 
 void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, const char* compileDir, const char* funcName) const {
@@ -460,25 +462,56 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
   out << tab << sizeType << " " << xsize << " = " << xvar << "." << sizeMethod << ";" << endl;
   out << tab << sizeType << " " << ysize << " = " << yvar << "." << sizeMethod << ";" << endl;
 
-  // validate parameters
-  out << tab << boolType << " " << gotparamsvar << " = true;" << endl;
-  for (const auto& p: wm.params())
-    out << tab << assertParamDefined (p) << endl;
-  out << tab << "if (!" << gotparamsvar << ") " << abort << ";" << endl;
+  // transition weight evaluation
+  const string evalFuncName = string(funcName) + EvalTransWeightSuffix;
+  const string evalFilename = string(compileDir) + DirectorySeparator + evalFuncName + filenameSuffix;
+  ostringstream evalFuncProto, evalFuncCall;
+  evalFuncProto << voidFuncKeyword
+		<< " " << evalFuncName
+		<< " (" << softplusArgType << softplusvar
+		<< ", " << paramsType << paramvar
+		<< ", " << cellArgType << paramcachevar
+		<< ", " << cellArgType << transcachevar
+		<< ")";
+  evalFuncCall << evalFuncName
+	       << " (" << softplusvar
+	       << ", " << paramvar
+	       << ", " << paramcachevar
+	       << ", " << transcachevar
+	       << ");";
 
-  // evaluate parameters
+  ofstream evalFile (evalFilename);
+  if (privhdr) {
+    *privhdr << declareFunction (evalFuncProto.str());
+    evalFile << include (headerFilename (NULL, funcName))
+	     << include (privateHeaderFilename (NULL, funcName));
+  }
+  evalFile << evalFuncProto.str() << " {" << endl;
+
+  // validate parameters
+  evalFile << tab << boolType << " " << gotparamsvar << " = true;" << endl;
+  for (const auto& p: wm.params())
+    evalFile << tab << assertParamDefined (p) << endl;
+  evalFile << tab << "if (!" << gotparamsvar << ") " << abort << ";" << endl;
+
+  // evaluate transition weights
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
-  out << tab << declareArray (paramcachevar, to_string(params.size())) << endl;
   for (const auto& p: params)
-    out << tab << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
-  out << tab << declareArray (transcachevar, to_string(info.eval.nTransitions)) << endl;
+    evalFile << tab << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     TransIndex t = 0;
     for (const auto& trans: wm.state[s].trans) {
-      out << tab << transVar(info.eval,s,t) << " = " << unaryLog (expr2string (trans.weight, info.funcIdx)) << ";" << endl;
+      evalFile << tab << transVar(info.eval,s,t) << " = " << unaryLog (expr2string (trans.weight, info.funcIdx)) << ";" << endl;
       ++t;
     }
   }
+
+  evalFile << "}" << endl;
+
+  // transition weights
+  out << tab << declareArray (paramcachevar, to_string(params.size())) << endl;
+  out << tab << declareArray (transcachevar, to_string(info.eval.nTransitions)) << endl;
+  out << tab << evalFuncCall.str() << endl;
 
   // Declare log-probability matrix (x) & vector (y)
   out << tab << declareArray (xmat, xsize + " + 1", to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;

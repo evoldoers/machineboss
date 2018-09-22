@@ -2,6 +2,7 @@
 
 #include "csv.h"
 #include "params.h"
+#include "fastseq.h"
 #include "computeForward.h"
 
 string revcomp (const string& fwd) {

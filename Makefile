@@ -408,6 +408,11 @@ t/src/%/fasta/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testco
 	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
 	@cp t/src/testcompiledfasta.cpp $@
 
+t/src/%/fasta2strand/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledfasta2strand.cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
+	@cp t/src/testcompiledfasta2strand.cpp $@
+
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) --generate t/io/seq101.json -m t/machine/bitnoise.json --accept t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
