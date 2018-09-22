@@ -32,7 +32,6 @@ JavaScriptCompiler::JavaScriptCompiler() {
   boolType = "var";
   abort = "throw new Error()";
   filenameSuffix = ".js";
-  headerSuffix = ".dummy_js_hdr";
 }
 
 string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
@@ -112,7 +111,7 @@ string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& 
 
 CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   cellType = is64bit ? "long long" : "long";
-  preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "using namespace std;\n";
+  preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "#include \"softplus.h\"\n" "using namespace std;\n";
   funcKeyword = "double";
   voidFuncKeyword = "void";
   matrixArgType = "const vector<vector<double> >& ";
@@ -197,7 +196,7 @@ void Compiler::MachineInfo::addTransitions (vguard<string>& exprs, bool withInpu
   }
 }
 
-string Compiler::MachineInfo::storeTransitions (ostream& header, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
+string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const {
   ostringstream funcCall;
   const string funcName = string(funcPrefix)
     + "_" + (withIn ? (inTok ? to_string(inTok) : "tok") : string("gap"))
@@ -228,10 +227,12 @@ string Compiler::MachineInfo::storeTransitions (ostream& header, const char* dir
 	    << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
 	    << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
 	    << ")";
-  header << compiler.declareFunction (funcProto.str());
-  code << compiler.include (compiler.headerFilename (NULL, funcPrefix))
-       << compiler.include (compiler.privateHeaderFilename (NULL, funcPrefix))
-       << funcProto.str() << " {" << endl;
+  if (header) {
+    *header << compiler.declareFunction (funcProto.str());
+    code << compiler.include (compiler.headerFilename (NULL, funcPrefix))
+	 << compiler.include (compiler.privateHeaderFilename (NULL, funcPrefix));
+  }
+  code << funcProto.str() << " {" << endl;
   string lvalue, rvalue;
   const int mul = outType == Profile ? 2 : 1;
   const int inc = outType == Profile ? 1 : 0;
@@ -433,11 +434,14 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
   Assert (yType != String || isCharAlphabet (m.outputAlphabet()), "Can't use string type for output when output alphabet contains multi-char tokens");
 
   ofstream out (string(compileDir) + DirectorySeparator + funcName + filenameSuffix);
-  ofstream hdr (headerFilename (compileDir, funcName));
-  ofstream privhdr (privateHeaderFilename (compileDir, funcName));
+  ofstream* hdr = headerSuffix.size() ? new ofstream (headerFilename (compileDir, funcName)) : NULL;
+  ofstream* privhdr = headerSuffix.size() ? new ofstream (privateHeaderFilename (compileDir, funcName)) : NULL;
   const string inc = include (headerFilename (NULL, funcName));
   out << inc << include (privateHeaderFilename (NULL, funcName));
-  privhdr << inc;
+  if (privhdr)
+    *privhdr << preamble << inc;
+  else
+    out << preamble;
 
   const MachineInfo info (*this, m);
   const Machine& wm (info.wm);
@@ -448,7 +452,8 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
 	<< (xType == Profile ? matrixArgType : (xType == String ? stringArgType : intVecArgType)) << xvar << ", "
 	<< (yType == Profile ? matrixArgType : (yType == String ? stringArgType : intVecArgType)) << yvar << ", "
 	<< paramsType << paramvar << ")";
-  hdr << preamble << declareFunction(proto.str()) << endl;
+  if (hdr)
+    *hdr << preamble << declareFunction(proto.str()) << endl;
   out << proto.str() << " {" << endl << funcInit;
   
   // sizes, constants
@@ -648,6 +653,12 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
   vguard<string> funcNames;
   funcNames.push_back (string (funcName));
   out << postamble (funcNames);
+
+  // explicitly delete (& so close) the optional ofstreams
+  if (hdr)
+    delete hdr;
+  if (privhdr)
+    delete privhdr;
 }
 
 string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence) const {

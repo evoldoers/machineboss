@@ -1,8 +1,8 @@
-// #include "../../src/softplus.h"
-// include a compiled computeForward() as well
-
-#include "../../src/params.h"
 #include <fstream>
+
+#include "csv.h"
+#include "params.h"
+#include "computeForward.h"
 
 int main (int argc, char** argv) {
   if (argc != 3 && argc != 4) {

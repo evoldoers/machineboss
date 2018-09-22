@@ -1,9 +1,8 @@
-// #include "../../src/softplus.h"
-// include a compiled computeForward() as well
-
-#include "../../src/fastseq.h"
-#include "../../src/params.h"
 #include <fstream>
+
+#include "csv.h"
+#include "params.h"
+#include "computeForward.h"
 
 string revcomp (const string& fwd) {
   string rev (fwd);

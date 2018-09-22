@@ -76,7 +76,7 @@ else
 CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
 endif
 endif
-CPP_FLAGS += -Iext -Iext/nlohmann_json
+CPP_FLAGS += -Isrc -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz $(GSL_LIBS) $(BOOST_LIBS)
 
 # files
@@ -120,6 +120,11 @@ obj/%.o: target/%.cpp
 t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
+
+t/codegen/%: $(OBJ_FILES) obj/%.o
+	$(MAKE) `ls $(dir t/src/$*)/computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	$(CPP) $(LD_FLAGS) -o $@ $^ `ls $(dir t/src/$*)/computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
 
 obj/%.o: t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
@@ -379,55 +384,72 @@ test-counts:
 test-counts2:
 	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --input-chars 101 --output-chars 001 -P t/io/params.json -N t/io/pqcons.json -C t/expect/counts.json
 
-# Compiler tests
-COMPILER_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
+# Code generation tests
+CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
 
 # C++
-t/src/test-compiledprof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledprof.cpp
-	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp64 --inseq profile --outseq profile; cat t/src/testcompiledprof.cpp) >$@
+t/src/%/prof/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledprof.cpp
+	test -e $(dir $@) || mkdir -p $(dir $@)
+	bin/$(BOSS) t/machine/$*.json --cpp64 --inseq profile --outseq profile --codegen $(dir $@)
+	cp t/src/testcompiledprof.cpp $@
 
-t/src/test-compiledseq-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq.cpp
-	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string; cat t/src/testcompiledseq.cpp) >$@
+t/src/%/seq/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq.cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
+	@cp t/src/testcompiledseq.cpp $@
 
-t/src/test-compiledseq2prof-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq2prof.cpp
-	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq profile; cat t/src/testcompiledseq2prof.cpp) >$@
+t/src/%/seq2prof/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq2prof.cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq profile --codegen $(dir $@)
+	@cp t/src/testcompiledseq2prof.cpp $@
 
-t/src/test-compiledfasta-%.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledfasta.cpp
-	@(cat src/softplus.h; bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string; cat t/src/testcompiledfasta.cpp) >$@
+t/src/%/fasta/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledfasta.cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
+	@cp t/src/testcompiledfasta.cpp $@
 
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) --generate t/io/seq101.json -m t/machine/bitnoise.json --accept t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled: t/bin/test-compiledprof-bitnoise
-	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledprof-bitnoise t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled: t/codegen/bitnoise/prof/test
+	@$(TEST) t/roundfloats.pl 4 $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled-seq: t/bin/test-compiledseq-bitnoise
-	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledseq-bitnoise 101 001 t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled-seq: t/codegen/bitnoise/seq/test
+	@$(TEST) t/roundfloats.pl 4 $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled-seq2prof: t/bin/test-compiledseq2prof-bitnoise
-	@$(TEST) t/roundfloats.pl 4 t/bin/test-compiledseq2prof-bitnoise 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
+	@$(TEST) t/roundfloats.pl 4 $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 # JavaScript
-js/lib/%.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
-	@bin/$(BOSS) t/machine/$*.json --js --inseq profile --outseq profile >$@
+js/lib/%/prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+	test -e $(dir $@) || mkdir -p $(dir $@)
+	bin/$(BOSS) t/machine/$*.json --js --inseq profile --outseq profile --codegen $(dir $@)
+	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
+	cp js/lib/softplus.js $(dir $@)
 
-js/lib/%-seq.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
-	@bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq string >$@
+js/lib/%/seq/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+	test -e $(dir $@) || mkdir -p $(dir $@)
+	bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq string --codegen $(dir $@)
+	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
+	cp js/lib/softplus.js $(dir $@)
 
-js/lib/%-seq2prof.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
-	@bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq profile >$@
+js/lib/%/seq2prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+	test -e $(dir $@) || mkdir -p $(dir $@)
+	bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq profile --codegen $(dir $@)
+	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
+	cp js/lib/softplus.js $(dir $@)
 
-test-101-bitnoise-001-compiled-js: js/lib/bitnoise.js
-	@$(TEST) t/roundfloats.pl 4 node js/lib/testcompiledprof.js --module bitnoise --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled-js: js/lib/bitnoise/prof/test.js
+	@$(TEST) t/roundfloats.pl 4 node $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise-seq.js
-	@$(TEST) t/roundfloats.pl 4 node js/lib/testcompiledprof.js --module bitnoise-seq --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise/seq/test.js
+	@$(TEST) t/roundfloats.pl 4 node $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
 
-test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise-seq2prof.js
-	@$(TEST) t/roundfloats.pl 4 node js/lib/testcompiledprof.js --module bitnoise-seq2prof --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
+	@$(TEST) t/roundfloats.pl 4 node $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(COMPILER_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 

@@ -2,10 +2,10 @@
 
 var fs = require('fs'),
     path = require('path'),
-    Getopt = require('node-getopt')
+    Getopt = require('node-getopt'),
+    sp = require('./softplus')
 
 var getopt = Getopt.create([
-  ['m' , 'module=FILE'      , 'specify bossmachine-generated module'],
   ['p' , 'params=FILE'      , 'specify parameters as JSON file'],
   ['x' , 'inprof=FILE'      , 'specify input profile as CSV file'],
   ['y' , 'outprof=FILE'     , 'specify output profile as CSV file'],
@@ -15,13 +15,6 @@ var getopt = Getopt.create([
 ])              // create Getopt instance
 .bindHelp()     // bind option 'help' to default action
 var opt = getopt.parseSystem() // parse command line
-
-var module = opt.options.module
-if (!module) {
-  console.warn ("You must specify a module with --module")
-  process.exit(1)
-}
-var computeForward = require('./'+module).computeForward
 
 var input, output, params
 

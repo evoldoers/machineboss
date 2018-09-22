@@ -1,9 +1,8 @@
-// #include "../../src/softplus.h"
-// include a compiled computeForward() as well
-
-#include "../../src/csv.h"
-#include "../../src/params.h"
 #include <fstream>
+
+#include "csv.h"
+#include "params.h"
+#include "computeForward.h"
 
 int main (int argc, char** argv) {
   CSVProfile outProf;
