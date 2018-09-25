@@ -388,27 +388,27 @@ test-counts2:
 CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
 
 # C++
-t/src/%/prof/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledprof.cpp
+t/src/%/prof/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/getparams.h t/src/testcompiledprof.cpp
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --cpp64 --inseq profile --outseq profile --codegen $(dir $@)
 	cp t/src/testcompiledprof.cpp $@
 
-t/src/%/seq/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq.cpp
+t/src/%/seq/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/getparams.h t/src/testcompiledseq.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
 	@cp t/src/testcompiledseq.cpp $@
 
-t/src/%/seq2prof/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledseq2prof.cpp
+t/src/%/seq2prof/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/getparams.h t/src/testcompiledseq2prof.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq profile --codegen $(dir $@)
 	@cp t/src/testcompiledseq2prof.cpp $@
 
-t/src/%/fasta/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledfasta.cpp
+t/src/%/fasta/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/getparams.h t/src/testcompiledfasta.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
 	@cp t/src/testcompiledfasta.cpp $@
 
-t/src/%/fasta2strand/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h t/src/testcompiledfasta2strand.cpp
+t/src/%/fasta2strand/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/getparams.h t/src/testcompiledfasta2strand.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@bin/$(BOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
 	@cp t/src/testcompiledfasta2strand.cpp $@
@@ -426,23 +426,23 @@ test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
 	@$(TEST) t/roundfloats.pl 4 $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 # JavaScript
-js/lib/%/prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+js/lib/%/prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --js --inseq profile --outseq profile --codegen $(dir $@)
 	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
-	cp js/lib/softplus.js $(dir $@)
+	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
-js/lib/%/seq/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+js/lib/%/seq/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq string --codegen $(dir $@)
 	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
-	cp js/lib/softplus.js $(dir $@)
+	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
-js/lib/%/seq2prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/testcompiledprof.js
+js/lib/%/seq2prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq profile --codegen $(dir $@)
 	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
-	cp js/lib/softplus.js $(dir $@)
+	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 test-101-bitnoise-001-compiled-js: js/lib/bitnoise/prof/test.js
 	@$(TEST) t/roundfloats.pl 4 node $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json

@@ -7,7 +7,7 @@ Compiler::Compiler()
   : showCells (false)
 { }
 
-static const string xvar ("x"), yvar ("y"), paramvar ("params"), gotparamsvar = "gotparams", paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
+static const string xvar ("x"), yvar ("y"), paramvar ("params"), paramnamesvar ("names"), paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy");
@@ -37,11 +37,11 @@ JavaScriptCompiler::JavaScriptCompiler() {
   filenameSuffix = ".js";
 }
 
-string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
+string JavaScriptCompiler::declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const {
   return string("var ") + arrayName + " = new Array(" + dim1 + ").fill(0).map (function() { return new Array (" + dim2 + ").fill(0) });";
 }
 
-string JavaScriptCompiler::declareArray (const string& arrayName, const string& dim) const {
+string JavaScriptCompiler::declareArray (const string& type, const string& arrayName, const string& dim) const {
   return string("var ") + arrayName + " = new Array(" + dim + ").fill(0);";
 }
 
@@ -100,6 +100,15 @@ string JavaScriptCompiler::declareFunction (const string& proto) const {
   return string();
 }
 
+string JavaScriptCompiler::initStringArray (const string& arrayName, const vguard<string>& values) const {
+  ostringstream out;
+  out << "const " << arrayName << " = [ ";
+  for (size_t n = 0; n < values.size(); ++n)
+    out << (n ? ", " : "") << '"' << escaped_str(values[n]) << '"';
+  out << " ]";
+  return out.str();
+}
+
 string JavaScriptCompiler::mapAccessor (const string& obj, const string& key) const {
   return obj + "[\"" + escaped_str(key) + "\"]";
 }
@@ -125,6 +134,9 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   funcInit = tab + "const SoftPlus " + softplusvar + ";\n";
   constVecRefType = "const " + cellType + "*";
   paramsType = "const map<string,double>& ";
+  paramType = "double";
+  paramCacheArgType = "double* const ";
+  constParamCacheArgType = "const double* const ";
   arrayRefType = cellType + "*";
   cellRefType = cellType + "*";
   constCellRefType = "const " + cellType + "* const";
@@ -143,6 +155,7 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   abort = "throw runtime_error(\"Abort\")";
   filenameSuffix = ".cpp";
   headerSuffix = ".h";
+  includeGetParams = "#include \"getparams.h\"";
 }
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
@@ -151,9 +164,17 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
     eval (wm),
     incoming (wm.nStates())
 {
-  for (const auto& f_d: wm.defs.defs) {
+  const set<string> params = wm.params();
+  for (const auto& p: params) {
     const auto f = funcIdx.size();
-    funcIdx[f_d.first] = f;
+    funcIdx[p] = f;
+  }
+  for (const auto& f_d: wm.defs.defs) {
+    const string& name = f_d.first;
+    if (!funcIdx.count(name)) {
+      const auto f = funcIdx.size();
+      funcIdx[f_d.first] = f;
+    }
   }
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     TransIndex t = 0;
@@ -213,7 +234,7 @@ string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir
 	    << (withIn ? (string(", ") + compiler.constCellArgType + xcell) : string())
 	    << (withOut ? (string(", ") + compiler.constCellArgType + ycell) : string())
 	    << (withBoth ? (string(", ") + compiler.constCellArgType + xycell) : string())
-	    << ", " << compiler.constCellArgType << paramcachevar
+	    << ", " << compiler.constParamCacheArgType << paramcachevar
 	    << ", " << compiler.constCellArgType << transcachevar
 	    << (withIn && !inTok ? (string(", ") + compiler.constCellArgType + " " + xvec) : string())
 	    << (withOut && !outTok ? (string(", ") + compiler.constCellArgType + " " + yvec) : string())
@@ -335,12 +356,12 @@ string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineInden
   return binarySoftplus (logSumExpReduce (exprs, lineIndent, false, false), newLine + lastExpr);
 }
 
-string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim1, const string& dim2) const {
-  return cellType + "* " + arrayName + " = new " + cellType + " [(" + dim1 + ") * (" + dim2 + ")];";
+string CPlusPlusCompiler::declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const {
+  return type + "* " + arrayName + " = new " + type + " [(" + dim1 + ") * (" + dim2 + ")];";
 }
 
-string CPlusPlusCompiler::declareArray (const string& arrayName, const string& dim) const {
-  return cellType + "* " + arrayName + " = new " + cellType + " [" + dim + "];";
+string CPlusPlusCompiler::declareArray (const string& type, const string& arrayName, const string& dim) const {
+  return type + "* " + arrayName + " = new " + type + " [" + dim + "];";
 }
 
 string CPlusPlusCompiler::deleteArray (const string& arrayName) const {
@@ -393,6 +414,15 @@ string CPlusPlusCompiler::include (const string& filename) const {
 
 string CPlusPlusCompiler::declareFunction (const string& proto) const {
   return proto + ";\n";
+}
+
+string CPlusPlusCompiler::initStringArray (const string& arrayName, const vguard<string>& values) const {
+  ostringstream out;
+  out << "const vector<string> " << arrayName << " { ";
+  for (size_t n = 0; n < values.size(); ++n)
+    out << (n ? ", " : "") << '"' << escaped_str(values[n]) << '"';
+  out << " }";
+  return out.str();
 }
 
 string CPlusPlusCompiler::mapAccessor (const string& obj, const string& key) const {
@@ -470,7 +500,7 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
 		<< " " << evalFuncName
 		<< " (" << softplusArgType << softplusvar
 		<< ", " << paramsType << paramvar
-		<< ", " << cellArgType << paramcachevar
+		<< ", " << paramCacheArgType << paramcachevar
 		<< ", " << cellArgType << transcachevar
 		<< ")";
   evalFuncCall << evalFuncName
@@ -486,13 +516,14 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
     evalFile << include (headerFilename (NULL, funcName))
 	     << include (privateHeaderFilename (NULL, funcName));
   }
-  evalFile << evalFuncProto.str() << " {" << endl;
+  evalFile << includeGetParams << endl
+	   << evalFuncProto.str() << " {" << endl;
 
   // validate parameters
-  evalFile << tab << boolType << " " << gotparamsvar << " = true;" << endl;
-  for (const auto& p: wm.params())
-    evalFile << tab << assertParamDefined (p) << endl;
-  evalFile << tab << "if (!" << gotparamsvar << ") " << abort << ";" << endl;
+  const set<string> paramNames = info.wm.params();
+  evalFile << tab << initStringArray (paramnamesvar, vector<string> (paramNames.begin(), paramNames.end())) << ";" << endl;
+  evalFile << tab << "if (!getParams (" << paramvar << ", " << paramnamesvar << ", " << paramcachevar << "))" << endl
+	   << tab2 << abort << ";" << endl;
 
   // evaluate transition weights
   const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
@@ -509,18 +540,18 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
   evalFile << "}" << endl;
 
   // transition weights
-  out << tab << declareArray (paramcachevar, to_string(params.size())) << endl;
-  out << tab << declareArray (transcachevar, to_string(info.eval.nTransitions)) << endl;
+  out << tab << declareArray (paramType, paramcachevar, to_string(info.funcIdx.size())) << endl;
+  out << tab << declareArray (cellType, transcachevar, to_string(info.eval.nTransitions)) << endl;
   out << tab << evalFuncCall.str() << endl;
 
   // Declare log-probability matrix (x) & vector (y)
-  out << tab << declareArray (xmat, xsize + " + 1", to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
-  out << tab << declareArray (yvec, to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
+  out << tab << declareArray (cellType, xmat, xsize + " + 1", to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
+  out << tab << declareArray (cellType, yvec, to_string (info.eval.inputTokenizer.tok2sym.size())) << endl;
   
   // Declare DP matrix arrays
   // Indexing convention: buf[xIndex][(yType == Profile ? 2 : 1)*state + (yWaitFlag ? 1 : 0)]
-  out << tab << declareArray (buf0var, xsize + " + 1", to_string ((yType == Profile ? 2 : 1)*info.wm.nStates())) << endl;
-  out << tab << declareArray (buf1var, xsize + " + 1", to_string ((yType == Profile ? 2 : 1)*info.wm.nStates())) << endl;
+  out << tab << declareArray (cellType, buf0var, xsize + " + 1", to_string ((yType == Profile ? 2 : 1)*info.wm.nStates())) << endl;
+  out << tab << declareArray (cellType, buf1var, xsize + " + 1", to_string ((yType == Profile ? 2 : 1)*info.wm.nStates())) << endl;
   out << tab << indexType << " " << xidx << " = 0, " << yidx << ";" << endl;
 
   // Fill DP matrix
@@ -750,9 +781,5 @@ string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& 
     break;
   }
   return expr.str();
-}
-
-string Compiler::assertParamDefined (const string& p) const {
-  return string("if (!") + mapContains (paramvar, p) + ") { " + warn (vguard<string> (1, string("\"Please define parameter: ") + escaped_str(p) + "\"")) + " " + gotparamsvar + " = false; }";
 }
 

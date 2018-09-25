@@ -3,7 +3,8 @@
 var fs = require('fs'),
     path = require('path'),
     Getopt = require('node-getopt'),
-    sp = require('./softplus')
+    sp = require('./softplus'),
+    getParams = require('./getparams')
 
 var getopt = Getopt.create([
   ['p' , 'params=FILE'      , 'specify parameters as JSON file'],

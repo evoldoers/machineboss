@@ -44,12 +44,16 @@ struct Compiler {
   string intVecArgType;    // type of integer vector passed into function (for SeqType == Int)
   string stringArgType;    // type of string passed into function (for SeqType == String)
   string softplusArgType;  // type of SoftPlus reference ("const SoftPlus&" for C++)
+  string cellType;         // "long" (32-bit) or "long long" (64-bit)
   string cellArgType;      // type of DP matrix cell pointer passed as argument
   string constCellArgType; // type of DP matrix cell pointer passed as argument
   string funcInit;         // create SoftPlus object, etc.
   string vecRefType;       // type of log-probability vector
   string constVecRefType;  // type of constant log-probability vector
   string paramsType;       // type of parameters object passed into function (string-keyed map)
+  string paramType;        // type of individual parameter value (double)
+  string paramCacheArgType;      // const double* const
+  string constParamCacheArgType; // double* const
   string arrayRefType;     // reference to DP matrix row
   string cellRefType;      // reference to DP matrix cell
   string constCellRefType; // const reference to DP matrix cell
@@ -67,6 +71,7 @@ struct Compiler {
   string abort;            // throw runtime_error()
   string filenameSuffix;   // .cpp, .js
   string headerSuffix;     // .h, .js
+  string includeGetParams; // #include "getparams.h" (or equivalent)
   
   Compiler();
   
@@ -76,8 +81,8 @@ struct Compiler {
   virtual string mapAccessor (const string& obj, const string& key) const = 0;
   virtual string mapContains (const string& obj, const string& key) const = 0;
   virtual string constArrayAccessor (const string& obj, const string& key) const = 0;
-  virtual string declareArray (const string& arrayName, const string& dim) const = 0;
-  virtual string declareArray (const string& arrayName, const string& dim1, const string& dim2) const = 0;
+  virtual string declareArray (const string& type, const string& arrayName, const string& dim) const = 0;
+  virtual string declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const = 0;
   virtual string deleteArray (const string& arrayName) const = 0;
   virtual string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const = 0;
   virtual string makeString (const string& arg) const = 0;
@@ -85,6 +90,7 @@ struct Compiler {
   virtual string warn (const vguard<string>& args) const = 0;
   virtual string include (const string& filename) const = 0;
   virtual string declareFunction (const string& proto) const = 0;
+  virtual string initStringArray (const string& arrayName, const vguard<string>& values) const = 0;
 
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
   virtual string boundLog (const string&) const = 0; // library function that constraints argument to infinity bounds
@@ -99,7 +105,6 @@ struct Compiler {
   string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
-  string assertParamDefined (const string& p) const;
   
   string headerFilename (const char* dir, const char* funcName) const;
   string privateHeaderFilename (const char* dir, const char* funcName) const;
@@ -109,8 +114,8 @@ struct Compiler {
 
 struct JavaScriptCompiler : Compiler {
   JavaScriptCompiler();
-  string declareArray (const string& arrayName, const string& dim1, const string& dim2) const;
-  string declareArray (const string& arrayName, const string& dim) const;
+  string declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const;
+  string declareArray (const string& type, const string& arrayName, const string& dim) const;
   string deleteArray (const string& arrayName) const;
   string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const;
   string mapAccessor (const string& obj, const string& key) const;
@@ -127,13 +132,13 @@ struct JavaScriptCompiler : Compiler {
   string postamble (const vguard<string>& funcNames) const;
   string include (const string& filename) const;
   string declareFunction (const string& proto) const;
+  string initStringArray (const string& arrayName, const vguard<string>& values) const;
 };
 
 struct CPlusPlusCompiler : Compiler {
-  string cellType;  // "long" (32-bit) or "long long" (64-bit)
   CPlusPlusCompiler (bool is64bit);
-  string declareArray (const string& arrayName, const string& dim1, const string& dim2) const;
-  string declareArray (const string& arrayName, const string& dim) const;
+  string declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const;
+  string declareArray (const string& type, const string& arrayName, const string& dim) const;
   string deleteArray (const string& arrayName) const;
   string arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const;
   string mapAccessor (const string& obj, const string& key) const;
@@ -150,6 +155,7 @@ struct CPlusPlusCompiler : Compiler {
   string postamble (const vguard<string>& funcNames) const;
   string include (const string& filename) const;
   string declareFunction (const string& proto) const;
+  string initStringArray (const string& arrayName, const vguard<string>& values) const;
 };
 
 #endif /* COMPILER_INCLUDED */

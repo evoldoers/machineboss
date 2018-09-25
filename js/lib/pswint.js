@@ -71,4 +71,7 @@ function machine (pswFlag) {
            cons: cons }
 }
 
-module.exports = machine
+module.exports = {
+  alph: alph,
+  machine: machine
+}
