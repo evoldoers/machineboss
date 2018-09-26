@@ -122,9 +122,9 @@ t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp
 	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
 
 t/codegen/%: $(OBJ_FILES) obj/%.o
-	$(MAKE) `ls $(dir t/src/$*)/computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
+	$(MAKE) `ls $(dir t/src/$*)computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@ $^ `ls $(dir t/src/$*)/computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
+	$(CPP) $(LD_FLAGS) -o $@ $^ `ls $(dir t/src/$*)computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
 
 obj/%.o: t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
@@ -429,19 +429,19 @@ test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
 js/lib/%/prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --js --inseq profile --outseq profile --codegen $(dir $@)
-	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
+	cat js/lib/testcompiledprof.js $(dir $@)computeForward*.js >$@
 	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 js/lib/%/seq/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq string --codegen $(dir $@)
-	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
+	cat js/lib/testcompiledprof.js $(dir $@)computeForward*.js >$@
 	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 js/lib/%/seq2prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
 	test -e $(dir $@) || mkdir -p $(dir $@)
 	bin/$(BOSS) t/machine/$*.json --js --inseq string --outseq profile --codegen $(dir $@)
-	cat js/lib/testcompiledprof.js $(dir $@)/computeForward*.js >$@
+	cat js/lib/testcompiledprof.js $(dir $@)computeForward*.js >$@
 	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 test-101-bitnoise-001-compiled-js: js/lib/bitnoise/prof/test.js
