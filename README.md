@@ -130,7 +130,9 @@ Transducer application:
                                log-likelihood with respect to logs of 
                                parameters)
 
-Compiler:
+Parser-generator:
+  --codegen arg                generate parser code, save to specified filename
+                               prefix
   --cpp64                      generate C++ dynamic programming code (64-bit)
   --cpp32                      generate C++ dynamic programming code (32-bit)
   --js                         generate JavaScript dynamic programming code
