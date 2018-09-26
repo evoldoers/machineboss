@@ -256,19 +256,19 @@ test-csv:
 	@$(TEST) bin/$(BOSS) --csv t/csv/test.csv t/expect/csvtest.json
 
 test-csv-tiny:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_uc.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/tiny_uc.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
 
 test-csv-tiny-fail:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/tiny_lc.json --transpose --csv t/csv/tiny_uc.csv -fail
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/tiny_lc.json --transpose --csv t/csv/tiny_uc.csv -fail
 
 test-csv-tiny-empty:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/empty.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/empty.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
 
 test-nanopore:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
 
 test-nanopore-prefix:
-	@$(TEST) bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
@@ -414,16 +414,16 @@ t/src/%/fasta2strand/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/g
 	@cp t/src/testcompiledfasta2strand.cpp $@
 
 test-101-bitnoise-001:
-	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) --generate t/io/seq101.json -m t/machine/bitnoise.json --accept t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js bin/$(BOSS) --generate t/io/seq101.json -m t/machine/bitnoise.json --accept t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled: t/codegen/bitnoise/prof/test
-	@$(TEST) t/roundfloats.pl 4 $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq: t/codegen/bitnoise/seq/test
-	@$(TEST) t/roundfloats.pl 4 $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
-	@$(TEST) t/roundfloats.pl 4 $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 # JavaScript
 js/lib/%/prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
@@ -445,13 +445,13 @@ js/lib/%/seq2prof/test.js: t/machine/%.json bin/$(BOSS) js/lib/softplus.js js/li
 	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 test-101-bitnoise-001-compiled-js: js/lib/bitnoise/prof/test.js
-	@$(TEST) t/roundfloats.pl 4 node $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js node $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise/seq/test.js
-	@$(TEST) t/roundfloats.pl 4 node $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js node $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
-	@$(TEST) t/roundfloats.pl 4 node $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js node $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS)

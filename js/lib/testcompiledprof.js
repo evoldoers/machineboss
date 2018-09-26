@@ -43,4 +43,4 @@ if (opt.options.params)
 else
   params = {}
 
-console.log (JSON.stringify ([computeForward (input, output, params)]))
+console.log (JSON.stringify ([[opt.options.inprof || opt.options.inseq,opt.options.outprof || opt.options.outseq,computeForward (input, output, params)]]))

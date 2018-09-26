@@ -41,9 +41,7 @@ int main (int argc, char** argv) {
   } else
     params = json::object();
   cout << "[";
-  size_t nIn = 0;
   for (const auto& inSeq: inSeqs) {
-    cout << (nIn++ ? ",\n" : "") << "[";
     size_t nOut = 0;
     for (const auto& outSeq: outSeqs)
       cout << (nOut++ ? ",\n" : "")
@@ -51,7 +49,6 @@ int main (int argc, char** argv) {
 	   << SoftPlus::slow_logsumexp (computeForward (inSeq.seq, outSeq.seq, params),
 					computeForward (inSeq.seq, revcomp (outSeq.seq), params))
 	   << "]";
-    cout << "]";
   }
   cout << "]\n";
   return 0;

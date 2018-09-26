@@ -503,7 +503,9 @@ int main (int argc, char** argv) {
       for (const auto& seqPair: data.seqPairs) {
 	const ForwardMatrix forward (eval, seqPair);
 	cout << (n++ ? ",\n " : "")
-	     << forward.logLike();
+	     << "[\"" << escaped_str(seqPair.input.name)
+	     << "\",\"" << escaped_str(seqPair.output.name)
+	     << "\"," << forward.logLike() << "]";
       }
       cout << "]\n";
     }

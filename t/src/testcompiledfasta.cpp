@@ -18,15 +18,12 @@ int main (int argc, char** argv) {
   } else
     params = json::object();
   cout << "[";
-  size_t nIn = 0;
+  size_t n = 0;
   for (const auto& inSeq: inSeqs) {
-    cout << (nIn++ ? ",\n" : "") << "[";
-    size_t nOut = 0;
     for (const auto& outSeq: outSeqs)
-      cout << (nOut++ ? ",\n" : "")
+      cout << (n++ ? ",\n" : "")
 	   << "[\"" << escaped_str(inSeq.name) << "\",\"" << escaped_str(outSeq.name) << "\","
 	   << computeForward (inSeq.seq, outSeq.seq, params) << "]";
-    cout << "]";
   }
   cout << "]\n";
   return 0;
