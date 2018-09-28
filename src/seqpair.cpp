@@ -123,7 +123,7 @@ void Envelope::initPathArea (const SeqPair::AlignPath& cols, size_t width) {
   inStart.clear();
   inEnd.clear();
   for (OutputIndex j = 0; j <= outLen; ++j) {
-    InputIndex iStart = 0, iEnd = outLen + 1;
+    InputIndex iStart = 0, iEnd = inLen + 1;
     if (nBefore[j] > width)
       iStart = match[nBefore[j] - width - 1] + 1;
     const size_t nAfter = match.size() - nBefore[j];

@@ -337,6 +337,8 @@ test-env: t/bin/testenv
 	@$(TEST) t/bin/testenv t/io/smallpath.json 3 t/expect/smallpath_area3_env.json
 	@$(TEST) t/bin/testenv t/io/smallpath.json 4 t/expect/smallpath_area4_env.json
 	@$(TEST) t/bin/testenv t/io/smallpath.json 5 t/expect/smallpath_area4_env.json
+	@$(TEST) t/bin/testenv t/io/asympath.json 0 t/expect/asympath_area0_env.json
+	@$(TEST) t/bin/testenv t/io/asympath.json 1 t/expect/asympath_area1_env.json
 
 test-params: t/bin/testparams
 	@$(TEST) t/bin/testparams t/io/params.json -idem
