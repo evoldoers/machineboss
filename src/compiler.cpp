@@ -7,7 +7,8 @@ Compiler::Compiler()
   : showCells (false)
 { }
 
-static const string xvar ("x"), yvar ("y"), paramvar ("params"), paramnamesvar ("names"), paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result"), softplusvar ("sp");
+static const string xvar ("x"), yvar ("y"), paramvar ("params"), paramnamesvar ("names"), paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result");
+static const string softplusvar ("sp"), boundmacro ("_bound"), reducemacro ("_reduce"), boundreducedmacro ("_bound_reduced");
 static const string currentcell ("cell"), xcell ("xcell"), ycell ("ycell"), xycell ("xycell");
 static const string xidx ("ix"), yidx ("iy"), xmat ("mx"), xvec ("vx"), yvec ("vy");
 static const string xsize ("sx"), ysize ("sy");
@@ -63,6 +64,10 @@ string JavaScriptCompiler::unaryLog (const string& x) const {
 
 string JavaScriptCompiler::boundLog (const string& x) const {
   return softplusvar + ".bound_intlog (" + x + ")";
+}
+
+string JavaScriptCompiler::boundSoftplussed (const string& x) const {
+  return x;
 }
 
 string JavaScriptCompiler::unaryExp (const string& x) const {
@@ -123,7 +128,18 @@ string JavaScriptCompiler::constArrayAccessor (const string& obj, const string& 
 
 CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   cellType = is64bit ? "long long" : "long";
-  preamble = "#include <vector>\n" "#include <map>\n" "#include <string>\n" "#include <iostream>\n" "#include \"softplus.h\"\n" "using namespace std;\n";
+  preamble = string()
+    + "#include <vector>\n"
+    + "#include <map>\n"
+    + "#include <string>\n"
+    + "#include <algorithm>\n"
+    + "#include <iostream>\n"
+    + "#include \"softplus.h\"\n"
+    + "using namespace std;\n"
+    + "#define " + boundmacro + "(X) sp.bound_intlog(X)\n"
+    + "#define " + reducemacro + "(X,Y) sp.int_logsumexp(X,Y)\n"
+    + "#define " + boundreducedmacro + "(X) (X)\n"
+    ;
   funcKeyword = "double";
   voidFuncKeyword = "void";
   matrixArgType = "const vector<vector<double> >& ";
@@ -353,7 +369,8 @@ string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineInden
     return topLevel ? (alreadyBounded ? exprs[0] : boundLog (exprs[0])) : (newLine + exprs[0]);
   const string lastExpr = exprs.back();
   exprs.pop_back();
-  return binarySoftplus (logSumExpReduce (exprs, lineIndent, false, false), newLine + lastExpr);
+  const string result = binarySoftplus (logSumExpReduce (exprs, lineIndent, false, false), newLine + lastExpr);
+  return topLevel ? (alreadyBounded ? result : boundSoftplussed (result)) : result;
 }
 
 string CPlusPlusCompiler::declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const {
@@ -371,13 +388,17 @@ string CPlusPlusCompiler::deleteArray (const string& arrayName) const {
 string CPlusPlusCompiler::arrayRowAccessor (const string& arrayName, const string& rowIndex, const string& rowSize) const {
   return string("(") + arrayName + " + " + rowSize + " * (" + rowIndex + "))";
 }
-  
+
 string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) const {
-  return softplusvar + ".int_logsumexp (" + a + ", " + b + ")";
+  return reducemacro + " (" + a + ", " + b + ")";
 }
 
 string CPlusPlusCompiler::boundLog (const string& x) const {
-  return string("SoftPlus::bound_intlog (") + x + ")";
+  return boundmacro + " (" + x + ")";
+}
+
+string CPlusPlusCompiler::boundSoftplussed (const string& x) const {
+  return boundreducedmacro + " (" + x + ")";
 }
 
 string CPlusPlusCompiler::unaryLog (const string& x) const {

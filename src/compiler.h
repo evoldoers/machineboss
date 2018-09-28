@@ -94,6 +94,7 @@ struct Compiler {
 
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
   virtual string boundLog (const string&) const = 0; // library function that constraints argument to infinity bounds
+  virtual string boundSoftplussed (const string&) const = 0; // library function that constraints result of binarySoftplus() to infinity bounds
   virtual string unaryLog (const string&) const = 0;
   virtual string unaryExp (const string&) const = 0;
   virtual string realLog (const string&) const = 0;
@@ -123,6 +124,7 @@ struct JavaScriptCompiler : Compiler {
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
   string boundLog (const string&) const;
+  string boundSoftplussed (const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
   string realLog (const string&) const;
@@ -146,6 +148,7 @@ struct CPlusPlusCompiler : Compiler {
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
   string boundLog (const string&) const;
+  string boundSoftplussed (const string&) const;
   string unaryLog (const string&) const;
   string unaryExp (const string&) const;
   string realLog (const string&) const;
