@@ -29,8 +29,8 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, con
 }
 
 void DPMatrix::alloc() {
-  Assert (env.fits(seqPair), "Envelope/sequence mismatch");
-  Assert (env.connected(), "Envelope is not connected");
+  Assert (env.fits(seqPair), "Envelope/sequence mismatch:\n%s\n%s\n", JsonWriter<Envelope>::toJsonString(env).c_str(), JsonWriter<SeqPair>::toJsonString(seqPair).c_str());
+  Assert (env.connected(), "Envelope is not connected:\n%s\n", JsonWriter<Envelope>::toJsonString(env).c_str());
   offsets = env.offsets();  // initializes nCells()
   LogThisAt(7,"Creating matrix with " << nCells() << " cells (<=" << (inLen+1) << "*" << (outLen+1) << "*" << nStates << ")" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
