@@ -88,7 +88,7 @@ struct Envelope {
   void clear();
   void initFull (const SeqPair&);
   void initPath (const SeqPair::AlignPath&);
-  void initPathVicinity (const SeqPair::AlignPath&, size_t width);
+  void initPathArea (const SeqPair::AlignPath&, size_t width);
 
   void writeJson (ostream&) const;
 

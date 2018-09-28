@@ -96,7 +96,7 @@ void Envelope::initPath (const SeqPair::AlignPath& cols) {
   }
 }
 
-void Envelope::initPathVicinity (const SeqPair::AlignPath& cols, size_t width) {
+void Envelope::initPathArea (const SeqPair::AlignPath& cols, size_t width) {
   clear();
   vguard<InputIndex> match;
   vguard<size_t> nBefore;
@@ -112,14 +112,14 @@ void Envelope::initPathVicinity (const SeqPair::AlignPath& cols, size_t width) {
       nBefore.push_back (match.size());
     }
   }
-  cerr << "match: " << to_string_join(match) << endl;
-  cerr << "nBefore: " << to_string_join(nBefore) << endl;
+  inStart.clear();
+  inEnd.clear();
   for (OutputIndex j = 0; j <= outLen; ++j) {
     InputIndex iStart = 0, iEnd = outLen + 1;
     if (nBefore[j] > width)
       iStart = match[nBefore[j] - width - 1] + 1;
     const size_t nAfter = match.size() - nBefore[j];
-    if (nAfter < width)
+    if (nAfter > width)
       iEnd = match[nBefore[j] + width] + 1;
     inStart.push_back (iStart);
     inEnd.push_back (iEnd);

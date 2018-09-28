@@ -331,6 +331,12 @@ test-env: t/bin/testenv
 	@$(TEST) t/bin/testenv t/io/tinypath.json full t/expect/tinypath_full_env.json
 	@$(TEST) t/bin/testenv t/io/tinypath.json path t/expect/tinypath_path_env.json
 	@$(TEST) t/bin/testenv t/io/smallpath.json path t/expect/smallpath_path_env.json
+	@$(TEST) t/bin/testenv t/io/smallpath.json 0 t/expect/smallpath_area0_env.json
+	@$(TEST) t/bin/testenv t/io/smallpath.json 1 t/expect/smallpath_area1_env.json
+	@$(TEST) t/bin/testenv t/io/smallpath.json 2 t/expect/smallpath_area2_env.json
+	@$(TEST) t/bin/testenv t/io/smallpath.json 3 t/expect/smallpath_area3_env.json
+	@$(TEST) t/bin/testenv t/io/smallpath.json 4 t/expect/smallpath_area4_env.json
+	@$(TEST) t/bin/testenv t/io/smallpath.json 5 t/expect/smallpath_area4_env.json
 
 test-params: t/bin/testparams
 	@$(TEST) t/bin/testparams t/io/params.json -idem

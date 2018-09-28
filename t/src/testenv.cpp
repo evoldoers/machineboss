@@ -13,7 +13,7 @@ int main (int argc, char** argv) {
     env.initPath (seqPair.alignment);
   else {
     int width = atoi (argv[2]);
-    env.initPathVicinity (seqPair.alignment, width);
+    env.initPathArea (seqPair.alignment, width);
   }
   env.writeJson (cout);
   cout << endl;
