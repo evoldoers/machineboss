@@ -112,6 +112,7 @@ int main (int argc, char** argv) {
       ("output-chars", po::value<string>(), "specify output character sequence explicitly")
 
       ("train,T", "Baum-Welch parameter fit")
+      ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
@@ -490,7 +491,7 @@ int main (int argc, char** argv) {
 	fitter.constraints = constraints;
       fitter.constants = funcs;
       fitter.seed = fitter.allConstraints().defaultParams().combine (seed);
-      params = fitter.fit(data);
+      params = vm.count("wiggle-room") ? fitter.fit(data,vm.at("wiggle-room").as<int>()) : fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
     } else
       params = funcs.combine (seed);

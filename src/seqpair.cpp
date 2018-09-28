@@ -62,6 +62,14 @@ Envelope::Envelope (const SeqPair& sp) {
   Assert (fits(sp), "Envelope/sequence mismatch");
 }
 
+Envelope::Envelope (const SeqPair& sp, size_t width) {
+  if (sp.alignment.size())
+    initPathArea (sp.alignment, width);
+  else
+    initFull (sp);
+  Assert (fits(sp), "Envelope/sequence mismatch");
+}
+
 void Envelope::clear() {
   inLen = outLen = 0;
   inStart = vguard<InputIndex> (1, 0);
@@ -160,6 +168,12 @@ Envelope Envelope::pathEnvelope (const SeqPair::AlignPath& path) {
   return env;
 }
 
+Envelope Envelope::pathAreaEnvelope (const SeqPair::AlignPath& path, size_t width) {
+  Envelope env;
+  env.initPathArea (path, width);
+  return env;
+}
+
 void Envelope::writeJson (ostream& out) const {
   out << "[";
   for (OutputIndex j = 0; j <= outLen; ++j)
@@ -171,6 +185,13 @@ list<Envelope> SeqPairList::envelopes() const {
   list<Envelope> envs;
   for (const auto& sp: seqPairs)
     envs.push_back (Envelope (sp));
+  return envs;
+}
+
+list<Envelope> SeqPairList::envelopes (size_t width) const {
+  list<Envelope> envs;
+  for (const auto& sp: seqPairs)
+    envs.push_back (Envelope (sp, width));
   return envs;
 }
 

@@ -124,6 +124,8 @@ Transducer application:
   -O [ --output-fasta ] arg    load output sequence(s) from FASTA file
   --output-chars arg           specify output character sequence explicitly
   -T [ --train ]               Baum-Welch parameter fit
+  -R [ --wiggle-room ] arg     wiggle room (allowed departure from training 
+                               alignment)
   -A [ --align ]               Viterbi sequence alignment
   -L [ --loglike ]             Forward log-likelihood calculation
   -C [ --counts ]              Forward-Backward counts (derivatives of 

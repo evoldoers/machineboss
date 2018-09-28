@@ -84,6 +84,7 @@ struct Envelope {
 
   Envelope();
   Envelope (const SeqPair& sp);   // calls initPath if sp.trans is nonempty, otherwise calls initFull
+  Envelope (const SeqPair& sp, size_t width);   // calls initPathArea(width) if sp.trans is nonempty, otherwise calls initFull
 
   void clear();
   void initFull (const SeqPair&);
@@ -94,11 +95,13 @@ struct Envelope {
 
   static Envelope fullEnvelope (const SeqPair&);
   static Envelope pathEnvelope (const SeqPair::AlignPath&);
+  static Envelope pathAreaEnvelope (const SeqPair::AlignPath&, size_t);
 };
 
 struct SeqPairList {
   list<SeqPair> seqPairs;
   list<Envelope> envelopes() const;
+  list<Envelope> envelopes (size_t) const;
   void readJson (const json&);
   void writeJson (ostream&) const;
 };

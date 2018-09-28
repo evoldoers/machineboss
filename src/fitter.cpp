@@ -14,6 +14,10 @@ Params MachineFitter::fit (const SeqPairList& trainingSet) const {
   return fit (trainingSet, trainingSet.envelopes());
 }
 
+Params MachineFitter::fit (const SeqPairList& trainingSet, size_t width) const {
+  return fit (trainingSet, trainingSet.envelopes (width));
+}
+
 Params MachineFitter::fit (const SeqPairList& trainingSet, const list<Envelope>& envelopes) const {
   Assert (envelopes.size() == trainingSet.seqPairs.size(), "Envelope/training set mismatch");
   Params params = seed;
