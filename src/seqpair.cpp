@@ -96,6 +96,36 @@ void Envelope::initPath (const SeqPair::AlignPath& cols) {
   }
 }
 
+void Envelope::initPathVicinity (const SeqPair::AlignPath& cols, size_t width) {
+  clear();
+  vguard<InputIndex> match;
+  vguard<size_t> nBefore;
+  nBefore.push_back (0);
+  for (const auto& t: cols) {
+    const bool gotInput = t.first.size(), gotOutput = t.second.size();
+    if (gotInput && gotOutput)
+      match.push_back (inLen);
+    if (gotInput)
+      ++inLen;
+    if (gotOutput) {
+      ++outLen;
+      nBefore.push_back (match.size());
+    }
+  }
+  cerr << "match: " << to_string_join(match) << endl;
+  cerr << "nBefore: " << to_string_join(nBefore) << endl;
+  for (OutputIndex j = 0; j <= outLen; ++j) {
+    InputIndex iStart = 0, iEnd = outLen + 1;
+    if (nBefore[j] > width)
+      iStart = match[nBefore[j] - width - 1] + 1;
+    const size_t nAfter = match.size() - nBefore[j];
+    if (nAfter < width)
+      iEnd = match[nBefore[j] + width] + 1;
+    inStart.push_back (iStart);
+    inEnd.push_back (iEnd);
+  }
+}
+
 bool Envelope::fits (const SeqPair& sp) const {
   return inLen == sp.input.seq.size() && outLen == sp.output.seq.size();
 }
@@ -128,6 +158,13 @@ Envelope Envelope::pathEnvelope (const SeqPair::AlignPath& path) {
   Envelope env;
   env.initPath (path);
   return env;
+}
+
+void Envelope::writeJson (ostream& out) const {
+  out << "[";
+  for (OutputIndex j = 0; j <= outLen; ++j)
+    out << (j ? "," : "") << "[" << inStart[j] << "," << inEnd[j] << "]";
+  out << "]";
 }
 
 list<Envelope> SeqPairList::envelopes() const {
