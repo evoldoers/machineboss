@@ -78,7 +78,7 @@ function revcomp (dna) {
 }
 
 function decodeCigar (query, target, cigar) {
-  var align = [[],[]]
+  var align = ['','']
   var regex = /([0-9]+)([MID])/gi, rmatch, qpos = 0, tpos = 0
   while (rmatch = regex.exec(cigar)) {
     var len = parseInt (rmatch[1])
@@ -129,18 +129,18 @@ fastaPromise (queryFile, stride, group)
             ++nAlign
             var qName = fields[0], tName = fields[5]
             if (json) {
-              var qRow = align[0].split(''), tRow = align[1].split('')
               var seqPair = { input: { name: tName },
                               output: { name: qName } }
-              if (align)
+              if (align) {
+                var qRow = align[0].split(''), tRow = align[1].split('')
                 seqPair.alignment = qRow.map (function (qCol, n) {
                   var tCol = tRow[n]
                   return [tCol === '-' ? '' : tCol,
                           qCol === '-' ? '' : qCol]
                 })
-              else {
-                seqPair.input.seq = t.split('')
-                seqPair.output.seq = q.split('')
+              } else {
+                seqPair.input.sequence = t.split('')
+                seqPair.output.sequence = q.split('')
               }
               if (queryInput) {
                 var newSeqPair = { input: seqPair.output,
