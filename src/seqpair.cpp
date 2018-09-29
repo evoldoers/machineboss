@@ -27,6 +27,8 @@ void SeqPair::readJson (const json& pj) {
       output.readJsonWithDefaultSeq (pj.at("output"), out);
     else
       output.seq = out;
+    if (pj.count("meta"))
+      metadata = pj.at("meta");
   } else {
     input.readJson (pj.at("input"));
     output.readJson (pj.at("output"));
@@ -47,7 +49,41 @@ void SeqPair::writeJson (ostream& out) const {
 	  << "\",\"" << escaped_str(col.second) << "\"]";
     out << "]";
   }
+  if (!metadata.is_null())
+    out << ",\"meta\":" << metadata;
   out << "}";
+}
+
+SeqPair::AlignPath SeqPair::getAlignment (const MachinePath& mp) {
+  AlignPath ap;
+  for (const auto& t: mp.trans)
+    if (!t.isSilent())
+      ap.push_back (AlignCol (t.in, t.out));
+  return ap;
+}
+
+vguard<InputSymbol> SeqPair::getInput (const AlignPath& ap) {
+  vguard<InputSymbol> in;
+  for (const auto& col: ap)
+    if (col.first.size())
+      in.push_back (col.first);
+  return in;
+}
+
+vguard<OutputSymbol> SeqPair::getOutput (const AlignPath& ap) {
+  vguard<OutputSymbol> out;
+  for (const auto& col: ap)
+    if (col.second.size())
+      out.push_back (col.second);
+  return out;
+}
+
+SeqPair SeqPair::seqPairFromPath (const MachineBoundPath& mp, const char* inputName, const char* outputName) {
+  const auto alignment = getAlignment (mp);
+  return SeqPair ({ NamedInputSeq ({ inputName, getInput (alignment) }),
+	NamedOutputSeq ({ outputName, getOutput (alignment) }),
+	alignment,
+	json::object ({ { "path", JsonWriter<MachineBoundPath>::toJson (mp) } }) });
 }
 
 Envelope::Envelope() {

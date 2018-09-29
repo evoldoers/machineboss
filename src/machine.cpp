@@ -1332,6 +1332,14 @@ void MachinePath::writeJson (ostream& out, const Machine& m) const {
   out << "]}";
 }
 
+MachineBoundPath::MachineBoundPath (const MachinePath& mp, const Machine& m)
+  : MachinePath (mp), machine (m)
+{ }
+
+void MachineBoundPath::writeJson (ostream& out) const {
+  MachinePath::writeJson (out, machine);
+}
+
 void Machine::import (const Machine& m) {
   defs = ParamFuncs (defs.combine (m.defs));
   cons = cons.combine (m.cons);

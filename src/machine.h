@@ -140,4 +140,10 @@ struct MachinePath {
   void writeJson (ostream&, const Machine&) const;
 };
 
+struct MachineBoundPath : MachinePath {
+  const Machine& machine;
+  MachineBoundPath (const MachinePath&, const Machine&);
+  void writeJson (ostream&) const;
+};
+
 #endif /* MACHINE_INCLUDED */

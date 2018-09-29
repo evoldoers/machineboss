@@ -13,7 +13,8 @@
         },
         "output": {
           "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
-        }
+        },
+        "meta": { }
       }
     },
     {
@@ -29,7 +30,8 @@
             "minItems": 2,
             "maxItems": 2,
             "items": { "type": "string" }
-          }
+          },
+          "meta": { }
         }
       }
     }

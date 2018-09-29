@@ -10,6 +10,9 @@
 using namespace std;
 using json = nlohmann::json;
 
+#define DefaultInputSequenceName "input"
+#define DefaultOutputSequenceName "output"
+
 template<typename Symbol>
 struct NamedSeq {
   string name;
@@ -54,8 +57,15 @@ struct SeqPair {
   NamedInputSeq input;
   NamedOutputSeq output;
   AlignPath alignment;
+  json metadata;
   void readJson (const json&);
   void writeJson (ostream&) const;
+
+  static AlignPath getAlignment (const MachinePath&);
+  static vguard<InputSymbol> getInput (const AlignPath&);
+  static vguard<OutputSymbol> getOutput (const AlignPath&);
+
+  static SeqPair seqPairFromPath (const MachineBoundPath&, const char* inputName = DefaultInputSequenceName, const char* outputName = DefaultOutputSequenceName);
 };
 
 struct Envelope {

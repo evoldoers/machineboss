@@ -523,15 +523,13 @@ int main (int argc, char** argv) {
     if (vm.count("align")) {
       Require (gotData, "To align sequences, please specify a data file");
       const EvaluatedMachine eval (machine, params);
-      cout << "[";
-      size_t n = 0;
+      SeqPairList alignResults;
       for (const auto& seqPair: data.seqPairs) {
 	const ViterbiMatrix viterbi (eval, seqPair);
-	const MachinePath path = viterbi.path (machine);
-	cout << (n++ ? ",\n " : "");
-	path.writeJson (cout, machine);
+	const MachineBoundPath path (viterbi.path (machine), machine);
+	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
       }
-      cout << "]\n";
+      alignResults.writeJson (cout);
     }
     
   } catch (const std::exception& e) {
