@@ -105,11 +105,11 @@ WeightExpr WeightAlgebra::minus (const WeightExpr& x) {
 }
 
 WeightExpr WeightAlgebra::negate (const WeightExpr& p) {
-  return factory.newBinary (Sub, factory.one, p);
+  return subtract (factory.one, p);
 }
 
 WeightExpr WeightAlgebra::reciprocal (const WeightExpr& p) {
-  return factory.newBinary (Div, factory.one, p);
+  return divide (factory.one, p);
 }
 
 WeightExpr WeightAlgebra::geometricSum (const WeightExpr& p) {

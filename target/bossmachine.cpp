@@ -78,6 +78,9 @@ int main (int argc, char** argv) {
       ("zero-or-one,z", "union with null '?'")
       ("kleene-star,k", "Kleene star '*'")
       ("kleene-plus,K", "Kleene plus '+'")
+      ("reciprocal", "invert all weight expressions")
+      ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
+      ("weight-output", po::value<string>(), "apply weight parameter with given prefix to outputs")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -85,7 +88,7 @@ int main (int argc, char** argv) {
       ("compose-sum,m", "compose, summing out silent cycles '=>'")
       ("compose", "compose, breaking silent cycles (faster)")
       ("compose-unsort", "compose, leaving silent cycles")
-      ("concat,c", "concatenate '.'")
+      ("concatenate,c", "concatenate '.'")
       ("intersect-sum,i", "intersect, summing out silent cycles '&&'")
       ("intersect", "intersect, breaking silent cycles (faster)")
       ("intersect-unsort", "intersect, leaving silent cycles")
@@ -146,7 +149,7 @@ int main (int argc, char** argv) {
     alias[string("<<")] = "--generate-chars";
     alias[string(">>")] = "--accept-chars";
     alias[string("=>")] = "--compose-sum";
-    alias[string(".")] = "--concat";
+    alias[string(".")] = "--concatenate";
     alias[string("&&")] = "--intersect-sum";
     alias[string("||")] = "--union";
     alias[string("?")] = "--zero-or-one";
@@ -158,7 +161,8 @@ int main (int argc, char** argv) {
     alias[string("(")] = "--begin";
     alias[string(")")] = "--end";
 
-    alias[string("--concatenate")] = "--concat";
+    alias[string("--recip")] = "--reciprocal";
+    alias[string("--concat")] = "--concatenate";
     alias[string("--or")] = "--union";
 
     po::variables_map vm;
@@ -289,7 +293,7 @@ int main (int argc, char** argv) {
           m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::BreakSilentCycles);
 	else if (command == "--compose-unsort")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::LeaveSilentCycles);
-	else if (command == "--concat")
+	else if (command == "--concatenate")
 	  m = Machine::concatenate (popMachine(), nextMachine());
 	else if (command == "--intersect-sum")
 	  m = Machine::intersect (popMachine(), nextMachine(), Machine::SumSilentCycles);
@@ -354,6 +358,12 @@ int main (int argc, char** argv) {
 	      w = WeightAlgebra::intConstant (intValue);
 	  }
 	  m = Machine::singleTransition (w);
+	} else if (command == "--weight-input") {
+	  m = popMachine().weightInputs (getArg().c_str());
+	} else if (command == "--weight-output") {
+	  m = popMachine().weightOutputs (getArg().c_str());
+	} else if (command == "--reciprocal") {
+	  m = popMachine().reciprocal();
 	} else if (command == "--begin") {
 	  list<Machine> pushedMachines;
 	  swap (pushedMachines, machines);

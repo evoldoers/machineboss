@@ -22,6 +22,7 @@ typedef unsigned long long StateIndex;
 #define MachineCatRightTag   "concat-r"
 #define MachineDefaultSeqTag "seq"
 #define MachineEndTag        "end"
+#define MachineParamPrefix   "p"
 
 typedef string OutputSymbol;
 typedef string InputSymbol;
@@ -120,8 +121,12 @@ struct Machine {
   bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
   bool isAligningMachine() const;  // at most one i->j transition with given input & output labels
 
-  Machine projectOutputToInput() const;  // copies all output labels to input labels. Requires inputEmpty()
+  Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
 
+  Machine reciprocal() const;
+  Machine weightInputs (const char* paramPrefix = MachineParamPrefix) const;
+  Machine weightOutputs (const char* paramPrefix = MachineParamPrefix) const;
+  
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
 
@@ -129,9 +134,9 @@ struct Machine {
   Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
   Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
 
-  Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;
+  Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // returns either advancingMachine(), dropSilentBackTransitions(), or clone of self, depending on strategy
   Machine dropSilentBackTransitions() const;
-  Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;
+  Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // eliminates silent transitions, first processing cycles using the selected strategy
 
   // helpers to import defs & constraints from other machine(s)
   void import (const Machine& m);

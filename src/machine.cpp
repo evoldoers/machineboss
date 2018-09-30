@@ -461,6 +461,34 @@ Machine Machine::projectOutputToInput() const {
   return m;
 }
 
+Machine Machine::weightInputs (const char* paramPrefix) const {
+  const string pp (paramPrefix);
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      if (!t.inputEmpty())
+	t.weight = WeightAlgebra::multiply (t.weight, WeightAlgebra::param (pp + t.in));
+  return m;
+}
+
+Machine Machine::weightOutputs (const char* paramPrefix) const {
+  const string pp (paramPrefix);
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      if (!t.outputEmpty())
+	t.weight = WeightAlgebra::multiply (t.weight, WeightAlgebra::param (pp + t.out));
+  return m;
+}
+
+Machine Machine::reciprocal() const {
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      t.weight = WeightAlgebra::reciprocal (t.weight);
+  return m;
+}
+
 bool Machine::inputEmpty() const {
   return inputAlphabet().empty();
 }

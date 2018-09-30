@@ -98,12 +98,17 @@ Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
   -k [ --kleene-star ]         Kleene star '*'
   -K [ --kleene-plus ]         Kleene plus '+'
+  --reciprocal                 invert all weight expressions
+  --weight-input arg           apply weight parameter with given prefix to 
+                               inputs
+  --weight-output arg          apply weight parameter with given prefix to 
+                               outputs
 
 Infix operators:
   -m [ --compose-sum ]         compose, summing out silent cycles '=&gt;'
   --compose                    compose, breaking silent cycles (faster)
   --compose-unsort             compose, leaving silent cycles
-  -c [ --concat ]              concatenate '.'
+  -c [ --concatenate ]         concatenate '.'
   -i [ --intersect-sum ]       intersect, summing out silent cycles '&&'
   --intersect                  intersect, breaking silent cycles (faster)
   --intersect-unsort           intersect, leaving silent cycles
