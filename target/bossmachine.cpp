@@ -335,7 +335,7 @@ int main (int argc, char** argv) {
 	  WeightExpr w;
 	  try {
 	    wj = json::parse(wArg);
-	    if (!MachineSchema::validate ("expr", wj))
+	    if (MachineSchema::validate ("expr", wj))
 	      w = WeightAlgebra::fromJson (wj);
 	  } catch (...) {
 	    const char* wc = wArg.c_str();
