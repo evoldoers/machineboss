@@ -247,6 +247,9 @@ test-weight:
 	@$(TEST) bin/$(BOSS) -w p t/expect/null-p.json
 	@$(TEST) bin/$(BOSS) -w 2 t/expect/null-2.json
 	@$(TEST) bin/$(BOSS) -w .5 t/expect/null-0.5.json
+	@$(TEST) bin/$(BOSS) -w '{"*":["p","q"]}' t/expect/null-pq.json
+	@$(TEST) bin/$(BOSS) -w '{"*":[1,2]}' t/expect/null-2.json
+	@$(TEST) bin/$(BOSS) -w '{"/":[1,2]}' t/expect/null-0.5.json
 
 test-shorthand:
 	@$(TEST) bin/$(BOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' x t/expect/shorthand.json

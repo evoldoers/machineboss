@@ -116,10 +116,6 @@ WeightExpr WeightAlgebra::geometricSum (const WeightExpr& p) {
   return WeightAlgebra::reciprocal (WeightAlgebra::negate (p));
 }
 
-WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {
-  return (isOne(r) || isZero(l)) ? l : factory.newBinary (Div, l, r);
-}
-
 WeightExpr WeightAlgebra::subtract (const WeightExpr& l, const WeightExpr& r) {
   return isZero(r) ? l : factory.newBinary (Sub, l, r);
 }
@@ -150,6 +146,19 @@ WeightExpr WeightAlgebra::multiply (const WeightExpr& l, const WeightExpr& r) {
     w = factory.newDouble (asDouble(l) * asDouble(r));
   else
     w = factory.newBinary (Mul, l, r);
+  return w;
+}
+
+WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {
+  WeightExpr w = NULL;
+  if (isOne(r))
+    w = l;
+  else if (isZero(l))
+    w = factory.zero;
+  else if (isNumber(l) && isNumber(r))
+    w = factory.newDouble (asDouble(l) / asDouble(r));
+  else
+    w = factory.newBinary (Div, l, r);
   return w;
 }
 
