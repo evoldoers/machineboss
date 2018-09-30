@@ -46,13 +46,16 @@ int main (int argc, char** argv) {
       ("load,l", po::value<string>(), "load machine from file")
       ("preset,p", po::value<string>(), (string ("select preset (") + join (MachinePresets::presetNames(), ", ") + ")").c_str())
       ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
+      ("generate-one", po::value<string>(), "generator for any one of specified characters")
       ("generate-wild", po::value<string>(), "generator for Kleene closure over specified characters")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
+      ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
+      ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
@@ -61,6 +64,7 @@ int main (int argc, char** argv) {
 
     po::options_description prefixOpts("Prefix operators");
     prefixOpts.add_options()
+      ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
@@ -153,6 +157,9 @@ int main (int argc, char** argv) {
     alias[string("~")] = "--revcomp";
     alias[string("(")] = "--begin";
     alias[string(")")] = "--end";
+
+    alias[string("--concatenate")] = "--concat";
+    alias[string("--or")] = "--union";
 
     po::variables_map vm;
     po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).allow_unregistered().run();
@@ -247,6 +254,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--generate-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildGenerator (splitToChars (chars));
+	} else if (command == "--generate-one") {
+	  const string chars = getArg();
+	  m = Machine::wildSingleGenerator (splitToChars (chars));
 	} else if (command == "--accept") {
 	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.seq, outSeq.name);
@@ -260,9 +270,15 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
+	} else if (command == "--accept-one") {
+	  const string chars = getArg();
+	  m = Machine::wildSingleAcceptor (splitToChars (chars));
 	} else if (command == "--echo-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildEcho (splitToChars (chars));
+	} else if (command == "--echo-one") {
+	  const string chars = getArg();
+	  m = Machine::wildSingleEcho (splitToChars (chars));
 	} else if (command == "--sort-sum")
 	  m = nextMachine().advanceSort().advancingMachine();
 	else if (command == "--sort-break")
@@ -289,7 +305,14 @@ int main (int argc, char** argv) {
 	  m = Machine::kleeneStar (popMachine());
 	else if (command == "--kleene-plus")
 	  m = Machine::kleenePlus (popMachine());
-	else if (command == "--loop")
+	else if (command == "--repeat") {
+	  const int nReps = stoi (getArg());
+	  Require (nReps > 0, "--repeat requires minimum one repetition");
+	  const Machine unit = nextMachine();
+	  m = unit;
+	  for (int n = 1; n < nReps; ++n)
+	    m = Machine::concatenate (m, unit);
+	} else if (command == "--loop")
 	  m = Machine::kleeneLoop (popMachine(), nextMachine());
 	else if (command == "--eliminate")
 	  m = nextMachine().eliminateSilentTransitions();

@@ -66,15 +66,18 @@ Transducer construction:
   -p [ --preset ] arg          select preset (compdna, comprna, dnapsw, null, 
                                prot2dna, protpsw, psw2dna, translate)
   -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
+  --generate-one arg           generator for any one of specified characters
   --generate-wild arg          generator for Kleene closure over specified 
                                characters
   --generate-fasta arg         generator for FASTA-format sequence
   --generate arg               sequence generator for JSON-format sequence
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
+  --accept-one arg             acceptor for any one of specified characters
   --accept-wild arg            acceptor for Kleene closure over specified 
                                characters
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept arg                 sequence acceptor for JSON-format sequence
+  --echo-one arg               identity for any one of specified characters
   --echo-wild arg              identity for Kleene closure over specified 
                                characters
   -w [ --weight ] arg          weighted null transition '#'
@@ -82,6 +85,7 @@ Transducer construction:
   -V [ --csv ] arg             load machine from CSV file
 
 Prefix operators:
+  --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
   -t [ --transpose ]           transpose: swap input/output
