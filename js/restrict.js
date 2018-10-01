@@ -10,23 +10,25 @@ var fs = require('fs'),
 var opt = getopt.create([
   ['m' , 'motif=SEQ'        , 'specify motif [ACGTN]+'],
   ['f' , 'forward'          , 'do not check reverse strand'],
+  ['r' , 'repeats'          , 'allow homopolymer repeats'],
   ['h' , 'help'             , 'display this help message']
 ])              // create Getopt instance
     .bindHelp()     // bind option 'help' to default action
     .parseSystem() // parse command line
 
-var motif = opt.options.motif, forward = opt.options.forward
-if (!motif)
-  throw new Error ("please specify a motif")
+var motif = opt.options.motif || 'Z', forward = opt.options.forward, repeats = opt.options.repeats
 var motifSeq = motif.toUpperCase().split('')
 
-// The state space is indexed (M[1],M[2]...M[motif.length-1])
-// where M[K] is a binary variable that is true iff the previously-emitted K symbols match the first K characters of the motif.
+// The state space is indexed (P,M[1],M[2]...M[motif.length-1])
+// where
+//  P is the previous nucleotide (or the empty string if in the initial state),
+//  M[K] is a binary variable that is true iff the previously-emitted K symbols match the first K characters of the motif.
 // We only need to keep 2^(motif.length-1) states because the last bit is never allowed to be 1.
 const alphabet = [ "A", "C", "G", "T" ], complement = { A:"T", C:"G", G:"C", T:"A" }
-const iupac = { A: "A", C: "C", G: "G", T: "T", W: "AT", S: "CG", M: "AC", K: "GT", R: "AG", Y: "CT", B: "CGT", D: "AGT", H: "ACT", V: "ACG", N: "ACGT" }
+const iupac = { A: "A", C: "C", G: "G", T: "T", W: "AT", S: "CG", M: "AC", K: "GT", R: "AG", Y: "CT", B: "CGT", D: "AGT", H: "ACT", V: "ACG", N: "ACGT", Z: "" }
+function motifMatch (pos, queryChar) { return iupac[motifSeq[pos]].indexOf(queryChar) >= 0 }
 const tupleChars = [ '_', 'f', 'r', 'b' ], tupleCharIndex = { _:0, f:1, r:2, b:3 }
-const initTuple = motifSeq.slice(1).fill(0)
+const initTuple = [''].concat (motifSeq.slice(1).fill(0))
 const tupleRegex = new RegExp ('([frb])([0-9]+)','g')
 function string2tuple (state) {
   var tuple = initTuple.slice(0)
@@ -38,20 +40,20 @@ function string2tuple (state) {
   return tuple
 }
 function tuple2string (tuple) {
-  return tuple.map (function (flags, pos) {
+  return (tuple[0] || '_') + tuple.slice(1).map (function (flags, pos) {
     return flags ? (tupleChars[flags] + (pos+1)) : ''
-  }).join('') || 'start'
+  }).join('')
 }
 function nextTuple (tuple, tok) {
-  var t = [forward ? 1 : 3].concat(tuple).map (function (prevMatch, pos) {
+  var t = [forward ? 1 : 3].concat(tuple.slice(1)).map (function (prevMatch, pos) {
     var prevFwdMatch = (prevMatch & 1) ? true : false
     var prevRevMatch = (prevMatch & 2) ? true : false
-    var fwdMatch = prevFwdMatch && iupac[motifSeq[pos]].indexOf(tok) >= 0
-    var revMatch = prevRevMatch && iupac[motifSeq[motifSeq.length-1-pos]].indexOf(complement[tok]) >= 0
+    var fwdMatch = prevFwdMatch && motifMatch (pos, tok)
+    var revMatch = prevRevMatch && motifMatch (motifSeq.length-1-pos, complement[tok])
     return (fwdMatch ? 1 : 0) | (revMatch ? 2 : 0)
   })
-  var valid = !t.pop()
-  return { tok: tok, next: t, valid: valid }
+  var valid = !t.pop() && (repeats || tok !== tuple[0])
+  return { tok: tok, next: [tok].concat(t), valid: valid }
 }
 var states = [], id2index = {}, tupleQueue = [initTuple], incoming = { start: {} }
 while (tupleQueue.length) {
@@ -60,18 +62,21 @@ while (tupleQueue.length) {
     id2index[id] = states.length
     incoming[id] = incoming[id] || {}
     states.push (null)  // placeholder
-    var trans = alphabet.map (function (tok) {
+    var preTrans = alphabet.map (function (tok) {
       return nextTuple (tuple, tok)
     }).filter (function (info) {
       return info.valid
-    }).map (function (info) {
+    })
+    var trans = preTrans.map (function (info, pos) {
       var dest = tuple2string (info.next)
       if (!id2index[dest]) {
         tupleQueue.push (info.next)
         incoming[dest] = {}
       }
       incoming[dest][id] = true
-      return { in: info.tok, out: info.tok, to: dest }
+      return { in: pos + '_' + preTrans.length,
+               out: info.tok,
+               to: dest }
     })
     states[id2index[id]] = { id: id, trans: trans.concat ([{ to: 'end' }]) }
   }

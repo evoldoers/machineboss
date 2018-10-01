@@ -237,7 +237,9 @@ if ($getstats) {
 }
 
 # find output tree for each node, merge equivalence sets
-my %equivIndex = ("()" => [0]);  # this takes care of the self-loop back to start
+push @state, { end => 1, dest => {} };
+$state[0]->{dest}->{"$epsilon$div$epsilon"} = $#state;
+my %equivIndex = ("()" => [0]);  # this takes care of the self-loop to start
 for my $outputIndex (reverse @validOutIndex) {
     my $output = $state[$outputIndex];
     my @destLabel = sort keys %{$output->{dest}};
@@ -262,7 +264,7 @@ for my $subtree (keys %equivIndex) {
     }
 }
 for my $e (@{$equivIndex{"()"}}) {
-    die $e if $e > 0 && keys(%{$state[$e]->{dest}});
+#    die $e if $e > 0 && keys(%{$state[$e]->{dest}});
 }
 
 my @equivIndex = map (exists($state[$_]->{subtree}) ? $equivIndex{$state[$_]->{subtree}}->[0] : $_, 0..$#state);
