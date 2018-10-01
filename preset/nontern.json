@@ -9,7 +9,7 @@
       {"id":"P10","trans":[{"in":"0","out":"11","to":"START"},{"in":"1","out":"12","to":"START"},{"out":"10","to":"STOP"}]},
       {"id":"P11","trans":[{"in":"0","out":"20","to":"START"},{"in":"1","out":"21","to":"START"},{"out":"11","to":"STOP"}]},
       {"id":"STOP","trans":[{"out":"22","to":"END"}]},
-      {"id":"END","trans":[]}
+      {"id":"END","trans":[{"in":",","to":"START"}]}
     ]},
     {"state":[
       {"id":"Q","trans":[{"in":"00","out":"0","to":"Q0"},{"in":"01","out":"0","to":"Q1"},{"in":"02","out":"0","to":"Q2"},
