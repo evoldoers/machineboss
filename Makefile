@@ -322,7 +322,10 @@ test-cyclic:
 	@$(TEST) bin/$(BOSS) t/invalid/cyclic.json -fail
 
 # Non-transducer I/O tests
-IO_TESTS = test-seqpair test-seqpairlist test-env test-params test-constraints test-dot
+IO_TESTS = test-fastseq test-seqpair test-seqpairlist test-env test-params test-constraints test-dot
+test-fastseq: t/bin/testfastseq
+	@$(TEST) t/bin/testfastseq t/tc1/CAA25498.fa t/expect/CAA25498.fa
+
 test-seqpair: t/bin/testseqpair
 	@$(TEST) t/bin/testseqpair t/io/tiny.json -idem
 	@$(TEST) t/bin/testseqpair t/io/tinypath.json -idem

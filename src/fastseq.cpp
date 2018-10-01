@@ -137,7 +137,7 @@ void readFastSeqs (const char* filename, vguard<FastSeq>& seqs) {
   Require (fp != Z_NULL, "Couldn't open %s", filename);
 
   kseq_t *ks = kseq_init(fp);
-  while (true) {
+  while (!gzeof(fp)) {
     if (kseq_read(ks) == -1)
       break;
 
