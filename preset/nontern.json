@@ -1,0 +1,24 @@
+{
+  "compose": [
+    {"state":[
+      {"id":"START","trans":[{"in":"0","to":"P0"},{"in":"1","to":"P1"},{"out":"20","to":"STOP"}]},
+      {"id":"P0","trans":[{"in":"0","to":"P00"},{"in":"1","to":"P01"},{"out":"02","to":"STOP"}]},
+      {"id":"P1","trans":[{"in":"0","to":"P10"},{"in":"1","to":"P11"},{"out":"12","to":"STOP"}]},
+      {"id":"P00","trans":[{"in":"0","out":"00","to":"START"},{"in":"1","out":"01","to":"START"},{"out":"00","to":"STOP"}]},
+      {"id":"P01","trans":[{"in":"0","out":"02","to":"START"},{"in":"1","out":"10","to":"START"},{"out":"01","to":"STOP"}]},
+      {"id":"P10","trans":[{"in":"0","out":"11","to":"START"},{"in":"1","out":"12","to":"START"},{"out":"10","to":"STOP"}]},
+      {"id":"P11","trans":[{"in":"0","out":"20","to":"START"},{"in":"1","out":"21","to":"START"},{"out":"11","to":"STOP"}]},
+      {"id":"STOP","trans":[{"out":"22","to":"END"}]},
+      {"id":"END","trans":[]}
+    ]},
+    {"state":[
+      {"id":"Q","trans":[{"in":"00","out":"0","to":"Q0"},{"in":"01","out":"0","to":"Q1"},{"in":"02","out":"0","to":"Q2"},
+                         {"in":"10","out":"1","to":"Q0"},{"in":"11","out":"1","to":"Q1"},{"in":"12","out":"1","to":"Q2"},
+                         {"in":"20","out":"2","to":"Q0"},{"in":"21","out":"2","to":"Q1"},{"in":"22","out":"2","to":"Q2"}]},
+      {"id":"Q0","trans":[{"out":"0","to":"E"}]},
+      {"id":"Q1","trans":[{"out":"1","to":"E"}]},
+      {"id":"Q2","trans":[{"out":"2","to":"E"}]},
+      {"id":"E","trans":[{"to":"Q"}]}
+    ]}
+  ]
+}
