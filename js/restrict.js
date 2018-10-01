@@ -48,18 +48,17 @@ function nextTuple (tuple, tok) {
     var prevRevMatch = (prevMatch & 2) ? true : false
     var fwdMatch = prevFwdMatch && iupac[motifSeq[pos]].indexOf(tok) >= 0
     var revMatch = prevRevMatch && iupac[motifSeq[motifSeq.length-1-pos]].indexOf(complement[tok]) >= 0
-//    console.warn('tuple',tuple,'pos',pos,'prevMatch',prevMatch,'tok',tok,'iupac',iupac[motifSeq[pos]],'fwd',fwdMatch,'rev',revMatch)
     return (fwdMatch ? 1 : 0) | (revMatch ? 2 : 0)
   })
-//  console.warn('nextTuple',tuple,tok,t)
   var valid = !t.pop()
   return { tok: tok, next: t, valid: valid }
 }
-var states = [], id2index = {}, tupleQueue = [initTuple]
+var states = [], id2index = {}, tupleQueue = [initTuple], incoming = { start: {} }
 while (tupleQueue.length) {
   var tuple = tupleQueue.shift(), id = tuple2string (tuple)
   if (typeof(id2index[id]) === 'undefined') {
     id2index[id] = states.length
+    incoming[id] = incoming[id] || {}
     states.push (null)  // placeholder
     var trans = alphabet.map (function (tok) {
       return nextTuple (tuple, tok)
@@ -67,16 +66,40 @@ while (tupleQueue.length) {
       return info.valid
     }).map (function (info) {
       var dest = tuple2string (info.next)
-      if (!id2index[dest])
+      if (!id2index[dest]) {
         tupleQueue.push (info.next)
+        incoming[dest] = {}
+      }
+      incoming[dest][id] = true
       return { in: info.tok, out: info.tok, to: dest }
     })
     states[id2index[id]] = { id: id, trans: trans.concat ([{ to: 'end' }]) }
   }
 }
+id2index['end'] = states.length
+incoming['end'] = {}
+states.forEach (function (state) { incoming['end'][state.id] = true })
+states.push ({ id: 'end', trans: [] })
+
+var reachable = {}, sinkQueue = ['end']
+while (sinkQueue.length) {
+  var sink = sinkQueue.shift()
+  reachable[sink] = true
+  Object.keys (incoming[sink]).forEach (function (source) {
+    if (!reachable[source])
+      sinkQueue.push (source)
+  })
+}
+
+states = states.filter (function (state) {
+  return reachable[state.id]
+}).map (function (state) {
+  return { id: state.id,
+           trans: state.trans.filter (function (t) { return reachable[t.to] }) }
+})
 
 var model = {
-  state: states.concat ([{ id: 'end', trans: [] }])
+  state: states
 }
 
 console.log (JSON.stringify (model, null, 2))
