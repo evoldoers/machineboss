@@ -1,0 +1,18 @@
+{
+  "state":[
+    {"id":"START","trans":[{"in":"0","to":"P0"},{"in":"1","to":"P1"},{"in":"0","out":"0","to":"STOP"},{"in":"1","out":"1","to":"STOP"},{"out":"2","to":"STOP"},{"to":"STOP2"}]},
+    {"id":"P0","trans":[{"in":"0","to":"P00"},{"in":"1","to":"P01"}]},
+    {"id":"P1","trans":[{"in":"0","to":"P10"},{"in":"1","to":"P11"}]},
+    {"id":"P00","trans":[{"in":"0","out":"0","to":"Q0"},{"in":"1","out":"0","to":"Q1"}]},
+    {"id":"P01","trans":[{"in":"0","out":"0","to":"Q2"},{"in":"1","out":"1","to":"Q0"}]},
+    {"id":"P10","trans":[{"in":"0","out":"1","to":"Q1"},{"in":"1","out":"1","to":"Q2"}]},
+    {"id":"P11","trans":[{"in":"0","out":"2","to":"Q0"},{"in":"1","out":"2","to":"Q1"}]},
+    {"id":"Q0","trans":[{"out":"0","to":"START"}]},
+    {"id":"Q1","trans":[{"out":"1","to":"START"}]},
+    {"id":"Q2","trans":[{"out":"2","to":"START"}]},
+    {"id":"STOP","trans":[{"in":"0","out":"0","to":"STOP2"},{"in":"1","out":"1","to":"STOP2"}]},
+    {"id":"STOP2","trans":[{"out":"2","to":"STOP22"}]},
+    {"id":"STOP22","trans":[{"out":"2","to":"END"}]},
+    {"id":"END","trans":[]}
+  ]
+}

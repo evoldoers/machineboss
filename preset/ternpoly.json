@@ -1,0 +1,9 @@
+{
+  "state":[
+    {"id":"A","trans":[{"in":"0","out":"G","to":"G"},{"in":"1","out":"C","to":"C"},{"in":"2","out":"T","to":"T"},{"to":"END"}]},
+    {"id":"C","trans":[{"in":"0","out":"T","to":"T"},{"in":"1","out":"A","to":"A"},{"in":"2","out":"G","to":"G"},{"to":"END"}]},
+    {"id":"G","trans":[{"in":"0","out":"A","to":"A"},{"in":"1","out":"T","to":"T"},{"in":"2","out":"C","to":"C"},{"to":"END"}]},
+    {"id":"T","trans":[{"in":"0","out":"C","to":"C"},{"in":"1","out":"G","to":"G"},{"in":"2","out":"A","to":"A"},{"to":"END"}]},
+    {"id":"END","trans":[]}
+  ]
+}
