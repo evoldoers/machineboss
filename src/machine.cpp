@@ -444,9 +444,9 @@ void Machine::writeDot (ostream& out, const char* emptyLabelText) const {
 	  << escaped_str (t.in.empty() ? emptyLabelText : t.in.c_str())
 	  << "/"
 	  << escaped_str (t.out.empty() ? emptyLabelText : t.out.c_str())
-	  << "\",taillabel=\""
-	  << WeightAlgebra::toString (t.weight, ParamDefs())
-	  << "\"];" << endl;
+	  << "\""
+	  << (WeightAlgebra::isOne(t.weight) ? string() : (string("taillabel=\"") + WeightAlgebra::toString (t.weight, ParamDefs()) + "\""))
+	  << "];" << endl;
     out << endl;
   }
   out << "}" << endl;
