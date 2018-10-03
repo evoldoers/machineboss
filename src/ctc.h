@@ -23,6 +23,7 @@ struct PrefixTree {
   typedef priority_queue<PrefixTree::Node*,deque<PrefixTree::Node*>,PrefixTree::NodeComparator> NodePtrQueue;
   
   const EvaluatedMachine& machine;
+  const vguard<vguard<LogWeight> > sumInTrans;
   const vguard<OutputToken> output;
   const OutputIndex outLen;
   const StateIndex nStates;
