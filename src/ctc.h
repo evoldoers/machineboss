@@ -29,12 +29,16 @@ struct PrefixTree {
 
   NodeStorage node;
   NodePtrQueue nodeQueue;
-  Node *bestPrefix, *bestSeq;
+  Node *bestPrefixNode, *bestSeqNode;
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputToken>& output);
 
   double logSeqProb (NodeIndex) const;
   double logPrefixProb (NodeIndex) const;
+
+  vguard<InputToken> bestSeq() const { return seqTraceback (bestSeqNode); }
+  vguard<InputToken> bestPrefix() const { return seqTraceback (bestPrefixNode); }
+  vguard<InputToken> seqTraceback (const Node* node) const;
 
   inline size_t nCells() const {
     return 2 * (outLen + 1) * nStates;
