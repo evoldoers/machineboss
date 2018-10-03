@@ -1,7 +1,9 @@
+#include <gsl/gsl_linalg.h>
 #include "eval.h"
 #include "weight.h"
 #include "util.h"
 #include "logger.h"
+#include "logsumexp.h"
 
 void EvaluatedMachineState::Trans::init (LogWeight lw, TransIndex ti) {
   logWeight = lw;
@@ -124,4 +126,35 @@ string EvaluatedMachine::stateNameJson (StateIndex s) const {
   if (state[s].name.is_null())
     return to_string(s);
   return state[s].name.dump();
+}
+
+vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
+  const OutputToken nullToken = 0;
+
+  vguard<vguard<double> > oneMinusNullTrans (nStates(), vguard<double> (nStates()));
+  for (StateIndex src = 0; src < nStates(); ++src) {
+    oneMinusNullTrans[src][src] = 1;
+    for (const auto& in_ost: state[src].outgoing) {
+      const auto& ost = in_ost.second;
+      if (ost.count(nullToken))
+	for (const auto& s_t: ost.at(nullToken))
+	  oneMinusNullTrans[src][s_t.first] -= exp (s_t.second.logWeight);
+    }
+  }
+
+  gsl_matrix* gOneMinusNullTrans = stl_to_gsl_matrix (oneMinusNullTrans);
+  gsl_matrix* gGeomSumNullTrans = gsl_matrix_alloc (nStates(), nStates());
+  gsl_permutation* perm = gsl_permutation_alloc (nStates());
+  int signum;
+
+  gsl_linalg_LU_decomp (gOneMinusNullTrans, perm, &signum);
+  gsl_linalg_LU_invert (gOneMinusNullTrans, perm, gGeomSumNullTrans);
+ 
+  const vguard<vguard<double> > result = gsl_matrix_to_stl (gGeomSumNullTrans);
+
+  gsl_permutation_free (perm);
+  gsl_matrix_free (gOneMinusNullTrans);
+  gsl_matrix_free (gGeomSumNullTrans);
+  
+  return log_matrix (result);
 }

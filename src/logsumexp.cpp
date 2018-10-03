@@ -57,6 +57,14 @@ vguard<LogProb> log_vector (const vguard<double>& v) {
   return transform_container<double,vguard<double> > (v, log);
 }
 
+vguard<vguard<LogProb> > log_matrix (const vguard<vguard<double> >& m) {
+  vguard<vguard<LogProb> > result;
+  result.reserve (m.size());
+  for (const auto& v: m)
+    result.push_back (log_vector (v));
+  return result;
+}
+
 vguard<LogProb> log_gsl_vector (const gsl_vector* v) {
   vguard<LogProb> l (v->size);
   for (size_t i = 0; i < v->size; ++i)

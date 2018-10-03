@@ -63,6 +63,7 @@ struct EvaluatedMachine {
   StateIndex startState() const;
   StateIndex endState() const;
   string stateNameJson (StateIndex) const;
+  vguard<vguard<LogWeight> > sumInTrans() const;  // returns effective transitions between states, summing over all non-outputting paths
 };
 
 #endif /* EVAL_INCLUDED */
