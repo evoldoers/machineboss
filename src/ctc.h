@@ -1,8 +1,10 @@
 #ifndef CTC_INCLUDED
 #define CTC_INCLUDED
 
+#include <list>
 #include <deque>
 #include <queue>
+
 #include "dpmatrix.h"
 
 struct PrefixTree {
@@ -19,7 +21,7 @@ struct PrefixTree {
     bool operator() (const Node* x, const Node* y) const { return x->logPrefixProb > y->logPrefixProb; }
   };
   
-  typedef deque<Node> NodeStorage;
+  typedef list<Node> NodeStorage;
   typedef priority_queue<PrefixTree::Node*,deque<PrefixTree::Node*>,PrefixTree::NodeComparator> NodePtrQueue;
   
   const EvaluatedMachine& machine;
@@ -31,6 +33,7 @@ struct PrefixTree {
   NodeStorage node;
   NodePtrQueue nodeQueue;
   Node* bestSeqNode;
+  double bestLogSeqProb;
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputToken>& output);
 
