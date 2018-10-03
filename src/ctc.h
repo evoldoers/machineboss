@@ -8,15 +8,15 @@
 struct PrefixTree {
   typedef Envelope::OutputIndex OutputIndex;
   struct Node {
-    const Node* parent;
     const InputToken inTok;
-    vguard<NodeIndex> child;
+    const Node* parent;
+    vguard<Node*> child;
     vguard<double> cellStorage;
-    double logPrefixProb, logSeqProb;
+    double logPrefixProb;
     Node (const PrefixTree& tree, const Node* parent, InputToken inTok);
   };
   struct NodeComparator {
-    bool operator() (const Node& x, const Node& y) const { return x.logPrefixProb > y.logPrefixProb; }
+    bool operator() (const Node* x, const Node* y) const { return x->logPrefixProb > y->logPrefixProb; }
   };
   
   typedef deque<Node> NodeStorage;
@@ -29,15 +29,16 @@ struct PrefixTree {
 
   NodeStorage node;
   NodePtrQueue nodeQueue;
-  Node *bestPrefixNode, *bestSeqNode;
+  Node* bestSeqNode;
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputToken>& output);
 
-  double logSeqProb (NodeIndex) const;
-  double logPrefixProb (NodeIndex) const;
+  double logSeqProb (const Node&) const;
+  double logPrefixProb (const Node&) const;
 
+  Node* bestPrefixNode() const;
   vguard<InputToken> bestSeq() const { return seqTraceback (bestSeqNode); }
-  vguard<InputToken> bestPrefix() const { return seqTraceback (bestPrefixNode); }
+  vguard<InputToken> bestPrefix() const { return seqTraceback (bestPrefixNode()); }
   vguard<InputToken> seqTraceback (const Node* node) const;
 
   inline size_t nCells() const {
@@ -48,12 +49,12 @@ struct PrefixTree {
     return 2 * (outPos * state + outPos);
   }
 
-  inline double& seqCell (NodeIndex inNodeIdx, OutputIndex outPos, StateIndex state) {
-    return node[n].cellStorage [cellIndex (outPos, state)];
+  inline double& seqCell (const Node& inNode, OutputIndex outPos, StateIndex state) {
+    return inNode.cellStorage [cellIndex (outPos, state)];
   }
 
-  inline double& prefixCell (NodeIndex inNodeIdx, OutputIndex outPos, StateIndex state) {
-    return node[n].cellStorage [cellIndex (outPos, state) + 1];
+  inline double& prefixCell (const Node& inNode, OutputIndex outPos, StateIndex state) {
+    return inNode.cellStorage [cellIndex (outPos, state) + 1];
   }
 };
 
