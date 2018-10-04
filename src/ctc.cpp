@@ -101,7 +101,7 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
       double norm = parent->logSeqProb();
       for (InputToken inTok = 1; inTok <= inToks; ++inTok)
 	log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
-      LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - exp(parent->logPrefixProb)) << endl);
+      LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - parent->logPrefixProb) << endl);
     } else
       break;
   }
