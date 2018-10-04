@@ -35,8 +35,10 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 	  accumulateSeqCell (ll, incoming, *parent, outTok, outPos - 1);
 	accumulateSeqCell (ll, incoming, *parent, OutputTokenizer::emptyToken(), outPos);
 
-	log_accum_exp (logPrefixProb, ll + tree.sumInTrans[d][tree.nStates - 1]);
-	LogThisAt(9,"logPrefixProb logsum+= "<<ll<<" + "<<tree.sumInTrans[d][tree.nStates - 1]<<" ("<<d<<"->end)"<<endl);
+	if (outPos == outLen) {
+	  log_accum_exp (logPrefixProb, ll + tree.sumInTrans[d][tree.nStates - 1]);
+	  LogThisAt(9,"logPrefixProb logsum+= "<<ll<<" + "<<tree.sumInTrans[d][tree.nStates - 1]<<" ("<<d<<"->end)"<<endl);
+	}
       }
       if (state.incoming.count (InputTokenizer::emptyToken())) {
 	const auto& incoming = state.incoming.at (InputTokenizer::emptyToken());
