@@ -15,7 +15,6 @@ struct PrefixTree {
     const Node* parent;
     const StateIndex nStates;
     const OutputIndex outLen;
-    vguard<Node*> child;
     vguard<double> cellStorage;
     double logPrefixProb;
 

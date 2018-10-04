@@ -87,14 +87,12 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
   addNode (NULL, machine.inputTokenizer.emptyToken());
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   while (!nodeQueue.empty()) {
-    const auto bp = bestPrefix();
-    LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << (bp.size() ? to_string_join(bp,"") : string("<root>")) << endl);
     Node* parent = bestPrefixNode();
+    LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (" << parent->logPrefixProb << ")" << endl);
     if (parent->logPrefixProb > bestLogSeqProb) {
       nodeQueue.pop();
-      parent->child.reserve (inToks);
       for (InputToken inTok = 1; inTok <= inToks; ++inTok)
-	parent->child.push_back (addNode (parent, inTok));
+	(void) addNode (parent, inTok);
     } else
       break;
   }
@@ -107,7 +105,8 @@ PrefixTree::Node* PrefixTree::addNode (const Node* parent, InputToken inTok) {
   LogThisAt (6, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
 
   nodePtr->fill (*this);
-  nodeQueue.push (nodePtr);
+  if (nodePtr->logPrefixProb > bestLogSeqProb)
+    nodeQueue.push (nodePtr);
 
   const double logNodeSeqProb = nodePtr->logSeqProb();
   if (logNodeSeqProb > bestLogSeqProb) {
