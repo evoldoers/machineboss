@@ -499,10 +499,10 @@ int main (int argc, char** argv) {
     }
 
     // if inputs/outputs specified individually, create all input-output pairs
-    if (outSeqs.empty() && machine.outputAlphabet().empty())
-      outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty
-    if (inSeqs.empty() && !outSeqs.empty() && (machine.inputAlphabet().empty() || vm.count("decode")))
+    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("decode")))
       inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're decoding
+    if (outSeqs.empty() && !inSeqs.empty() && machine.outputAlphabet().empty())
+      outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
 	data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
