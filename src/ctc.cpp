@@ -83,6 +83,20 @@ double PrefixTree::Node::logSeqProb() const {
   return seqCell (outLen, nStates - 1);
 }
 
+vguard<InputToken> PrefixTree::Node::traceback() const {
+  list<InputToken> result;
+  for (const Node* node = this; node->inTok; node = node->parent)
+    result.push_front (node->inTok);
+  return vguard<InputToken> (result.begin(), result.end());
+}
+
+PrefixTree::InputIndex PrefixTree::Node::length() const {
+  InputIndex len = 0;
+  for (const Node* node = this; node->inTok; node = node->parent)
+    ++len;
+  return len;
+}
+
 PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym) :
   machine (machine),
   sumInTrans (machine.sumInTrans()),
@@ -96,9 +110,9 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   while (!nodeQueue.empty()) {
     Node* parent = bestPrefixNode();
-    LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (" << parent->logPrefixProb << ")" << endl);
+    nodeQueue.pop();
     if (parent->logPrefixProb > bestLogSeqProb) {
-      nodeQueue.pop();
+      LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (" << parent->logPrefixProb << ")" << endl);
       double norm = parent->logSeqProb();
       for (InputToken inTok = 1; inTok <= inToks; ++inTok)
 	log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
@@ -130,10 +144,5 @@ PrefixTree::Node* PrefixTree::addNode (const Node* parent, InputToken inTok) {
 }
 
 vguard<InputSymbol> PrefixTree::seqTraceback (const Node* node) const {
-  list<InputToken> inSeq;
-  while (node && node->inTok) {
-    inSeq.push_back (node->inTok);
-    node = node->parent;
-  }
-  return machine.inputTokenizer.detokenize (vguard<InputToken> (inSeq.rbegin(), inSeq.rend()));
+  return machine.inputTokenizer.detokenize (node->traceback());
 }

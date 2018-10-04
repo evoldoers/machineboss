@@ -9,6 +9,7 @@
 #include "logger.h"
 
 struct PrefixTree {
+  typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
   struct Node {
     const InputToken inTok;
@@ -60,6 +61,9 @@ struct PrefixTree {
     inline double& prefixCell (OutputIndex outPos, StateIndex state) {
       return cellStorage [prefixCellIndex (outPos, state)];
     }
+
+    vguard<InputToken> traceback() const;
+    InputIndex length() const;
   };
   struct NodeComparator {
     bool operator() (const Node* x, const Node* y) const { return x->logPrefixProb < y->logPrefixProb; }
@@ -78,6 +82,7 @@ struct PrefixTree {
   NodePtrQueue nodeQueue;
   Node* bestSeqNode;
   double bestLogSeqProb;
+  InputIndex bestSeqLen;
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
 
