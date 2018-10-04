@@ -19,7 +19,8 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 {
   cellStorage = vector<double> (nCells(), -numeric_limits<double>::infinity());
 
-  seqCell (0, 0) = 0;
+  if (!parent)
+    seqCell (0, 0) = 0;
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
     const OutputToken outTok = outPos ? tree.output[outPos-1] : OutputTokenizer::emptyToken();
     for (StateIndex d = 0; d < nStates; ++d) {
@@ -37,7 +38,7 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 	  accumulateSeqCell (ll, incoming, *this, outTok, outPos - 1);
 	accumulateSeqCell (ll, incoming, *this, OutputTokenizer::emptyToken(), outPos);
       }
-      LogThisAt(6,"seqCell("<<outPos<<","<<d<<")="<<ll<<endl);
+      LogThisAt(8,"seqCell("<<outPos<<","<<d<<")="<<ll<<endl);
     }
     // looping over d AND prevState seems inefficient! Could precompute sumInTrans*outTrans for each outTok
     for (StateIndex d = 0; d < nStates; ++d) {
@@ -53,12 +54,12 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 	      for (StateIndex prevState = 0; prevState < nStates; ++prevState) {
 		const double prevCell = prefixCell (outPos - 1, prevState);
 		log_accum_exp (ll, prevCell + tree.sumInTrans[prevState][st.first] + trans.logWeight);
-		LogThisAt(7,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<endl);
+		LogThisAt(9,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<endl);
 	      }
 	    }
 	}
       }
-      LogThisAt(6,"prefixCell("<<outPos<<","<<d<<")="<<ll<<endl);
+      LogThisAt(8,"prefixCell("<<outPos<<","<<d<<")="<<ll<<endl);
     }
   }
 
@@ -86,7 +87,7 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   while (!nodeQueue.empty()) {
     const auto bp = bestPrefix();
-    LogThisAt (5, "Extending " << (bp.size() ? to_string_join(bp,"") : string("<root>")) << endl);
+    LogThisAt (7, "Extending " << (bp.size() ? to_string_join(bp,"") : string("<root>")) << endl);
     Node* parent = bestPrefixNode();
     if (parent->logPrefixProb > bestLogSeqProb) {
       nodeQueue.pop();
@@ -102,7 +103,7 @@ PrefixTree::Node* PrefixTree::addNode (const Node* parent, InputToken inTok) {
   nodeStore.push_back (Node (*this, parent, inTok));
   Node* nodePtr = &nodeStore.back();
 
-  LogThisAt (5, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
+  LogThisAt (6, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
 
   nodePtr->fill (*this);
   nodeQueue.push (nodePtr);
@@ -112,7 +113,7 @@ PrefixTree::Node* PrefixTree::addNode (const Node* parent, InputToken inTok) {
     bestSeqNode = nodePtr;
     bestLogSeqProb = logNodeSeqProb;
   }
-  LogThisAt (6, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
+  LogThisAt (7, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
 
   return nodePtr;
 }

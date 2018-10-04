@@ -574,9 +574,10 @@ int main (int argc, char** argv) {
       SeqPairList decodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input");
-	const PrefixTree tree (machine, seqPair.output.seq);
+	const PrefixTree tree (eval, seqPair.output.seq);
 	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), tree.bestSeq() }), seqPair.output }));
       }
+      decodeResults.writeJson (cout);
     }
     
   } catch (const std::exception& e) {
