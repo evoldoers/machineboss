@@ -6,6 +6,7 @@
 #include <queue>
 
 #include "dpmatrix.h"
+#include "logger.h"
 
 struct PrefixTree {
   typedef Envelope::OutputIndex OutputIndex;
@@ -28,6 +29,7 @@ struct PrefixTree {
       if (outStateTransMap.count (outTok))
 	for (const auto& st: outStateTransMap.at (outTok)) {
 	  const EvaluatedMachineState::Trans& trans = st.second;
+	  LogThisAt(9,"seqCell("<<outPos<<",d) logsum+= "<<inNode.seqCell(outPos,st.first)<<" + "<<trans.logWeight<<" ("<<st.first<<"->d)"<<endl);
 	  log_accum_exp (ll, inNode.seqCell(outPos,st.first) + trans.logWeight);
 	}
     }
@@ -37,7 +39,7 @@ struct PrefixTree {
     }
 
     inline size_t seqCellIndex (OutputIndex outPos, StateIndex state) const {
-      return 2 * (outLen * state + outPos);
+      return 2 * (outPos * nStates + state);
     }
 
     inline size_t prefixCellIndex (OutputIndex outPos, StateIndex state) const {
