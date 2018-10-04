@@ -30,23 +30,24 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
       const EvaluatedMachineState& state = tree.machine.state[d];
       double& ll = seqCell (outPos, d);
       if (parent && state.incoming.count (inTok)) {
-	const auto& incoming = state.incoming.at (inTok);
+	const auto& absorbing = state.incoming.at (inTok);
 	if (outPos)
-	  accumulateSeqCell (ll, incoming, *parent, outTok, outPos - 1);
-	accumulateSeqCell (ll, incoming, *parent, OutputTokenizer::emptyToken(), outPos);
+	  accumulateSeqCell (ll, absorbing, *parent, outTok, outPos - 1);
+	accumulateSeqCell (ll, absorbing, *parent, OutputTokenizer::emptyToken(), outPos);
       }
-      if (state.incoming.count (InputTokenizer::emptyToken())) {
-	const auto& incoming = state.incoming.at (InputTokenizer::emptyToken());
-	if (outPos)
-	  accumulateSeqCell (ll, incoming, *this, outTok, outPos - 1);
-	accumulateSeqCell (ll, incoming, *this, OutputTokenizer::emptyToken(), outPos);
-      }
+      const EvaluatedMachineState::OutStateTransMap* nonAbsorbing = NULL;
+      if (state.incoming.count (InputTokenizer::emptyToken()))
+	nonAbsorbing = &state.incoming.at (InputTokenizer::emptyToken());
+      if (outPos && nonAbsorbing)
+	  accumulateSeqCell (ll, *nonAbsorbing, *this, outTok, outPos - 1);
+      prefixCell (outPos, d) = ll;
+      if (nonAbsorbing)
+	accumulateSeqCell (ll, *nonAbsorbing, *this, OutputTokenizer::emptyToken(), outPos);
       LogThisAt(8,"seqCell("<<outPos<<","<<d<<")="<<ll<<endl);
     }
     // looping over d AND prevState seems inefficient! Could precompute sumInTrans*outTrans for each outTok
     for (StateIndex d = 0; d < nStates; ++d) {
       double& ll = prefixCell (outPos, d);
-      ll = seqCell (outPos, d);
       if (outPos) {
 	const EvaluatedMachineState& state = tree.machine.state[d];
 	for (const auto& i_ostm: state.incoming) {
