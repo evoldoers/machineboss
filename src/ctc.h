@@ -8,6 +8,11 @@
 #include "dpmatrix.h"
 #include "logger.h"
 
+// If G is a generator with output alphabet A, then
+// prefix(G) = (echo(A) + wild(A)) * G is its prefix machine.
+// (Here + is concatenation, * is composition, echo(A) copies A-symbols from input to output, and wild(A) emits A-symbols.)
+// The PrefixTree uses this construction implicitly:
+// seqCell(outPos,state) and prefixCell(outPos,state) track states in, respectively, echo(A)*G and wild(A)*G.
 struct PrefixTree {
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
