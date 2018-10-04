@@ -98,10 +98,10 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
     LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (" << parent->logPrefixProb << ")" << endl);
     if (parent->logPrefixProb > bestLogSeqProb) {
       nodeQueue.pop();
-      double norm = -numeric_limits<double>::infinity();
+      double norm = parent->logSeqProb();
       for (InputToken inTok = 1; inTok <= inToks; ++inTok)
 	log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
-      LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - exp(parent->logPrefixProb)) << endl);
+      LogThisAt (6, "log(Sum_x(P(S|Sx*)) / P(S*)) = " << (norm - exp(parent->logPrefixProb)) << endl);
     } else
       break;
   }
