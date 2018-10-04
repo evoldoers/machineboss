@@ -34,11 +34,6 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 	if (outPos)
 	  accumulateSeqCell (ll, incoming, *parent, outTok, outPos - 1);
 	accumulateSeqCell (ll, incoming, *parent, OutputTokenizer::emptyToken(), outPos);
-
-	if (outPos == outLen) {
-	  log_accum_exp (logPrefixProb, ll + tree.sumInTrans[d][tree.nStates - 1]);
-	  LogThisAt(9,"logPrefixProb logsum+= "<<ll<<" + "<<tree.sumInTrans[d][tree.nStates - 1]<<" ("<<d<<"->end)"<<endl);
-	}
       }
       if (state.incoming.count (InputTokenizer::emptyToken())) {
 	const auto& incoming = state.incoming.at (InputTokenizer::emptyToken());
@@ -63,11 +58,6 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 		const double prevCell = prefixCell (outPos - 1, prevState);
 		const double logEmitWeight = prevCell + tree.sumInTrans[prevState][st.first] + trans.logWeight;
 		log_accum_exp (ll, logEmitWeight);
-		if (outPos == outLen) {
-		  log_accum_exp (logPrefixProb, logEmitWeight + tree.sumInTrans[d][tree.nStates - 1]);
-		  LogThisAt(9,"logPrefixProb logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" + "<<tree.sumInTrans[d][tree.nStates - 1]<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<"->end)"<<endl);
-		}
-
 		LogThisAt(9,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<endl);
 	      }
 	    }
@@ -75,10 +65,11 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
       }
       LogThisAt(8,"prefixCell("<<outPos<<","<<d<<")="<<ll<<endl);
     }
-    if (!outLen && !parent) {
-      log_accum_exp (logPrefixProb, tree.sumInTrans[0][tree.nStates - 1]);
-      LogThisAt(9,"logPrefixProb logsum+= "<<tree.sumInTrans[0][tree.nStates - 1]<<" (start->end)"<<endl);
-    }
+  }
+
+  for (StateIndex d = 0; d < nStates; ++d) {
+    log_accum_exp (logPrefixProb, prefixCell(outLen,d) + tree.sumInTrans[d][tree.nStates - 1]);
+    LogThisAt(9,"logPrefixProb logsum+= "<<prefixCell(outLen,d)<<" + "<<tree.sumInTrans[d][tree.nStates - 1]<<" ("<<d<<"->end)"<<endl);
   }
 
   if (parent && logPrefixProb > parent->logPrefixProb)
