@@ -129,7 +129,7 @@ string EvaluatedMachine::stateNameJson (StateIndex s) const {
 }
 
 vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
-  const OutputToken nullToken = 0;
+  const OutputToken nullToken = outputTokenizer.emptyToken();
 
   vguard<vguard<double> > oneMinusNullTrans (nStates(), vguard<double> (nStates()));
   for (StateIndex src = 0; src < nStates(); ++src) {

@@ -23,6 +23,7 @@
 #include "../src/hmmer.h"
 #include "../src/csv.h"
 #include "../src/compiler.h"
+#include "../src/ctc.h"
 
 using namespace std;
 
@@ -121,6 +122,7 @@ int main (int argc, char** argv) {
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
       ("align,A", "Viterbi sequence alignment")
+      ("decode,Z", "decode most likely input by prefix search")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ;
@@ -426,8 +428,9 @@ int main (int argc, char** argv) {
 
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
-    if ((vm.count("params") || vm.count("functions") || vm.count("norms"))
-	&& !(vm.count("train") || vm.count("loglike") || vm.count("align"))) {
+    const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
+    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("decode") || vm.count("counts");
+    if (paramsSpecified	&& !inferenceRequested) {
       machine.defs = seed;
       machine.defs.defs.insert (funcs.defs.begin(), funcs.defs.end());
       machine.cons = constraints;
@@ -444,7 +447,7 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       showMachine (out);
-    } else if (!vm.count("train") && !vm.count("loglike") && !vm.count("align") && !vm.count("counts") && !vm.count("codegen"))
+    } else if (!inferenceRequested && !vm.count("codegen"))
       showMachine (cout);
 
     // code generation
@@ -496,21 +499,20 @@ int main (int argc, char** argv) {
     }
 
     // if inputs/outputs specified individually, create all input-output pairs
-    if (inSeqs.empty() && !outSeqs.empty() && machine.inputAlphabet().empty())
-      inSeqs.push_back (FastSeq());
+    if (inSeqs.empty() && !outSeqs.empty() && (machine.inputAlphabet().empty() || vm.count("decode")))
+      inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're decoding
     else if (outSeqs.empty() && !inSeqs.empty() && machine.outputAlphabet().empty())
-      outSeqs.push_back (FastSeq());
+      outSeqs.push_back (FastSeq());  // create a dummy output if we have inputs & the output alphabet is empty
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
 	data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
 
     // after all that, do we have data? did we need data?
-    const bool needData = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts");
     const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();
-    if (needData && data.seqPairs.empty() && noIO)
+    if (inferenceRequested && data.seqPairs.empty() && noIO)
       data.seqPairs.push_back (SeqPair());  // if the model has no I/O, then add an automatic pair of empty, nameless sequences (the only possible evidence)
     const bool gotData = !data.seqPairs.empty();
-    Require (!gotData || needData, "No point in specifying input/output data without --train, --loglike, --align, or --counts");
+    Require (!gotData || inferenceRequested, "No point in specifying input/output data without --train, --loglike, --align, --decode, or --counts");
 
     // fit parameters
     Params params;
@@ -563,6 +565,18 @@ int main (int argc, char** argv) {
 	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
       }
       alignResults.writeJson (cout);
+    }
+
+    // decode
+    if (vm.count("decode")) {
+      Require (gotData, "To decode an input sequence, please specify an output sequence file");
+      const EvaluatedMachine eval (machine, params);
+      SeqPairList decodeResults;
+      for (const auto& seqPair: data.seqPairs) {
+	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input");
+	const PrefixTree tree (machine, seqPair.output.seq);
+	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), tree.bestSeq() }), seqPair.output }));
+      }
     }
     
   } catch (const std::exception& e) {

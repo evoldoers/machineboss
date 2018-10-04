@@ -19,9 +19,16 @@ struct Tokenizer {
   vguard<Token> tokenize (const vguard<Symbol>& symSeq) const {
     vguard<Token> tokSeq;
     tokSeq.reserve (symSeq.size());
-    for (auto sym: symSeq)
+    for (const auto& sym: symSeq)
       tokSeq.push_back (sym2tok.at(sym));
     return tokSeq;
+  }
+  vguard<Symbol> detokenize (const vguard<Token>& tokSeq) const {
+    vguard<Symbol> symSeq;
+    symSeq.reserve (tokSeq.size());
+    for (auto tok: tokSeq)
+      symSeq.push_back (tok2sym[tok]);
+    return symSeq;
   }
 };
 
