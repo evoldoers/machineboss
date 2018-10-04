@@ -476,8 +476,14 @@ test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise/seq/test.js
 test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js node $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
+# Decoding
+DECODE_TESTS = test-decode-bitecho-101
+
+test-decode-bitecho-101:
+	@$(TEST) bin/$(BOSS) t/machine/bitecho.json --accept-chars 101 --decode t/expect/decode-bitecho-101.json
+
 # Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS)
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 
