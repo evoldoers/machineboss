@@ -27,8 +27,11 @@ void CSVProfile::readRows (ifstream& in, const char* splitChars) {
     const vector<string> strCols = split (line, splitChars);
     if (strCols.size()) {
       vector<double> dblCols (strCols.size());
+      double norm = 0;
       for (size_t col = 0; col < strCols.size(); ++col)
-	dblCols[col] = stof (strCols[col].c_str());
+	norm += (dblCols[col] = stof (strCols[col].c_str()));
+      for (auto& c: dblCols)
+	c /= norm;
       row.push_back (dblCols);
     }
   }

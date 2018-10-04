@@ -132,13 +132,19 @@ vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
   const OutputToken nullToken = outputTokenizer.emptyToken();
 
   vguard<vguard<double> > oneMinusNullTrans (nStates(), vguard<double> (nStates()));
+  vguard<double> pExit (nStates(), 0.);
   for (StateIndex src = 0; src < nStates(); ++src) {
     oneMinusNullTrans[src][src] = 1;
     for (const auto& in_ost: state[src].outgoing) {
       const auto& ost = in_ost.second;
       if (ost.count(nullToken))
-	for (const auto& s_t: ost.at(nullToken))
-	  oneMinusNullTrans[src][s_t.first] -= exp (s_t.second.logWeight);
+	for (const auto& s_t: ost.at(nullToken)) {
+	  const double p = exp (s_t.second.logWeight);
+	  oneMinusNullTrans[src][s_t.first] -= p;
+	  pExit[src] += p;
+	  if (pExit[src] > 1.01)
+	    Warn ("pExit[%d] = %g", src, pExit[src]);
+	}
     }
   }
 

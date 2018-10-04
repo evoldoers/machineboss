@@ -24,7 +24,7 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
     const OutputToken outTok = outPos ? tree.output[outPos-1] : OutputTokenizer::emptyToken();
     for (StateIndex d = 0; d < nStates; ++d) {
-      LogThisAt(9,"d="<<d<<endl);
+      LogThisAt(9,"d="<<d<<": ");
       const EvaluatedMachineState& state = tree.machine.state[d];
       double& ll = seqCell (outPos, d);
       if (parent && state.incoming.count (inTok)) {
@@ -68,7 +68,12 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
   for (StateIndex prevState = 0; prevState < nStates; ++prevState) {
     const double prevCell = prefixCell (outLen, prevState);
     log_accum_exp (logPrefixProb, prevCell + tree.sumInTrans[prevState][tree.nStates - 1]);
+    LogThisAt(9,"logPrefixProb logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][tree.nStates-1]<<" ("<<prevState<<"->end)"<<endl);
   }
+  if (parent && logPrefixProb > parent->logPrefixProb)
+    Warn ("LogP(%s*)=%g rose from LogP(%s*)=%g",
+	  to_string_join(tree.seqTraceback(this),"").c_str(), logPrefixProb,
+	  to_string_join(tree.seqTraceback(parent),"").c_str(), parent->logPrefixProb);
 }
 
 double PrefixTree::Node::logSeqProb() const {
