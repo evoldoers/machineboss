@@ -140,6 +140,8 @@ Transducer application:
   -C [ --counts ]              Forward-Backward counts (derivatives of 
                                log-likelihood with respect to logs of 
                                parameters)
+  -Y [ --encode ]              find most likely output by CTC prefix search
+  -Z [ --decode ]              find most likely input by CTC prefix search
 
 Parser-generator:
   --codegen arg                generate parser code, save to specified filename
