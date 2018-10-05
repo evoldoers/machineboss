@@ -568,7 +568,7 @@ int main (int argc, char** argv) {
       alignResults.writeJson (cout);
     }
 
-    // decode
+    // encode
     if (vm.count("encode")) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
       const Machine trans = machine.transpose().advanceSort().advancingMachine();
