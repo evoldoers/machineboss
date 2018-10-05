@@ -59,7 +59,7 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 		const double prevCell = prefixCell (outPos - 1, prevState);
 		const double logEmitWeight = prevCell + tree.sumInTrans[prevState][st.first] + trans.logWeight;
 		log_accum_exp (ll, logEmitWeight);
-		LogThisAt(9,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<endl);
+		LogThisAt(9,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<" ... now "<<ll<<endl);
 	      }
 	    }
 	}

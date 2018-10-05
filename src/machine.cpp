@@ -425,6 +425,10 @@ void Machine::readJson (const json& pj) {
 	}
       }
     }
+
+    for (const auto& ms: state)
+      for (const auto& t: ms.trans)
+	Assert (t.dest < state.size(), "State %ld does not exist", t.dest);
   }
 }
 
