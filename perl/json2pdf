@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+# emacs mode -*-Perl-*-
+
+my $filename = shift;
+my $prefix = $filename;
+$prefix =~ s/\.json$//;
+system "bossmachine $filename -G | perl -pe 's/headlabel/label/' > $prefix.dot";
+system "dot -Tpdf $prefix.dot > $prefix.pdf";
+system "open $prefix.pdf";
