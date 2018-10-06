@@ -81,8 +81,10 @@ Transducer construction:
   --echo-wild arg              identity for Kleene closure over specified 
                                characters
   -w [ --weight ] arg          weighted null transition '#'
-  -H [ --hmmer ] arg           load machine from HMMER3 model file
-  -V [ --csv ] arg             load machine from CSV file
+  -H [ --hmmer ] arg           create machine from HMMER3 model file
+  -V [ --norm-csv ] arg        create normalized machine from CSV file
+  --csv arg                    create machine from CSV file, without 
+                               normalization
 
 Prefix operators:
   --repeat arg                 repeat N times
