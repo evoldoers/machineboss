@@ -120,6 +120,8 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
     } else
       break;
   }
+
+  Assert (bestSeqNode, "No valid sequence found");
 }
 
 PrefixTree::Node* PrefixTree::addNode (const Node* parent, InputToken inTok) {
