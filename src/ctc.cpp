@@ -98,6 +98,17 @@ PrefixTree::InputIndex PrefixTree::Node::length() const {
   return len;
 }
 
+PrefixTree::Node* PrefixTree::Node::randomChild (mt19937& mt) const {
+  uniform_real_distribution<double> distrib (0, 1);
+  const double r0 = distrib (mt);
+  auto rc = child.begin();
+  size_t nc = 0;
+  for (double r = r0; rc != child.end() && (r -= exp ((**rc).logPrefixProb - logPrefixProb)) > 0; ++rc)
+    ++nc;
+  LogThisAt(5,"Randomly sampled child #" << nc << (rc == child.end() ? " (terminating)" : "") << " with probability " << (exp((rc == child.end() ? logSeqProb() : (**rc).logPrefixProb) - logPrefixProb)) << " (r=" << r0 << ")" << endl);
+  return rc == child.end() ? NULL : *rc;
+}
+
 PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym) :
   machine (machine),
   sumInTrans (machine.sumInTrans()),
@@ -108,27 +119,59 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
   bestLogSeqProb (-numeric_limits<double>::infinity())
 {
   addNode (NULL, machine.inputTokenizer.emptyToken());
-  const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
+}
+
+vguard<InputSymbol> PrefixTree::doPrefixSearch() {
   while (!nodeQueue.empty()) {
     Node* parent = bestPrefixNode();
     nodeQueue.pop();
-    if (parent->logPrefixProb > bestLogSeqProb) {
-      LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (" << parent->logPrefixProb << ")" << endl);
-      double norm = parent->logSeqProb();
-      for (InputToken inTok = 1; inTok <= inToks; ++inTok)
-	log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
-      LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - parent->logPrefixProb) << endl);
-    } else
+    if (parent->logPrefixProb > bestLogSeqProb)
+      extendNode (parent);
+    else
       break;
   }
 
   Assert (bestSeqNode, "No valid sequence found");
+  return bestSeq();
 }
 
-PrefixTree::Node* PrefixTree::addNode (const Node* parent, InputToken inTok) {
+vguard<InputSymbol> PrefixTree::doRandomSearch (mt19937& mt) {
+  Node* current = rootNode();
+  while (current->logPrefixProb > current->logSeqProb()) {
+    extendNode (current);
+    Node* next = current->randomChild (mt);
+    if (!next)
+      break;
+    current = next;
+  }
+  return seqTraceback (current);
+}
+
+void PrefixTree::extendNode (Node* parent) {
+  const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
+  LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (logP " << parent->logPrefixProb << ")" << endl);
+  double norm = parent->logSeqProb();
+  for (InputToken inTok = 1; inTok <= inToks; ++inTok)
+    log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
+  LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - parent->logPrefixProb) << endl);
+}
+
+PrefixTree::Node* PrefixTree::rootNode() {
+  return &nodeStore.front();
+}
+
+PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok) {
+  if (parent)
+    for (const auto& c: parent->child)
+      if (c->inTok == inTok) {
+	Warn ("Duplicate call to PrefixTree::addNode");
+	return &*c;
+      }
   nodeStore.push_back (Node (*this, parent, inTok));
   Node* nodePtr = &nodeStore.back();
-
+  if (parent)
+    parent->child.push_back (nodePtr);
+  
   LogThisAt (6, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
 
   nodePtr->fill (*this);

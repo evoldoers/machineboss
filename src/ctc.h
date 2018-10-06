@@ -4,6 +4,7 @@
 #include <list>
 #include <deque>
 #include <queue>
+#include <random>
 
 #include "dpmatrix.h"
 #include "logger.h"
@@ -23,7 +24,8 @@ struct PrefixTree {
     const OutputIndex outLen;
     vguard<double> cellStorage;
     double logPrefixProb;
-
+    list<Node*> child;
+    
     Node();
     Node (const PrefixTree& tree, const Node* parent, InputToken inTok);
 
@@ -69,6 +71,7 @@ struct PrefixTree {
 
     vguard<InputToken> traceback() const;
     InputIndex length() const;
+    Node* randomChild (mt19937& mt) const;
   };
   struct NodeComparator {
     bool operator() (const Node* x, const Node* y) const { return x->logPrefixProb < y->logPrefixProb; }
@@ -91,7 +94,12 @@ struct PrefixTree {
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
 
-  Node* addNode (const Node* parent, InputToken inTok);
+  vguard<InputSymbol> doPrefixSearch();
+  vguard<InputSymbol> doRandomSearch (mt19937& mt);
+  
+  Node* rootNode();
+  void extendNode (Node* parent);
+  Node* addNode (Node* parent, InputToken inTok);
   Node* bestPrefixNode() const { return nodeQueue.top(); }
 
   vguard<InputSymbol> bestSeq() const { return seqTraceback (bestSeqNode); }

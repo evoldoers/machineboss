@@ -1,9 +1,11 @@
+#include <time.h>
 #include <cstdlib>
 #include <stdexcept>
 #include <fstream>
 #include <iomanip>
 #include <random>
 #include <deque>
+#include <random>
 #include <boost/program_options.hpp>
 
 #include "../src/vguard.h"
@@ -125,8 +127,10 @@ int main (int argc, char** argv) {
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
-      ("encode,Y", "find most likely output by CTC prefix search")
       ("decode,Z", "find most likely input by CTC prefix search")
+      ("encode,Y", "find most likely output by CTC prefix search")
+      ("random-encode", "sample random output by stochastic prefix search")
+      ("seed", "random number seed")
       ;
 
     po::options_description compOpts("Parser-generator");
@@ -431,7 +435,7 @@ int main (int argc, char** argv) {
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
-    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("decode");
+    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode");
     if (paramsSpecified	&& !inferenceRequested) {
       machine.defs = seed;
       machine.defs.defs.insert (funcs.defs.begin(), funcs.defs.end());
@@ -501,9 +505,9 @@ int main (int argc, char** argv) {
     }
 
     // if inputs/outputs specified individually, create all input-output pairs
-    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("decode")))
+    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode") || vm.count("decode")))
       inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
-    if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("encode")))
+    if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode")))
       outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
@@ -570,15 +574,25 @@ int main (int argc, char** argv) {
     }
 
     // encode
-    if (vm.count("encode")) {
+    if (vm.count("encode") || vm.count("random-encode")) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
       const Machine trans = machine.transpose().advanceSort().advancingMachine();
       const EvaluatedMachine eval (trans, params);
       SeqPairList encodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate the most likely output for a given input");
-	const PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq);
-	encodeResults.seqPairs.push_back (SeqPair ({ seqPair.input, NamedOutputSeq ({ string(DefaultOutputSequenceName), (vguard<OutputSymbol>) tree.bestSeq() }) }));
+	PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq);
+	vguard<OutputSymbol> encoded;
+	if (vm.count("random-encode")) {
+	  time_t timer;
+	  time (&timer);
+	  const int seed = vm.count("seed") ? vm.at("seed").as<int>() : timer;
+	  LogThisAt(2,"Random seed is " << seed << endl);
+	  mt19937 mt (seed);
+	  encoded = tree.doRandomSearch (mt);
+	} else
+	  encoded = tree.doPrefixSearch();
+	encodeResults.seqPairs.push_back (SeqPair ({ seqPair.input, NamedOutputSeq ({ string(DefaultOutputSequenceName), encoded }) }));
       }
       encodeResults.writeJson (cout);
       cout << endl;
@@ -591,8 +605,9 @@ int main (int argc, char** argv) {
       SeqPairList decodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input for a given output");
-	const PrefixTree tree (eval, seqPair.output.seq);
-	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), tree.bestSeq() }), seqPair.output }));
+	PrefixTree tree (eval, seqPair.output.seq);
+	const vguard<InputSymbol> decoded = tree.doPrefixSearch();
+	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), decoded }), seqPair.output }));
       }
       decodeResults.writeJson (cout);
       cout << endl;
