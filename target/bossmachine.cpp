@@ -580,6 +580,7 @@ int main (int argc, char** argv) {
 	encodeResults.seqPairs.push_back (SeqPair ({ seqPair.input, NamedOutputSeq ({ string(DefaultOutputSequenceName), (vguard<OutputSymbol>) tree.bestSeq() }) }));
       }
       encodeResults.writeJson (cout);
+      cout << endl;
     }
 
     // decode
@@ -593,6 +594,7 @@ int main (int argc, char** argv) {
 	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), tree.bestSeq() }), seqPair.output }));
       }
       decodeResults.writeJson (cout);
+      cout << endl;
     }
     
   } catch (const std::exception& e) {
