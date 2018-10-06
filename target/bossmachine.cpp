@@ -580,7 +580,7 @@ int main (int argc, char** argv) {
       const EvaluatedMachine eval (trans, params);
       SeqPairList encodeResults;
       for (const auto& seqPair: data.seqPairs) {
-	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate the most likely output for a given input");
+	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
 	PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq);
 	vguard<OutputSymbol> encoded;
 	if (vm.count("random-encode")) {
