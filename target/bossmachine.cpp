@@ -59,8 +59,9 @@ int main (int argc, char** argv) {
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
-      ("hmmer,H", po::value<string>(), "load machine from HMMER3 model file")
-      ("csv,V", po::value<string>(), "load machine from CSV file")
+      ("hmmer,H", po::value<string>(), "create machine from HMMER3 model file")
+      ("norm-csv,V", po::value<string>(), "create normalized machine from CSV file")
+      ("csv", po::value<string>(), "create machine from CSV file, without normalization")
       ;
 
     po::options_description prefixOpts("Prefix operators");
@@ -391,12 +392,12 @@ int main (int argc, char** argv) {
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine();
-	} else if (command == "--csv") {
+	} else if (command == "--csv" || command == "--norm-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
-	  m = csv.machine();
+	  m = csv.machine (command == "--norm-csv");
 	} else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);

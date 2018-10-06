@@ -29,18 +29,19 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
       LogThisAt(9,"d="<<d<<": ");
       const EvaluatedMachineState& state = tree.machine.state[d];
       double& ll = seqCell (outPos, d);
-      if (parent && state.incoming.count (inTok)) {
-	const auto& absorbing = state.incoming.at (inTok);
-	if (outPos)
-	  accumulateSeqCell (ll, absorbing, *parent, outTok, outPos - 1);
-	accumulateSeqCell (ll, absorbing, *parent, OutputTokenizer::emptyToken(), outPos);
-      }
       const EvaluatedMachineState::OutStateTransMap* nonAbsorbing = NULL;
+      const EvaluatedMachineState::OutStateTransMap* absorbing = NULL;
+      if (parent && state.incoming.count (inTok))
+	absorbing = &state.incoming.at (inTok);
       if (state.incoming.count (InputTokenizer::emptyToken()))
 	nonAbsorbing = &state.incoming.at (InputTokenizer::emptyToken());
-      if (outPos && nonAbsorbing)
-	  accumulateSeqCell (ll, *nonAbsorbing, *this, outTok, outPos - 1);
+      if (absorbing && outPos)
+	accumulateSeqCell (ll, *absorbing, *parent, outTok, outPos - 1);
+      if (absorbing)
+	accumulateSeqCell (ll, *absorbing, *parent, OutputTokenizer::emptyToken(), outPos);
       prefixCell (outPos, d) = ll;
+      if (outPos && nonAbsorbing)
+	accumulateSeqCell (ll, *nonAbsorbing, *this, outTok, outPos - 1);
       if (nonAbsorbing)
 	accumulateSeqCell (ll, *nonAbsorbing, *this, OutputTokenizer::emptyToken(), outPos);
       LogThisAt(8,"seqCell("<<outPos<<","<<d<<")="<<ll<<endl);

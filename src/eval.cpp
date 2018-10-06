@@ -5,6 +5,9 @@
 #include "logger.h"
 #include "logsumexp.h"
 
+// if exit "probabilities" sum to more than this when trying to eliminate states using matrix algebra, issue a warning
+#define SuspiciouslyLargeProbabilityWarningThreshold 1.01
+
 void EvaluatedMachineState::Trans::init (LogWeight lw, TransIndex ti) {
   logWeight = lw;
   transIndex = ti;
@@ -142,8 +145,8 @@ vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
 	  const double p = exp (s_t.second.logWeight);
 	  oneMinusNullTrans[src][s_t.first] -= p;
 	  pExit[src] += p;
-	  if (pExit[src] > 1.01)
-	    Warn ("pExit[%d] = %g", src, pExit[src]);
+	  if (pExit[src] > SuspiciouslyLargeProbabilityWarningThreshold)
+	    LogThisAt (6, "Warning: when eliminating absorbing transitions, pExit[" << src << "] = " << pExit[src] << endl);
 	}
     }
   }
