@@ -71,7 +71,7 @@ struct PrefixTree {
 
     vguard<InputToken> traceback() const;
     InputIndex length() const;
-    Node* randomChild (mt19937& mt) const;
+    Node* randomChild (mt19937&) const;
   };
   struct NodeComparator {
     bool operator() (const Node* x, const Node* y) const { return x->logPrefixProb < y->logPrefixProb; }
@@ -96,7 +96,8 @@ struct PrefixTree {
 
   vguard<InputSymbol> doPrefixSearch();
   vguard<InputSymbol> doRandomSearch (mt19937& mt);
-  
+  double logSeqProb (const vguard<InputSymbol>&);
+
   Node* rootNode();
   void extendNode (Node* parent);
   Node* addNode (Node* parent, InputToken inTok);

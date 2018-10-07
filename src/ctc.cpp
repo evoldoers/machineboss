@@ -147,6 +147,17 @@ vguard<InputSymbol> PrefixTree::doRandomSearch (mt19937& mt) {
   return seqTraceback (current);
 }
 
+double PrefixTree::logSeqProb (const vguard<InputSymbol>& input) {
+  Node* current = rootNode();
+  for (const auto& inSym: input) {
+    if (!machine.inputTokenizer.sym2tok.count (inSym))
+      return -numeric_limits<double>::infinity();
+    const InputToken inTok = machine.inputTokenizer.sym2tok.at(inSym);
+    current = addNode (current, inTok);
+  }
+  return current->logSeqProb();
+}
+
 void PrefixTree::extendNode (Node* parent) {
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (logP " << parent->logPrefixProb << ")" << endl);
@@ -163,10 +174,8 @@ PrefixTree::Node* PrefixTree::rootNode() {
 PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok) {
   if (parent)
     for (const auto& c: parent->child)
-      if (c->inTok == inTok) {
-	Warn ("Duplicate call to PrefixTree::addNode");
+      if (c->inTok == inTok)
 	return &*c;
-      }
   nodeStore.push_back (Node (*this, parent, inTok));
   Node* nodePtr = &nodeStore.back();
   if (parent)
