@@ -94,8 +94,10 @@ struct PrefixTree {
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
 
-  vguard<InputSymbol> doPrefixSearch();
-  vguard<InputSymbol> doRandomSearch (mt19937& mt);
+  vguard<InputSymbol> doPrefixSearch();  // finds most likely input
+  vguard<InputSymbol> doRandomSearch (mt19937&);  // samples from posterior distribution over inputs
+  vguard<InputSymbol> doAnnealedSearch (mt19937&, int steps);
+
   double logSeqProb (const vguard<InputSymbol>&);
 
   Node* rootNode();

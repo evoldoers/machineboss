@@ -147,6 +147,22 @@ vguard<InputSymbol> PrefixTree::doRandomSearch (mt19937& mt) {
   return seqTraceback (current);
 }
 
+#define MinBurnSteps 10
+vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int steps) {
+  vguard<InputSymbol> current = doRandomSearch (mt);
+  const int burnSteps = current.size() + MinBurnSteps;  // arbitrary burn-in phase
+  for (int step = 0; step < steps; ++step) {
+    const size_t len = current.size();
+    // more to go here:
+    //  sample type of event (substitution, insertion, deletion) with weight (len, len+1, len)
+    //  sample location of event
+    //  calculate logSeqProb (new, old, delta)
+    //  divide by temperature for Hastings ratio
+    //  accept/reject
+  }
+  return bestSeq();
+}
+
 double PrefixTree::logSeqProb (const vguard<InputSymbol>& input) {
   Node* current = rootNode();
   for (const auto& inSym: input) {
