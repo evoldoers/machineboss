@@ -151,7 +151,7 @@ vguard<InputSymbol> PrefixTree::sampleSeq (mt19937& mt) {
   return machine.inputTokenizer.detokenize (sampleTokSeq (mt));
 }
 
-#define BurnSteps 100
+#define BurnStepsPerTok 3
 #define TargetInitAcceptProb 0.8
 vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) {
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
@@ -163,7 +163,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
   uniform_int_distribution<InputToken> subDist (1, inToks - 1);
   uniform_int_distribution<InputToken> insDist (1, inToks);
   uniform_real_distribution<double> acceptDist (0, 1);
-  const size_t burnSteps = current.size() + BurnSteps;
+  const size_t burnSteps = current.size() + BurnStepsPerTok * initSeq.size() * inToks;
   vguard<double> burnLog;
   burnLog.reserve (burnSteps);
   double initTemperature = 0;
@@ -173,7 +173,10 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
   for (int step = 0; step - lastBurnStep < steps; ++step) {
     const size_t len = current.size();
     const bool burning = burnLog.size() < burnSteps;
-    plogDP.logProgress ((step - lastBurnStep) / (double) steps, "step %d", step + 1);
+    plogDP.logProgress ((burning
+			 ? burnLog.size() / (double) (burnSteps + steps)
+			 : burnSteps + step - lastBurnStep) / (double) (burnSteps + steps),
+			"step %d", step + 1);
     if (burning) {
       lastBurnStep = step;
       if (step > steps && burnLog.empty()) {
@@ -220,10 +223,8 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
     const double newLogSeqProb = logSeqProb (current);
     const double logHastings = min (0., (double) newLogSeqProb - currentLogSeqProb + log (revFwdProposalRatio));
     const double acceptProb = exp (logHastings / temperature);
-    const bool accept = (step < burnSteps
-			 ? (newLogSeqProb > -numeric_limits<double>::infinity())
-			 : (acceptDist(mt) < acceptProb));
-    LogThisAt(5,"Simulated annealing step " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? (to_string(burnSteps) + " (burn-in)") : to_string(steps)) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Insert at"):"Substitute") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(revFwdProposalRatio)=" << log(revFwdProposalRatio) << " log(Hastings)=" << logHastings << " P(accept)=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
+    const bool accept = acceptDist(mt) < acceptProb;
+    LogThisAt(5,(burning?"Burned":"Annealed") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(rev/fwd)=" << log(revFwdProposalRatio) << " log(H)=" << logHastings << " P=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
     if (burning && logHastings > -numeric_limits<double>::infinity() && logHastings < numeric_limits<double>::infinity()) {
       burnLog.push_back (logHastings);
       if (burnLog.size() == burnSteps) {
