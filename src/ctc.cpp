@@ -224,7 +224,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
     const double logHastings = min (0., (double) newLogSeqProb - currentLogSeqProb + log (revFwdProposalRatio));
     const double acceptProb = exp (logHastings / temperature);
     const bool accept = acceptDist(mt) < acceptProb;
-    LogThisAt(5,(burning?"Burned":"Annealed") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(rev/fwd)=" << log(revFwdProposalRatio) << " log(H)=" << logHastings << " P=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
+    LogThisAt(5,(burning?"Burn-in":"Anneal") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(rev/fwd)=" << log(revFwdProposalRatio) << " log(H)=" << logHastings << " P=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
     if (burning && logHastings > -numeric_limits<double>::infinity() && logHastings < numeric_limits<double>::infinity()) {
       burnLog.push_back (logHastings);
       if (burnLog.size() == burnSteps) {
