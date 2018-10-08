@@ -153,11 +153,12 @@ vguard<InputSymbol> PrefixTree::sampleSeq (mt19937& mt) {
 
 #define BurnStepsPerTok 3
 #define TargetInitAcceptProb 0.8
-vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) {
+vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, bool doCooling) {
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   const vguard<InputToken> initSeq = sampleTokSeq (mt);
   const int steps = stepsPerTok * initSeq.size() * inToks;
-  LogThisAt(3,"Simulated annealing with initial sequence of length " << initSeq.size() << " at " << stepsPerTok << " steps-per-token with size-" << inToks << " alphabet, total " << steps << " steps" << endl);
+  const char* algorithm = doCooling ? "Simulated annealing" : "MCMC";
+  LogThisAt(3,algorithm << " with initial sequence of length " << initSeq.size() << " at " << stepsPerTok << " steps-per-token with size-" << inToks << " alphabet, total " << steps << " steps" << endl);
   list<InputToken> current (initSeq.begin(), initSeq.end());
   double currentLogSeqProb = logSeqProb (current);
   uniform_int_distribution<InputToken> subDist (1, inToks - 1);
@@ -166,13 +167,13 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
   const size_t burnSteps = current.size() + BurnStepsPerTok * initSeq.size() * inToks;
   vguard<double> burnLog;
   burnLog.reserve (burnSteps);
-  double initTemperature = 0;
+  double initTemperature = 1, finalTemperature = 1;
   int lastBurnStep = 0;
   ProgressLog(plogDP,4);
-  plogDP.initProgress ("Simulated annealing (%d steps)", steps);
+  plogDP.initProgress ("%s (%d steps)", algorithm, steps);
   for (int step = 0; step - lastBurnStep < steps; ++step) {
     const size_t len = current.size();
-    const bool burning = burnLog.size() < burnSteps;
+    const bool burning = doCooling && burnLog.size() < burnSteps;
     plogDP.logProgress ((burning
 			 ? burnLog.size() / (double) (burnSteps + steps)
 			 : burnSteps + step - lastBurnStep) / (double) (burnSteps + steps),
@@ -184,7 +185,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
 	break;
       }
     }
-    const double temperature = burning ? 1. : (initTemperature * (1 - ((step - lastBurnStep) / (double) steps)));
+    const double temperature = initTemperature + (finalTemperature - initTemperature) * ((step - lastBurnStep) / (double) steps);
     //  sample type & location of event (substitution, insertion, deletion) with weight (len, len+1, len)
     uniform_int_distribution<int> eventDist (0, 3*len);
     const int r = eventDist (mt);
@@ -224,7 +225,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
     const double logHastings = min (0., (double) newLogSeqProb - currentLogSeqProb + log (revFwdProposalRatio));
     const double acceptProb = exp (logHastings / temperature);
     const bool accept = acceptDist(mt) < acceptProb;
-    LogThisAt(5,(burning?"Burn-in":"Anneal") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(rev/fwd)=" << log(revFwdProposalRatio) << " log(H)=" << logHastings << " P=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
+    LogThisAt(5,(doCooling?(burning?"Burn-in":"Anneal"):"MCMC") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << setprecision(2) << temperature << " log(old)=" << setw(8) << setprecision(5) << currentLogSeqProb << " log(new)=" << setw(6) << setprecision(5) << newLogSeqProb << " log(rev/fwd)=" << setw(8) << setprecision(5) << log(revFwdProposalRatio) << " log(H)=" << setw(9) << setprecision(5) << logHastings << " P=" << setw(8) << setprecision(5) << acceptProb << " " << (accept ? "Accept" : "Reject") << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << setw(4) << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << endl);
     if (burning && logHastings > -numeric_limits<double>::infinity() && logHastings < numeric_limits<double>::infinity()) {
       burnLog.push_back (logHastings);
       if (burnLog.size() == burnSteps) {
@@ -251,6 +252,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
 	const double mean = sum/n, variance = sumsq/n - mean*mean;
 	const double logInitAcceptProb = log (TargetInitAcceptProb);
 	initTemperature = (mean - sqrt(mean*mean - logInitAcceptProb*variance)) / (2*logInitAcceptProb);
+	finalTemperature = 0;
 	LogThisAt(5,"Log(Hastings) mean " << mean << " variance " << variance << " T0=" << initTemperature << endl);
 	LogThisAt(4,"Completed " << burnSteps << "-step burn-in; simulated annealing at initial T=" << initTemperature << " for " << steps << " steps" << endl);
       }
