@@ -95,10 +95,12 @@ struct PrefixTree {
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
 
   vguard<InputSymbol> doPrefixSearch();  // finds most likely input
-  vguard<InputSymbol> doRandomSearch (mt19937&);  // samples from posterior distribution over inputs
-  vguard<InputSymbol> doAnnealedSearch (mt19937&, int steps);
+  vguard<InputSymbol> doAnnealedSearch (mt19937&, int stepsPerTok);
 
-  double logSeqProb (const vguard<InputSymbol>&);
+  vguard<InputSymbol> sampleSeq (mt19937&);  // samples from posterior distribution over inputs
+  vguard<InputToken> sampleTokSeq (mt19937&);
+
+  double logSeqProb (const list<InputToken>&);
 
   Node* rootNode();
   void extendNode (Node* parent);

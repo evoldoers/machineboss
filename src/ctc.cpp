@@ -135,7 +135,7 @@ vguard<InputSymbol> PrefixTree::doPrefixSearch() {
   return bestSeq();
 }
 
-vguard<InputSymbol> PrefixTree::doRandomSearch (mt19937& mt) {
+vguard<InputToken> PrefixTree::sampleTokSeq (mt19937& mt) {
   Node* current = rootNode();
   while (current->logPrefixProb > current->logSeqProb()) {
     extendNode (current);
@@ -144,33 +144,131 @@ vguard<InputSymbol> PrefixTree::doRandomSearch (mt19937& mt) {
       break;
     current = next;
   }
-  return seqTraceback (current);
+  return current->traceback();
 }
 
-#define MinBurnSteps 10
-vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int steps) {
-  vguard<InputSymbol> current = doRandomSearch (mt);
-  const int burnSteps = current.size() + MinBurnSteps;  // arbitrary burn-in phase
-  for (int step = 0; step < steps; ++step) {
+vguard<InputSymbol> PrefixTree::sampleSeq (mt19937& mt) {
+  return machine.inputTokenizer.detokenize (sampleTokSeq (mt));
+}
+
+#define BurnSteps 100
+#define TargetInitAcceptProb 0.8
+vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) {
+  const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
+  const vguard<InputToken> initSeq = sampleTokSeq (mt);
+  const int steps = stepsPerTok * initSeq.size() * inToks;
+  LogThisAt(3,"Simulated annealing with initial sequence of length " << initSeq.size() << " at " << stepsPerTok << " steps-per-token with size-" << inToks << " alphabet, total " << steps << " steps" << endl);
+  list<InputToken> current (initSeq.begin(), initSeq.end());
+  double currentLogSeqProb = logSeqProb (current);
+  uniform_int_distribution<InputToken> subDist (1, inToks - 1);
+  uniform_int_distribution<InputToken> insDist (1, inToks);
+  uniform_real_distribution<double> acceptDist (0, 1);
+  const size_t burnSteps = current.size() + BurnSteps;
+  vguard<double> burnLog;
+  burnLog.reserve (burnSteps);
+  double initTemperature = 0;
+  int lastBurnStep = 0;
+  for (int step = 0; step - lastBurnStep < steps; ++step) {
     const size_t len = current.size();
-    // more to go here:
-    //  sample type of event (substitution, insertion, deletion) with weight (len, len+1, len)
-    //  sample location of event
+    const bool burning = burnLog.size() < burnSteps;
+    if (burning) {
+      lastBurnStep = step;
+      if (step > steps && burnLog.empty()) {
+	LogThisAt(4,"Failed to find any improvements after " << steps << " attempts; stopping" << endl);
+	break;
+      }
+    }
+    const double temperature = burning ? 1. : (initTemperature * (1 - ((step - lastBurnStep) / (double) steps)));
+    //  sample type & location of event (substitution, insertion, deletion) with weight (len, len+1, len)
+    uniform_int_distribution<int> eventDist (0, 3*len);
+    const int r = eventDist (mt);
+    const int type = r == 3*len ? (int) 2 : (int) (r / len);
+    const int pos = r == 3*len ? (int) len : (int) (r % len);
+    auto iter = current.begin();
+    for (int n = 0; n < pos; ++n)
+      ++iter;
+    InputToken oldTok;
+    double revFwdProposalRatio;
+    switch (type) {
+    case 0: // substitution
+      {
+	const InputToken offset = subDist (mt);
+	oldTok = *iter;
+	*iter = (((oldTok - 1) + offset) % inToks) + 1;
+	revFwdProposalRatio = 1;
+      }
+      break;
+    case 1: // deletion
+      oldTok = *iter;
+      current.erase (iter++);
+      revFwdProposalRatio = 1 / (double) inToks;
+      break;
+    case 2: // insertion
+      {
+	const InputToken newTok = insDist (mt);
+	iter = current.insert (iter, newTok);
+	revFwdProposalRatio = inToks;
+      }
+      break;
+    default:
+      break;
+    }
     //  calculate logSeqProb (new, old, delta)
-    //  divide by temperature for Hastings ratio
+    const double newLogSeqProb = logSeqProb (current);
+    const double logHastings = min (0., (double) newLogSeqProb - currentLogSeqProb + log (revFwdProposalRatio));
+    const double acceptProb = exp (logHastings / temperature);
+    const bool accept = (step < burnSteps
+			 ? (newLogSeqProb > -numeric_limits<double>::infinity())
+			 : (acceptDist(mt) < acceptProb));
+    LogThisAt(5,"Simulated annealing step " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? (to_string(burnSteps) + " (burn-in)") : to_string(steps)) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Insert at"):"Substitute") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(revFwdProposalRatio)=" << log(revFwdProposalRatio) << " log(Hastings)=" << logHastings << " P(accept)=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
+    if (burning && logHastings > -numeric_limits<double>::infinity() && logHastings < numeric_limits<double>::infinity()) {
+      burnLog.push_back (logHastings);
+      if (burnLog.size() == burnSteps) {
+	// expected proportion of accepted moves A = (1/N) sum_n exp(H[n]/T)    (assume all negative H)
+	// assume H ~ N(m,v), then
+	// A = int_x exp(x/T) exp(-(x-m)^2/v) / sqrt(2*pi*v)
+	//   = int_x exp((-x^2 + 2xm - m^2 + vx/T)/v) / sqrt(2*pi*v)
+	//   = int_x exp((-x^2 + 2x(m+v/2T) - m^2)/v) / sqrt(2*pi*v)
+	//   = int_x exp((-x^2 + 2x(m+v/2T) - (m+v/2T)^2 - (v/2T)^2 + mv/T)/v) / sqrt(2*pi*v)
+	//   = exp ((-(v/2T)^2 + mv/T)/v)
+ 	//   = exp (m/T - v/4T^2)
+ 	// So
+	// log(A) = m/T - v/4T^2
+	// 4log(A)T^2 - 4mT + v = 0
+	// T = (4m +/- sqrt(16m^2 - 16log(A)v)) / 8log(A)
+	//   = (m +/- sqrt(m^2 - log(A)v)) / 2log(A)    ... m<0, can ignore +ve root ...
+	//   = (m - sqrt(m^2 - log(A)v)) / 2log(A)      ... check: if v=0, then T = m/log(A) as expected
+	double n = 0, sum = 0, sumsq = 0;
+	for (double h: burnLog) {
+	  sum += h;
+	  sumsq += h*h;
+	  ++n;
+	}
+	const double mean = sum/n, variance = sumsq/n - mean*mean;
+	const double logInitAcceptProb = log (TargetInitAcceptProb);
+	initTemperature = (mean - sqrt(mean*mean - logInitAcceptProb*variance)) / (2*logInitAcceptProb);
+	LogThisAt(5,"Log(Hastings) mean " << mean << " variance " << variance << " T0=" << initTemperature << endl);
+	LogThisAt(4,"Completed " << burnSteps << "-step burn-in; simulated annealing at initial T=" << initTemperature << " for " << steps << " steps" << endl);
+      }
+    }
     //  accept/reject
+    if (accept)
+      currentLogSeqProb = newLogSeqProb;
+    else
+      switch (type) {
+      case 0: *iter = oldTok; break;
+      case 1: current.insert (iter, oldTok); break;
+      case 2: current.erase (iter); break;
+      default: break;
+      }
   }
   return bestSeq();
 }
 
-double PrefixTree::logSeqProb (const vguard<InputSymbol>& input) {
+double PrefixTree::logSeqProb (const list<InputToken>& input) {
   Node* current = rootNode();
-  for (const auto& inSym: input) {
-    if (!machine.inputTokenizer.sym2tok.count (inSym))
-      return -numeric_limits<double>::infinity();
-    const InputToken inTok = machine.inputTokenizer.sym2tok.at(inSym);
+  for (const auto& inTok: input)
     current = addNode (current, inTok);
-  }
   return current->logSeqProb();
 }
 

@@ -128,6 +128,8 @@ int main (int argc, char** argv) {
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ("decode,Z", "find most likely input by CTC prefix search")
+      ("cool-decode", "find most likely input by simulated annealing")
+      ("cool-steps", po::value<int>(), "simulated annealing steps per initial symbol")
       ("encode,Y", "find most likely output by CTC prefix search")
       ("random-encode", "sample random output by stochastic prefix search")
       ("seed", "random number seed")
@@ -435,7 +437,7 @@ int main (int argc, char** argv) {
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
-    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode");
+    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode");
     if (paramsSpecified	&& !inferenceRequested) {
       machine.defs = seed;
       machine.defs.defs.insert (funcs.defs.begin(), funcs.defs.end());
@@ -505,7 +507,7 @@ int main (int argc, char** argv) {
     }
 
     // if inputs/outputs specified individually, create all input-output pairs
-    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode") || vm.count("decode")))
+    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode")))
       inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
     if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode")))
       outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
@@ -573,6 +575,16 @@ int main (int argc, char** argv) {
       alignResults.writeJson (cout);
     }
 
+    // random seed
+    auto makeRnd = [&] () -> mt19937 {
+      time_t timer;
+      time (&timer);
+      const int seed = vm.count("seed") ? vm.at("seed").as<int>() : timer;
+      LogThisAt(2,"Random seed is " << seed << endl);
+      mt19937 mt (seed);
+      return mt;
+    };
+    
     // encode
     if (vm.count("encode") || vm.count("random-encode")) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
@@ -584,12 +596,8 @@ int main (int argc, char** argv) {
 	PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq);
 	vguard<OutputSymbol> encoded;
 	if (vm.count("random-encode")) {
-	  time_t timer;
-	  time (&timer);
-	  const int seed = vm.count("seed") ? vm.at("seed").as<int>() : timer;
-	  LogThisAt(2,"Random seed is " << seed << endl);
-	  mt19937 mt (seed);
-	  encoded = tree.doRandomSearch (mt);
+	  mt19937 mt = makeRnd();
+	  encoded = tree.sampleSeq (mt);
 	} else
 	  encoded = tree.doPrefixSearch();
 	encodeResults.seqPairs.push_back (SeqPair ({ seqPair.input, NamedOutputSeq ({ string(DefaultOutputSequenceName), encoded }) }));
@@ -599,14 +607,20 @@ int main (int argc, char** argv) {
     }
 
     // decode
-    if (vm.count("decode")) {
+    if (vm.count("decode") || vm.count("cool-decode")) {
       Require (gotData, "To decode an input sequence, please specify an output sequence file");
       const EvaluatedMachine eval (machine, params);
       SeqPairList decodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input for a given output");
 	PrefixTree tree (eval, seqPair.output.seq);
-	const vguard<InputSymbol> decoded = tree.doPrefixSearch();
+	vguard<InputSymbol> decoded;
+	if (vm.count("cool-decode")) {
+	  mt19937 mt = makeRnd();
+	  const int defaultSteps = 10;
+	  decoded = tree.doAnnealedSearch (mt, vm.count("cool-steps") ? vm.at("cool-steps").as<int>() : defaultSteps);
+	} else
+	  decoded = tree.doPrefixSearch();
 	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), decoded }), seqPair.output }));
       }
       decodeResults.writeJson (cout);
