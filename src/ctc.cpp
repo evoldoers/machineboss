@@ -221,13 +221,13 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, 
     case 1: // deletion
       oldTok = *iter;
       current.erase (iter++);
-      revFwdProposalRatio = 1 / (double) inToks;
+      revFwdProposalRatio = (3*len + 4) / (double) (inToks * (3*len + 1));
       break;
     case 2: // insertion
       {
 	const InputToken newTok = insDist (mt);
 	iter = current.insert (iter, newTok);
-	revFwdProposalRatio = inToks;
+	revFwdProposalRatio = inToks * (3*len + 1) / (double) (3*len + 4);
       }
       break;
     default:
@@ -238,7 +238,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, 
     const double logHastings = min (0., (double) newLogSeqProb - currentLogSeqProb + log (revFwdProposalRatio));
     const double acceptProb = exp (logHastings / temperature);
     const bool accept = acceptDist(mt) < acceptProb;
-    LogThisAt(5,(doCooling?(burning?"Burn-in":"Anneal"):"MCMC") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << setprecision(2) << temperature << " log(old)=" << setw(8) << setprecision(5) << currentLogSeqProb << " log(new)=" << setw(6) << setprecision(5) << newLogSeqProb << " log(rev/fwd)=" << setw(8) << setprecision(5) << log(revFwdProposalRatio) << " log(H)=" << setw(9) << setprecision(5) << logHastings << " P=" << setw(8) << setprecision(5) << acceptProb << " " << (accept ? "Accept" : "Reject") << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << setw(4) << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << endl);
+    LogThisAt(5,(doCooling?(burning?"Burn-in":"Anneal"):"MCMC") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << setprecision(2) << temperature << " log(old)=" << setw(8) << setprecision(5) << currentLogSeqProb << " log(new)=" << setw(8) << setprecision(5) << newLogSeqProb << " log(rev/fwd)=" << setw(8) << setprecision(5) << log(revFwdProposalRatio) << " log(H)=" << setw(9) << setprecision(5) << logHastings << " P=" << setw(8) << setprecision(5) << acceptProb << " " << (accept ? "Accept" : "Reject") << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << setw(4) << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << endl);
     if (burning && logHastings > -numeric_limits<double>::infinity() && logHastings < numeric_limits<double>::infinity()) {
       burnLog.push_back (logHastings);
       if (burnLog.size() == burnSteps) {
