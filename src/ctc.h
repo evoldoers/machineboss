@@ -90,7 +90,6 @@ struct PrefixTree {
   NodePtrQueue nodeQueue;
   Node* bestSeqNode;
   double bestLogSeqProb;
-  InputIndex bestSeqLen;
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
 
