@@ -282,7 +282,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, 
       }
     // don't get too big
     if (nodeStore.size() && nodeStore.size() * nodeStore.front().nCells() * sizeof(double) > MaxPrefixTreeSize) {
-      LogThisAt(4,"Flushing sequence likelihood cache at " << nodeStore.size() << " nodes, " << (nodeStore.size() * nodeStore.front().nCells() * sizeof(double) / 1048576) << " Mb" << endl);
+      LogThisAt(5,"Flushing sequence likelihood cache at " << nodeStore.size() << " nodes, " << (nodeStore.size() * nodeStore.front().nCells() * sizeof(double) / 1048576) << " Mb" << endl);
       clear();
     }
   }
