@@ -118,7 +118,20 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
   bestSeqNode (NULL),
   bestLogSeqProb (-numeric_limits<double>::infinity())
 {
-  addNode (NULL, machine.inputTokenizer.emptyToken());
+  clear();
+}
+
+void PrefixTree::clear() {
+  vguard<InputToken> best;
+  if (bestSeqNode)
+    best = bestSeqNode->traceback();
+  nodeStore.clear();
+  nodeQueue = NodePtrQueue();
+  addNode (NULL, machine.inputTokenizer.emptyToken(), true);
+  if (bestSeqNode) {
+    bestLogSeqProb = -numeric_limits<double>::infinity();
+    (void) logSeqProb (list<InputToken> (best.begin(), best.end()), true);
+  }
 }
 
 vguard<InputSymbol> PrefixTree::doPrefixSearch() {
@@ -153,6 +166,7 @@ vguard<InputSymbol> PrefixTree::sampleSeq (mt19937& mt) {
 
 #define BurnStepsPerTok 3
 #define TargetInitAcceptProb 0.8
+#define MaxPrefixTreeSize 1e9
 vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, bool doCooling) {
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   const vguard<InputToken> initSeq = sampleTokSeq (mt);
@@ -266,14 +280,19 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, 
       case 2: current.erase (iter); break;
       default: break;
       }
+    // don't get too big
+    if (nodeStore.size() && nodeStore.size() * nodeStore.front().nCells() * sizeof(double) > MaxPrefixTreeSize) {
+      LogThisAt(4,"Flushing sequence likelihood cache at " << nodeStore.size() << " nodes, " << (nodeStore.size() * nodeStore.front().nCells() * sizeof(double) / 1048576) << " Mb" << endl);
+      clear();
+    }
   }
   return bestSeq();
 }
 
-double PrefixTree::logSeqProb (const list<InputToken>& input) {
+double PrefixTree::logSeqProb (const list<InputToken>& input, bool humble) {
   Node* current = rootNode();
   for (const auto& inTok: input)
-    current = addNode (current, inTok);
+    current = addNode (current, inTok, humble);
   return current->logSeqProb();
 }
 
@@ -290,7 +309,7 @@ PrefixTree::Node* PrefixTree::rootNode() {
   return &nodeStore.front();
 }
 
-PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok) {
+PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humble) {
   if (parent)
     for (const auto& c: parent->child)
       if (c->inTok == inTok)
@@ -310,7 +329,8 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok) {
   if (logNodeSeqProb > bestLogSeqProb) {
     bestSeqNode = nodePtr;
     bestLogSeqProb = logNodeSeqProb;
-    LogThisAt (4, "Nodes: " << nodeStore.size() << " Best sequence so far: " << to_string_join (bestSeq(), "") << " (" << bestLogSeqProb << ")" << endl);
+    if (!humble)
+      LogThisAt (4, "Nodes: " << nodeStore.size() << " Best sequence so far: " << to_string_join (bestSeq(), "") << " (" << bestLogSeqProb << ")" << endl);
   }
   LogThisAt (7, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
 

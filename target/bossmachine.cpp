@@ -133,7 +133,7 @@ int main (int argc, char** argv) {
       ("decode-steps", po::value<int>(), "simulated annealing steps per initial symbol")
       ("encode,Y", "find most likely output by CTC prefix search")
       ("random-encode", "sample random output by stochastic prefix search")
-      ("seed", "random number seed")
+      ("seed", po::value<int>(), "random number seed")
       ;
 
     po::options_description compOpts("Parser-generator");
