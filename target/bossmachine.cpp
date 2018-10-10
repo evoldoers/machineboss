@@ -66,8 +66,11 @@ int main (int argc, char** argv) {
       ("csv", po::value<string>(), "create machine from CSV file, without normalization")
       ;
 
-    po::options_description prefixOpts("Prefix operators");
-    prefixOpts.add_options()
+    po::options_description postfixOpts("Postfix operators");
+    postfixOpts.add_options()
+      ("zero-or-one,z", "union with null '?'")
+      ("kleene-star,k", "Kleene star '*'")
+      ("kleene-plus,K", "Kleene plus '+'")
       ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
@@ -75,13 +78,6 @@ int main (int argc, char** argv) {
       ("sort-sum", "topologically sort, eliminating silent cycles")
       ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
       ("eliminate,n", "eliminate all silent transitions")
-      ;
-
-    po::options_description postfixOpts("Postfix operators");
-    postfixOpts.add_options()
-      ("zero-or-one,z", "union with null '?'")
-      ("kleene-star,k", "Kleene star '*'")
-      ("kleene-plus,K", "Kleene plus '+'")
       ("reciprocal", "invert all weight expressions")
       ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
       ("weight-output", po::value<string>(), "apply weight parameter with given prefix to outputs")
@@ -148,10 +144,10 @@ int main (int argc, char** argv) {
       ;
 
     po::options_description transOpts("");
-    transOpts.add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts);
+    transOpts.add(createOpts).add(postfixOpts).add(infixOpts).add(miscOpts);
 
     po::options_description helpOpts("");
-    helpOpts.add(generalOpts).add(createOpts).add(prefixOpts).add(postfixOpts).add(infixOpts).add(miscOpts).add(appOpts).add(compOpts);
+    helpOpts.add(generalOpts).add(createOpts).add(postfixOpts).add(infixOpts).add(miscOpts).add(appOpts).add(compOpts);
 
     po::options_description parseOpts("");
     parseOpts.add(generalOpts).add(appOpts).add(compOpts);
@@ -295,9 +291,9 @@ int main (int argc, char** argv) {
 	  const string chars = getArg();
 	  m = Machine::wildSingleEcho (splitToChars (chars));
 	} else if (command == "--sort-sum")
-	  m = nextMachine().advanceSort().advancingMachine();
+	  m = popMachine().advanceSort().advancingMachine();
 	else if (command == "--sort-break")
-	  m = nextMachine().advanceSort().dropSilentBackTransitions();
+	  m = popMachine().advanceSort().dropSilentBackTransitions();
 	else if (command == "--compose-sum")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose")
@@ -323,18 +319,18 @@ int main (int argc, char** argv) {
 	else if (command == "--repeat") {
 	  const int nReps = stoi (getArg());
 	  Require (nReps > 0, "--repeat requires minimum one repetition");
-	  const Machine unit = nextMachine();
+	  const Machine unit = popMachine();
 	  m = unit;
 	  for (int n = 1; n < nReps; ++n)
 	    m = Machine::concatenate (m, unit);
 	} else if (command == "--loop")
 	  m = Machine::kleeneLoop (popMachine(), nextMachine());
 	else if (command == "--eliminate")
-	  m = nextMachine().eliminateSilentTransitions();
+	  m = popMachine().eliminateSilentTransitions();
 	else if (command == "--reverse")
-	  m = nextMachine().reverse();
+	  m = popMachine().reverse();
 	else if (command == "--revcomp") {
-	  const Machine r = nextMachine();
+	  const Machine r = popMachine();
 	  const vguard<OutputSymbol> outAlph = m.outputAlphabet();
 	  const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
 	  m = Machine::compose (r.reverse(),
@@ -343,7 +339,7 @@ int main (int argc, char** argv) {
 							    : "compdna"),
 				true, true, Machine::SumSilentCycles);
 	} else if (command == "--transpose")
-	  m = nextMachine().transpose();
+	  m = popMachine().transpose();
 	else if (command == "--weight") {
 	  const string wArg = getArg();
 	  json wj;

@@ -230,18 +230,18 @@ test-concat:
 	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
 
 test-eliminate:
-	@$(TEST) bin/$(BOSS) -n t/machine/silent.json t/expect/silent-elim.json
-	@$(TEST) bin/$(BOSS) -n t/machine/silent2.json t/expect/silent2-elim.json
-	@$(TEST) bin/$(BOSS) -n t/machine/silent3.json t/expect/silent3-elim.json
+	@$(TEST) bin/$(BOSS) t/machine/silent.json -n t/expect/silent-elim.json
+	@$(TEST) bin/$(BOSS) t/machine/silent2.json -n t/expect/silent2-elim.json
+	@$(TEST) bin/$(BOSS) t/machine/silent3.json -n t/expect/silent3-elim.json
 
 test-reverse:
-	@$(TEST) bin/$(BOSS) -e --generate t/io/seq001.json t/expect/generator001-reversed.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -e t/expect/generator001-reversed.json
 
 test-revcomp:
-	@$(TEST) bin/$(BOSS) -r --generate t/io/seqAGC.json t/expect/generatorAGC-revcomp.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seqAGC.json -r t/expect/generatorAGC-revcomp.json
 
 test-transpose:
-	@$(TEST) bin/$(BOSS) -t --generate t/io/seq001.json t/expect/acceptor001.json
+	@$(TEST) bin/$(BOSS) --generate t/io/seq001.json -t t/expect/acceptor001.json
 
 test-weight:
 	@$(TEST) bin/$(BOSS) -w p t/expect/null-p.json
@@ -263,19 +263,19 @@ test-csv:
 	@$(TEST) bin/$(BOSS) --norm-csv t/csv/test.csv t/expect/normcsvtest.json
 
 test-csv-tiny:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/tiny_uc.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/tiny_uc.json --csv t/csv/tiny_uc.csv --transpose t/expect/tiny_uc.json
 
 test-csv-tiny-fail:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/tiny_lc.json --transpose --csv t/csv/tiny_uc.csv -fail
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/tiny_lc.json --csv t/csv/tiny_uc.csv --transpose -fail
 
 test-csv-tiny-empty:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/empty.json --transpose --csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/empty.json --csv t/csv/tiny_uc.csv --transpose t/expect/tiny_empty.json
 
 test-nanopore:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --csv t/csv/nanopore_test.csv --transpose t/expect/nanopore_test.json
 
 test-nanopore-prefix:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --transpose --csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --csv t/csv/nanopore_test.csv --transpose t/expect/nanopore_test_prefix.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine

@@ -86,7 +86,10 @@ Transducer construction:
   --csv arg                    create machine from CSV file, without 
                                normalization
 
-Prefix operators:
+Postfix operators:
+  -z [ --zero-or-one ]         union with null '?'
+  -k [ --kleene-star ]         Kleene star '*'
+  -K [ --kleene-plus ]         Kleene plus '+'
   --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
@@ -95,11 +98,6 @@ Prefix operators:
   --sort-break                 topologically sort, breaking silent cycles 
                                (faster than --sort-sum, but less precise)
   -n [ --eliminate ]           eliminate all silent transitions
-
-Postfix operators:
-  -z [ --zero-or-one ]         union with null '?'
-  -k [ --kleene-star ]         Kleene star '*'
-  -K [ --kleene-plus ]         Kleene plus '+'
   --reciprocal                 invert all weight expressions
   --weight-input arg           apply weight parameter with given prefix to 
                                inputs
@@ -143,9 +141,12 @@ Transducer application:
                                log-likelihood with respect to logs of 
                                parameters)
   -Z [ --decode ]              find most likely input by CTC prefix search
+  --cool-decode                find most likely input by simulated annealing
+  --mcmc-decode                find most likely input by MCMC search
+  --decode-steps arg           simulated annealing steps per initial symbol
   -Y [ --encode ]              find most likely output by CTC prefix search
   --random-encode              sample random output by stochastic prefix search
-  --seed                       random number seed
+  --seed arg                   random number seed
 
 Parser-generator:
   --codegen arg                generate parser code, save to specified filename
