@@ -90,21 +90,21 @@ struct PrefixTree {
   NodePtrQueue nodeQueue;
   Node* bestSeqNode;
   double bestLogSeqProb;
-  InputIndex bestSeqLen;
   
   PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
-
+  void clear();
+  
   vguard<InputSymbol> doPrefixSearch();  // finds most likely input
-  vguard<InputSymbol> doAnnealedSearch (mt19937&, int stepsPerTok);
+  vguard<InputSymbol> doAnnealedSearch (mt19937&, int stepsPerTok, bool doCooling = true);
 
   vguard<InputSymbol> sampleSeq (mt19937&);  // samples from posterior distribution over inputs
   vguard<InputToken> sampleTokSeq (mt19937&);
 
-  double logSeqProb (const list<InputToken>&);
+  double logSeqProb (const list<InputToken>&, bool humble = false);
 
   Node* rootNode();
   void extendNode (Node* parent);
-  Node* addNode (Node* parent, InputToken inTok);
+  Node* addNode (Node* parent, InputToken inTok, bool humble = false);
   Node* bestPrefixNode() const { return nodeQueue.top(); }
 
   vguard<InputSymbol> bestSeq() const { return seqTraceback (bestSeqNode); }

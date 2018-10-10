@@ -118,7 +118,20 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
   bestSeqNode (NULL),
   bestLogSeqProb (-numeric_limits<double>::infinity())
 {
-  addNode (NULL, machine.inputTokenizer.emptyToken());
+  clear();
+}
+
+void PrefixTree::clear() {
+  vguard<InputToken> best;
+  if (bestSeqNode)
+    best = bestSeqNode->traceback();
+  nodeStore.clear();
+  nodeQueue = NodePtrQueue();
+  addNode (NULL, machine.inputTokenizer.emptyToken(), true);
+  if (bestSeqNode) {
+    bestLogSeqProb = -numeric_limits<double>::infinity();
+    (void) logSeqProb (list<InputToken> (best.begin(), best.end()), true);
+  }
 }
 
 vguard<InputSymbol> PrefixTree::doPrefixSearch() {
@@ -153,11 +166,13 @@ vguard<InputSymbol> PrefixTree::sampleSeq (mt19937& mt) {
 
 #define BurnStepsPerTok 3
 #define TargetInitAcceptProb 0.8
-vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) {
+#define MaxPrefixTreeSize 1e9
+vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, bool doCooling) {
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   const vguard<InputToken> initSeq = sampleTokSeq (mt);
   const int steps = stepsPerTok * initSeq.size() * inToks;
-  LogThisAt(3,"Simulated annealing with initial sequence of length " << initSeq.size() << " at " << stepsPerTok << " steps-per-token with size-" << inToks << " alphabet, total " << steps << " steps" << endl);
+  const char* algorithm = doCooling ? "Simulated annealing" : "MCMC";
+  LogThisAt(3,algorithm << " with initial sequence of length " << initSeq.size() << " at " << stepsPerTok << " steps-per-token with size-" << inToks << " alphabet, total " << steps << " steps" << endl);
   list<InputToken> current (initSeq.begin(), initSeq.end());
   double currentLogSeqProb = logSeqProb (current);
   uniform_int_distribution<InputToken> subDist (1, inToks - 1);
@@ -166,17 +181,16 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
   const size_t burnSteps = current.size() + BurnStepsPerTok * initSeq.size() * inToks;
   vguard<double> burnLog;
   burnLog.reserve (burnSteps);
-  double initTemperature = 0;
+  double initTemperature = 1, finalTemperature = 1;
   int lastBurnStep = 0;
-  ProgressLog(plogAnneal,4);
-  plogAnneal.initProgress ("Simulated annealing");
+  ProgressLog(plogMCMC,3);
+  plogMCMC.initProgress (algorithm);
   for (int step = 0; step - lastBurnStep < steps; ++step) {
     const size_t len = current.size();
-    const bool burning = burnLog.size() < burnSteps;
-    plogAnneal.logProgress ((burning
-			 ? burnLog.size() / (double) (burnSteps + steps)
-			 : burnSteps + step - lastBurnStep) / (double) (burnSteps + steps),
-			"step %d", step + 1);
+    const bool burning = doCooling && burnLog.size() < burnSteps;
+    const int progNum = burning ? burnLog.size() : (burnSteps + step - lastBurnStep);
+    const int progDenom = burnSteps + steps;
+    plogMCMC.logProgress (progNum / (double) progDenom, "%sstep %u/%u logP(current)=%g logP(best)=%g", burning ? "burn-in " : "", currentLogSeqProb, bestLogSeqProb, progNum, progDenom);
     if (burning) {
       lastBurnStep = step;
       if (step > steps && burnLog.empty()) {
@@ -184,7 +198,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
 	break;
       }
     }
-    const double temperature = burning ? 1. : (initTemperature * (1 - ((step - lastBurnStep) / (double) steps)));
+    const double temperature = initTemperature + (finalTemperature - initTemperature) * ((step - lastBurnStep) / (double) steps);
     //  sample type & location of event (substitution, insertion, deletion) with weight (len, len+1, len)
     uniform_int_distribution<int> eventDist (0, 3*len);
     const int r = eventDist (mt);
@@ -207,13 +221,13 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
     case 1: // deletion
       oldTok = *iter;
       current.erase (iter++);
-      revFwdProposalRatio = 1 / (double) inToks;
+      revFwdProposalRatio = (3*len + 4) / (double) (inToks * (3*len + 1));
       break;
     case 2: // insertion
       {
 	const InputToken newTok = insDist (mt);
 	iter = current.insert (iter, newTok);
-	revFwdProposalRatio = inToks;
+	revFwdProposalRatio = inToks * (3*len + 1) / (double) (3*len + 4);
       }
       break;
     default:
@@ -224,7 +238,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
     const double logHastings = min (0., (double) newLogSeqProb - currentLogSeqProb + log (revFwdProposalRatio));
     const double acceptProb = exp (logHastings / temperature);
     const bool accept = acceptDist(mt) < acceptProb;
-    LogThisAt(5,(burning?"Burn-in":"Anneal") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << temperature << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << " log(old)=" << currentLogSeqProb << " log(new)=" << newLogSeqProb << " log(rev/fwd)=" << log(revFwdProposalRatio) << " log(H)=" << logHastings << " P=" << acceptProb << " " << (accept ? "Accepted" : "Rejected") << endl);
+    LogThisAt(5,(doCooling?(burning?"Burn-in":"Anneal"):"MCMC") << " " << (burning?step:(step-lastBurnStep)) << "/" << (burning ? burnSteps : steps) << ": T=" << setprecision(2) << temperature << " log(old)=" << setw(8) << setprecision(5) << currentLogSeqProb << " log(new)=" << setw(8) << setprecision(5) << newLogSeqProb << " log(rev/fwd)=" << setw(8) << setprecision(5) << log(revFwdProposalRatio) << " log(H)=" << setw(9) << setprecision(5) << logHastings << " P=" << setw(8) << setprecision(5) << acceptProb << " " << (accept ? "Accept" : "Reject") << " " << (type?(type==1?"Delete":"Ins at"):"Mutate") << " " << setw(4) << pos << " of " << to_string_join (machine.inputTokenizer.detokenize(vguard<InputToken> (current.begin(), current.end())),"") << endl);
     if (burning && logHastings > -numeric_limits<double>::infinity() && logHastings < numeric_limits<double>::infinity()) {
       burnLog.push_back (logHastings);
       if (burnLog.size() == burnSteps) {
@@ -251,6 +265,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
 	const double mean = sum/n, variance = sumsq/n - mean*mean;
 	const double logInitAcceptProb = log (TargetInitAcceptProb);
 	initTemperature = (mean - sqrt(mean*mean - logInitAcceptProb*variance)) / (2*logInitAcceptProb);
+	finalTemperature = 0;
 	LogThisAt(5,"Log(Hastings) mean " << mean << " variance " << variance << " T0=" << initTemperature << endl);
 	LogThisAt(4,"Completed " << burnSteps << "-step burn-in; simulated annealing at initial T=" << initTemperature << " for " << steps << " steps" << endl);
       }
@@ -265,14 +280,19 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
       case 2: current.erase (iter); break;
       default: break;
       }
+    // don't get too big
+    if (nodeStore.size() && nodeStore.size() * nodeStore.front().nCells() * sizeof(double) > MaxPrefixTreeSize) {
+      LogThisAt(5,"Flushing sequence likelihood cache at " << nodeStore.size() << " nodes, " << (nodeStore.size() * nodeStore.front().nCells() * sizeof(double) / 1048576) << " Mb" << endl);
+      clear();
+    }
   }
   return bestSeq();
 }
 
-double PrefixTree::logSeqProb (const list<InputToken>& input) {
+double PrefixTree::logSeqProb (const list<InputToken>& input, bool humble) {
   Node* current = rootNode();
   for (const auto& inTok: input)
-    current = addNode (current, inTok);
+    current = addNode (current, inTok, humble);
   return current->logSeqProb();
 }
 
@@ -289,7 +309,7 @@ PrefixTree::Node* PrefixTree::rootNode() {
   return &nodeStore.front();
 }
 
-PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok) {
+PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humble) {
   if (parent)
     for (const auto& c: parent->child)
       if (c->inTok == inTok)
@@ -309,7 +329,8 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok) {
   if (logNodeSeqProb > bestLogSeqProb) {
     bestSeqNode = nodePtr;
     bestLogSeqProb = logNodeSeqProb;
-    LogThisAt (4, "Nodes: " << nodeStore.size() << " Best sequence so far: " << to_string_join (bestSeq(), "") << " (" << bestLogSeqProb << ")" << endl);
+    if (!humble)
+      LogThisAt (4, "Nodes: " << nodeStore.size() << " Best sequence so far: " << to_string_join (bestSeq(), "") << " (" << bestLogSeqProb << ")" << endl);
   }
   LogThisAt (7, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
 

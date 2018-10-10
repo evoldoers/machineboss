@@ -77,7 +77,9 @@ extern Logger logger;
 #define LoggingThisAt(V) (logger.testVerbosityOrLogTags(V,__func__,__FILE__))
 #define LoggingTag(T)    (logger.testLogTag(T))
 
-#define LogStream(V,S) do { logger.lock(V,__FILE__,__LINE__,true); clog << S; logger.unlock(true); } while(0)
+// the clumsy "do { ... } while(0)" wrapper in these macros is just to allow semicolons on the end
+// e.g. "if (test) LogThisAt(1,test);" will fail without the do...while wrapper
+#define LogStream(V,S) { logger.lock(V,__FILE__,__LINE__,true); clog << S; logger.unlock(true); } while(0)
 
 #define LogAt(V,S)     do { if (LoggingAt(V)) LogStream(V,S); } while(0)
 #define LogThisAt(V,S) do { if (LoggingThisAt(V)) LogStream(V,S); } while(0)
