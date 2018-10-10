@@ -51,11 +51,13 @@ int main (int argc, char** argv) {
       ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
       ("generate-one", po::value<string>(), "generator for any one of specified characters")
       ("generate-wild", po::value<string>(), "generator for Kleene closure over specified characters")
+      ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output " MachineParamPrefix)
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
+      ("accept-iid", po::value<string>(), "as --accept-wild, but followed by --weight-input " MachineParamPrefix)
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
@@ -268,6 +270,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--generate-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildGenerator (splitToChars (chars));
+	} else if (command == "--generate-iid") {
+	  const string chars = getArg();
+	  m = Machine::wildGenerator (splitToChars (chars)).weightOutputs (MachineParamPrefix);
 	} else if (command == "--generate-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleGenerator (splitToChars (chars));
@@ -284,6 +289,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
+	} else if (command == "--accept-iid") {
+	  const string chars = getArg();
+	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputs (MachineParamPrefix);
 	} else if (command == "--accept-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleAcceptor (splitToChars (chars));

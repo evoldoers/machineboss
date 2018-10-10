@@ -168,12 +168,12 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok) 
   burnLog.reserve (burnSteps);
   double initTemperature = 0;
   int lastBurnStep = 0;
-  ProgressLog(plogDP,4);
-  plogDP.initProgress ("Simulated annealing (%d steps)", steps);
+  ProgressLog(plogAnneal,4);
+  plogAnneal.initProgress ("Simulated annealing");
   for (int step = 0; step - lastBurnStep < steps; ++step) {
     const size_t len = current.size();
     const bool burning = burnLog.size() < burnSteps;
-    plogDP.logProgress ((burning
+    plogAnneal.logProgress ((burning
 			 ? burnLog.size() / (double) (burnSteps + steps)
 			 : burnSteps + step - lastBurnStep) / (double) (burnSteps + steps),
 			"step %d", step + 1);
