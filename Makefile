@@ -249,7 +249,7 @@ test-weight:
 	@$(TEST) bin/$(BOSS) -w .5 t/expect/null-0.5.json
 	@$(TEST) bin/$(BOSS) -w '{"*":["p","q"]}' t/expect/null-pq.json
 	@$(TEST) bin/$(BOSS) -w '{"*":[1,2]}' t/expect/null-2.json
-	@$(TEST) bin/$(BOSS) -w '{"/":[1,2]}' t/expect/null-0.5.json
+	@$(TEST) bin/$(BOSS) -w '{"/":[1,2]}' t/expect/null-1div2.json
 	@$(TEST) bin/$(BOSS) --accept-wild ACGT --weight-input p --reciprocal t/expect/null-weight-recip.json
 
 test-shorthand:

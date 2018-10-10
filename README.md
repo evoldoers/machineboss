@@ -69,12 +69,20 @@ Transducer construction:
   --generate-one arg           generator for any one of specified characters
   --generate-wild arg          generator for Kleene closure over specified 
                                characters
+  --generate-iid arg           as --generate-wild, but followed by 
+                               --weight-output p
+  --generate-uniform arg       as --generate-iid, but weights outputs by 
+                               1/(output alphabet size)
   --generate-fasta arg         generator for FASTA-format sequence
   --generate arg               sequence generator for JSON-format sequence
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
   --accept-one arg             acceptor for any one of specified characters
   --accept-wild arg            acceptor for Kleene closure over specified 
                                characters
+  --accept-iid arg             as --accept-wild, but followed by --weight-input
+                               p
+  --accept-uniform arg         as --accept-iid, but weights outputs by 1/(input
+                               alphabet size)
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept arg                 sequence acceptor for JSON-format sequence
   --echo-one arg               identity for any one of specified characters
@@ -98,7 +106,8 @@ Postfix operators:
   --sort-break                 topologically sort, breaking silent cycles 
                                (faster than --sort-sum, but less precise)
   -n [ --eliminate ]           eliminate all silent transitions
-  --reciprocal                 invert all weight expressions
+  --reciprocal                 element-wise reciprocal: invert all weight 
+                               expressions
   --weight-input arg           apply weight parameter with given prefix to 
                                inputs
   --weight-output arg          apply weight parameter with given prefix to 
@@ -125,6 +134,9 @@ Transducer application:
   -M [ --memoize ]             memoize repeated expressions for compactness
   -W [ --showparams ]          show unbound parameters in final machine
   -P [ --params ] arg          load parameters (JSON)
+  -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
+                               for unspecified parameters; this option is 
+                               implicit when training
   -F [ --functions ] arg       load functions & constants (JSON)
   -N [ --norms ] arg           load normalization constraints (JSON)
   -D [ --data ] arg            load sequence-pairs (JSON)

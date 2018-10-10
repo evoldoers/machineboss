@@ -123,9 +123,14 @@ struct Machine {
 
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
 
-  Machine reciprocal() const;
+  Machine pointwiseReciprocal() const;
   Machine weightInputs (const char* paramPrefix = MachineParamPrefix) const;
+  Machine weightInputs (const map<InputSymbol,WeightExpr>&) const;
   Machine weightOutputs (const char* paramPrefix = MachineParamPrefix) const;
+  Machine weightOutputs (const map<OutputSymbol,WeightExpr>&) const;
+
+  Machine weightInputsUniformly() const;
+  Machine weightOutputsUniformly() const;
   
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine

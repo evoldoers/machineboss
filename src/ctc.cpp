@@ -183,14 +183,14 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, 
   burnLog.reserve (burnSteps);
   double initTemperature = 1, finalTemperature = 1;
   int lastBurnStep = 0;
-  ProgressLog(plogDP,3);
-  plogDP.initProgress (algorithm);
+  ProgressLog(plogMCMC,3);
+  plogMCMC.initProgress (algorithm);
   for (int step = 0; step - lastBurnStep < steps; ++step) {
     const size_t len = current.size();
     const bool burning = doCooling && burnLog.size() < burnSteps;
     const int progNum = burning ? burnLog.size() : (burnSteps + step - lastBurnStep);
     const int progDenom = burnSteps + steps;
-    plogDP.logProgress (progNum / (double) progDenom, "%sstep %u/%u logP(current)=%g logP(best)=%g", burning ? "burn-in " : "", currentLogSeqProb, bestLogSeqProb, progNum, progDenom);
+    plogMCMC.logProgress (progNum / (double) progDenom, "%sstep %u/%u logP(current)=%g logP(best)=%g", burning ? "burn-in " : "", currentLogSeqProb, bestLogSeqProb, progNum, progDenom);
     if (burning) {
       lastBurnStep = step;
       if (step > steps && burnLog.empty()) {
