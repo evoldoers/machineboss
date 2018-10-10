@@ -69,12 +69,20 @@ Transducer construction:
   --generate-one arg           generator for any one of specified characters
   --generate-wild arg          generator for Kleene closure over specified 
                                characters
+  --generate-iid arg           as --generate-wild, but followed by 
+                               --weight-output p
+  --generate-uniform arg       as --generate-iid, but weights outputs by 
+                               1/(output alphabet size)
   --generate-fasta arg         generator for FASTA-format sequence
   --generate arg               sequence generator for JSON-format sequence
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
   --accept-one arg             acceptor for any one of specified characters
   --accept-wild arg            acceptor for Kleene closure over specified 
                                characters
+  --accept-iid arg             as --accept-wild, but followed by --weight-input
+                               p
+  --accept-uniform arg         as --accept-iid, but weights outputs by 1/(input
+                               alphabet size)
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept arg                 sequence acceptor for JSON-format sequence
   --echo-one arg               identity for any one of specified characters
@@ -127,6 +135,9 @@ Transducer application:
   -M [ --memoize ]             memoize repeated expressions for compactness
   -W [ --showparams ]          show unbound parameters in final machine
   -P [ --params ] arg          load parameters (JSON)
+  -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
+                               for unspecified parameters; this option is 
+                               implicit when training
   -F [ --functions ] arg       load functions & constants (JSON)
   -N [ --norms ] arg           load normalization constraints (JSON)
   -D [ --data ] arg            load sequence-pairs (JSON)
@@ -143,9 +154,12 @@ Transducer application:
                                log-likelihood with respect to logs of 
                                parameters)
   -Z [ --decode ]              find most likely input by CTC prefix search
+  --cool-decode                find most likely input by simulated annealing
+  --mcmc-decode                find most likely input by MCMC search
+  --decode-steps arg           simulated annealing steps per initial symbol
   -Y [ --encode ]              find most likely output by CTC prefix search
   --random-encode              sample random output by stochastic prefix search
-  --seed                       random number seed
+  --seed arg                   random number seed
 
 Parser-generator:
   --codegen arg                generate parser code, save to specified filename

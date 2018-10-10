@@ -52,12 +52,14 @@ int main (int argc, char** argv) {
       ("generate-one", po::value<string>(), "generator for any one of specified characters")
       ("generate-wild", po::value<string>(), "generator for Kleene closure over specified characters")
       ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output " MachineParamPrefix)
+      ("generate-uniform", po::value<string>(), "as --generate-iid, but weights outputs by 1/(output alphabet size)")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
       ("accept-iid", po::value<string>(), "as --accept-wild, but followed by --weight-input " MachineParamPrefix)
+      ("accept-uniform", po::value<string>(), "as --accept-iid, but weights outputs by 1/(input alphabet size)")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
@@ -116,6 +118,7 @@ int main (int argc, char** argv) {
       ("showparams,W", "show unbound parameters in final machine")
 
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
+      ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unspecified parameters; this option is implicit when training")
       ("functions,F", po::value<vector<string> >(), "load functions & constants (JSON)")
       ("norms,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
@@ -274,6 +277,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--generate-iid") {
 	  const string chars = getArg();
 	  m = Machine::wildGenerator (splitToChars (chars)).weightOutputs (MachineParamPrefix);
+	} else if (command == "--generate-uniform") {
+	  const string chars = getArg();
+	  m = Machine::wildGenerator (splitToChars (chars)).weightOutputsUniformly();
 	} else if (command == "--generate-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleGenerator (splitToChars (chars));
@@ -293,6 +299,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--accept-iid") {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputs (MachineParamPrefix);
+	} else if (command == "--accept-uniform") {
+	  const string chars = getArg();
+	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputsUniformly();
 	} else if (command == "--accept-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleAcceptor (splitToChars (chars));
@@ -382,7 +391,7 @@ int main (int argc, char** argv) {
 	} else if (command == "--weight-output") {
 	  m = popMachine().weightOutputs (getArg().c_str());
 	} else if (command == "--reciprocal") {
-	  m = popMachine().reciprocal();
+	  m = popMachine().pointwiseReciprocal();
 	} else if (command == "--begin") {
 	  list<Machine> pushedMachines;
 	  swap (pushedMachines, machines);
@@ -545,8 +554,11 @@ int main (int argc, char** argv) {
       fitter.seed = fitter.allConstraints().defaultParams().combine (seed);
       params = vm.count("wiggle-room") ? fitter.fit(data,vm.at("wiggle-room").as<int>()) : fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
-    } else
+    } else {
       params = funcs.combine (seed);
+      if (vm.count("use-defaults"))
+	params = machine.cons.defaultParams().combine (params);
+    }
 
     // compute sequence log-likelihoods
     if (vm.count("loglike")) {

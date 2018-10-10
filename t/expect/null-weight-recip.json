@@ -1,9 +1,9 @@
 {"state":
  [{"n":0,
    "id":["A","C","G","T"],
-   "trans":[{"to":0,"in":"A","weight":{"/":[true,"pA"]}},
-            {"to":0,"in":"C","weight":{"/":[true,"pC"]}},
-            {"to":0,"in":"G","weight":{"/":[true,"pG"]}},
-            {"to":0,"in":"T","weight":{"/":[true,"pT"]}}]}
+   "trans":[{"to":0,"in":"A","weight":{"/":[1,"pA"]}},
+            {"to":0,"in":"C","weight":{"/":[1,"pC"]}},
+            {"to":0,"in":"G","weight":{"/":[1,"pG"]}},
+            {"to":0,"in":"T","weight":{"/":[1,"pT"]}}]}
  ]
 }

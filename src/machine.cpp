@@ -467,25 +467,69 @@ Machine Machine::projectOutputToInput() const {
 
 Machine Machine::weightInputs (const char* paramPrefix) const {
   const string pp (paramPrefix);
+  map<InputSymbol,WeightExpr> w;
+  vguard<string> norm;
+  for (const auto& inTok: inputAlphabet()) {
+    const string p = pp + inTok;
+    w[inTok] = WeightAlgebra::param (p);
+    norm.push_back (p);
+  }
+  Machine m = weightInputs (w);
+  m.cons.norm.push_back (norm);
+  return m;
+}
+
+Machine Machine::weightInputs (const map<InputSymbol,WeightExpr>& w) const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
       if (!t.inputEmpty())
-	t.weight = WeightAlgebra::multiply (t.weight, WeightAlgebra::param (pp + t.in));
+	t.weight = WeightAlgebra::multiply (t.weight, w.at (t.in));
   return m;
 }
 
 Machine Machine::weightOutputs (const char* paramPrefix) const {
   const string pp (paramPrefix);
+  map<OutputSymbol,WeightExpr> w;
+  vguard<string> norm;
+  for (const auto& outTok: outputAlphabet()) {
+    const string p = pp + outTok;
+    w[outTok] = WeightAlgebra::param (p);
+    norm.push_back (p);
+  }
+  Machine m = weightOutputs (w);
+  m.cons.norm.push_back (norm);
+  return m;
+}
+
+Machine Machine::weightOutputs (const map<OutputSymbol,WeightExpr>& w) const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
       if (!t.outputEmpty())
-	t.weight = WeightAlgebra::multiply (t.weight, WeightAlgebra::param (pp + t.out));
+	t.weight = WeightAlgebra::multiply (t.weight, w.at (t.out));
   return m;
 }
 
-Machine Machine::reciprocal() const {
+Machine Machine::weightInputsUniformly() const {
+  const auto alph = inputAlphabet();
+  const size_t inSize = alph.size();
+  map<InputSymbol,WeightExpr> w;
+  for (const auto& inTok: alph)
+    w[inTok] = WeightAlgebra::reciprocal (WeightAlgebra::intConstant (inSize));
+  return weightInputs (w);
+}
+
+Machine Machine::weightOutputsUniformly() const {
+  const auto alph = outputAlphabet();
+  const size_t outSize = alph.size();
+  map<OutputSymbol,WeightExpr> w;
+  for (const auto& outTok: alph)
+    w[outTok] = WeightAlgebra::reciprocal (WeightAlgebra::intConstant (outSize));
+  return weightOutputs (w);
+}
+
+Machine Machine::pointwiseReciprocal() const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)

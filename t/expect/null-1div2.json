@@ -1,0 +1,8 @@
+{"state":
+ [{"n":0,
+   "id":"trans-start",
+   "trans":[{"to":1,"weight":{"/":[1,2]}}]},
+  {"n":1,
+   "id":"trans-end"}
+ ]
+}

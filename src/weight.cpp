@@ -155,7 +155,7 @@ WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {
     w = l;
   else if (isZero(l))
     w = factory.zero;
-  else if (isNumber(l) && isNumber(r))
+  else if (l->type == Dbl && r->type == Dbl)
     w = factory.newDouble (asDouble(l) / asDouble(r));
   else
     w = factory.newBinary (Div, l, r);
@@ -465,9 +465,9 @@ void WeightAlgebra::toJsonStream (ostream& out, const WeightExpr& w, const ExprM
   } else {
     const ExprType op = w->type;
     if (isZero(w))
-      out << "false";
+      out << "0";
     else if (isOne(w))
-      out << "true";
+      out << "1";
     else
       switch (op) {
       case Null:
