@@ -86,7 +86,7 @@ int main (int argc, char** argv) {
       ("zero-or-one,z", "union with null '?'")
       ("kleene-star,k", "Kleene star '*'")
       ("kleene-plus,K", "Kleene plus '+'")
-      ("reciprocal", "invert all weight expressions")
+      ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
       ("weight-output", po::value<string>(), "apply weight parameter with given prefix to outputs")
       ;

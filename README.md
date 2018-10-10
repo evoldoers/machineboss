@@ -108,7 +108,8 @@ Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
   -k [ --kleene-star ]         Kleene star '*'
   -K [ --kleene-plus ]         Kleene plus '+'
-  --reciprocal                 invert all weight expressions
+  --reciprocal                 element-wise reciprocal: invert all weight 
+                               expressions
   --weight-input arg           apply weight parameter with given prefix to 
                                inputs
   --weight-output arg          apply weight parameter with given prefix to 
