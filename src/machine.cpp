@@ -1307,6 +1307,7 @@ Machine Machine::zeroOrOne (const Machine& q) {
     for (auto& ms: m.state)
       if (!ms.name.is_null())
 	ms.name = json::array ({"quant-main", ms.name});
+    m.state.back().trans.push_back (MachineTransition (string(), string(), m.endState() + 1, WeightAlgebra::one()));
     m.state.push_back (MachineState());
     m.state.back().name = json::array ({"quant-end"});
   }
@@ -1317,7 +1318,13 @@ Machine Machine::zeroOrOne (const Machine& q) {
 Machine Machine::kleenePlus (const Machine& k) {
   Assert (k.nStates(), "Attempt to form Kleene closure of uninitialized transducer");
   Machine m (k);
-  m.state[k.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightAlgebra::one()));
+  m.state.insert (m.state.begin(), MachineState());
+  m.state.front().name = "kleene-plus";
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      ++t.dest;
+  m.state[m.startState()].trans.push_back (MachineTransition (string(), string(), m.startState() + 1, WeightAlgebra::one()));
+  m.state[m.endState()].trans.push_back (MachineTransition (string(), string(), m.startState() + 1, WeightAlgebra::one()));
   return m;
 }
 
@@ -1347,6 +1354,12 @@ Machine Machine::kleeneLoop (const Machine& main, const Machine& loop) {
   m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
   m.state[main.nStates() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightAlgebra::one()));
   return m;
+}
+
+Machine Machine::kleeneCount (const Machine& m, const string& countParam) {
+  Machine result = kleeneStar (concatenate (singleTransition (WeightAlgebra::param (countParam)), m));
+  result.funcs.defs[countParam] = WeightAlgebra::one();
+  return result;
 }
 
 Machine Machine::reverse() const {

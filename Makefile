@@ -410,6 +410,7 @@ test-counts2:
 
 test-counts3:
 	@$(TEST) bin/$(BOSS) t/machine/counter.json --output-chars xxx -C t/expect/counter.json
+	@$(TEST) bin/$(BOSS) --generate-one x --count-copies p --output-chars xxx -C t/expect/counter.json
 
 # Code generation tests
 CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof

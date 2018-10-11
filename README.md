@@ -98,10 +98,13 @@ Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
   -k [ --kleene-star ]         Kleene star '*'
   -K [ --kleene-plus ]         Kleene plus '+'
+  --count-copies arg           Kleene star with dummy counting parameter
   --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
   -t [ --transpose ]           transpose: swap input/output
+  --sort                       topologically sort, if possible, preserving 
+                               silent cycles at all costs
   --sort-sum                   topologically sort, eliminating silent cycles
   --sort-break                 topologically sort, breaking silent cycles 
                                (faster than --sort-sum, but less precise)

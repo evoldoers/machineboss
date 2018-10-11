@@ -111,6 +111,7 @@ struct Machine {
   static Machine kleeneStar (const Machine&);
   static Machine kleenePlus (const Machine&);
   static Machine kleeneLoop (const Machine&, const Machine&);
+  static Machine kleeneCount (const Machine&, const string& countParam);
 
   Machine reverse() const;
   Machine transpose() const;

@@ -75,10 +75,12 @@ int main (int argc, char** argv) {
       ("zero-or-one,z", "union with null '?'")
       ("kleene-star,k", "Kleene star '*'")
       ("kleene-plus,K", "Kleene plus '+'")
+      ("count-copies", po::value<string>(), "Kleene star with dummy counting parameter")
       ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
+      ("sort", "topologically sort, if possible, preserving silent cycles at all costs")
       ("sort-sum", "topologically sort, eliminating silent cycles")
       ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
       ("eliminate,n", "eliminate all silent transitions")
@@ -311,6 +313,8 @@ int main (int argc, char** argv) {
 	  m = popMachine().advanceSort().advancingMachine();
 	else if (command == "--sort-break")
 	  m = popMachine().advanceSort().dropSilentBackTransitions();
+	else if (command == "--sort")
+	  m = popMachine().advanceSort();
 	else if (command == "--compose-sum")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose")
@@ -328,11 +332,13 @@ int main (int argc, char** argv) {
 	else if (command == "--union")
 	  m = Machine::takeUnion (popMachine(), nextMachine());
 	else if (command == "--zero-or-one")
-	  m = Machine::zeroOrOne (popMachine());
+	  m = Machine::zeroOrOne (popMachine()).advanceSort();
 	else if (command == "--kleene-star")
-	  m = Machine::kleeneStar (popMachine());
+	  m = Machine::kleeneStar (popMachine()).advanceSort();
 	else if (command == "--kleene-plus")
-	  m = Machine::kleenePlus (popMachine());
+	  m = Machine::kleenePlus (popMachine()).advanceSort();
+	else if (command == "--count-copies")
+	  m = Machine::kleeneCount (popMachine(), getArg()).advanceSort();
 	else if (command == "--repeat") {
 	  const int nReps = stoi (getArg());
 	  Require (nReps > 0, "--repeat requires minimum one repetition");
@@ -341,7 +347,7 @@ int main (int argc, char** argv) {
 	  for (int n = 1; n < nReps; ++n)
 	    m = Machine::concatenate (m, unit);
 	} else if (command == "--loop")
-	  m = Machine::kleeneLoop (popMachine(), nextMachine());
+	  m = Machine::kleeneLoop (popMachine(), nextMachine()).advanceSort();
 	else if (command == "--eliminate")
 	  m = popMachine().eliminateSilentTransitions();
 	else if (command == "--reverse")
