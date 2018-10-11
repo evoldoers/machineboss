@@ -62,7 +62,7 @@ struct MachineState {
 struct Machine {
   typedef enum SilentCycleStrategy { LeaveSilentCycles = 0, BreakSilentCycles = 1, SumSilentCycles = 2 } SilentCycleStrategy;
 
-  ParamFuncs defs;
+  ParamFuncs funcs;
   Constraints cons;
   vguard<MachineState> state;
 
@@ -83,6 +83,8 @@ struct Machine {
   set<StateIndex> accessibleStates() const;
   set<string> params() const;
 
+  Params getParamDefs (bool assignDefaultValuesToMissingParams = false) const;
+  
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
 

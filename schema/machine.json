@@ -68,10 +68,7 @@
               }
             },
             "defs": {
-              "type": "object",
-              "patternProperties": {
-	        ".*": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json" }
-              }
+              "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/defs.json"
             },
             "cons": {
               "type": "object",

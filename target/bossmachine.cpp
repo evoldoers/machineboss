@@ -453,8 +453,7 @@ int main (int argc, char** argv) {
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
     const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode");
     if (paramsSpecified	&& !inferenceRequested) {
-      machine.defs = seed;
-      machine.defs.defs.insert (funcs.defs.begin(), funcs.defs.end());
+      machine.funcs = funcs.combine (seed);
       machine.cons = constraints;
     }
     
@@ -550,11 +549,8 @@ int main (int argc, char** argv) {
       fitter.seed = fitter.allConstraints().defaultParams().combine (seed);
       params = vm.count("wiggle-room") ? fitter.fit(data,vm.at("wiggle-room").as<int>()) : fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
-    } else {
-      params = funcs.combine (seed);
-      if (vm.count("use-defaults"))
-	params = machine.cons.defaultParams().combine (params);
-    }
+    } else
+      params = funcs.combine (seed).combine (machine.getParamDefs (vm.count("use-defaults")));
 
     // compute sequence log-likelihoods
     if (vm.count("loglike")) {

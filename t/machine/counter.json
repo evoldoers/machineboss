@@ -1,0 +1,7 @@
+{"state":
+ [{"n":0,
+   "trans":[{"to":0,"out":"x","weight":"p"}]}
+ ],
+ "defs":
+ {"p":1}
+}

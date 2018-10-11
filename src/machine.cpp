@@ -161,7 +161,7 @@ set<string> Machine::params() const {
   set<string> p;
   for (const auto& ms: state)
     for (const auto& t: ms.trans) {
-      const auto tp = WeightAlgebra::params (t.weight, defs.defs);
+      const auto tp = WeightAlgebra::params (t.weight, funcs.defs);
       p.insert (tp.begin(), tp.end());
     }
   return p;
@@ -242,14 +242,14 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
       out << "," << endl;
   }
   out << endl << " ]";
-  if (names.size() || defs.defs.size()) {
+  if (names.size() || funcs.defs.size()) {
     out << "," << endl << " \"defs\":";
     size_t count = 0;
     for (size_t n = 0; n < names.size(); ++n)
       out << ((count++) ? ",\n  " : "\n {")
 	  << "\"" << names[n]
 	  << "\":" << name2def[names[n]];
-    for (const auto& def: defs.defs) {
+    for (const auto& def: funcs.defs) {
       out << ((count++) ? ",\n  " : "\n {")
 	  << "\"" << def.first
 	  << "\":";
@@ -376,10 +376,10 @@ void Machine::readJson (const json& pj) {
     //  (optional)  defs: function definitions
     //  (optional)  cons: parameter-fitting constraints
     if (pj.count("defs"))
-      defs.readJson (pj.at("defs"));
+      funcs.readJson (pj.at("defs"));
     if (pj.count("cons"))
       cons.readJson (pj.at("cons"));
-  
+
     json jstate = pj.at("state");
     Assert (jstate.is_array(), "state is not an array");
     map<string,StateIndex> id2n;
@@ -420,7 +420,7 @@ void Machine::readJson (const json& pj) {
 	    t.in = jt.at("in").get<string>();
 	  if (jt.count("out"))
 	    t.out = jt.at("out").get<string>();
-	  t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight"), &defs.defs) : WeightAlgebra::one());
+	  t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight")) : WeightAlgebra::one());
 	  ms.trans.push_back (t);
 	}
       }
@@ -1447,7 +1447,7 @@ void MachineBoundPath::writeJson (ostream& out) const {
 }
 
 void Machine::import (const Machine& m) {
-  defs = ParamFuncs (defs.combine (m.defs));
+  funcs = ParamAssign (funcs.combine (m.funcs));
   cons = cons.combine (m.cons);
 }
 
@@ -1455,3 +1455,11 @@ void Machine::import (const Machine& m1, const Machine& m2) {
   import (m1);
   import (m2);
 }
+
+Params Machine::getParamDefs (bool assignDefaultValuesToMissingParams) const {
+  Params p = funcs;
+  if (assignDefaultValuesToMissingParams)
+    p = cons.defaultParams().combine (p);
+  return p;
+}
+ 
