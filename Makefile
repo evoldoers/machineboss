@@ -376,7 +376,7 @@ test-eval-1plus2: t/bin/testeval
 	@$(TEST) t/bin/testeval t/algebra/x_plus_y.json t/algebra/params.json t/expect/1_plus_2.json
 
 # Dynamic programming tests
-DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-funcs test-single-param test-align-stutter-noise test-counts test-counts2 test-counts3
+DP_TESTS = test-fwd-bitnoise-params-tiny test-back-bitnoise-params-tiny test-fb-bitnoise-params-tiny test-max-bitnoise-params-tiny test-fit-bitnoise-seqpairlist test-funcs test-single-param test-align-stutter-noise test-counts test-counts2 test-counts3 test-count-motif
 test-fwd-bitnoise-params-tiny: t/bin/testforward
 	@$(TEST) t/bin/testforward t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwd-bitnoise-params-tiny.json
 
@@ -411,6 +411,11 @@ test-counts2:
 test-counts3:
 	@$(TEST) bin/$(BOSS) t/machine/counter.json --output-chars xxx -C t/expect/counter.json
 	@$(TEST) bin/$(BOSS) --generate-one x --count-copies p --output-chars xxx -C t/expect/counter.json
+
+test-count-motif:
+	@$(TEST) bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --output-chars TGTCGCGTCTCACCCATTAAACCTATCAGAGGTTCAAGTCAGAGGAGGTTCCATCAGAAAAAAAAAAATATACATTTTTGGTTTTAACATTAAATCAAACAAATGTT -C t/expect/count11.json
+	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --csv t/csv/nanopore_test.csv --transpose -C t/expect/count9.json
+	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --csv t/csv/nanopore_test.csv --transpose -C t/expect/count4.json
 
 # Code generation tests
 CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
