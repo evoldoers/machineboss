@@ -413,7 +413,7 @@ test-counts3:
 	@$(TEST) bin/$(BOSS) --generate-one x --count-copies p --output-chars xxx -C t/expect/counter.json
 
 test-count-motif:
-	@$(TEST) bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --output-chars TGTCGCGTCTCACCCATTAAACCTATCAGAGGTTCAAGTCAGAGGAGGTTCCATCAGAAAAAAAAAAATATACATTTTTGGTTTTAACATTAAATCAAACAAATGTT -C t/expect/count11.json
+	@$(TEST) bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --accept t/io/nanopore_test_seq.json -C t/expect/count11.json
 	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --csv t/csv/nanopore_test.csv --transpose -C t/expect/count9.json
 	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --csv t/csv/nanopore_test.csv --transpose -C t/expect/count4.json
 
