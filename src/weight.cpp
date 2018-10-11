@@ -11,17 +11,16 @@ class ExprStructFactory {
 private:
   list<ExprStruct> exprStructStorage;
   list<string> paramStorage;
-  ExprStruct zeroStr, oneStr;
   ExprIndex nExprStructs;
 public:
   ExprPtr zero, one;
   ExprStructFactory() {
-    zeroStr.type = oneStr.type = Int;
-    zeroStr.args.intValue = 0;
-    oneStr.args.intValue = 1;
-    zero = &zeroStr;
-    one = &oneStr;
     nExprStructs = 0;
+    zero = newExpr();
+    one = newExpr();
+    ((ExprStruct*)zero)->type = ((ExprStruct*)one)->type = Int;
+    ((ExprStruct*)zero)->args.intValue = 0;
+    ((ExprStruct*)one)->args.intValue = 1;
   }
   ExprPtr newExpr() {
     exprStructStorage.push_front (ExprStruct());
