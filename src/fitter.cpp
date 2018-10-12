@@ -23,7 +23,7 @@ Params MachineFitter::fit (const SeqPairList& trainingSet, const list<Envelope>&
   Params params = seed;
   double prev;
   for (size_t iter = 0; true; ++iter) {
-    const Params allParams = machine.defs.combine(constants).combine(params);
+    const Params allParams = machine.funcs.combine(constants).combine(params);
     const EvaluatedMachine eval (machine, allParams);
     const MachineCounts counts (eval, trainingSet, envelopes);
     LogThisAt(2,"Baum-Welch iteration #" << (iter+1) << ": log-likelihood " << counts.loglike << endl);
