@@ -185,7 +185,7 @@ Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
     const auto f = funcIdx.size();
     funcIdx[p] = f;
   }
-  for (const auto& f_d: wm.defs.defs) {
+  for (const auto& f_d: wm.funcs.defs) {
     const string& name = f_d.first;
     if (!funcIdx.count(name)) {
       const auto f = funcIdx.size();
@@ -547,9 +547,9 @@ void Compiler::compileForward (const Machine& m, SeqType xType, SeqType yType, c
 	   << tab2 << abort << ";" << endl;
 
   // evaluate transition weights
-  const auto params = WeightAlgebra::toposortParams (wm.defs.defs);
+  const auto params = WeightAlgebra::toposortParams (wm.funcs.defs);
   for (const auto& p: params)
-    evalFile << tab << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.defs.defs.at(p)) << ";" << endl;
+    evalFile << tab << funcVar(info.funcIdx.at(p)) << " = " << info.expr2string(wm.funcs.defs.at(p)) << ";" << endl;
   for (StateIndex s = 0; s < wm.nStates(); ++s) {
     TransIndex t = 0;
     for (const auto& trans: wm.state[s].trans) {
