@@ -114,7 +114,7 @@ WeightExpr makeExpFunc (const string& trParam) {
 
 MachineObjective::MachineObjective (const Machine& machine, const MachineCounts& counts, const Constraints& cons, const Params& constants) :
   constraints (machine.cons.combine (cons)),
-  constantDefs (machine.defs.combine (constants).defs),
+  constantDefs (machine.funcs.combine (constants).defs),
   objective (WeightAlgebra::zero())
 {
   for (StateIndex s = 0; s < machine.state.size(); ++s) {
