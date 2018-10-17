@@ -298,7 +298,7 @@ double PrefixTree::logSeqProb (const list<InputToken>& input, bool humble) {
 
 void PrefixTree::extendNode (Node* parent) {
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
-  LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(bestPrefix(),"") << "* (logP " << parent->logPrefixProb << ")" << endl);
+  LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(to_string_join (seqTraceback (parent), ""),"") << "* (logP " << parent->logPrefixProb << ")" << endl);
   double norm = parent->logSeqProb();
   for (InputToken inTok = 1; inTok <= inToks; ++inTok)
     log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
@@ -319,7 +319,7 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
   if (parent)
     parent->child.push_back (nodePtr);
   
-  LogThisAt (6, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
+  LogThisAt (7, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
 
   nodePtr->fill (*this);
   if (nodePtr->logPrefixProb > bestLogSeqProb)
@@ -332,7 +332,7 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
     if (!humble)
       LogThisAt (4, "Nodes: " << nodeStore.size() << " Best sequence so far: " << to_string_join (bestSeq(), "") << " (" << bestLogSeqProb << ")" << endl);
   }
-  LogThisAt (7, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
+  LogThisAt (6, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
 
   return nodePtr;
 }
