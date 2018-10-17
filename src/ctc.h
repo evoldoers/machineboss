@@ -24,7 +24,9 @@ struct PrefixTree {
     const OutputIndex outLen;
     vguard<double> cellStorage;
     double logPrefixProb;
+    bool extended;
     list<Node*> child;
+    list<Node>::iterator iter;
     
     Node();
     Node (const PrefixTree& tree, const Node* parent, InputToken inTok);
@@ -108,6 +110,7 @@ struct PrefixTree {
   Node* rootNode();
   void extendNode (Node* parent);
   Node* addNode (Node* parent, InputToken inTok, bool humble = false);
+  void removeNode (Node* node);
   Node* bestPrefixNode() const { return nodeQueue.front(); }
   string nodeQueueDebugString() const;
   

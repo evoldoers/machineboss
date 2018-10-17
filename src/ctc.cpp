@@ -5,14 +5,16 @@ PrefixTree::Node::Node() :
   inTok (0),
   parent (NULL),
   nStates (0),
-  outLen (0)
+  outLen (0),
+  extended (false)
 { }
 
 PrefixTree::Node::Node (const PrefixTree& tree, const Node* parent, InputToken inTok) :
   inTok (inTok),
   parent (parent),
   nStates (tree.nStates),
-  outLen (tree.outLen)
+  outLen (tree.outLen),
+  extended (false)
 { }
 
 void PrefixTree::Node::fill (const PrefixTree& tree)
@@ -124,12 +126,15 @@ PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymb
 
 void PrefixTree::clear() {
   vguard<InputToken> best;
-  if (bestSeqNode)
+  bool gotBest = false;
+  if (bestSeqNode) {
     best = bestSeqNode->traceback();
+    bestSeqNode = NULL;
+  }
   nodeStore.clear();
   nodeQueue = NodePtrQueue();
   addNode (NULL, machine.inputTokenizer.emptyToken(), true);
-  if (bestSeqNode) {
+  if (gotBest) {
     bestLogSeqProb = -numeric_limits<double>::infinity();
     (void) logSeqProb (list<InputToken> (best.begin(), best.end()), true);
   }
@@ -305,6 +310,7 @@ void PrefixTree::extendNode (Node* parent) {
   double norm = parent->logSeqProb();
   for (InputToken inTok = 1; inTok <= inToks; ++inTok)
     log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
+  parent->extended = true;
   LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - parent->logPrefixProb) << endl);
 
   if (maxPrefixLen > parent->length()) {
@@ -314,9 +320,11 @@ void PrefixTree::extendNode (Node* parent) {
       for (auto np: nodeQueue)
 	if (np->length() >= minPrefixLen)
 	  purgedQueue.push_back (np);
+	else
+	  removeNode (np);
       make_heap (purgedQueue.begin(), purgedQueue.end(), nodeComparator);
       nodeQueue.swap (purgedQueue);
-      LogThisAt (8, "Purged " << (purgedQueue.size() - nodeQueue.size()) << " sequences with length < " << minPrefixLen << ". New queue: " << nodeQueueDebugString() << endl);
+      LogThisAt (8, "Purged " << (purgedQueue.size() - nodeQueue.size()) << " sequences with length < " << minPrefixLen << endl);
     }
   }
 }
@@ -339,6 +347,8 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
 	return &*c;
   nodeStore.push_back (Node (*this, parent, inTok));
   Node* nodePtr = &nodeStore.back();
+  nodePtr->iter = nodeStore.end();
+  --nodePtr->iter;
   if (parent)
     parent->child.push_back (nodePtr);
   maxPrefixLen = max (maxPrefixLen, nodePtr->length());
@@ -349,19 +359,37 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
   if (nodePtr->logPrefixProb > bestLogSeqProb) {
     nodeQueue.push_back (nodePtr);
     push_heap (nodeQueue.begin(), nodeQueue.end(), nodeComparator);
-    LogThisAt (8, "Node queue: " << nodeQueueDebugString() << endl);
   }
 
   const double logNodeSeqProb = nodePtr->logSeqProb();
   if (logNodeSeqProb > bestLogSeqProb) {
+    Node* oldBestSeqNode = bestSeqNode;
     bestSeqNode = nodePtr;
     bestLogSeqProb = logNodeSeqProb;
+    if (oldBestSeqNode && oldBestSeqNode->extended)
+      removeNode (oldBestSeqNode);  // have to do this after updating value of bestSeqNode, or it'll be ignored
     if (!humble)
       LogThisAt (4, "Nodes: " << nodeStore.size() << " Best sequence so far: " << to_string_join (bestSeq(), "") << " (" << bestLogSeqProb << ")" << endl);
   }
   LogThisAt (6, "logP(seq)=" << logNodeSeqProb << " logP(seq*)=" << nodePtr->logPrefixProb << " seq: " << to_string_join (seqTraceback (nodePtr), "") << endl);
 
   return nodePtr;
+}
+
+void PrefixTree::removeNode (Node* node) {
+  if (node != bestSeqNode && node->child.empty()) {
+    LogThisAt(8,"Removing " << to_string_join (seqTraceback(node), "") << endl);
+    if (node->parent) {
+      Node* parent = (Node*) node->parent;  // cast away const, ugh
+      list<Node*> survivingSibs;
+       for (auto s: parent->child)
+	if (s != node)
+	  survivingSibs.push_back (s);
+      parent->child.swap (survivingSibs);
+      removeNode (parent);
+    }
+    nodeStore.erase (node->iter);
+  }
 }
 
 vguard<InputSymbol> PrefixTree::seqTraceback (const Node* node) const {
