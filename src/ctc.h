@@ -85,13 +85,15 @@ struct PrefixTree {
   const vguard<OutputToken> output;
   const OutputIndex outLen;
   const StateIndex nStates;
+  const InputIndex maxBacktrack;
 
   NodeStorage nodeStore;
   NodePtrQueue nodeQueue;
   Node* bestSeqNode;
   double bestLogSeqProb;
+  InputIndex maxPrefixLen;
   
-  PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym);
+  PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, InputIndex maxBacktrack);
   void clear();
   
   vguard<InputSymbol> doPrefixSearch();  // finds most likely input

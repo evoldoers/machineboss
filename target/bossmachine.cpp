@@ -131,6 +131,7 @@ int main (int argc, char** argv) {
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ("decode,Z", "find most likely input by CTC prefix search")
+      ("backtrack", po::value<long>(), "specify max backtracking length for CTC prefix search")
       ("cool-decode", "find most likely input by simulated annealing")
       ("mcmc-decode", "find most likely input by MCMC search")
       ("decode-steps", po::value<int>(), "simulated annealing steps per initial symbol")
@@ -605,6 +606,7 @@ int main (int argc, char** argv) {
     };
     
     // encode
+    const long maxBacktrack = vm.count("backtrack") ? vm.at("backtrack").as<long>() : numeric_limits<long>::max();
     if (vm.count("encode") || vm.count("random-encode")) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
       const Machine trans = machine.transpose().advanceSort().advancingMachine();
@@ -612,7 +614,7 @@ int main (int argc, char** argv) {
       SeqPairList encodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
-	PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq);
+	PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq, maxBacktrack);
 	vguard<OutputSymbol> encoded;
 	if (vm.count("random-encode")) {
 	  mt19937 mt = makeRnd();
@@ -632,7 +634,7 @@ int main (int argc, char** argv) {
       SeqPairList decodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input for a given output");
-	PrefixTree tree (eval, seqPair.output.seq);
+	PrefixTree tree (eval, seqPair.output.seq, maxBacktrack);
 	vguard<InputSymbol> decoded;
 	if (vm.count("cool-decode") || vm.count("mcmc-decode")) {
 	  mt19937 mt = makeRnd();

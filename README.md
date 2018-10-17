@@ -156,6 +156,8 @@ Transducer application:
                                log-likelihood with respect to logs of 
                                parameters)
   -Z [ --decode ]              find most likely input by CTC prefix search
+  --backtrack arg              specify max backtracking length for CTC prefix 
+                               search
   --cool-decode                find most likely input by simulated annealing
   --mcmc-decode                find most likely input by MCMC search
   --decode-steps arg           simulated annealing steps per initial symbol

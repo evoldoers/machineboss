@@ -109,12 +109,13 @@ PrefixTree::Node* PrefixTree::Node::randomChild (mt19937& mt) const {
   return rc == child.end() ? NULL : *rc;
 }
 
-PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym) :
+PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, InputIndex maxBacktrack) :
   machine (machine),
   sumInTrans (machine.sumInTrans()),
   output (machine.outputTokenizer.tokenize (outSym)),
   outLen (output.size()),
   nStates (machine.nStates()),
+  maxBacktrack (maxBacktrack),
   bestSeqNode (NULL),
   bestLogSeqProb (-numeric_limits<double>::infinity())
 {
@@ -132,15 +133,20 @@ void PrefixTree::clear() {
     bestLogSeqProb = -numeric_limits<double>::infinity();
     (void) logSeqProb (list<InputToken> (best.begin(), best.end()), true);
   }
+  maxPrefixLen = 0;
 }
 
 vguard<InputSymbol> PrefixTree::doPrefixSearch() {
   while (!nodeQueue.empty()) {
     Node* parent = bestPrefixNode();
     nodeQueue.pop();
-    if (parent->logPrefixProb > bestLogSeqProb)
-      extendNode (parent);
-    else
+    if (parent->logPrefixProb > bestLogSeqProb) {
+      const InputIndex parentLen = parent->length();
+      if (parentLen >= maxPrefixLen || (maxPrefixLen - parentLen) < maxBacktrack)
+	extendNode (parent);
+      else
+	LogThisAt(5,"Skipping length-" << parent->length() << " sequence" << endl);
+    } else
       break;
   }
 
@@ -297,6 +303,7 @@ double PrefixTree::logSeqProb (const list<InputToken>& input, bool humble) {
 }
 
 void PrefixTree::extendNode (Node* parent) {
+  maxPrefixLen = max (maxPrefixLen, parent->length());
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(to_string_join (seqTraceback (parent), ""),"") << "* (logP " << parent->logPrefixProb << ")" << endl);
   double norm = parent->logSeqProb();
