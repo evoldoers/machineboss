@@ -3,7 +3,7 @@
 
 #include <list>
 #include <deque>
-#include <queue>
+#include <algorithm>
 #include <random>
 
 #include "dpmatrix.h"
@@ -78,7 +78,7 @@ struct PrefixTree {
   };
 
   typedef list<Node> NodeStorage;
-  typedef priority_queue<PrefixTree::Node*,deque<PrefixTree::Node*>,PrefixTree::NodeComparator> NodePtrQueue;
+  typedef deque<PrefixTree::Node*> NodePtrQueue;
 
   const EvaluatedMachine& machine;
   const vguard<vguard<LogWeight> > sumInTrans;
@@ -89,6 +89,7 @@ struct PrefixTree {
 
   NodeStorage nodeStore;
   NodePtrQueue nodeQueue;
+  NodeComparator nodeComparator;
   Node* bestSeqNode;
   double bestLogSeqProb;
   InputIndex maxPrefixLen;
@@ -107,8 +108,9 @@ struct PrefixTree {
   Node* rootNode();
   void extendNode (Node* parent);
   Node* addNode (Node* parent, InputToken inTok, bool humble = false);
-  Node* bestPrefixNode() const { return nodeQueue.top(); }
-
+  Node* bestPrefixNode() const { return nodeQueue.front(); }
+  string nodeQueueDebugString() const;
+  
   vguard<InputSymbol> bestSeq() const { return seqTraceback (bestSeqNode); }
   vguard<InputSymbol> bestPrefix() const { return seqTraceback (bestPrefixNode()); }
   vguard<InputSymbol> seqTraceback (const Node* node) const;

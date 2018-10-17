@@ -139,14 +139,11 @@ void PrefixTree::clear() {
 vguard<InputSymbol> PrefixTree::doPrefixSearch() {
   while (!nodeQueue.empty()) {
     Node* parent = bestPrefixNode();
-    nodeQueue.pop();
-    if (parent->logPrefixProb > bestLogSeqProb) {
-      const InputIndex parentLen = parent->length();
-      if (parentLen >= maxPrefixLen || (maxPrefixLen - parentLen) < maxBacktrack)
-	extendNode (parent);
-      else
-	LogThisAt(5,"Skipping length-" << parent->length() << " sequence" << endl);
-    } else
+    pop_heap (nodeQueue.begin(), nodeQueue.end(), nodeComparator);
+    nodeQueue.pop_back();
+    if (parent->logPrefixProb > bestLogSeqProb)
+      extendNode (parent);
+    else
       break;
   }
 
@@ -303,17 +300,36 @@ double PrefixTree::logSeqProb (const list<InputToken>& input, bool humble) {
 }
 
 void PrefixTree::extendNode (Node* parent) {
-  maxPrefixLen = max (maxPrefixLen, parent->length());
   const InputToken inToks = machine.inputTokenizer.tok2sym.size() - 1;
   LogThisAt (5, "Nodes: " << nodeStore.size() << " Extending " << to_string_join(to_string_join (seqTraceback (parent), ""),"") << "* (logP " << parent->logPrefixProb << ")" << endl);
   double norm = parent->logSeqProb();
   for (InputToken inTok = 1; inTok <= inToks; ++inTok)
     log_accum_exp (norm, addNode(parent,inTok)->logPrefixProb);
   LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - parent->logPrefixProb) << endl);
+
+  if (maxPrefixLen > parent->length()) {
+    const InputIndex minPrefixLen = (maxPrefixLen < maxBacktrack) ? 0 : (maxPrefixLen - maxBacktrack);
+    if (minPrefixLen) {
+      NodePtrQueue purgedQueue;
+      for (auto np: nodeQueue)
+	if (np->length() >= minPrefixLen)
+	  purgedQueue.push_back (np);
+      make_heap (purgedQueue.begin(), purgedQueue.end(), nodeComparator);
+      nodeQueue.swap (purgedQueue);
+      LogThisAt (8, "Purged " << (purgedQueue.size() - nodeQueue.size()) << " sequences with length < " << minPrefixLen << ". New queue: " << nodeQueueDebugString() << endl);
+    }
+  }
 }
 
 PrefixTree::Node* PrefixTree::rootNode() {
   return &nodeStore.front();
+}
+
+string PrefixTree::nodeQueueDebugString() const {
+  vguard<string> nq;
+  for (auto np: nodeQueue)
+    nq.push_back (to_string_join (seqTraceback (np), ""));
+  return join (nq, ",");
 }
 
 PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humble) {
@@ -325,12 +341,16 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
   Node* nodePtr = &nodeStore.back();
   if (parent)
     parent->child.push_back (nodePtr);
+  maxPrefixLen = max (maxPrefixLen, nodePtr->length());
   
   LogThisAt (7, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
 
   nodePtr->fill (*this);
-  if (nodePtr->logPrefixProb > bestLogSeqProb)
-    nodeQueue.push (nodePtr);
+  if (nodePtr->logPrefixProb > bestLogSeqProb) {
+    nodeQueue.push_back (nodePtr);
+    push_heap (nodeQueue.begin(), nodeQueue.end(), nodeComparator);
+    LogThisAt (8, "Node queue: " << nodeQueueDebugString() << endl);
+  }
 
   const double logNodeSeqProb = nodePtr->logSeqProb();
   if (logNodeSeqProb > bestLogSeqProb) {
