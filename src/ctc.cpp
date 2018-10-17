@@ -4,6 +4,7 @@
 PrefixTree::Node::Node() :
   inTok (0),
   parent (NULL),
+  length (0),
   nStates (0),
   outLen (0),
   extended (false)
@@ -12,6 +13,7 @@ PrefixTree::Node::Node() :
 PrefixTree::Node::Node (const PrefixTree& tree, const Node* parent, InputToken inTok) :
   inTok (inTok),
   parent (parent),
+  length (parent ? (parent->length + 1) : 0),
   nStates (tree.nStates),
   outLen (tree.outLen),
   extended (false)
@@ -91,13 +93,6 @@ vguard<InputToken> PrefixTree::Node::traceback() const {
   for (const Node* node = this; node->inTok; node = node->parent)
     result.push_front (node->inTok);
   return vguard<InputToken> (result.begin(), result.end());
-}
-
-PrefixTree::InputIndex PrefixTree::Node::length() const {
-  InputIndex len = 0;
-  for (const Node* node = this; node->inTok; node = node->parent)
-    ++len;
-  return len;
 }
 
 PrefixTree::Node* PrefixTree::Node::randomChild (mt19937& mt) const {
@@ -313,12 +308,13 @@ void PrefixTree::extendNode (Node* parent) {
   parent->extended = true;
   LogThisAt (6, "log(Sum_x(P(Sx*)) / P(S*)) = " << (norm - parent->logPrefixProb) << endl);
 
-  if (maxPrefixLen > parent->length()) {
+  if (maxPrefixLen > parent->length) {
     const InputIndex minPrefixLen = (maxPrefixLen < maxBacktrack) ? 0 : (maxPrefixLen - maxBacktrack);
     if (minPrefixLen) {
       NodePtrQueue purgedQueue;
+      purgedQueue.reserve (nodeQueue.size());
       for (auto np: nodeQueue)
-	if (np->length() >= minPrefixLen)
+	if (np->length >= minPrefixLen)
 	  purgedQueue.push_back (np);
 	else
 	  removeNode (np);
@@ -354,7 +350,7 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
     nodePtr->parentIter = parent->child.end();
     --nodePtr->parentIter;
   }
-  maxPrefixLen = max (maxPrefixLen, nodePtr->length());
+  maxPrefixLen = max (maxPrefixLen, nodePtr->length);
   
   LogThisAt (7, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
 

@@ -2,7 +2,6 @@
 #define CTC_INCLUDED
 
 #include <list>
-#include <deque>
 #include <algorithm>
 #include <random>
 
@@ -22,6 +21,7 @@ struct PrefixTree {
     const Node* parent;
     const StateIndex nStates;
     const OutputIndex outLen;
+    const InputIndex length;
     vguard<double> cellStorage;
     double logPrefixProb;
     bool extended;
@@ -73,7 +73,6 @@ struct PrefixTree {
     }
 
     vguard<InputToken> traceback() const;
-    InputIndex length() const;
     Node* randomChild (mt19937&) const;
   };
   struct NodeComparator {
@@ -81,7 +80,7 @@ struct PrefixTree {
   };
 
   typedef list<Node> NodeStorage;
-  typedef deque<PrefixTree::Node*> NodePtrQueue;
+  typedef vector<PrefixTree::Node*> NodePtrQueue;
 
   const EvaluatedMachine& machine;
   const vguard<vguard<LogWeight> > sumInTrans;
