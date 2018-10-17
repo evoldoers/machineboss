@@ -27,6 +27,7 @@ struct PrefixTree {
     bool extended;
     list<Node*> child;
     list<Node>::iterator iter;
+    list<Node*>::iterator parentIter;
     
     Node();
     Node (const PrefixTree& tree, const Node* parent, InputToken inTok);

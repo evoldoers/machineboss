@@ -349,8 +349,11 @@ PrefixTree::Node* PrefixTree::addNode (Node* parent, InputToken inTok, bool humb
   Node* nodePtr = &nodeStore.back();
   nodePtr->iter = nodeStore.end();
   --nodePtr->iter;
-  if (parent)
+  if (parent) {
     parent->child.push_back (nodePtr);
+    nodePtr->parentIter = parent->child.end();
+    --nodePtr->parentIter;
+  }
   maxPrefixLen = max (maxPrefixLen, nodePtr->length());
   
   LogThisAt (7, "Adding node " << (parent ? to_string_join (seqTraceback (nodePtr), "") : string("<root>")) << endl);
@@ -381,11 +384,7 @@ void PrefixTree::removeNode (Node* node) {
     LogThisAt(8,"Removing " << to_string_join (seqTraceback(node), "") << endl);
     if (node->parent) {
       Node* parent = (Node*) node->parent;  // cast away const, ugh
-      list<Node*> survivingSibs;
-       for (auto s: parent->child)
-	if (s != node)
-	  survivingSibs.push_back (s);
-      parent->child.swap (survivingSibs);
+      parent->child.erase (node->parentIter);
       removeNode (parent);
     }
     nodeStore.erase (node->iter);
