@@ -22,7 +22,13 @@ struct BeamSearchMatrix {
   };
 
   typedef SeqNode::SeqNodePtr SeqNodePtr;
-  typedef map<SeqNodePtr,double> Cell;
+  struct Cell {
+    typedef map<SeqNodePtr,double> LogWeightMap;
+    LogWeightMap logWeight;
+    bool operator() (SeqNodePtr a, SeqNodePtr b) const {
+      return logWeight.at(a) > logWeight.at(b);
+    }
+  };
   
   const EvaluatedMachine& machine;
   const vguard<OutputToken> output;
@@ -33,7 +39,7 @@ struct BeamSearchMatrix {
 
   list<SeqNode> seqNodeStore;
   vguard<Cell> cellStore;
-  
+
   inline size_t nCells() const {
     return (outLen + 1) * nStates;
   }
@@ -53,27 +59,30 @@ struct BeamSearchMatrix {
   inline void accumulate (Cell& destCell, const EvaluatedMachineState::OutStateTransMap& outStateTransMap, InputToken inTok, OutputToken outTok, OutputIndex outPos) {
     if (outStateTransMap.count (outTok)) {
       for (const auto& st: outStateTransMap.at (outTok)) {
-	const Cell& srcCell = cell (outPos, st.first);
 	const EvaluatedMachineState::Trans& trans = st.second;
-	// MORE to go here
+	const Cell& srcCell = cell (outPos, st.first);
+	for (const auto& seq_lw: srcCell.logWeight) {
+	  const SeqNodePtr node = extendSeq (seq_lw.first, inTok);
+	  const LogWeight lw = seq_lw.second + trans.logWeight;
+	  destCell.logWeight[node] = destCell.logWeight.count(node) ? log_sum_exp (destCell.logWeight.at(node), lw) : lw;
+	}
       }
     }
   }
 
-  inline void extendSeq (SeqNodePtr node) {
-    if (node->child.empty()) {
-      node->child.reserve (inToks);
-      node->child.push_back (NULL);
-      for (InputToken inTok = 1; inTok < inToks; ++inTok) {
-	seqNodeStore.push_back (SeqNode (node, inTok));
-	node->child.push_back (&seqNodeStore.back());
-      }
+  inline SeqNodePtr extendSeq (SeqNodePtr node, InputToken inTok) {
+    if (node->child.empty())
+      node->child.insert (node->child.end(), inToks, NULL);
+    if (!node->child[inTok]) {
+      seqNodeStore.push_back (SeqNode (node, inTok));
+      node->child[inTok] = &seqNodeStore.back();
     }
+    return node->child[inTok];
   }
 
   BeamSearchMatrix (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, size_t beamWidth);
 
-  vguard<InputSymbol> doBeamSearch();
+  vguard<InputSymbol> bestSeq();
   vguard<InputSymbol> getSeq (SeqNodePtr) const;
 };
 
