@@ -566,10 +566,27 @@ size_t Machine::nSilentBackTransitions() const {
   return n;
 }
 
+size_t Machine::nEmptyOutputBackTransitions() const {
+  size_t n = 0;
+  for (StateIndex s = 1; s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
+      if (t.outputEmpty() && t.dest <= s)
+	++n;
+  return n;
+}
+
 bool Machine::isAdvancingMachine() const {
   for (StateIndex s = 1; s < nStates(); ++s)
     for (const auto& t: state[s].trans)
       if (t.isSilent() && t.dest <= s)
+	return false;
+  return true;
+}
+
+bool Machine::isDecodingMachine() const {
+  for (StateIndex s = 1; s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
+      if (t.outputEmpty() && t.dest <= s)
 	return false;
   return true;
 }
@@ -1011,15 +1028,20 @@ Machine Machine::advancingMachine() const {
   return am;
 }
 
-Machine Machine::advanceSort() const {
+Machine Machine::decodeSort() const {
+  return advanceSort (true);
+}
+
+Machine Machine::advanceSort (bool decode) const {
   Machine result;
-  const size_t nSilentBackBefore = nSilentBackTransitions();
+  const size_t nSilentBackBefore = decode ? nEmptyOutputBackTransitions() : nSilentBackTransitions();
+  const char* sortType = decode ? "non-outputting" : "silent";
   if (nSilentBackBefore) {
     vguard<set<StateIndex> > silentIncoming (nStates()), silentOutgoing (nStates());
     for (StateIndex s = 0; s < nStates(); ++s) {
       const MachineState& ms = state[s];
       for (const auto& trans: ms.trans)
-	if (trans.isSilent() && trans.dest != s && trans.dest != endState()) {
+	if ((decode ? trans.outputEmpty() : trans.isSilent()) && trans.dest != s && trans.dest != endState()) {
 	  silentOutgoing[s].insert (trans.dest);
 	  silentIncoming[trans.dest].insert (s);
 	}
@@ -1068,7 +1090,7 @@ Machine Machine::advanceSort() const {
     }
     if (!orderChanged) {
       result = *this;
-      LogThisAt(5,"Sorting left machine unchanged with " << nSilentBackBefore << " backward silent transitions" << endl);
+      LogThisAt(5,"Sorting left machine unchanged with " << nSilentBackBefore << " backward " << sortType << " transitions" << endl);
     } else {
       result.import (*this);
       result.state.reserve (nStates());
@@ -1078,27 +1100,27 @@ Machine Machine::advanceSort() const {
 	  trans.dest = old2new[trans.dest];
       }
     
-      const size_t nSilentBackAfter = result.nSilentBackTransitions();
-      Assert (nSilentBackAfter <= nSilentBackBefore, "Sorting increased number of silent backward transitions from %u to %u", nSilentBackBefore, nSilentBackAfter);
+      const size_t nSilentBackAfter = decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions();
+      Assert (nSilentBackAfter <= nSilentBackBefore, "Sorting increased number of silent %s transitions from %u to %u", sortType, nSilentBackBefore, nSilentBackAfter);
       if (nSilentBackAfter == nSilentBackBefore) {
 	result = *this;
-	LogThisAt(5,"Sorting left number of backward silent transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
+	LogThisAt(5,"Sorting left number of backward " << sortType << " transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
       } else
-	LogThisAt(5,"Sorting reduced number of backward silent transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
+	LogThisAt(5,"Sorting reduced number of backward " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
     }
   } else {
-    LogThisAt(5,"Machine has no backward silent transitions; sort unnecessary" << endl);
+    LogThisAt(5,"Machine has no backward " << sortType << " transitions; sort unnecessary" << endl);
     result = *this;
   }
   
   // show silent backward transitions
 #define SilentBackwardLogLevel 9
-  if (result.nSilentBackTransitions() > 0 && LoggingThisAt(SilentBackwardLogLevel)) {
-    LogThisAt(SilentBackwardLogLevel,"Silent backward transitions:" << endl);
+  if ((decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions()) > 0 && LoggingThisAt(SilentBackwardLogLevel)) {
+    LogThisAt(SilentBackwardLogLevel,"Backward " << sortType << " transitions:" << endl);
     for (StateIndex s = 1; s < nStates(); ++s)
       for (const auto& t: state[s].trans)
-	if (t.isSilent() && t.dest <= s)
+	if ((decode ? t.outputEmpty() : t.isSilent()) && t.dest <= s)
 	  LogThisAt(SilentBackwardLogLevel,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
   }
 

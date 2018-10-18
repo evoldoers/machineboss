@@ -195,7 +195,7 @@ test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-wild-generator test-wild-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix
+CONSTRUCT_TESTS = test-generator test-acceptor test-wild-generator test-wild-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
 test-generator:
 	@$(TEST) bin/$(BOSS) --generate t/io/seq101.json t/expect/generator101.json
 
@@ -276,6 +276,9 @@ test-nanopore:
 
 test-nanopore-prefix:
 	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --csv t/csv/nanopore_test.csv --transpose t/expect/nanopore_test_prefix.json
+
+test-nanopore-decode:
+	@$(TEST) bin/$(BOSS) --csv t/csv/nanopore_test.csv --transpose --beam-decode t/expect/nanopore_beam_decode.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
@@ -497,6 +500,8 @@ test-bittern:
 	@$(TEST) bin/$(BOSS) --input-chars 101 t/machine/bittern.json --encode t/expect/encode-i101-bittern.json
 	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --decode t/expect/decode-a12222-bittern.json
 	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --decode t/expect/decode-o12222-bittern.json
+	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --beam-decode t/expect/decode-a12222-bittern.json
+	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --beam-decode t/expect/decode-o12222-bittern.json
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS)

@@ -31,12 +31,11 @@ BeamSearchMatrix::BeamSearchMatrix (const EvaluatedMachine& machine, const vguar
   //       cell(seq+inTok,outPos,dest) += prob * trans(src,inTok,outTok,dest)
   //  keep only top beamWidth elements of cell
 
-  // TODO: I think we need a loop over inPos as well (and to separate results by input length).
-  // Otherwise what if there are i->j transitions that input a symbol, don't output anything, and j<i?
-  // These will be backward null transitions from the pov the recursion as currently described.
-
+  ProgressLog(plogDP,5);
+  plogDP.initProgress ("Performing beam-search (%lu cells)", nCells());
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos)
     for (StateIndex dest = 0; dest < nStates; ++dest) {
+      plogDP.logProgress ((nStates * outPos + dest) / nCells(), "filled %lu cells", nStates * outPos + dest);
       Cell& destCell = cell (outPos, dest);
       const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap = machine.state[dest].incoming;
       for (const auto& tok_ostm: inOutStateTransMap) {
@@ -61,8 +60,14 @@ BeamSearchMatrix::BeamSearchMatrix (const EvaluatedMachine& machine, const vguar
 	for (size_t n = 0; n < beamWidth; ++n) {
 	  const SeqNodePtr node = seqs[n];
 	  lw[node] = destCell.logWeight.at (node);
-	  destCell.logWeight.swap (lw);
 	}
+	destCell.logWeight.swap (lw);
+      }
+      if (LoggingThisAt(6)) {
+	vguard<string> seqs;
+	for (const auto& seq_lw: destCell.logWeight)
+	  seqs.push_back (string(join(getSeq(seq_lw.first),"")) + "(" + to_string(seq_lw.second) + ")");
+	clog << "Cell (" << outPos << "," << dest << "): " << to_string_join(seqs) << endl;
       }
     }
 }
@@ -78,7 +83,7 @@ vguard<InputSymbol> BeamSearchMatrix::bestSeq() {
 
 vguard<InputSymbol> BeamSearchMatrix::getSeq (SeqNodePtr node) const {
   list<InputToken> result;
-  for (; node; node = node->parent)
+  for (; node && node->inTok; node = node->parent)
     result.push_front (node->inTok);
   return machine.inputTokenizer.detokenize (vguard<InputToken> (result.begin(), result.end()));
 }

@@ -8,6 +8,8 @@
 #include "dpmatrix.h"
 #include "logger.h"
 
+#define DefaultBeamWidth 100
+
 struct BeamSearchMatrix {
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
@@ -62,7 +64,8 @@ struct BeamSearchMatrix {
 	const EvaluatedMachineState::Trans& trans = st.second;
 	const Cell& srcCell = cell (outPos, st.first);
 	for (const auto& seq_lw: srcCell.logWeight) {
-	  const SeqNodePtr node = extendSeq (seq_lw.first, inTok);
+	  const SeqNodePtr prevNode = seq_lw.first;
+	  const SeqNodePtr node = inTok ? extendSeq(prevNode,inTok) : prevNode;
 	  const LogWeight lw = seq_lw.second + trans.logWeight;
 	  destCell.logWeight[node] = destCell.logWeight.count(node) ? log_sum_exp (destCell.logWeight.at(node), lw) : lw;
 	}
@@ -80,7 +83,7 @@ struct BeamSearchMatrix {
     return node->child[inTok];
   }
 
-  BeamSearchMatrix (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, size_t beamWidth);
+  BeamSearchMatrix (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, size_t beamWidth = DefaultBeamWidth);
 
   vguard<InputSymbol> bestSeq();
   vguard<InputSymbol> getSeq (SeqNodePtr) const;

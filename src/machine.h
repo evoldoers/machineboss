@@ -122,6 +122,7 @@ struct Machine {
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
   bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
+  bool isDecodingMachine() const;  // no non-outputting i->j transitions where j<i
   bool isAligningMachine() const;  // at most one i->j transition with given input & output labels
 
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
@@ -139,7 +140,9 @@ struct Machine {
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
 
   size_t nSilentBackTransitions() const;
-  Machine advanceSort() const;  // attempt to minimize number of silent i->j transitions where j<i
+  size_t nEmptyOutputBackTransitions() const;
+  Machine decodeSort() const;  // same as advanceSort(true)
+  Machine advanceSort (bool decode = false) const;  // attempt to minimize number of silent i->j transitions where j<i (if decode=true, then s/silent/non-outputting/)
   Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
 
   Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // returns either advancingMachine(), dropSilentBackTransitions(), or clone of self, depending on strategy

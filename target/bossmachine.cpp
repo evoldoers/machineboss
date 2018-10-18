@@ -26,6 +26,7 @@
 #include "../src/csv.h"
 #include "../src/compiler.h"
 #include "../src/ctc.h"
+#include "../src/beam.h"
 
 using namespace std;
 
@@ -80,9 +81,10 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
-      ("sort", "topologically sort, if possible, preserving silent cycles at all costs")
+      ("sort", "topologically sort silent transition graph, if possible, but preserve silent cycles")
       ("sort-sum", "topologically sort, eliminating silent cycles")
       ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
+      ("decode-sort", "topologically sort non-outputting transition graph")
       ("eliminate,n", "eliminate all silent transitions")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
@@ -132,6 +134,8 @@ int main (int argc, char** argv) {
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ("decode,Z", "find most likely input by CTC prefix search")
       ("backtrack", po::value<long>(), "specify max backtracking length for CTC prefix search")
+      ("beam-decode", "find most likely input by beam search")
+      ("beam-width", po::value<size_t>(), (string("number of sequences to track during beam search (default ") + to_string((size_t)DefaultBeamWidth) + ")").c_str())
       ("cool-decode", "find most likely input by simulated annealing")
       ("mcmc-decode", "find most likely input by MCMC search")
       ("decode-steps", po::value<int>(), "simulated annealing steps per initial symbol")
@@ -316,6 +320,8 @@ int main (int argc, char** argv) {
 	  m = popMachine().advanceSort().dropSilentBackTransitions();
 	else if (command == "--sort")
 	  m = popMachine().advanceSort();
+	else if (command == "--decode-sort")
+	  m = popMachine().decodeSort();
 	else if (command == "--compose-sum")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose")
@@ -458,7 +464,7 @@ int main (int argc, char** argv) {
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
-    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode");
+    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
     if (paramsSpecified	&& !inferenceRequested) {
       machine.funcs = funcs.combine (seed);
       machine.cons = constraints;
@@ -527,7 +533,7 @@ int main (int argc, char** argv) {
     }
 
     // if inputs/outputs specified individually, create all input-output pairs
-    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode")))
+    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
       inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
     if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode")))
       outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
@@ -628,20 +634,27 @@ int main (int argc, char** argv) {
     }
 
     // decode
-    if (vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode")) {
+    if (vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")) {
       Require (gotData, "To decode an input sequence, please specify an output sequence file");
-      const EvaluatedMachine eval (machine, params);
+      const Machine decodeMachine = vm.count("beam-decode") ? machine.decodeSort() : machine;
+      const EvaluatedMachine eval (decodeMachine, params);
       SeqPairList decodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input for a given output");
-	PrefixTree tree (eval, seqPair.output.seq, maxBacktrack);
 	vguard<InputSymbol> decoded;
-	if (vm.count("cool-decode") || vm.count("mcmc-decode")) {
-	  mt19937 mt = makeRnd();
-	  const int defaultSteps = 10;
-	  decoded = tree.doAnnealedSearch (mt, vm.count("decode-steps") ? vm.at("decode-steps").as<int>() : defaultSteps, vm.count("cool-decode"));
-	} else
-	  decoded = tree.doPrefixSearch();
+	if (vm.count("beam-decode")) {
+	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
+	  BeamSearchMatrix beam (eval, seqPair.output.seq, beamWidth);
+	  decoded = beam.bestSeq();
+	} else {
+	  PrefixTree tree (eval, seqPair.output.seq, maxBacktrack);
+	  if (vm.count("cool-decode") || vm.count("mcmc-decode")) {
+	    mt19937 mt = makeRnd();
+	    const int defaultSteps = 10;
+	    decoded = tree.doAnnealedSearch (mt, vm.count("decode-steps") ? vm.at("decode-steps").as<int>() : defaultSteps, vm.count("cool-decode"));
+	  } else
+	    decoded = tree.doPrefixSearch();
+	}
 	decodeResults.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ string(DefaultInputSequenceName), decoded }), seqPair.output }));
       }
       decodeResults.writeJson (cout);
