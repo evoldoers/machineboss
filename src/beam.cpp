@@ -15,20 +15,9 @@ BeamSearchMatrix::BeamSearchMatrix (const EvaluatedMachine& machine, const vguar
   output (machine.outputTokenizer.tokenize (outSym)),
   outLen (output.size()),
   nStates (machine.nStates()),
+  inToks (machine.inputTokenizer.tok2sym.size()),
   beamWidth (bw)
 { }
-
-void BeamSearchMatrix::extendSeq (SeqNodePtr node) {
-  if (node->child.empty()) {
-    const InputToken inToks = machine.inputTokenizer.tok2sym.size();
-    node->child.reserve (inToks);
-    node->child.push_back (NULL);
-    for (InputToken inTok = 1; inTok < inToks; ++inTok) {
-      seqNodeStore.push_back (SeqNode (node, inTok));
-      node->child.push_back (&seqNodeStore.back());
-    }
-  }
-}
 
 vguard<InputSymbol> BeamSearchMatrix::getSeq (SeqNodePtr node) const {
   list<InputToken> result;
@@ -38,8 +27,6 @@ vguard<InputSymbol> BeamSearchMatrix::getSeq (SeqNodePtr node) const {
 }
 
 vguard<InputSymbol> BeamSearchMatrix::doBeamSearch() {
-  // TODO: write me
-  
   // for outPos = 0 to outLen
   //  for dest = 0 to nStates-1
   //   for type in (ins,del,match,null)
@@ -49,5 +36,10 @@ vguard<InputSymbol> BeamSearchMatrix::doBeamSearch() {
   //       cell(seq+inTok,outPos,dest) += prob * trans(src,inTok,outTok,dest)
   //  keep only top beamWidth elements of cell
 
+  for (OutputIndex outPos = 0; outPos <= outLen; ++outPos)
+    for (StateIndex dest = 0; dest < nStates; ++dest) {
+    }
+  
+  
   return vguard<InputSymbol>();
 }
