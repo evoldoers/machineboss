@@ -12,16 +12,17 @@ struct BeamSearchMatrix {
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
 
-  typedef size_t SeqNodeIndex;
   struct SeqNode {
+    typedef SeqNode* SeqNodePtr;
     const InputToken inTok;
-    const SeqNodeIndex parent;
-    list<SeqNodeIndex> child;
+    const SeqNodePtr parent;
+    vguard<SeqNodePtr> child;
     SeqNode();
-    SeqNode (SeqNodeIndex p, InputToken t);
+    SeqNode (SeqNodePtr p, InputToken t);
   };
 
-  typedef map<SeqNodeIndex,double> Cell;
+  typedef SeqNode::SeqNodePtr SeqNodePtr;
+  typedef map<SeqNodePtr,double> Cell;
   
   const EvaluatedMachine& machine;
   const vguard<OutputToken> output;
@@ -29,7 +30,7 @@ struct BeamSearchMatrix {
   const StateIndex nStates;
   const size_t beamWidth;
 
-  vguard<SeqNode> seqNodeStore;
+  list<SeqNode> seqNodeStore;
   vguard<Cell> cellStore;
   
   inline size_t nCells() const {
@@ -47,10 +48,13 @@ struct BeamSearchMatrix {
   inline const Cell& cell (OutputIndex outPos, StateIndex state) const {
     return cellStore [cellIndex (outPos, state)];
   }
-  
+
   BeamSearchMatrix (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, size_t beamWidth);
 
+  void extendSeq (SeqNodePtr);
+  
   vguard<InputSymbol> doBeamSearch();
+  vguard<InputSymbol> getSeq (SeqNodePtr) const;
 };
 
 #endif /* BEAM_INCLUDED */
