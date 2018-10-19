@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/seqpairlist.json",
-  "description": "BossMachine sequence-pair list schema",
+  "id": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/seqpairlist.json",
+  "description": "MachineBoss sequence-pair list schema",
   "type": "array",
-  "items": { "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/seqpair.json" }
+  "items": { "$ref": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/seqpair.json" }
 }

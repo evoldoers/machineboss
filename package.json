@@ -1,9 +1,9 @@
 {
-  "name": "bossmachine",
+  "name": "machineboss",
   "description": "Bioinformatics automata",
   "version": "0.0.1",
   "dependencies": {
-    "hdf5.node": "ihh/hdf5.node#int64_as_string",
+    "hdf5.node": "evoldoers/hdf5.node#int64_as_string",
     "bionode-fasta": "*",
     "mersennetwister": "*",
     "jStat": "*",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ihh/bossmachine"
+    "url": "https://github.com/evoldoers/machineboss"
   },
   "license": "BSD-3-Clause"
 }

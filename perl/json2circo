@@ -4,6 +4,6 @@
 my $filename = shift;
 my $prefix = $filename;
 $prefix =~ s/\.json$//;
-system "bossmachine $filename -G | perl -pe 's/headlabel/label/' > $prefix.dot";
+system "machineboss $filename -G | perl -pe 's/headlabel/label/' > $prefix.dot";
 system "circo -Tpdf $prefix.dot > $prefix.pdf";
 system "open $prefix.pdf";

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json",
-  "description": "BossMachine named sequence schema",
+  "id": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/namedsequence.json",
+  "description": "MachineBoss named sequence schema",
   "type": "object",
   "required": ["sequence"],
   "properties": {

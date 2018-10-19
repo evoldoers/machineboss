@@ -1,4 +1,4 @@
-# BossMachine
+# Machine Boss
 
 ## Bioinformatics Open Source Sequence Machine
 
@@ -19,13 +19,15 @@ can be thought of as the combination of four state machines accounting for the f
 3. translation of DNA to protein
 4. mutation of the protein (e.g. using the BLOSUM62 substitution matrix with affine gaps)
 
-With BossMachine, each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
+With MachineBoss, each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
 
-BossMachine can read HMMER [profiles](http://hmmer.org/),
+MachineBoss can read HMMER [profiles](http://hmmer.org/),
 write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
+
+![](img/TweedNast.jpg)
 
 ## Features
 
@@ -36,19 +38,19 @@ JSON representation of a [weighted finite-state transducer](https://en.wikipedia
 
 ## JSON file formats
 
-BossMachine defines JSON schemas for several data structures.
+MachineBoss defines JSON schemas for several data structures.
 Here are some examples:
 
-- [transducer](https://github.com/ihh/bossmachine/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel) from coding theory
-    - [parameters](https://github.com/ihh/bossmachine/blob/master/t/io/params.json)
-    - [constraints](https://github.com/ihh/bossmachine/blob/master/t/io/constraints.json) for model fitting. This file specifies the constraints `a+b=1` and `x+y+z=1`
-        - see also [this file](https://github.com/ihh/bossmachine/blob/master/t/io/pqcons.json) whose constraint `p+q=1` can be used to fit the binary symmetric channel, above
-- [individual sequence](https://github.com/ihh/bossmachine/blob/master/t/io/seqAGC.json) for constructing generators and acceptors
-    - [list of sequence-pairs](https://github.com/ihh/bossmachine/blob/master/t/io/seqpairlist.json) for model-fitting and alignment
+- [transducer](https://github.com/evoldoers/machineboss/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel) from coding theory
+    - [parameters](https://github.com/evoldoers/machineboss/blob/master/t/io/params.json)
+    - [constraints](https://github.com/evoldoers/machineboss/blob/master/t/io/constraints.json) for model fitting. This file specifies the constraints `a+b=1` and `x+y+z=1`
+        - see also [this file](https://github.com/evoldoers/machineboss/blob/master/t/io/pqcons.json) whose constraint `p+q=1` can be used to fit the binary symmetric channel, above
+- [individual sequence](https://github.com/evoldoers/machineboss/blob/master/t/io/seqAGC.json) for constructing generators and acceptors
+    - [list of sequence-pairs](https://github.com/evoldoers/machineboss/blob/master/t/io/seqpairlist.json) for model-fitting and alignment
 
 ## Command-line interface
 
-BossMachine has an associated command-line tool that makes most transducer operations available through its arguments,
+MachineBoss has an associated command-line tool that makes most transducer operations available through its arguments,
 defining a small expression language for weighted automata.
 
 ## Command-line usage

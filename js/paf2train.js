@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // emacs mode -*-JavaScript-*-
 
-// Convert a PAF file (including CIGAR strings for the alignment), together with FASTA files for query & reference, to a BossMachine JSON-format training dataset
+// Convert a PAF file (including CIGAR strings for the alignment), together with FASTA files for query & reference, to a MachineBoss JSON-format training dataset
 // PAF: https://github.com/lh3/miniasm/blob/master/PAF.md
 // FASTA: https://en.wikipedia.org/wiki/FASTA_format
 

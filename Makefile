@@ -97,7 +97,7 @@ SH = /bin/sh
 
 # Targets
 
-BOSS = bossmachine
+BOSS = boss
 
 all: $(BOSS)
 

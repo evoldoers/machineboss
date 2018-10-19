@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/expr.json",
-  "description": "BossMachine expression schema",
+  "id": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/expr.json",
+  "description": "MachineBoss expression schema",
   "definitions": {
     "expr": {
       "anyOf": [

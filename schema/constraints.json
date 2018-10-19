@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/constraint.json",
-  "description": "BossMachine parameter constraints schema",
+  "id": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/constraint.json",
+  "description": "MachineBoss parameter constraints schema",
   "type": "object",
   "properties": {
     "prob": {

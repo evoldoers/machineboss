@@ -10,7 +10,7 @@
 #include "schema.h"
 #include "util.h"
 
-#define SchemaUrlPrefix "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/"
+#define SchemaUrlPrefix "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/"
 #define SchemaUrlSuffix ".json"
 
 using namespace std;

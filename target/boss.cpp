@@ -489,8 +489,8 @@ int main (int argc, char** argv) {
       JsonLoader<ParamFuncs>::readFiles (funcs, vm.at("functions").as<vector<string> >());
 
     Constraints constraints;
-    if (vm.count("norms"))
-      JsonLoader<Constraints>::readFiles (constraints, vm.at("norms").as<vector<string> >());
+    if (vm.count("constraints"))
+      JsonLoader<Constraints>::readFiles (constraints, vm.at("constraints").as<vector<string> >());
 
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
@@ -582,12 +582,12 @@ int main (int argc, char** argv) {
     // fit parameters
     Params params;
     if (vm.count("train")) {
-      Require ((vm.count("norms") || !machine.cons.empty())
+      Require ((vm.count("constraints") || !machine.cons.empty())
 	       && (gotData || noIO),
 	       "To fit parameters, please specify a constraints file and (for machines with input/output) a data file");
       MachineFitter fitter;
       fitter.machine = machine;
-      if (vm.count("norms"))
+      if (vm.count("constraints"))
 	fitter.constraints = constraints;
       fitter.constants = funcs;
       fitter.seed = fitter.allConstraints().defaultParams().combine (seed);

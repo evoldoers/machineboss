@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/schema#",
-  "id": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/seqpair.json",
-  "description": "BossMachine sequence-pair schema",
+  "id": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/seqpair.json",
+  "description": "MachineBoss sequence-pair schema",
   "type": "object",
   "oneOf": [
     {
@@ -9,10 +9,10 @@
       "additionalProperties": false,
       "properties": {
         "input": {
-          "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
+          "$ref": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/namedsequence.json"
         },
         "output": {
-          "$ref": "https://raw.githubusercontent.com/ihh/bossmachine/master/schema/namedsequence.json"
+          "$ref": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/namedsequence.json"
         },
         "meta": { }
       }
