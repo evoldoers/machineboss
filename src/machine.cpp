@@ -529,6 +529,36 @@ Machine Machine::weightOutputsUniformly() const {
   return weightOutputs (w);
 }
 
+Machine Machine::normalizeJointly() const {
+  Machine m = *this;
+  for (auto& ms: m.state) {
+    WeightExpr norm = WeightAlgebra::zero();
+    for (auto& t: ms.trans)
+      norm = WeightAlgebra::add (norm, t.weight);
+    for (auto& t: ms.trans)
+      t.weight = WeightAlgebra::divide (t.weight, norm);
+  }
+  return m;
+}
+
+Machine Machine::normalizeConditionally() const {
+  Machine m = *this;
+  auto alph = m.inputAlphabet();
+  alph.push_back (string());
+  for (auto& ms: m.state) {
+    for (const auto& inSym: alph) {
+      WeightExpr norm = WeightAlgebra::zero();
+      for (auto& t: ms.trans)
+	if (t.in == inSym)
+	  norm = WeightAlgebra::add (norm, t.weight);
+      for (auto& t: ms.trans)
+	if (t.in == inSym)
+	  t.weight = WeightAlgebra::divide (t.weight, norm);
+    }
+  }
+  return m;
+}
+
 Machine Machine::pointwiseReciprocal() const {
   Machine m (*this);
   for (auto& ms: m.state)

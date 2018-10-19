@@ -75,7 +75,6 @@ Transducer construction:
                                1/(output alphabet size)
   --generate-fasta arg         generator for FASTA-format sequence
   --generate-csv arg           create generator from CSV file
-  --generate-csv-norm arg      create normalized generator from CSV file
   --generate-json arg          sequence generator for JSON-format sequence
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
   --accept-one arg             acceptor for any one of specified characters
@@ -87,7 +86,6 @@ Transducer construction:
                                alphabet size)
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept-csv arg             create acceptor from CSV file
-  --accept-csv-norm arg        create normalized acceptor from CSV file
   --accept-json arg            sequence acceptor for JSON-format sequence
   --echo-one arg               identity for any one of specified characters
   --echo-wild arg              identity for Kleene closure over specified 
@@ -104,6 +102,10 @@ Postfix operators:
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
   -t [ --transpose ]           transpose: swap input/output
+  --joint-norm                 normalize jointly (outgoing transition weights 
+                               sum to 1)
+  --cond-norm                  normalize conditionally (outgoing transition 
+                               weights for each input symbol sum to 1)
   --sort                       topologically sort silent transition graph, if 
                                possible, but preserve silent cycles
   --sort-sum                   topologically sort, eliminating silent cycles
@@ -158,16 +160,17 @@ Transducer application:
   -C [ --counts ]              Forward-Backward counts (derivatives of 
                                log-likelihood with respect to logs of 
                                parameters)
-  -Z [ --decode ]              find most likely input by CTC prefix search
-  --backtrack arg              specify max backtracking length for CTC prefix 
-                               search
-  --beam-decode                find most likely input by beam search
+  -Z [ --beam-decode ]         find most likely input by beam search
   --beam-width arg             number of sequences to track during beam search 
                                (default 100)
+  --prefix-decode              find most likely input by CTC prefix search
+  --prefix-backtrack arg       specify max backtracking length for CTC prefix 
+                               search
   --cool-decode                find most likely input by simulated annealing
   --mcmc-decode                find most likely input by MCMC search
   --decode-steps arg           simulated annealing steps per initial symbol
-  -Y [ --encode ]              find most likely output by CTC prefix search
+  -Y [ --beam-encode ]         find most likely output by beam search
+  --prefix-encode              find most likely output by CTC prefix search
   --random-encode              sample random output by stochastic prefix search
   --seed arg                   random number seed
 

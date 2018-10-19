@@ -204,9 +204,11 @@ test-acceptor:
 
 test-wild-generator:
 	@$(TEST) bin/$(BOSS) --generate-wild ACGT t/expect/ACGT_generator.json
+	@$(TEST) bin/$(BOSS) --generate-wild-dna t/expect/ACGT_generator.json
 
 test-wild-acceptor:
 	@$(TEST) bin/$(BOSS) --accept-wild ACGT t/expect/ACGT_acceptor.json
+	@$(TEST) bin/$(BOSS) --accept-wild-dna t/expect/ACGT_acceptor.json
 
 test-union:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
@@ -260,9 +262,9 @@ test-hmmer:
 
 test-csv:
 	@$(TEST) bin/$(BOSS) --generate-csv t/csv/test.csv t/expect/csvtest.json
-	@$(TEST) bin/$(BOSS) --generate-csv-norm t/csv/test.csv t/expect/normcsvtest.json
+	@$(TEST) bin/$(BOSS) --generate-csv t/csv/test.csv --cond-norm t/expect/normcsvtest.json
 	@$(TEST) bin/$(BOSS) --accept-csv t/csv/test.csv --transpose t/expect/csvtest.json
-	@$(TEST) bin/$(BOSS) --accept-csv-norm t/csv/test.csv --transpose t/expect/normcsvtest.json
+	@$(TEST) bin/$(BOSS) --accept-csv t/csv/test.csv --transpose --joint-norm t/expect/normcsvtest.json
 
 test-csv-tiny:
 	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_uc.json --generate-csv t/csv/tiny_uc.csv --transpose t/expect/tiny_uc.json
@@ -495,13 +497,13 @@ test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
 DECODE_TESTS = test-decode-bitecho-101 test-bittern
 
 test-decode-bitecho-101:
-	@$(TEST) bin/$(BOSS) t/machine/bitecho.json --accept-chars 101 --decode t/expect/decode-bitecho-101.json
+	@$(TEST) bin/$(BOSS) t/machine/bitecho.json --accept-chars 101 --prefix-decode t/expect/decode-bitecho-101.json
 
 test-bittern:
-	@$(TEST) bin/$(BOSS) --generate-chars 101 t/machine/bittern.json --encode t/expect/encode-g101-bittern.json
-	@$(TEST) bin/$(BOSS) --input-chars 101 t/machine/bittern.json --encode t/expect/encode-i101-bittern.json
-	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --decode t/expect/decode-a12222-bittern.json
-	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --decode t/expect/decode-o12222-bittern.json
+	@$(TEST) bin/$(BOSS) --generate-chars 101 t/machine/bittern.json --prefix-encode t/expect/encode-g101-bittern.json
+	@$(TEST) bin/$(BOSS) --input-chars 101 t/machine/bittern.json --prefix-encode t/expect/encode-i101-bittern.json
+	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --prefix-decode t/expect/decode-a12222-bittern.json
+	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --prefix-decode t/expect/decode-o12222-bittern.json
 	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --beam-decode t/expect/decode-a12222-bittern.json
 	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --beam-decode t/expect/decode-o12222-bittern.json
 

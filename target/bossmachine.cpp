@@ -6,6 +6,7 @@
 #include <random>
 #include <deque>
 #include <random>
+#include <regex>
 #include <boost/program_options.hpp>
 
 #include "../src/vguard.h"
@@ -56,7 +57,6 @@ int main (int argc, char** argv) {
       ("generate-uniform", po::value<string>(), "as --generate-iid, but weights outputs by 1/(output alphabet size)")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
-      ("generate-csv-norm", po::value<string>(), "create normalized generator from CSV file")
       ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
@@ -65,7 +65,6 @@ int main (int argc, char** argv) {
       ("accept-uniform", po::value<string>(), "as --accept-iid, but weights outputs by 1/(input alphabet size)")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept-csv", po::value<string>(), "create acceptor from CSV file")
-      ("accept-csv-norm", po::value<string>(), "create normalized acceptor from CSV file")
       ("accept-json", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
@@ -83,6 +82,8 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("transpose,t", "transpose: swap input/output")
+      ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
+      ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
       ("sort", "topologically sort silent transition graph, if possible, but preserve silent cycles")
       ("sort-sum", "topologically sort, eliminating silent cycles")
       ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
@@ -134,14 +135,15 @@ int main (int argc, char** argv) {
       ("align,A", "Viterbi sequence alignment")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
-      ("decode,Z", "find most likely input by CTC prefix search")
-      ("backtrack", po::value<long>(), "specify max backtracking length for CTC prefix search")
-      ("beam-decode", "find most likely input by beam search")
+      ("beam-decode,Z", "find most likely input by beam search")
       ("beam-width", po::value<size_t>(), (string("number of sequences to track during beam search (default ") + to_string((size_t)DefaultBeamWidth) + ")").c_str())
+      ("prefix-decode", "find most likely input by CTC prefix search")
+      ("prefix-backtrack", po::value<long>(), "specify max backtracking length for CTC prefix search")
       ("cool-decode", "find most likely input by simulated annealing")
       ("mcmc-decode", "find most likely input by MCMC search")
       ("decode-steps", po::value<int>(), "simulated annealing steps per initial symbol")
-      ("encode,Y", "find most likely output by CTC prefix search")
+      ("beam-encode,Y", "find most likely output by beam search")
+      ("prefix-encode", "find most likely output by CTC prefix search")
       ("random-encode", "sample random output by stochastic prefix search")
       ("seed", po::value<int>(), "random number seed")
       ;
@@ -186,6 +188,15 @@ int main (int argc, char** argv) {
     alias[string("--concat")] = "--concatenate";
     alias[string("--or")] = "--union";
 
+    alias[string("--decode")] = "--beam-decode";
+    alias[string("--encode")] = "--beam-encode";
+
+    const regex presetAlphRegex ("^--(generate|accept|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
+    map<string,string> presetAlph;
+    presetAlph[string("dna")] = "ACGT";
+    presetAlph[string("rna")] = "ACGU";
+    presetAlph[string("aa")] = "ACDEFGHIKLMNPQRSTVWY";
+
     po::variables_map vm;
     po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).allow_unregistered().run();
     po::store (parsed, vm);
@@ -222,7 +233,7 @@ int main (int argc, char** argv) {
 	  cout << helpOpts << endl;
 	  throw runtime_error (lastCommand.size() ? (string("Missing argument for ") + lastCommand) : string("Missing command"));
 	}
-	const string arg = args.front();
+	string arg = args.front();
 	args.pop_front();
 	auto getArg = [&] () -> string {
 	  if (args.empty()) {
@@ -246,12 +257,20 @@ int main (int argc, char** argv) {
 	  return nextMachineForCommand (arg);
 	};
 
-	const string aliasedArg = alias.count(arg) ? alias.at(arg) : arg;
+	smatch presetAlphMatch;
+	if (regex_search (arg, presetAlphMatch, presetAlphRegex)) {
+	  args.push_front (presetAlph[presetAlphMatch.str(3)]);
+	  arg = string("--") + presetAlphMatch.str(1) + "-" + presetAlphMatch.str(2);
+	}
+	
+	if (alias.count (arg))
+	  arg = alias.at (arg);
+
 	const po::option_description* desc = NULL;
-	if (aliasedArg[0] == '-') {
-	  desc = transOpts.find_nothrow (aliasedArg, false);
-	  if (!desc && aliasedArg.size() > 1 && aliasedArg[1] == '-')
-	    desc = transOpts.find_nothrow (aliasedArg.substr(2), false);
+	if (arg[0] == '-') {
+	  desc = transOpts.find_nothrow (arg, false);
+	  if (!desc && arg.size() > 1 && arg[1] == '-')
+	    desc = transOpts.find_nothrow (arg.substr(2), false);
 	  if (desc)
 	    LogThisAt(3,"Command '" << arg << "' ==> " << desc->description() << endl);
 	  else
@@ -322,6 +341,10 @@ int main (int argc, char** argv) {
 	  m = popMachine().advanceSort().dropSilentBackTransitions();
 	else if (command == "--sort")
 	  m = popMachine().advanceSort();
+	else if (command == "--joint-norm")
+	  m = popMachine().normalizeJointly();
+	else if (command == "--cond-norm")
+	  m = popMachine().normalizeConditionally();
 	else if (command == "--decode-sort")
 	  m = popMachine().decodeSort();
 	else if (command == "--compose-sum")
@@ -427,18 +450,18 @@ int main (int argc, char** argv) {
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine();
-	} else if (command == "--generate-csv" || command == "--generate-csv-norm") {
+	} else if (command == "--generate-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
-	  m = csv.machine (command == "--generate-csv-norm");
-	} else if (command == "--accept-csv" || command == "--accept-csv-norm") {
+	  m = csv.machine();
+	} else if (command == "--accept-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
-	  m = csv.machine (command == "--accept-csv-norm").transpose();
+	  m = csv.machine().transpose();
 	} else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);
@@ -472,7 +495,7 @@ int main (int argc, char** argv) {
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
-    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
+    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
     if (paramsSpecified	&& !inferenceRequested) {
       machine.funcs = funcs.combine (seed);
       machine.cons = constraints;
@@ -541,9 +564,9 @@ int main (int argc, char** argv) {
     }
 
     // if inputs/outputs specified individually, create all input-output pairs
-    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode") || vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
+    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
       inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
-    if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("encode") || vm.count("random-encode")))
+    if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")))
       outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
@@ -621,20 +644,27 @@ int main (int argc, char** argv) {
     
     // encode
     const long maxBacktrack = vm.count("backtrack") ? vm.at("backtrack").as<long>() : numeric_limits<long>::max();
-    if (vm.count("encode") || vm.count("random-encode")) {
+    if (vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
       const Machine trans = machine.transpose().advanceSort().advancingMachine();
-      const EvaluatedMachine eval (trans, params);
+      const Machine decodeTrans = vm.count("beam-encode") ? trans.decodeSort() : trans;
+      const EvaluatedMachine eval (decodeTrans, params);
       SeqPairList encodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
-	PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq, maxBacktrack);
 	vguard<OutputSymbol> encoded;
-	if (vm.count("random-encode")) {
-	  mt19937 mt = makeRnd();
-	  encoded = tree.sampleSeq (mt);
-	} else
-	  encoded = tree.doPrefixSearch();
+	if (vm.count("beam-encode")) {
+	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
+	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);
+	  encoded = beam.bestSeq();
+	} else {
+	  PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq, maxBacktrack);
+	  if (vm.count("random-encode")) {
+	    mt19937 mt = makeRnd();
+	    encoded = tree.sampleSeq (mt);
+	  } else
+	    encoded = tree.doPrefixSearch();
+	}
 	encodeResults.seqPairs.push_back (SeqPair ({ seqPair.input, NamedOutputSeq ({ string(DefaultOutputSequenceName), encoded }) }));
       }
       encodeResults.writeJson (cout);
@@ -642,7 +672,7 @@ int main (int argc, char** argv) {
     }
 
     // decode
-    if (vm.count("decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")) {
+    if (vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")) {
       Require (gotData, "To decode an input sequence, please specify an output sequence file");
       const Machine decodeMachine = vm.count("beam-decode") ? machine.decodeSort() : machine;
       const EvaluatedMachine eval (decodeMachine, params);

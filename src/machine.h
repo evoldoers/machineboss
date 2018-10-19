@@ -135,7 +135,10 @@ struct Machine {
 
   Machine weightInputsUniformly() const;
   Machine weightOutputsUniformly() const;
-  
+
+  Machine normalizeJointly() const;  // for each state, sum_{outgoing transitions} p(trans) = 1
+  Machine normalizeConditionally() const;  // for each state & each input token, sum_{outgoing transitions} p(trans) = 1
+
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
 

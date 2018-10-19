@@ -16,7 +16,7 @@ struct CSVProfile {
   void readRows (ifstream&, const char* splitChars = DefaultCSVSplitChars);
   void read (ifstream&, const char* splitChars = DefaultCSVSplitChars);
 
-  Machine machine (bool normalize = false) const;
+  Machine machine() const;
 };
 
 #endif /* HMMER_INCLUDED */
