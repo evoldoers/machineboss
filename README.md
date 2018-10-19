@@ -27,7 +27,7 @@ and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
-![](img/TweedNast.jpg)
+<img style="float:right;width:50%;" src="img/TweedNast.jpg">
 
 ## Features
 
