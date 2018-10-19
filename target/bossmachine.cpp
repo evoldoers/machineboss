@@ -55,20 +55,22 @@ int main (int argc, char** argv) {
       ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output " MachineParamPrefix)
       ("generate-uniform", po::value<string>(), "as --generate-iid, but weights outputs by 1/(output alphabet size)")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
-      ("generate", po::value<string>(), "sequence generator for JSON-format sequence")
+      ("generate-csv", po::value<string>(), "create generator from CSV file")
+      ("generate-csv-norm", po::value<string>(), "create normalized generator from CSV file")
+      ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
       ("accept-iid", po::value<string>(), "as --accept-wild, but followed by --weight-input " MachineParamPrefix)
       ("accept-uniform", po::value<string>(), "as --accept-iid, but weights outputs by 1/(input alphabet size)")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
-      ("accept", po::value<string>(), "sequence acceptor for JSON-format sequence")
+      ("accept-csv", po::value<string>(), "create acceptor from CSV file")
+      ("accept-csv-norm", po::value<string>(), "create normalized acceptor from CSV file")
+      ("accept-json", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "create machine from HMMER3 model file")
-      ("norm-csv,V", po::value<string>(), "create normalized machine from CSV file")
-      ("csv", po::value<string>(), "create machine from CSV file, without normalization")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -264,7 +266,7 @@ int main (int argc, char** argv) {
 	  m = MachineLoader::fromFile (getArg());
 	else if (command == "--preset")
 	  m = MachinePresets::makePreset (getArg().c_str());
-	else if (command == "--generate") {
+	else if (command == "--generate-json") {
 	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
 	  m = Machine::generator (inSeq.seq, inSeq.name);
 	} else if (command == "--generate-fasta") {
@@ -286,7 +288,7 @@ int main (int argc, char** argv) {
 	} else if (command == "--generate-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleGenerator (splitToChars (chars));
-	} else if (command == "--accept") {
+	} else if (command == "--accept-json") {
 	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
 	  m = Machine::acceptor (outSeq.seq, outSeq.name);
 	} else if (command == "--accept-fasta") {
@@ -425,12 +427,18 @@ int main (int argc, char** argv) {
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine();
-	} else if (command == "--csv" || command == "--norm-csv") {
+	} else if (command == "--generate-csv" || command == "--generate-csv-norm") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
-	  m = csv.machine (command == "--norm-csv");
+	  m = csv.machine (command == "--generate-csv-norm");
+	} else if (command == "--accept-csv" || command == "--accept-csv-norm") {
+	  CSVProfile csv;
+	  ifstream infile (getArg());
+	  Require (infile, "CSV file not found");
+	  csv.read (infile);
+	  m = csv.machine (command == "--accept-csv-norm").transpose();
 	} else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);

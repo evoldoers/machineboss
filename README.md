@@ -74,7 +74,9 @@ Transducer construction:
   --generate-uniform arg       as --generate-iid, but weights outputs by 
                                1/(output alphabet size)
   --generate-fasta arg         generator for FASTA-format sequence
-  --generate arg               sequence generator for JSON-format sequence
+  --generate-csv arg           create generator from CSV file
+  --generate-csv-norm arg      create normalized generator from CSV file
+  --generate-json arg          sequence generator for JSON-format sequence
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
   --accept-one arg             acceptor for any one of specified characters
   --accept-wild arg            acceptor for Kleene closure over specified 
@@ -84,15 +86,14 @@ Transducer construction:
   --accept-uniform arg         as --accept-iid, but weights outputs by 1/(input
                                alphabet size)
   --accept-fasta arg           acceptor for FASTA-format sequence
-  --accept arg                 sequence acceptor for JSON-format sequence
+  --accept-csv arg             create acceptor from CSV file
+  --accept-csv-norm arg        create normalized acceptor from CSV file
+  --accept-json arg            sequence acceptor for JSON-format sequence
   --echo-one arg               identity for any one of specified characters
   --echo-wild arg              identity for Kleene closure over specified 
                                characters
   -w [ --weight ] arg          weighted null transition '#'
   -H [ --hmmer ] arg           create machine from HMMER3 model file
-  -V [ --norm-csv ] arg        create normalized machine from CSV file
-  --csv arg                    create machine from CSV file, without 
-                               normalization
 
 Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
@@ -103,11 +104,13 @@ Postfix operators:
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
   -t [ --transpose ]           transpose: swap input/output
-  --sort                       topologically sort, if possible, preserving 
-                               silent cycles at all costs
+  --sort                       topologically sort silent transition graph, if 
+                               possible, but preserve silent cycles
   --sort-sum                   topologically sort, eliminating silent cycles
   --sort-break                 topologically sort, breaking silent cycles 
                                (faster than --sort-sum, but less precise)
+  --decode-sort                topologically sort non-outputting transition 
+                               graph
   -n [ --eliminate ]           eliminate all silent transitions
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions
@@ -158,6 +161,9 @@ Transducer application:
   -Z [ --decode ]              find most likely input by CTC prefix search
   --backtrack arg              specify max backtracking length for CTC prefix 
                                search
+  --beam-decode                find most likely input by beam search
+  --beam-width arg             number of sequences to track during beam search 
+                               (default 100)
   --cool-decode                find most likely input by simulated annealing
   --mcmc-decode                find most likely input by MCMC search
   --decode-steps arg           simulated annealing steps per initial symbol
