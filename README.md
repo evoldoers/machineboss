@@ -1,10 +1,10 @@
-# Machine Boss
+![](img/machineboss.png)
 
 In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
 and often provide extensions such as [generalized HMMs](https://www.ncbi.nlm.nih.gov/pubmed/8877513),
-this small, focused tool emphasizes the **manipulation** of state machines defined to a tight specification.
-(It does offer inference and parser-generation too.)
+Machine Boss emphasizes the **manipulation** of state machines defined to a tight specification.
+(It does provide lots of useful inference and decoding algorithms too, and parser-generation.)
 
 Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
@@ -24,8 +24,6 @@ write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html),
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
-
-![](img/TweedNast.jpg)
 
 ## Features
 
