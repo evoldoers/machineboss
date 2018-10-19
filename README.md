@@ -1,6 +1,8 @@
 # Machine Boss
 
-## Bioinformatics Open Source Sequence Machine
+## Bioinformatics Open Source Sequence Machines
+
+![](img/TweedNastSmall.jpg)
 
 In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
@@ -26,8 +28,6 @@ write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html),
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
-
-<img style="float:right;width:50%;" src="img/TweedNast.jpg">
 
 ## Features
 
