@@ -2,7 +2,7 @@
 
 In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
-and often provide extensions such as [generalized HMMs](https://www.ncbi.nlm.nih.gov/pubmed/8877513),
+and often provide idiosyncratic extensions (such as context-dependent or generalized HMMs),
 Machine Boss emphasizes the **manipulation** of state machines defined to a tight specification.
 (It does provide lots of useful inference and decoding algorithms too, and parser-generation.)
 
