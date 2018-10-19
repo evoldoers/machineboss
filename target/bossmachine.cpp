@@ -123,7 +123,7 @@ int main (int argc, char** argv) {
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
       ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unspecified parameters; this option is implicit when training")
       ("functions,F", po::value<vector<string> >(), "load functions & constants (JSON)")
-      ("norms,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
+      ("constraints,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
       ("input-chars", po::value<string>(), "specify input character sequence explicitly")

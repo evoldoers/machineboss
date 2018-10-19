@@ -146,7 +146,7 @@ Transducer application:
                                for unspecified parameters; this option is 
                                implicit when training
   -F [ --functions ] arg       load functions & constants (JSON)
-  -N [ --norms ] arg           load normalization constraints (JSON)
+  -N [ --constraints ] arg     load normalization constraints (JSON)
   -D [ --data ] arg            load sequence-pairs (JSON)
   -I [ --input-fasta ] arg     load input sequence(s) from FASTA file
   --input-chars arg            specify input character sequence explicitly
