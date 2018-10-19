@@ -2,7 +2,7 @@
 
 ## Bioinformatics Open Source Sequence Machines
 
-![](img/TweedNastSmall.jpg)
+![](img/TweedNast.jpg)
 
 In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
