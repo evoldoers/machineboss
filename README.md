@@ -60,6 +60,9 @@ Similarly, "constraining the input of _M_ to be equal to _X_" is equivalent to "
 
 ### Ways of constructing machines
 
+The first column of this table shows options to the `boss` command,
+so e.g. the first example may be run by typing `boss --generate-one ACGT`
+
 | Option | Description |
 |---|---|
 | `--generate-one ACGT` | A unit-weight generator for any _one_ of the specified characters (here `A`, `C`, `G` or `T`). Similar to a regex character class |
