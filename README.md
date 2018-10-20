@@ -1,4 +1,4 @@
-![](img/machineboss.gif)
+# Machine Boss
 
 In contrast to other C++ HMM libraries
 which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
