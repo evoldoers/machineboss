@@ -191,9 +191,6 @@ int main (int argc, char** argv) {
     alias[string("--concat")] = "--concatenate";
     alias[string("--or")] = "--union";
 
-    alias[string("--decode")] = "--beam-decode";
-    alias[string("--encode")] = "--beam-encode";
-
     const regex presetAlphRegex ("^--(generate|accept|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
     map<string,string> presetAlph;
     presetAlph[string("dna")] = "ACGT";
@@ -265,7 +262,7 @@ int main (int argc, char** argv) {
 	  args.push_front (presetAlph[presetAlphMatch.str(3)]);
 	  arg = string("--") + presetAlphMatch.str(1) + "-" + presetAlphMatch.str(2);
 	}
-	
+
 	if (alias.count (arg))
 	  arg = alias.at (arg);
 
