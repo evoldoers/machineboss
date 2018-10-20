@@ -1,6 +1,6 @@
 ![](img/machineboss.gif)
 
-Many C++ HMM libraries
+Many C++ HMM libraries for bioinformatics
 focus on inference tasks, such as likelihood calculation, parameter-fitting, and alignment.
 Machine Boss can do these things too, but it also introduces a set of operations for **manipulation** of the state machines themselves. The aim is to make it as easy to quick and easy to prototype automata-based tests in bioinformatics as it is to prototype regular expressions. (Often, this means building up the state machine using Unix one-liners.)
 
