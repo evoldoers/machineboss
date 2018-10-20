@@ -10,6 +10,9 @@ var defaultName = "translate"
 var getopt = Getopt.create([
     ['c' , 'codon=PATH'    , 'codon translation & relative frequency table (default is "' + defaultCodonPath + '")'],
     ['n' , 'name=STRING'   , 'name (default is "' + defaultName + '")'],
+    ['e' , 'echo=TOKEN+'   , 'token(s) to ignore (useful to pass through pseudo-tokens that shouldn\'t be translated, eg "intron" or "base")'],
+    ['C' , 'constraints=FILENAME', 'write constraints to file'],
+    ['P' , 'params=FILENAME', 'write parameters to file'],
     ['p' , 'pretty'],
     ['h' , 'help'             , 'display this help message']
 ])              // create Getopt instance
@@ -50,9 +53,8 @@ var machine =
     { state:
       [{id:name+'-start',
 	trans: codons.map ((cod) => { return { in: codon2aa[cod], to: name+'-'+cod, weight: aa2codons[codon2aa[cod]].length == 1 ? undefined : makeParam (codon2aa[cod], cod) } })
-	.concat ([{in:'base',out:'base',to:name+'-start'},
-		  {in:'intron',out:'intron',to:name+'-start'},
-		  {to:name+'-end'}]) }]
+	.concat ((opt.options.echo || []).map (function (echoTok) { return {in:echoTok,out:echoTok,to:name+'-start'} }))
+	.concat ([{to:name+'-end'}]) }]
       .concat (codons.sort().map ((c123) => { return { id: name+'-'+c123, trans: [ { out: c123.charAt(0), to: name+'-'+c123.substr(1) } ] } }))
       .concat (Object.keys(cod23).sort().map ((c23) => { return { id: name+'-'+c23, trans: [ { out: c23.charAt(0), to: name+'-'+c23.substr(1) } ] } }))
       .concat (Object.keys(cod3).sort().map ((c3) => { return { id: name+'-'+c3, trans: [ { out: c3, to: name+'-start' } ] } }))
@@ -68,6 +70,8 @@ Object.keys(aa2codons).sort().map ((aa) => {
 	})
 })
 
-fs.writeFileSync ('preset/'+name+'.json', JSON.stringify (machine))
-fs.writeFileSync ('constraints/'+name+'.json', JSON.stringify (cons))
-fs.writeFileSync ('params/'+name+'.json', JSON.stringify (param))
+console.log (JSON.stringify (machine))
+if (opt.options.constraints)
+  fs.writeFileSync (opt.options.constraints, JSON.stringify (cons))
+if (opt.options.params)
+  fs.writeFileSync (opt.options.params, JSON.stringify (param))

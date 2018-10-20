@@ -3,14 +3,17 @@
 
 struct PresetCache {
   map<string,string> namedPreset;
+  vguard<string> names;
   PresetCache();
 };
 
-#define addPreset(NAME) namedPreset[#NAME] = string (preset_##NAME##_json, preset_##NAME##_json + preset_##NAME##_json_len);
+#define addPreset(NAME) namedPreset[#NAME] = string (preset_##NAME##_json, preset_##NAME##_json + preset_##NAME##_json_len); names.push_back (#NAME);
+
+#include "preset/null.h"
 
 #include "preset/compdna.h"
 #include "preset/comprna.h"
-#include "preset/null.h"
+
 #include "preset/dnapsw.h"
 #include "preset/protpsw.h"
 
@@ -18,16 +21,24 @@ struct PresetCache {
 #include "preset/prot2dna.h"
 #include "preset/psw2dna.h"
 
+#include "preset/bintern.h"
+#include "preset/terndna.h"
+
 PresetCache::PresetCache() {
+  addPreset(null);
+
   addPreset(compdna);
   addPreset(comprna);
-  addPreset(null);
+
   addPreset(dnapsw);
   addPreset(protpsw);
 
   addPreset(translate);
   addPreset(prot2dna);
   addPreset(psw2dna);
+
+  addPreset(bintern);
+  addPreset(terndna);
 }
 
 PresetCache presetCache;  // singleton
@@ -44,5 +55,5 @@ Machine MachinePresets::makePreset (const char* presetName) {
 }
 
 vector<string> MachinePresets::presetNames() {
-  return extract_keys (presetCache.namedPreset);
+  return presetCache.names;
 }

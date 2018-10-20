@@ -88,7 +88,8 @@ These example machines may be selected using the `--preset` keyword, e.g. `boss 
 | `compdna` | Complements DNA (but doesn't reverse it) |
 | `comprna` | Complements RNA (but doesn't reverse it) |
 | `translate` | A machine that inputs amino acids and outputs codons (yes, this should probably be called "reverse translate") |
-| `prot2dna` | A [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model |
+| `prot2dna` | A [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model, finds a protein in DNA |
+| `psw2dna` | Another [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model, allows substitutions & indels in the protein |
 | `dnapsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for DNA |
 | `protpsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for proteins |
 
@@ -195,8 +196,9 @@ General options:
 
 Transducer construction:
   -l [ --load ] arg            load machine from file
-  -p [ --preset ] arg          select preset (compdna, comprna, dnapsw, null, 
-                               prot2dna, protpsw, psw2dna, translate)
+  -p [ --preset ] arg          select preset (null, compdna, comprna, dnapsw, 
+                               protpsw, translate, prot2dna, psw2dna, bintern, 
+                               terndna)
   -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
   --generate-one arg           generator for any one of specified characters
   --generate-wild arg          generator for Kleene closure over specified 
@@ -310,8 +312,8 @@ Transducer application:
   --seed arg                   random number seed
 
 Parser-generator:
-  --codegen arg                generate parser code, save to specified filename
-                               prefix
+  --codegen arg                generate parser code, save to specified 
+                               directory
   --cpp64                      generate C++ dynamic programming code (64-bit)
   --cpp32                      generate C++ dynamic programming code (32-bit)
   --js                         generate JavaScript dynamic programming code
