@@ -40,7 +40,7 @@ To encode we use prefix search (`--prefix-encode`), rather than beam search,
 which is unreliable in this case (it terminates prematurely):
 
 ~~~~
-boss --input-chars 1010101 --preset bintern --preset terndna --prefix-encode
+boss --preset bintern --preset terndna --input-chars 1010101 --prefix-encode
 ~~~~
 
 To decode we can use beam search (or prefix search, but beam search is generally much faster):
