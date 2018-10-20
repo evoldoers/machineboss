@@ -78,6 +78,7 @@ vguard<InputSymbol> BeamSearchMatrix::bestSeq() {
   for (const auto& seq_lw: finalCell.logWeight)
     if (seq_lw.second > best.second)
       best = seq_lw;
+  Assert (best.first, "Beam search failed to find a sequence");
   return getSeq (best.first);
 }
 
