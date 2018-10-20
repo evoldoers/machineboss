@@ -24,13 +24,10 @@ and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
-- Weight functions fit using EM; M-step uses generic optimizers and probabilistic constraints
-- Simple but powerful JSON format for automata; JSON schemas and C++ validators included for all formats
-
 # Command-line interface
 
-Machine Boss has an associated command-line tool, `boss`, that makes most transducer operations available through its arguments,
-defining a small expression language for weighted automata.
+Machine Boss has an associated command-line tool, `boss`, that makes many machine-building operations available through its command-line options -
+thereby defining a small expression language for building up automata.
 A brief usage guide for this tool follows below.
 
 ## Manipulation of machines
