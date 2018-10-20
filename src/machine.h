@@ -94,6 +94,7 @@ struct Machine {
 
   static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
   static Machine acceptor (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
+  static Machine echo (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
 
   static Machine wildGenerator (const vguard<OutputSymbol>& symbols);
   static Machine wildAcceptor (const vguard<InputSymbol>& symbols);

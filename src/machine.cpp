@@ -1238,6 +1238,10 @@ Machine Machine::acceptor (const vguard<InputSymbol>& seq, const string& name) {
   return m;
 }
 
+Machine Machine::echo (const vguard<OutputSymbol>& seq, const string& name) {
+  return generator(seq,name).projectOutputToInput();
+}
+
 Machine Machine::wildGenerator (const vguard<OutputSymbol>& symbols) {
   Machine m;
   m.state.resize (1);

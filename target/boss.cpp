@@ -68,6 +68,9 @@ int main (int argc, char** argv) {
       ("accept-json", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
+      ("echo-chars", po::value<string>(), "identity for explicit character sequence")
+      ("echo-fasta", po::value<string>(), "identity for FASTA-format sequence")
+      ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "create machine from HMMER3 model file")
       ;
@@ -150,7 +153,7 @@ int main (int argc, char** argv) {
 
     po::options_description compOpts("Parser-generator");
     compOpts.add_options()
-      ("codegen", po::value<string>(), "generate parser code, save to specified filename prefix")
+      ("codegen", po::value<string>(), "generate parser code, save to specified directory")
       ("cpp64", "generate C++ dynamic programming code (64-bit)")
       ("cpp32", "generate C++ dynamic programming code (32-bit)")
       ("js", "generate JavaScript dynamic programming code")
@@ -335,6 +338,16 @@ int main (int argc, char** argv) {
 	} else if (command == "--echo-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleEcho (splitToChars (chars));
+	} else if (command == "--echo-chars") {
+	  const string seq = getArg();
+	  m = Machine::echo (splitToChars (seq), seq);
+	} else if (command == "--echo-fasta") {
+	  const vguard<FastSeq> inSeqs = readFastSeqs (getArg().c_str());
+	  Require (inSeqs.size() == 1, "--echo-fasta file must contain exactly one FASTA-format sequence");
+	  m = Machine::echo (splitToChars (inSeqs[0].seq), inSeqs[0].name);
+	} else if (command == "--echo-json") {
+	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
+	  m = Machine::echo (inSeq.seq, inSeq.name);
 	} else if (command == "--sort-sum")
 	  m = popMachine().advanceSort().advancingMachine();
 	else if (command == "--sort-break")

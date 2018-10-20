@@ -1,12 +1,11 @@
-# Machine Boss
+![](img/machineboss.gif)
 
-In contrast to other C++ HMM libraries
-which focus on inference tasks (likelihood calculation, parameter-fitting, and alignment)
-and often provide idiosyncratic extensions (such as context-dependent or generalized HMMs),
-Machine Boss emphasizes the **manipulation** of state machines defined to a tight specification.
-(It does provide lots of useful inference and decoding algorithms too, and parser-generation.)
+Many C++ HMM libraries
+focus on inference tasks, such as likelihood calculation, parameter-fitting, and alignment.
+Machine Boss also does these things, but also introduces a set of operations for **manipulation** of the state machines themselves. The aim is to make it as easy to quick and easy to prototype automata-based tests in bioinformatics as it is to prototype regular expressions. (Often, this means building up the state machine using Unix one-liners.)
 
 Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
+Brief descriptions of these operations are included below.
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM).
 
 For example, a protein-to-DNA alignment algorithm like [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)
@@ -17,25 +16,165 @@ can be thought of as the combination of four state machines accounting for the f
 3. translation of DNA to protein
 4. mutation of the protein (e.g. using the BLOSUM62 substitution matrix with affine gaps)
 
-With MachineBoss, each of these sub-models can be separately designed, parameter-fitted, and (if necessary) refactored.
+With Machine Boss, each layer in this hierarchy can be separately designed, parameter-fitted, and (if necessary) refactored. Want to turn a global alignment algorithm into a local one? Just flank the model with some wildcard-emitters. Developed a model for a high-accuracy sequencing technology, and now you want to use it with a noisier sequencer? Just bolt on a different error model. Looking for a Shine-Dalgarno sequence upstream of a signal peptide? No problem, just concatenate the models. And so on.
 
-MachineBoss can read HMMER [profiles](http://hmmer.org/),
+Machine Boss can read HMMER [profiles](http://hmmer.org/),
 write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
-## Features
-
-- Construct [weighted finite-state transducers](https://en.wikipedia.org/wiki/Finite-state_transducer) using operations like composition, intersection, union, and Kleene closure
-- Fit to data using [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) and [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) algorithms
 - Weight functions fit using EM; M-step uses generic optimizers and probabilistic constraints
 - Simple but powerful JSON format for automata; JSON schemas and C++ validators included for all formats
 
+# Command-line interface
+
+Machine Boss has an associated command-line tool that makes most transducer operations available through its arguments,
+defining a small expression language for weighted automata.
+
+
+## Manipulation of machines
+
+### Transducer definition
+
+A [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer)
+consists of a tuple _(&Phi;,&Sigma;,&Gamma;,&omega;)_ where
+
+- _&Phi;_ is an ordered finite set, the _state space_;
+- _&Sigma;_ is an ordered finite set, the _input alphabet_;
+- _&Gamma;_ is an ordered finite set, the _output alphabet_;
+- _&omega;(&alpha;,&beta;,&sigma;,&gamma;)_ is the _weight_ of a transition _&alpha; &rarr; &beta;_ that inputs _&sigma;_ and outputs _&gamma;_.
+
+Using the [Forward algorithm](https://en.wikipedia.org/wiki/Forward_algorithm), one can calculate a _sequence weight_ _W(X,Y)_ for any input sequence _X_ and output sequence _Y_. In this sense, the transducer may be viewed as an infinite-dimensional matrix indexed by input sequences (rows) and output sequences (columns).
+
+Machine Boss uses a JSON format for transducers that also allows _&omega;_ to be constructed using algebraic functions of parameters (addition, multiplication, exponentiation, etc.) It further allows the specification of _constraints_ on the parameters, which are used during model-fitting.
+
+### Special types of transducer
+
+| Term | Implication for _W(X,Y)_ |
+|---|---|
+| _Generator_ for set _S_ | Zero unless _X_ is the empty string and _Y_ is a member of _S_ (analogous to a row vector; if _S_ contains only one element whose weight is 1, then it's like a unit vector) |
+| _Acceptor_ for set _S_ | Zero unless _X_ is a member of _S_ and _Y_ is the empty string (analogous to a column vector) |
+| _Identity_ for set _S_ | Zero unless _X=Y_ and _X_ is a member of _S_ |
+
+In general, "constraining the output of machine _M_ to be equal to _Y_" is equivalent to "composing _M_ with a unit-weight acceptor for _Y_".
+Similarly, "constraining the input of _M_ to be equal to _X_" is equivalent to "composing a unit-weight generator for _X_ with _M_".
+
+
+### Ways of constructing machines
+
+| Example | Description |
+|---|---|
+| `--generate-one ACGT` | A unit-weight generator for any _one_ of the specified characters (here `A`, `C`, `G` or `T`). Similar to a regex character class |
+| `--generate-wild ACGT` | A unit-weight generator for any _string_ made up of the specified characters (here `A`, `C`, `G` or `T`, i.e. it will output any DNA sequence). Similar to a regex wildcard |
+| `--generate-iid ACGT` | A generator for any string made up of the specified characters, with each character emission weighted (via parameters) to the respective character frequencies. Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
+| `--generate-uniform ACGT` | A generator for any string made up of the specified characters, with each character emission weighted uniformly by (1/alphabet size). Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
+| `--generate-uniform-dna`, etc. | Any of the above `--generate-XXX` forms may have `-dna`, `-rna` or `-aa` tacked on the end, in which case the alphabet does not need to be specified but is taken to be (respectively) `ACGT`, `ACGU` or `ACDEFGHIKLMNPQRSTVWY` |
+| `--generate-chars AGATTC` | A unit-weight generator for the single string specified (which will be split into single-character symbols) |
+| `--generate-fasta FILENAME.fasta` | A unit-weight generator for a sequence of characters read from a [FASTA-format](https://en.wikipedia.org/wiki/FASTA_format) file |
+| `--generate-csv FILENAME.csv` | A generator corresponding to a [position-specific probability weight matrix](https://en.wikipedia.org/wiki/Position_weight_matrix) stored in a [CSV-format](https://en.wikipedia.org/wiki/Comma-separated_values) file, where the column titles in the first row correspond to output symbols (and a column with an empty title corresponds to gap characters in the weight matrix) |
+| `--generate-json FILENAME.json` | A generator for a sequence of symbols read from a Machine Boss JSON file |
+| `--hmmer` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM |
+
+For each of the `--generate-XXX` options, the `--generate` can be replaced with `--accept` to construct the corresponding acceptor, or (in most cases) with `--echo` for the identity.
+
+### Preset machines
+
+These example machines may be selected using the `--preset` keyword, e.g. `boss --preset null`
+
+| Name | Description |
+|---|---|
+| `null` | Identity for the empty string |
+| `compdna` | Complements DNA (but doesn't reverse it) |
+| `comprna` | Complements RNA (but doesn't reverse it) |
+| `translate` | A machine that inputs amino acids and outputs codons (yes, this should probably be called "reverse translate") |
+| `prot2dna` | A [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model |
+| `dnapsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for DNA |
+| `protpsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for proteins |
+
+### Operations transforming a single machine
+
+| Operation | Command | Description | Analogy |
+|---|---|---|---|
+| Transpose | `boss m.json --transpose` | Swaps the inputs and outputs | Matrix transposition |
+| Make optional (`?`) | `boss m.json --zero-or-one` | Zero or one tours through `m.json` | Union with the empty-string identity. Like the `?` in regexes |
+| Form Kleene closure (`+`) | `boss m.json --kleene-plus` | One or more tours through `m.json` | Like the `+` in regexes |
+| Form Kleene closure (`*`) | `boss m.json --kleene-star` | Zero or more tours through `m.json` | Like the `*` in regexes |
+| Count copies | `boss m.json --count-copies x` | Like Kleene closure (`*`), but introducing a dummy unit-weight parameter (in this case, `x`) which can be used to find posterior-expected estimates of the number of tours of `m.json` in the path | |
+| Take reciprocal | `boss m.json --reciprocal` | Take reciprocal of all transition weights | Pointwise reciprocal |
+| Repeat | `boss m.json --repeat 3` | Repeat `m.json` the specified number of times | Fixed quantifiers in regexes |
+| Reverse | `boss m.json --reverse` | Reverse the machine | |
+| Reverse complement | `boss m.json --revcomp` | As you might expect | |
+| Normalize | `boss m.json --joint-norm` | Normalize transition weights, so that sum of outgoing weights from each state is 1 | Probabilistic normalization |
+| Sort | `boss m.json --sort` | Topologically sort the transition graph | |
+| Eliminate redundant states | `boss m.json --eliminate` | Try to eliminate unnecessary states and transitions | |
+
+
+
+### Operations combining two machines
+
+| Operation | Command | Description | Analogy |
+|---|---|---|---|
+| Concatenate | `boss l.json --concat r.json` | Creates a combined machine that concatenates `l.json`'s input with `r.json`'s input, and similarly for their outputs | String concatenation |
+| Compose |  `boss a.json --compose b.json` or `boss a.json b.json` | Creates a combined machine wherein every symbol output by `a.json` is processed as an input symbol of `b.json`. | Matrix multiplication |
+| Intersect | `boss a.json --intersect b.json` | Creates a combined machine wherein every input symbol processed by `a.json` is also processed as an input symbol by `b.json` | Pointwise product |
+| Take union | `boss a.json --union b.json` | Creates a combined machine consisting of `a.json` and `b.json` side-by-side; paths can go through one or the other, but not both | Pointwise sum |
+| Make loop | `boss a.json --loop b.json` | Creates a combined machine that allows one `a`, followed by any number of `ba`'s | Kleene closure with spacer |
+
+### Combining operations
+
+The above operations may be combined to form complex expressions specifying automata from the command line. The `--begin` and `--end` options may be used (rather like left- and right-parentheses) to delimit sub-expressions.
+
+For example, the following composes the `protpsw` and `translate` presets, and flanks this composite machine with uniform-DNA generators, thereby constructing a machine that can be used to search DNA (the output) for local ORFs homologous to a query protein (the input):
+
+~~~~
+boss --generate-uniform-dna \
+ --concat --begin --preset protpsw --preset translate --end \
+ --concat --generate-uniform-dna
+~~~~
+
+### JSON and C++ APIs
+
+Most of the above operators for generating and manipulating machines are accessible directly via the C++ API, and can also be specified as JSON expressions within the model file.
+
+### Model generation scripts
+
+For when the presets aren't enough, there are scripts in the `js/` subdirectory that can generate some useful models.
+
+## Application of machines
+
+By default, the machine resulting from any manipulation operations is printed to standard output as a JSON file (or as a GraphViz dot file, if `--graphviz` was specified). However, there are several inference operations that can be performed on data instead.
+
+### Specifying data
+
+There are several ways to specify input and output sequences.
+
+| Option | Description |
+|---|---|
+| `--input-chars AGATTA` | Specify the input as a sequence of characters directly from the command line |
+| `--output-chars AGATTA` | Specify the output as a sequence of characters directly from the command line |
+| `--input-fasta FILENAME.fasta` | Specify the input via a FASTA-format file |
+| `--output-fasta FILENAME.fasta` | Specify the output via a FASTA-format file |
+| `--data SEQPAIRS.json` | Specify pairs of input & output sequences via a JSON-format file |
+
+### Dynamic programming algorithms
+
+
+| Option | Description |
+|---|---|
+| `--loglike` | [Forward](https://en.wikipedia.org/wiki/Forward_algorithm) algorithm |
+| `--train` | [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) training, using generic optimizers from [GSL](https://www.gnu.org/software/gsl/) |
+| `--align` | [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) alignment |
+| `--counts` | Calculates derivatives of the log-weight with respect to the logs of the parameters, a.k.a. the posterior expectations of the number of time each parameter is used |
+| `--beam-decode` | Uses [beam search](https://en.wikipedia.org/wiki/Beam_search) to find the most likely input for a given output. Beam width can be specified using `--beam-width` |
+| `--beam-encode` | Uses beam search to find the most likely output for a given input |
+| `--codegen DIR` | Generate C++ or JavaScript code implementing the Forward algorithm |
+
+
 ## JSON file formats
 
-MachineBoss defines JSON schemas for several data structures.
-Here are some examples:
+Machine Boss defines [JSON schemas](schema/) for several data structures.
+Here are some examples of files that fit these schemas:
 
 - [transducer](https://github.com/evoldoers/machineboss/blob/master/t/machine/bitnoise.json). This file describes the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symmetric_channel) from coding theory
     - [parameters](https://github.com/evoldoers/machineboss/blob/master/t/io/params.json)
@@ -44,12 +183,7 @@ Here are some examples:
 - [individual sequence](https://github.com/evoldoers/machineboss/blob/master/t/io/seqAGC.json) for constructing generators and acceptors
     - [list of sequence-pairs](https://github.com/evoldoers/machineboss/blob/master/t/io/seqpairlist.json) for model-fitting and alignment
 
-## Command-line interface
-
-MachineBoss has an associated command-line tool that makes most transducer operations available through its arguments,
-defining a small expression language for weighted automata.
-
-## Command-line usage
+## Help text
 
 <pre><code>
 
@@ -88,6 +222,9 @@ Transducer construction:
   --echo-one arg               identity for any one of specified characters
   --echo-wild arg              identity for Kleene closure over specified 
                                characters
+  --echo-chars arg             identity for explicit character sequence
+  --echo-fasta arg             identity for FASTA-format sequence
+  --echo-json arg              identity for JSON-format sequence
   -w [ --weight ] arg          weighted null transition '#'
   -H [ --hmmer ] arg           create machine from HMMER3 model file
 
