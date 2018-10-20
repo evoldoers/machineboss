@@ -92,6 +92,8 @@ These example machines may be selected using the `--preset` keyword, e.g. `boss 
 | `psw2dna` | Another [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model, allows substitutions & indels in the protein |
 | `dnapsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for DNA |
 | `protpsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for proteins |
+| `bintern` | A machine that converts binary digits (in groups of 3) into ternary digits (in group of 2). To handle situations where the input isn't a multiple of 3 bits in length, the machine also outputs an escape code at the end, with any dangling bits converted to ternary |
+| `terndna` | A machine that converts a ternary sequence into a non-repeating DNA sequence. Composed with the `bintern` preset, this can be used to implement the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/) |
 
 ### Operations transforming a single machine
 
