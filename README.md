@@ -60,18 +60,18 @@ Similarly, "constraining the input of _M_ to be equal to _X_" is equivalent to "
 
 ### Ways of constructing machines
 
-| Command | Description |
+| Option | Description |
 |---|---|
-| `boss --generate-one ACGT` | A unit-weight generator for any _one_ of the specified characters (here `A`, `C`, `G` or `T`). Similar to a regex character class |
-| `boss --generate-wild ACGT` | A unit-weight generator for any _string_ made up of the specified characters (here `A`, `C`, `G` or `T`, i.e. it will output any DNA sequence). Similar to a regex wildcard |
-| `boss --generate-iid ACGT` | A generator for any string made up of the specified characters, with each character emission weighted (via parameters) to the respective character frequencies. Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
-| `boss --generate-uniform ACGT` | A generator for any string made up of the specified characters, with each character emission weighted uniformly by (1/alphabet size). Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
-| `boss --generate-uniform-dna`, etc. | Any of the above `--generate-XXX` forms may have `-dna`, `-rna` or `-aa` tacked on the end, in which case the alphabet does not need to be specified but is taken to be (respectively) `ACGT`, `ACGU` or `ACDEFGHIKLMNPQRSTVWY` |
-| `boss --generate-chars AGATTC` | A unit-weight generator for the single string specified (which will be split into single-character symbols) |
-| `boss --generate-fasta FILENAME.fasta` | A unit-weight generator for a sequence of characters read from a [FASTA-format](https://en.wikipedia.org/wiki/FASTA_format) file |
-| `boss --generate-csv FILENAME.csv` | A generator corresponding to a [position-specific probability weight matrix](https://en.wikipedia.org/wiki/Position_weight_matrix) stored in a [CSV-format](https://en.wikipedia.org/wiki/Comma-separated_values) file, where the column titles in the first row correspond to output symbols (and a column with an empty title corresponds to gap characters in the weight matrix) |
-| `boss --generate-json FILENAME.json` | A generator for a sequence of symbols read from a Machine Boss JSON file |
-| `boss --hmmer HMMERFILE.hmm` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM |
+| `--generate-one ACGT` | A unit-weight generator for any _one_ of the specified characters (here `A`, `C`, `G` or `T`). Similar to a regex character class |
+| `--generate-wild ACGT` | A unit-weight generator for any _string_ made up of the specified characters (here `A`, `C`, `G` or `T`, i.e. it will output any DNA sequence). Similar to a regex wildcard |
+| `--generate-iid ACGT` | A generator for any string made up of the specified characters, with each character emission weighted (via parameters) to the respective character frequencies. Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
+| `--generate-uniform ACGT` | A generator for any string made up of the specified characters, with each character emission weighted uniformly by (1/alphabet size). Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
+| `--generate-uniform-dna`, etc. | Any of the above `--generate-XXX` forms may have `-dna`, `-rna` or `-aa` tacked on the end, in which case the alphabet does not need to be specified but is taken to be (respectively) `ACGT`, `ACGU` or `ACDEFGHIKLMNPQRSTVWY` |
+| `--generate-chars AGATTC` | A unit-weight generator for the single string specified (which will be split into single-character symbols) |
+| `--generate-fasta FILENAME.fasta` | A unit-weight generator for a sequence of characters read from a [FASTA-format](https://en.wikipedia.org/wiki/FASTA_format) file |
+| `--generate-csv FILENAME.csv` | A generator corresponding to a [position-specific probability weight matrix](https://en.wikipedia.org/wiki/Position_weight_matrix) stored in a [CSV-format](https://en.wikipedia.org/wiki/Comma-separated_values) file, where the column titles in the first row correspond to output symbols (and a column with an empty title corresponds to gap characters in the weight matrix) |
+| `--generate-json FILENAME.json` | A generator for a sequence of symbols read from a Machine Boss JSON file |
+| `--hmmer HMMERFILE.hmm` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM |
 
 For each of the `--generate-XXX` options, the `--generate` can be replaced with `--accept` to construct the corresponding acceptor, or (in most cases) with `--echo` for the identity.
 
