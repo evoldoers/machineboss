@@ -30,6 +30,25 @@ Machine Boss has an associated command-line tool, `boss`, that makes many machin
 thereby defining a small expression language for building up automata.
 A brief usage guide for this tool follows below.
 
+## Examples
+
+### Encoding binary data as non-repeating DNA
+
+We use prefix search (`--prefix-encode` and `--prefix-decode`) for this example,
+as beam search is unreliable in this case (terminates prematurely when encoding).
+
+To encode:
+
+~~~~
+boss --input-chars 1010101 --preset bintern --preset terndna --prefix-encode
+~~~~
+
+To decode:
+
+~~~~
+boss --preset bintern --preset terndna --output-chars CGATATGC --prefix-decode
+~~~~
+
 ## Manipulation of machines
 
 ### JSON format for specifying state machines
@@ -37,7 +56,7 @@ A brief usage guide for this tool follows below.
 Formally, a machine is defined to be a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer)
 consisting of a tuple _(&Phi;,&Sigma;,&Gamma;,&omega;)_ where
 
-- _&Phi;_ is an ordered finite set, the _state space_;
+- _&Phi;_ is an ordered finite set, the _state space_ (including _start_ and _end_ states);
 - _&Sigma;_ is an ordered finite set, the _input alphabet_;
 - _&Gamma;_ is an ordered finite set, the _output alphabet_;
 - _&omega;(&alpha;,&beta;,&sigma;,&gamma;)_ is the _weight_ of a transition _&alpha; &rarr; &beta;_ that inputs _&sigma;_ and outputs _&gamma;_.
@@ -174,7 +193,7 @@ There are several ways to specify input and output sequences.
 | `--codegen DIR` | Generate C++ or JavaScript code implementing the Forward algorithm |
 
 
-## JSON file formats
+## JSON schemas
 
 Machine Boss defines [JSON schemas](schema/) for several data structures.
 Here are some examples of files that fit these schemas:
