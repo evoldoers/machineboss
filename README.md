@@ -35,10 +35,9 @@ A brief usage guide for this tool follows below.
 ### Encoding binary data as non-repeating DNA
 
 This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
-We use prefix search for encoding (`--prefix-encode`), rather than beam search,
-which is unreliable in this case (it terminates prematurely).
 
-To encode:
+To encode we use prefix search (`--prefix-encode`), rather than beam search,
+which is unreliable in this case (it terminates prematurely):
 
 ~~~~
 boss --input-chars 1010101 --preset bintern --preset terndna --prefix-encode
