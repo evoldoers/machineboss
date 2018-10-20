@@ -34,8 +34,9 @@ A brief usage guide for this tool follows below.
 
 ### Encoding binary data as non-repeating DNA
 
-We use prefix search (`--prefix-encode` and `--prefix-decode`) for this example,
-as beam search is unreliable in this case (terminates prematurely when encoding).
+This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
+We use prefix search (`--prefix-encode` and `--prefix-decode`) rather than beam search,
+which is unreliable in this case (terminates prematurely when encoding).
 
 To encode:
 
