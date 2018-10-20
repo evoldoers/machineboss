@@ -252,6 +252,8 @@ Postfix operators:
                                (faster than --sort-sum, but less precise)
   --decode-sort                topologically sort non-outputting transition 
                                graph
+  --encode-sort                topologically sort non-inputting transition 
+                               graph
   -n [ --eliminate ]           eliminate all silent transitions
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions

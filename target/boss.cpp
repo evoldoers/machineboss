@@ -91,6 +91,7 @@ int main (int argc, char** argv) {
       ("sort-sum", "topologically sort, eliminating silent cycles")
       ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
       ("decode-sort", "topologically sort non-outputting transition graph")
+      ("encode-sort", "topologically sort non-inputting transition graph")
       ("eliminate,n", "eliminate all silent transitions")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
@@ -357,6 +358,8 @@ int main (int argc, char** argv) {
 	  m = popMachine().normalizeConditionally();
 	else if (command == "--decode-sort")
 	  m = popMachine().decodeSort();
+	else if (command == "--encode-sort")
+	  m = popMachine().encodeSort();
 	else if (command == "--compose-sum")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose")

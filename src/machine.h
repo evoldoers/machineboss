@@ -146,6 +146,7 @@ struct Machine {
   size_t nSilentBackTransitions() const;
   size_t nEmptyOutputBackTransitions() const;
   Machine decodeSort() const;  // same as advanceSort(true)
+  Machine encodeSort() const;  // same as transpose().advanceSort(true).transpose()
   Machine advanceSort (bool decode = false) const;  // attempt to minimize number of silent i->j transitions where j<i (if decode=true, then s/silent/non-outputting/)
   Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
 

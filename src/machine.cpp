@@ -1062,6 +1062,10 @@ Machine Machine::decodeSort() const {
   return advanceSort (true);
 }
 
+Machine Machine::encodeSort() const {
+  return transpose().advanceSort(true).transpose();
+}
+
 Machine Machine::advanceSort (bool decode) const {
   Machine result;
   const size_t nSilentBackBefore = decode ? nEmptyOutputBackTransitions() : nSilentBackTransitions();
