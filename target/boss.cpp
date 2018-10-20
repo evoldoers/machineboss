@@ -664,6 +664,8 @@ int main (int argc, char** argv) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
 	vguard<OutputSymbol> encoded;
 	if (vm.count("beam-encode")) {
+	  if (!trans.isDecodingMachine())
+	    Warn ("Machine is not topologically sorted for encoding; some valid outputs may be missed");
 	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
 	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);
 	  encoded = beam.bestSeq();
@@ -691,6 +693,8 @@ int main (int argc, char** argv) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input for a given output");
 	vguard<InputSymbol> decoded;
 	if (vm.count("beam-decode")) {
+	  if (!decodeMachine.isDecodingMachine())
+	    Warn ("Machine is not topologically sorted for decoding; some valid inputs may be missed");
 	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
 	  BeamSearchMatrix beam (eval, seqPair.output.seq, beamWidth);
 	  decoded = beam.bestSeq();
