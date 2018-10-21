@@ -215,11 +215,18 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
   }
 
   out << "{\"state\":" << endl << " [";
+  set<string> seenStateID;
   for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
     out << (s ? "  " : "") << "{\"n\":" << s;
-    if (!ms.name.is_null())
-      out << "," << endl << "   \"id\":" << ms.name;
+    if (!ms.name.is_null()) {
+      json id = ms.name;
+      int n = 1;
+      while (seenStateID.count (id.dump()))
+	id = json::array ({{ ms.name, ++n }});
+      seenStateID.insert (id.dump());
+      out << "," << endl << "   \"id\":" << id;
+    }
     if (ms.trans.size()) {
       out << "," << endl << "   \"trans\":[";
       size_t nt = 0;
@@ -383,6 +390,7 @@ void Machine::readJson (const json& pj) {
     json jstate = pj.at("state");
     Assert (jstate.is_array(), "state is not an array");
     map<string,StateIndex> id2n;
+    set<string> dupIds;
     for (const json& js : jstate) {
       MachineState ms;
       if (js.count("n")) {
@@ -393,8 +401,11 @@ void Machine::readJson (const json& pj) {
 	const StateName id = js.at("id");
 	Assert (!id.is_number(), "id can't be a number");
 	const string idStr = id.dump();
-	Require (!id2n.count(idStr), "Duplicate state %s", idStr.c_str());
-	id2n[idStr] = state.size();
+	if (id2n.count (idStr)) {
+	  dupIds.insert (idStr);
+	  Warn ("Duplicate state ID: %s", idStr.c_str());
+	} else
+	  id2n[idStr] = state.size();
 	ms.name = id;
       }
       state.push_back (ms);
@@ -414,6 +425,7 @@ void Machine::readJson (const json& pj) {
 	  else {
 	    const string dstr = dest.dump();
 	    Require (id2n.count(dstr), "No such state in \"to\": %s", dstr.c_str());
+	    Require (!dupIds.count(dstr), "Ambiguous destination state ID in \"to\": %s", dstr.c_str());
 	    t.dest = id2n.at (dstr);
 	  }
 	  if (jt.count("in"))
