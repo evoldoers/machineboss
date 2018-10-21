@@ -1135,10 +1135,12 @@ Machine Machine::advanceSort (bool decode) const {
       }
     
       const size_t nSilentBackAfter = decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions();
-      Assert (nSilentBackAfter <= nSilentBackBefore, "Sorting increased number of silent %s transitions from %u to %u", sortType, nSilentBackBefore, nSilentBackAfter);
-      if (nSilentBackAfter == nSilentBackBefore) {
+      if (nSilentBackAfter >= nSilentBackBefore) {
 	result = *this;
-	LogThisAt(5,"Sorting left number of backward " << sortType << " transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
+	if (nSilentBackAfter > nSilentBackBefore)
+	  LogThisAt(5,"Sorting increased number of " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << "; restoring original order" << endl);
+	else
+	  LogThisAt(5,"Sorting left number of backward " << sortType << " transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
       } else
 	LogThisAt(5,"Sorting reduced number of backward " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
