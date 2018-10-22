@@ -232,7 +232,7 @@ test-loop:
 	@$(TEST) bin/$(BOSS) --accept-json t/io/seq101.json -o --accept-json t/io/seq001.json t/expect/101-loop-001.json
 
 test-noisy-loop:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --accept-json t/io/seq101.json -o --accept-json t/io/seq001.json t/expect/noisy-101-loop-001.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --begin --accept-json t/io/seq101.json -o --accept-json t/io/seq001.json --end t/expect/noisy-101-loop-001.json
 
 test-concat:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
@@ -273,22 +273,22 @@ test-csv:
 	@$(TEST) bin/$(BOSS) --accept-csv t/csv/test.csv --transpose --joint-norm t/expect/normcsvtest.json
 
 test-csv-tiny:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_uc.json --generate-csv t/csv/tiny_uc.csv --transpose t/expect/tiny_uc.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_uc.json --accept-csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
 
 test-csv-tiny-fail:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_lc.json --generate-csv t/csv/tiny_uc.csv --transpose -fail
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_lc.json --accept-csv t/csv/tiny_uc.csv -fail
 
 test-csv-tiny-empty:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/empty.json --generate-csv t/csv/tiny_uc.csv --transpose t/expect/tiny_empty.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/empty.json --accept-csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
 
 test-nanopore:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --generate-csv t/csv/nanopore_test.csv --transpose t/expect/nanopore_test.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --accept-csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
 
 test-nanopore-prefix:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --generate-csv t/csv/nanopore_test.csv --transpose t/expect/nanopore_test_prefix.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --accept-csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
 
 test-nanopore-decode:
-	@$(TEST) bin/$(BOSS) --generate-csv t/csv/nanopore_test.csv --transpose --beam-decode t/expect/nanopore_beam_decode.json
+	@$(TEST) bin/$(BOSS) --accept-csv t/csv/nanopore_test.csv --beam-decode t/expect/nanopore_beam_decode.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
@@ -305,7 +305,7 @@ test-missing-machine:
 	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --accept-json t/io/seq001.json -i --accept-json t/io/seq101.json -fail
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --begin --accept-json t/io/seq001.json -i --accept-json t/io/seq101.json --end -fail
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
@@ -427,8 +427,8 @@ test-counts3:
 
 test-count-motif:
 	@$(TEST) bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --accept-json t/io/nanopore_test_seq.json -C t/expect/count11.json
-	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --generate-csv t/csv/nanopore_test.csv --transpose -C t/expect/count9.json
-	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --generate-csv t/csv/nanopore_test.csv --transpose -C t/expect/count4.json
+	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --accept-csv t/csv/nanopore_test.csv -C t/expect/count9.json
+	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --accept-csv t/csv/nanopore_test.csv -C t/expect/count4.json
 
 # Code generation tests
 CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
