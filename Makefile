@@ -500,18 +500,18 @@ test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js node $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 # Decoding
-DECODE_TESTS = test-decode-bitecho-101 test-bittern
+DECODE_TESTS = test-decode-bitecho-101 test-bintern
 
 test-decode-bitecho-101:
 	@$(TEST) bin/$(BOSS) t/machine/bitecho.json --accept-chars 101 --prefix-decode t/expect/decode-bitecho-101.json
 
-test-bittern:
-	@$(TEST) bin/$(BOSS) --generate-chars 101 t/machine/bittern.json --prefix-encode t/expect/encode-g101-bittern.json
-	@$(TEST) bin/$(BOSS) --input-chars 101 t/machine/bittern.json --prefix-encode t/expect/encode-i101-bittern.json
-	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --prefix-decode t/expect/decode-a12222-bittern.json
-	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --prefix-decode t/expect/decode-o12222-bittern.json
-	@$(TEST) bin/$(BOSS) t/machine/bittern.json --accept-chars 12222 --beam-decode t/expect/decode-a12222-bittern.json
-	@$(TEST) bin/$(BOSS) t/machine/bittern.json --output-chars 12222 --beam-decode t/expect/decode-o12222-bittern.json
+test-bintern:
+	@$(TEST) bin/$(BOSS) --generate-chars 101 t/machine/bintern.json --prefix-encode t/expect/encode-g101-bintern.json
+	@$(TEST) bin/$(BOSS) --input-chars 101 t/machine/bintern.json --prefix-encode t/expect/encode-i101-bintern.json
+	@$(TEST) bin/$(BOSS) t/machine/bintern.json --accept-chars 12222 --prefix-decode t/expect/decode-a12222-bintern.json
+	@$(TEST) bin/$(BOSS) t/machine/bintern.json --output-chars 12222 --prefix-decode t/expect/decode-o12222-bintern.json
+	@$(TEST) bin/$(BOSS) t/machine/bintern.json --accept-chars 12222 --beam-decode t/expect/decode-a12222-bintern.json
+	@$(TEST) bin/$(BOSS) t/machine/bintern.json --output-chars 12222 --beam-decode t/expect/decode-o12222-bintern.json
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS)
