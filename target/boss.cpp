@@ -228,6 +228,9 @@ int main (int argc, char** argv) {
       function<Machine(const string&)> nextMachineForCommand;
       auto pushNextMachine = [&]() {
 	machines.push_back (nextMachineForCommand (string()));
+	// reduce immediately (else other operators have higher precedence than implicit reduction)
+	if (machines.size() > 1)
+	  machines.push_back (reduceMachines());
       };
       nextMachineForCommand = [&] (const string& lastCommand) -> Machine {
 	if (args.empty()) {
@@ -479,6 +482,7 @@ int main (int argc, char** argv) {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);
 	}
+	LogThisAt(9,"After " << command << ":" << endl << JsonWriter<Machine>::toJsonString(m) << endl);
 	return m;
       };
       pushNextMachine();
