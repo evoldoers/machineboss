@@ -56,6 +56,27 @@ boss --generate-chars N \
  --eliminate >PS00001.json
 ~~~~
 
+### Search the N-glycosylation regex against the MinION read
+
+This command takes the `PS00001.json` regex from the previous example,
+runs it through a reverse-translation machine (`--preset translate`),
+adds a self-loop with a dummy parameter (`--count-copies n`),
+flanks it with a null model (`--generate-uniform-dna`),
+and then uses the Forward-Backward algorithm to find the expected usage of the dummy parameter (`--counts`)
+
+~~~~
+boss --counts -v6 \
+ --generate-uniform-dna \
+ --concat \
+  --begin \
+   PS00001.json --preset translate \
+   --concat --generate-uniform-dna \
+   --count-copies n \
+  --end \
+ --accept-csv t/csv/nanopore_test.csv \
+ --params data/Ecoli_codon.json
+~~~~
+
 ### Encode binary data as non-repeating DNA
 
 This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
