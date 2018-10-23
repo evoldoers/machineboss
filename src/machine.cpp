@@ -214,18 +214,29 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
     LogThisAt(6,"Memoized " << names.size() << " duplicate expressions" << endl);
   }
 
+  bool gotAllIDs = true;
+  for (const auto& ms: state)
+    if (ms.name.is_null()) {
+      gotAllIDs = false;
+      break;
+    }
+  
   out << "{\"state\":" << endl << " [";
   set<string> seenStateID;
   for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
-    out << (s ? "  " : "") << "{\"n\":" << s;
+    out << (s ? "  " : "") << "{";
+    if (!useStateIDs)
+      out << "\"n\":" << s;
     if (!ms.name.is_null()) {
       json id = ms.name;
       int n = 1;
       while (seenStateID.count (id.dump()))
 	id = json::array ({{ ms.name, ++n }});
       seenStateID.insert (id.dump());
-      out << "," << endl << "   \"id\":" << id;
+      if (!useStateIDs)
+	out << "," << endl << "   ";
+      out << "\"id\":" << id;
     }
     if (ms.trans.size()) {
       out << "," << endl << "   \"trans\":[";
