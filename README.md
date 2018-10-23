@@ -69,7 +69,7 @@ boss --counts -v6 \
  --generate-uniform-dna \
  --concat \
   --begin \
-   PS00001.json --preset translate \
+   PS00001.json --preset translate --double-strand \
    --concat --generate-uniform-dna \
    --count-copies n \
   --end \
