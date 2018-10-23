@@ -66,7 +66,7 @@ struct Machine {
   Constraints cons;
   vguard<MachineState> state;
 
-  void writeJson (ostream& out, bool memoizeRepeatedExpressions = false, bool showParams = false) const;
+  void writeJson (ostream& out, bool memoizeRepeatedExpressions = false, bool showParams = false, bool useStateIDs = false) const;
   void readJson (const json& json);
   void writeDot (ostream& out, const char* emptyLabelText = "&epsilon;") const;
 

@@ -167,7 +167,7 @@ set<string> Machine::params() const {
   return p;
 }
 
-void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool showParams) const {
+void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool showParams, bool useStateIDs) const {
   ExprMemos memo;
   ExprRefCounts counts = WeightAlgebra::zeroRefCounts();
   vguard<WeightExpr> common;
@@ -233,7 +233,11 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
       for (const auto& t: ms.trans) {
 	if (nt++)
 	  out << "," << endl << "            ";
-	out << "{\"to\":" << t.dest;
+	out << "{\"to\":";
+	if (useStateIDs && !state[t.dest].name.is_null())
+	  out << state[t.dest].name;
+	else
+	  out << t.dest;
 	if (!t.inputEmpty()) out << ",\"in\":\"" << escaped_str(t.in) << "\"";
 	if (!t.outputEmpty()) out << ",\"out\":\"" << escaped_str(t.out) << "\"";
 	if (!WeightAlgebra::isOne (t.weight)) {

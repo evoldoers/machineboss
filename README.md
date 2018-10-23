@@ -324,7 +324,9 @@ Transducer application:
   -S [ --save ] arg            save machine to file
   -G [ --graphviz ]            write machine in Graphviz DOT format
   -M [ --memoize ]             memoize repeated expressions for compactness
-  -W [ --showparams ]          show unbound parameters in final machine
+  --show-params                show unbound parameters in final machine
+  --use-id                     use state id, rather than number, for 
+                               transitions
   -P [ --params ] arg          load parameters (JSON)
   -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
                                for unspecified parameters; this option is 

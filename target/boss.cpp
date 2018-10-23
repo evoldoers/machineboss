@@ -122,7 +122,8 @@ int main (int argc, char** argv) {
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
-      ("showparams,W", "show unbound parameters in final machine")
+      ("show-params", "show unbound parameters in final machine")
+      ("use-id", "use state id, rather than number, for transitions")
 
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
       ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unspecified parameters; this option is implicit when training")
@@ -523,7 +524,7 @@ int main (int argc, char** argv) {
       if (vm.count("graphviz"))
 	machine.writeDot (out);
       else
-	machine.writeJson (out, vm.count("memoize"), vm.count("showparams"));
+	machine.writeJson (out, vm.count("memoize"), vm.count("show-params"), vm.count("use-id"));
     };
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();
