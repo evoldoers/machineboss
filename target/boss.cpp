@@ -93,6 +93,7 @@ int main (int argc, char** argv) {
       ("decode-sort", "topologically sort non-outputting transition graph")
       ("encode-sort", "topologically sort non-inputting transition graph")
       ("eliminate,n", "eliminate all silent transitions")
+      ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
       ("weight-output", po::value<string>(), "apply weight parameter with given prefix to outputs")
@@ -399,6 +400,8 @@ int main (int argc, char** argv) {
 	  m = Machine::kleeneLoop (popMachine(), nextMachine()).advanceSort();
 	else if (command == "--eliminate")
 	  m = popMachine().eliminateSilentTransitions();
+	else if (command == "--pad")
+	  m = popMachine().padWithNullStates();
 	else if (command == "--reverse")
 	  m = popMachine().reverse();
 	else if (command == "--revcomp") {
@@ -672,7 +675,7 @@ int main (int argc, char** argv) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
 	vguard<OutputSymbol> encoded;
 	if (vm.count("beam-encode")) {
-	  if (!trans.isDecodingMachine())
+	  if (!decodeTrans.isDecodingMachine())
 	    Warn ("Machine is not topologically sorted for encoding; some valid outputs may be missed");
 	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
 	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);

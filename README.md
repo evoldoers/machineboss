@@ -60,14 +60,14 @@ boss --generate-chars N \
 
 This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
 
-To encode we use prefix search (`--prefix-encode`), rather than beam search,
-which is unreliable in this case (it terminates prematurely):
+To encode we use beam search (`--beam-encode`).
+We could also use prefix search, but beam search is generally much faster:
 
 ~~~~
-boss --preset bintern --preset terndna --input-chars 1010101 --prefix-encode
+boss --preset bintern --preset terndna --input-chars 1010101 --beam-encode
 ~~~~
 
-To decode we can use beam search (or prefix search, but beam search is generally much faster):
+To decode we can use beam search too:
 
 ~~~~
 boss --preset bintern --preset terndna --output-chars CGATATGC --beam-decode
@@ -298,6 +298,7 @@ Postfix operators:
   --encode-sort                topologically sort non-inputting transition 
                                graph
   -n [ --eliminate ]           eliminate all silent transitions
+  --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions
   --weight-input arg           apply weight parameter with given prefix to 

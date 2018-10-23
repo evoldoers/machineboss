@@ -1170,6 +1170,16 @@ Machine Machine::advanceSort (bool decode) const {
 	  LogThisAt(5,"Sorting left number of backward " << sortType << " transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
       } else
 	LogThisAt(5,"Sorting reduced number of backward " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
+      if (nSilentBackAfter && !hasNullPaddingStates()) {
+	LogThisAt(5,"Trying again with \"dummy\" null start & end states..." << endl);
+	const Machine withDummy = padWithNullStates();
+	Assert (withDummy.hasNullPaddingStates(), "Dummy machine does not look like a dummy, triggering infinite dummification loop");
+	const Machine sortedWithDummy = withDummy.advanceSort (decode);
+	const size_t nSilentBackDummy = decode ? sortedWithDummy.nEmptyOutputBackTransitions() : sortedWithDummy.nSilentBackTransitions();
+	LogThisAt(5,"Padding with \"dummy\" null states " << (nSilentBackDummy < nSilentBackAfter ? (nSilentBackDummy ? "is better, though not perfect" : "worked!") : "failed") << endl);
+	if (nSilentBackDummy < nSilentBackAfter)
+	  result = sortedWithDummy;
+      }
       LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
     }
   } else {
@@ -1188,6 +1198,29 @@ Machine Machine::advanceSort (bool decode) const {
   }
 
   return result;
+}
+
+Machine Machine::padWithNullStates() const {
+  const Machine dummy = Machine::null();
+  return Machine::concatenate (Machine::concatenate (dummy, *this), dummy);
+}
+
+bool Machine::hasNullPaddingStates() const {
+  if (state.empty())
+    return false;
+  if (!(state[0].trans.size() == 1 && state[0].exitsWithoutIO()))
+    return false;
+  size_t nullToEnd = 0;
+  const StateIndex esi = endState();
+  for (const auto& ms: state)
+    for (const auto& t: ms.trans) {
+      if (t.dest == esi) {
+	if (!t.isSilent())
+	  return false;
+	++nullToEnd;
+      }
+    }
+  return nullToEnd == 1;
 }
 
 bool Machine::isAligningMachine() const {
