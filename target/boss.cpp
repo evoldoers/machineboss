@@ -132,8 +132,10 @@ int main (int argc, char** argv) {
       ("constraints,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
+      ("input-json", po::value<string>(), "load input sequence from JSON file")
       ("input-chars", po::value<string>(), "specify input character sequence explicitly")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
+      ("output-json", po::value<string>(), "load output sequence from JSON file")
       ("output-chars", po::value<string>(), "specify output character sequence explicitly")
 
       ("train,T", "Baum-Welch parameter fit")
@@ -570,28 +572,39 @@ int main (int argc, char** argv) {
       JsonLoader<SeqPairList>::readFiles (data, vm.at("data").as<vector<string> >());
 
     // individual inputs or outputs specified?
-    vguard<FastSeq> inSeqs, outSeqs;
+    vguard<FastSeq> inFastSeqs, outFastSeqs;
     if (vm.count("input-fasta"))
-      readFastSeqs (vm.at("input-fasta").as<string>().c_str(), inSeqs);
+      readFastSeqs (vm.at("input-fasta").as<string>().c_str(), inFastSeqs);
     if (vm.count("output-fasta"))
-      readFastSeqs (vm.at("output-fasta").as<string>().c_str(), outSeqs);
+      readFastSeqs (vm.at("output-fasta").as<string>().c_str(), outFastSeqs);
     if (vm.count("input-chars")) {
       const string seq = vm.at("input-chars").as<string>();
-      inSeqs.push_back (FastSeq::fromSeq (seq, seq));
+      inFastSeqs.push_back (FastSeq::fromSeq (seq, seq));
     }
     if (vm.count("output-chars")) {
       const string seq = vm.at("output-chars").as<string>();
-      outSeqs.push_back (FastSeq::fromSeq (seq, seq));
+      outFastSeqs.push_back (FastSeq::fromSeq (seq, seq));
     }
 
+    vguard<NamedInputSeq> inSeqs;
+    vguard<NamedOutputSeq> outSeqs;
+    for (const auto& fs: inFastSeqs)
+      inSeqs.push_back (NamedInputSeq ({ fs.name, splitToChars (fs.seq) }));
+    for (const auto& fs: outFastSeqs)
+      outSeqs.push_back (NamedOutputSeq ({ fs.name, splitToChars (fs.seq) }));
+    if (vm.count("input-json"))
+      inSeqs.push_back (JsonReader<NamedInputSeq>::fromFile (vm.at("input-json").as<string>()));
+    if (vm.count("output-json"))
+      outSeqs.push_back (JsonReader<NamedOutputSeq>::fromFile (vm.at("output-json").as<string>()));
+    
     // if inputs/outputs specified individually, create all input-output pairs
     if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
-      inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
+      inSeqs.push_back (NamedInputSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
     if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")))
-      outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
+      outSeqs.push_back (NamedOutputSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
-	data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
+	data.seqPairs.push_back (SeqPair ({ inSeq, outSeq }));
 
     // after all that, do we have data? did we need data?
     const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();

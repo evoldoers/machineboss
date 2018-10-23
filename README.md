@@ -336,8 +336,10 @@ Transducer application:
   -N [ --constraints ] arg     load normalization constraints (JSON)
   -D [ --data ] arg            load sequence-pairs (JSON)
   -I [ --input-fasta ] arg     load input sequence(s) from FASTA file
+  --input-json arg             load input sequence from JSON file
   --input-chars arg            specify input character sequence explicitly
   -O [ --output-fasta ] arg    load output sequence(s) from FASTA file
+  --output-json arg            load output sequence from JSON file
   --output-chars arg           specify output character sequence explicitly
   -T [ --train ]               Baum-Welch parameter fit
   -R [ --wiggle-room ] arg     wiggle room (allowed departure from training 

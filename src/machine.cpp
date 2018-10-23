@@ -1204,16 +1204,23 @@ Machine Machine::advanceSort (bool decode) const {
   if ((decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions()) > 0 && LoggingThisAt(SilentBackwardLogLevel)) {
     LogThisAt(SilentBackwardLogLevel,"Backward " << sortType << " transitions:" << endl);
     for (StateIndex s = 1; s < nStates(); ++s)
-      for (const auto& t: state[s].trans)
+      for (const auto& t: result.state[s].trans)
 	if ((decode ? t.outputEmpty() : t.isSilent()) && t.dest <= s)
-	  LogThisAt(SilentBackwardLogLevel,"[" << s << "," << state[s].name << endl << "," << t.dest << "," << state[t.dest].name << "]" << endl);
+	  LogThisAt(SilentBackwardLogLevel,"[" << s << "," << result.state[s].name << endl << "," << t.dest << "," << result.state[t.dest].name << "]" << endl);
   }
 
   return result;
 }
 
 Machine Machine::padWithNullStates() const {
-  const bool hasNullStart = !state.empty() && state[0].trans.size() == 1 && state[0].exitsWithoutIO();
+  bool hasNullStart = !state.empty() && state[0].trans.size() == 1 && state[0].exitsWithoutIO();
+  const StateIndex ssi = startState();
+  for (StateIndex s = 0; hasNullStart && s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
+      if (t.dest == ssi) {
+	hasNullStart = false;
+	break;
+      }
   const Machine dummy = Machine::null();
   Machine result = hasNullStart ? *this : Machine::concatenate (dummy, *this);
   return result.hasNullPaddingStates() ? result : Machine::concatenate (result, dummy);
@@ -1224,12 +1231,15 @@ bool Machine::hasNullPaddingStates() const {
     return false;
   if (!(state[0].trans.size() == 1 && state[0].exitsWithoutIO()))
     return false;
+  const StateIndex ssi = startState();
   const StateIndex esi = endState();
   if (!state[esi].trans.empty())
     return false;
   size_t nullToEnd = 0;
   for (const auto& ms: state)
     for (const auto& t: ms.trans) {
+      if (t.dest == ssi)
+	return false;
       if (t.dest == esi) {
 	if (!t.isSilent())
 	  return false;
