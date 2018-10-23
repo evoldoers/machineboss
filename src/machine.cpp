@@ -220,23 +220,32 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
       gotAllIDs = false;
       break;
     }
-  
-  out << "{\"state\":" << endl << " [";
-  set<string> seenStateID;
-  for (StateIndex s = 0; s < nStates(); ++s) {
-    const MachineState& ms = state[s];
-    out << (s ? "  " : "") << "{";
-    if (!useStateIDs)
-      out << "\"n\":" << s;
-    if (!ms.name.is_null()) {
+
+  vguard<json> uniqueName;
+  if (useStateIDs) {
+    uniqueName.reserve (nStates());
+    set<string> seenStateID;
+    for (StateIndex s = 0; s < nStates(); ++s) {
+      const MachineState& ms = state[s];
       json id = ms.name;
       int n = 1;
       while (seenStateID.count (id.dump()))
 	id = json::array ({{ ms.name, ++n }});
       seenStateID.insert (id.dump());
+      uniqueName.push_back (id);
+    }
+  }
+  
+  out << "{\"state\":" << endl << " [";
+  for (StateIndex s = 0; s < nStates(); ++s) {
+    const MachineState& ms = state[s];
+    out << (s ? "  " : "") << "{";
+    if (!useStateIDs)
+      out << "\"n\":" << s;
+    if (useStateIDs || !ms.name.is_null()) {
       if (!useStateIDs)
 	out << "," << endl << "   ";
-      out << "\"id\":" << id;
+      out << "\"id\":" << (useStateIDs ? uniqueName[s] : ms.name);
     }
     if (ms.trans.size()) {
       out << "," << endl << "   \"trans\":[";
@@ -245,8 +254,8 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 	if (nt++)
 	  out << "," << endl << "            ";
 	out << "{\"to\":";
-	if (useStateIDs && !state[t.dest].name.is_null())
-	  out << state[t.dest].name;
+	if (useStateIDs)
+	  out << uniqueName[t.dest];
 	else
 	  out << t.dest;
 	if (!t.inputEmpty()) out << ",\"in\":\"" << escaped_str(t.in) << "\"";
@@ -1160,28 +1169,31 @@ Machine Machine::advanceSort (bool decode) const {
 	for (auto& trans: result.state.back().trans)
 	  trans.dest = old2new[trans.dest];
       }
-    
-      const size_t nSilentBackAfter = decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions();
-      if (nSilentBackAfter >= nSilentBackBefore) {
-	result = *this;
+    }
+
+    const size_t nSilentBackAfter = decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions();
+    if (nSilentBackAfter >= nSilentBackBefore) {
+      if (orderChanged) {
 	if (nSilentBackAfter > nSilentBackBefore)
 	  LogThisAt(5,"Sorting increased number of " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << "; restoring original order" << endl);
 	else
 	  LogThisAt(5,"Sorting left number of backward " << sortType << " transitions unchanged at " << nSilentBackBefore << "; restoring original order" << endl);
-      } else
-	LogThisAt(5,"Sorting reduced number of backward " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
-      if (nSilentBackAfter && !hasNullPaddingStates()) {
-	LogThisAt(5,"Trying again with \"dummy\" null start & end states..." << endl);
-	const Machine withDummy = padWithNullStates();
-	Assert (withDummy.hasNullPaddingStates(), "Dummy machine does not look like a dummy, triggering infinite dummification loop");
-	const Machine sortedWithDummy = withDummy.advanceSort (decode);
-	const size_t nSilentBackDummy = decode ? sortedWithDummy.nEmptyOutputBackTransitions() : sortedWithDummy.nSilentBackTransitions();
-	LogThisAt(5,"Padding with \"dummy\" null states " << (nSilentBackDummy < nSilentBackAfter ? (nSilentBackDummy ? "is better, though not perfect" : "worked!") : "failed") << endl);
-	if (nSilentBackDummy < nSilentBackAfter)
-	  result = sortedWithDummy;
+	result = *this;
       }
-      LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
+    } else
+      LogThisAt(5,"Sorting reduced number of backward " << sortType << " transitions from " << nSilentBackBefore << " to " << nSilentBackAfter << endl);
+
+    if (nSilentBackAfter && !hasNullPaddingStates()) {
+      LogThisAt(5,"Trying to sort again with \"dummy\" null start & end states..." << endl);
+      const Machine withDummy = padWithNullStates();
+      Assert (withDummy.hasNullPaddingStates(), "Dummy machine does not look like a dummy, triggering infinite dummification loop");
+      const Machine sortedWithDummy = withDummy.advanceSort (decode);
+      const size_t nSilentBackDummy = decode ? sortedWithDummy.nEmptyOutputBackTransitions() : sortedWithDummy.nSilentBackTransitions();
+      LogThisAt(5,"Padding with \"dummy\" null states " << (nSilentBackDummy < nSilentBackAfter ? (nSilentBackDummy ? "is better, though not perfect" : "worked!") : "failed") << endl);
+      if (nSilentBackDummy < nSilentBackAfter)
+	result = sortedWithDummy;
     }
+    LogThisAt(7,"Sorted machine:" << endl << MachineLoader::toJsonString(result) << endl);
   } else {
     LogThisAt(5,"Machine has no backward " << sortType << " transitions; sort unnecessary" << endl);
     result = *this;
@@ -1201,8 +1213,10 @@ Machine Machine::advanceSort (bool decode) const {
 }
 
 Machine Machine::padWithNullStates() const {
+  const bool hasNullStart = !state.empty() && state[0].trans.size() == 1 && state[0].exitsWithoutIO();
   const Machine dummy = Machine::null();
-  return Machine::concatenate (Machine::concatenate (dummy, *this), dummy);
+  Machine result = hasNullStart ? *this : Machine::concatenate (dummy, *this);
+  return result.hasNullPaddingStates() ? result : Machine::concatenate (result, dummy);
 }
 
 bool Machine::hasNullPaddingStates() const {
@@ -1210,8 +1224,10 @@ bool Machine::hasNullPaddingStates() const {
     return false;
   if (!(state[0].trans.size() == 1 && state[0].exitsWithoutIO()))
     return false;
-  size_t nullToEnd = 0;
   const StateIndex esi = endState();
+  if (!state[esi].trans.empty())
+    return false;
+  size_t nullToEnd = 0;
   for (const auto& ms: state)
     for (const auto& t: ms.trans) {
       if (t.dest == esi) {

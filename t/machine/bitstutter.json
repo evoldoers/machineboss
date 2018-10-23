@@ -1,5 +1,6 @@
 {"state": [
-    {"id":"S","trans":[{"in":"0","out":"0","to":"S0"},{"in":"1","out":"1","to":"S1"}]},
-    {"id":"S0","trans":[{"to":"S","weight":0.99},{"out":"0","to":"S0","weight":0.01}]},
-    {"id":"S1","trans":[{"to":"S","weight":0.99},{"out":"1","to":"S1","weight":0.01}]}
+  {"id":"S","trans":[{"in":"0","out":"0","to":"S0"},{"in":"1","out":"1","to":"S1"},{"to":"E"}]},
+  {"id":"S0","trans":[{"to":"S","weight":0.99},{"out":"0","to":"S0","weight":0.01}]},
+  {"id":"S1","trans":[{"to":"S","weight":0.99},{"out":"1","to":"S1","weight":0.01}]},
+  {"id":"E"}
 ]}

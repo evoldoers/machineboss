@@ -1,18 +1,20 @@
 {"state":
  [{"n":0,
-   "id":"kleene-plus",
-   "trans":[{"to":1}]},
+   "id":["concat-l","kleene-plus"],
+   "trans":[{"to":2}]},
   {"n":1,
-   "id":["001",0],
-   "trans":[{"to":2,"out":"0"}]},
+   "id":["concat-l",["001",3]],
+   "trans":[{"to":2},
+            {"to":5}]},
   {"n":2,
-   "id":["001",1],
+   "id":["concat-l",["001",0]],
    "trans":[{"to":3,"out":"0"}]},
   {"n":3,
-   "id":["001",2],
-   "trans":[{"to":4,"out":"1"}]},
+   "id":["concat-l",["001",1]],
+   "trans":[{"to":4,"out":"0"}]},
   {"n":4,
-   "id":["001",3],
-   "trans":[{"to":1}]}
+   "id":["concat-l",["001",2]],
+   "trans":[{"to":1,"out":"1"}]},
+  {"n":5}
  ]
 }
