@@ -84,6 +84,7 @@ int main (int argc, char** argv) {
       ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
+      ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
@@ -264,6 +265,15 @@ int main (int argc, char** argv) {
 	auto nextMachine = [&] () -> Machine {
 	  return nextMachineForCommand (arg);
 	};
+	auto revCompMachine = [&] (const Machine& r) -> Machine {
+	  const vguard<OutputSymbol> outAlph = r.outputAlphabet();
+	  const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
+	  return Machine::compose (r.reverse(),
+				   MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
+							       ? "comprna"
+							       : "compdna"),
+				   true, true, Machine::SumSilentCycles);
+	};
 
 	smatch presetAlphMatch;
 	if (regex_search (arg, presetAlphMatch, presetAlphRegex)) {
@@ -406,15 +416,12 @@ int main (int argc, char** argv) {
 	  m = popMachine().padWithNullStates();
 	else if (command == "--reverse")
 	  m = popMachine().reverse();
-	else if (command == "--revcomp") {
+	else if (command == "--revcomp")
+	  m = revCompMachine (popMachine());
+	else if (command == "--double-strand") {
+	  const WeightExpr half = WeightAlgebra::reciprocal (WeightAlgebra::intConstant (2));
 	  const Machine r = popMachine();
-	  const vguard<OutputSymbol> outAlph = m.outputAlphabet();
-	  const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
-	  m = Machine::compose (r.reverse(),
-				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
-							    ? "comprna"
-							    : "compdna"),
-				true, true, Machine::SumSilentCycles);
+	  m = Machine::takeUnion (r, revCompMachine(r), half, half);
 	} else if (command == "--transpose")
 	  m = popMachine().transpose();
 	else if (command == "--weight") {

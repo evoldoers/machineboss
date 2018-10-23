@@ -172,6 +172,7 @@ These example machines may be selected using the `--preset` keyword, e.g. `boss 
 | Repeat | `boss m.json --repeat 3` | Repeat `m.json` the specified number of times | Fixed quantifiers in regexes |
 | Reverse | `boss m.json --reverse` | Reverse the machine | |
 | Reverse complement | `boss m.json --revcomp` | As you might expect | |
+| Symmetrize forward & reverse strands | `boss m.json --double-strand` | Takes the union of a machine with its reverse complement | |
 | Normalize | `boss m.json --joint-norm` | Normalize transition weights, so that sum of outgoing weights from each state is 1 | Probabilistic normalization |
 | Sort | `boss m.json --sort` | Topologically sort the transition graph | |
 | Eliminate redundant states | `boss m.json --eliminate` | Try to eliminate unnecessary states and transitions | |
@@ -304,6 +305,7 @@ Postfix operators:
   --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
+  --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
   --joint-norm                 normalize jointly (outgoing transition weights 
                                sum to 1)
