@@ -77,6 +77,8 @@ boss --counts -v6 \
  --params data/Ecoli_codon.json
 ~~~~
 
+Note that this takes quite a long time! The log messages reveal that the bulk of the time is being taken by sorting the states. This may be [optimized](https://github.com/evoldoers/machineboss/issues/94) in future.
+
 ### Encode binary data as non-repeating DNA
 
 This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
