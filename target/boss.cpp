@@ -84,6 +84,7 @@ int main (int argc, char** argv) {
       ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
+      ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
@@ -93,6 +94,7 @@ int main (int argc, char** argv) {
       ("decode-sort", "topologically sort non-outputting transition graph")
       ("encode-sort", "topologically sort non-inputting transition graph")
       ("eliminate,n", "eliminate all silent transitions")
+      ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
       ("weight-output", po::value<string>(), "apply weight parameter with given prefix to outputs")
@@ -122,7 +124,8 @@ int main (int argc, char** argv) {
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
-      ("showparams,W", "show unbound parameters in final machine")
+      ("show-params", "show unbound parameters in final machine")
+      ("use-id", "use state id, rather than number, for transitions")
 
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
       ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unspecified parameters; this option is implicit when training")
@@ -130,8 +133,10 @@ int main (int argc, char** argv) {
       ("constraints,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
+      ("input-json", po::value<string>(), "load input sequence from JSON file")
       ("input-chars", po::value<string>(), "specify input character sequence explicitly")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
+      ("output-json", po::value<string>(), "load output sequence from JSON file")
       ("output-chars", po::value<string>(), "specify output character sequence explicitly")
 
       ("train,T", "Baum-Welch parameter fit")
@@ -259,6 +264,15 @@ int main (int argc, char** argv) {
 	};
 	auto nextMachine = [&] () -> Machine {
 	  return nextMachineForCommand (arg);
+	};
+	auto revCompMachine = [&] (const Machine& r) -> Machine {
+	  const vguard<OutputSymbol> outAlph = r.outputAlphabet();
+	  const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
+	  return Machine::compose (r.reverse(),
+				   MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
+							       ? "comprna"
+							       : "compdna"),
+				   true, true, Machine::SumSilentCycles);
 	};
 
 	smatch presetAlphMatch;
@@ -398,17 +412,16 @@ int main (int argc, char** argv) {
 	  m = Machine::kleeneLoop (popMachine(), nextMachine()).advanceSort();
 	else if (command == "--eliminate")
 	  m = popMachine().eliminateSilentTransitions();
+	else if (command == "--pad")
+	  m = popMachine().padWithNullStates();
 	else if (command == "--reverse")
 	  m = popMachine().reverse();
-	else if (command == "--revcomp") {
+	else if (command == "--revcomp")
+	  m = revCompMachine (popMachine());
+	else if (command == "--double-strand") {
+	  const WeightExpr half = WeightAlgebra::reciprocal (WeightAlgebra::intConstant (2));
 	  const Machine r = popMachine();
-	  const vguard<OutputSymbol> outAlph = m.outputAlphabet();
-	  const set<OutputSymbol> outAlphSet (outAlph.begin(), outAlph.end());
-	  m = Machine::compose (r.reverse(),
-				MachinePresets::makePreset ((outAlphSet.count(string("U")) || outAlphSet.count(string("u")))
-							    ? "comprna"
-							    : "compdna"),
-				true, true, Machine::SumSilentCycles);
+	  m = Machine::takeUnion (r, revCompMachine(r), half, half);
 	} else if (command == "--transpose")
 	  m = popMachine().transpose();
 	else if (command == "--weight") {
@@ -523,7 +536,7 @@ int main (int argc, char** argv) {
       if (vm.count("graphviz"))
 	machine.writeDot (out);
       else
-	machine.writeJson (out, vm.count("memoize"), vm.count("showparams"));
+	machine.writeJson (out, vm.count("memoize"), vm.count("show-params"), vm.count("use-id"));
     };
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();
@@ -566,28 +579,39 @@ int main (int argc, char** argv) {
       JsonLoader<SeqPairList>::readFiles (data, vm.at("data").as<vector<string> >());
 
     // individual inputs or outputs specified?
-    vguard<FastSeq> inSeqs, outSeqs;
+    vguard<FastSeq> inFastSeqs, outFastSeqs;
     if (vm.count("input-fasta"))
-      readFastSeqs (vm.at("input-fasta").as<string>().c_str(), inSeqs);
+      readFastSeqs (vm.at("input-fasta").as<string>().c_str(), inFastSeqs);
     if (vm.count("output-fasta"))
-      readFastSeqs (vm.at("output-fasta").as<string>().c_str(), outSeqs);
+      readFastSeqs (vm.at("output-fasta").as<string>().c_str(), outFastSeqs);
     if (vm.count("input-chars")) {
       const string seq = vm.at("input-chars").as<string>();
-      inSeqs.push_back (FastSeq::fromSeq (seq, seq));
+      inFastSeqs.push_back (FastSeq::fromSeq (seq, seq));
     }
     if (vm.count("output-chars")) {
       const string seq = vm.at("output-chars").as<string>();
-      outSeqs.push_back (FastSeq::fromSeq (seq, seq));
+      outFastSeqs.push_back (FastSeq::fromSeq (seq, seq));
     }
 
+    vguard<NamedInputSeq> inSeqs;
+    vguard<NamedOutputSeq> outSeqs;
+    for (const auto& fs: inFastSeqs)
+      inSeqs.push_back (NamedInputSeq ({ fs.name, splitToChars (fs.seq) }));
+    for (const auto& fs: outFastSeqs)
+      outSeqs.push_back (NamedOutputSeq ({ fs.name, splitToChars (fs.seq) }));
+    if (vm.count("input-json"))
+      inSeqs.push_back (JsonReader<NamedInputSeq>::fromFile (vm.at("input-json").as<string>()));
+    if (vm.count("output-json"))
+      outSeqs.push_back (JsonReader<NamedOutputSeq>::fromFile (vm.at("output-json").as<string>()));
+    
     // if inputs/outputs specified individually, create all input-output pairs
     if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
-      inSeqs.push_back (FastSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
+      inSeqs.push_back (NamedInputSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
     if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")))
-      outSeqs.push_back (FastSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
+      outSeqs.push_back (NamedOutputSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
-	data.seqPairs.push_back (SeqPair ({ NamedInputSeq ({ inSeq.name, splitToChars (inSeq.seq) }), NamedOutputSeq ({ outSeq.name, splitToChars (outSeq.seq) }) }));
+	data.seqPairs.push_back (SeqPair ({ inSeq, outSeq }));
 
     // after all that, do we have data? did we need data?
     const bool noIO = machine.inputAlphabet().empty() && machine.outputAlphabet().empty();
@@ -671,7 +695,7 @@ int main (int argc, char** argv) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
 	vguard<OutputSymbol> encoded;
 	if (vm.count("beam-encode")) {
-	  if (!trans.isDecodingMachine())
+	  if (!decodeTrans.isDecodingMachine())
 	    Warn ("Machine is not topologically sorted for encoding; some valid outputs may be missed");
 	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
 	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);

@@ -56,18 +56,41 @@ boss --generate-chars N \
  --eliminate >PS00001.json
 ~~~~
 
+### Search the N-glycosylation regex against the MinION read
+
+This command takes the `PS00001.json` regex from the previous example,
+runs it through a reverse-translation machine (`--preset translate`),
+adds a self-loop with a dummy parameter (`--count-copies n`),
+flanks it with a null model (`--generate-uniform-dna`),
+and then uses the Forward-Backward algorithm to find the expected usage of the dummy parameter (`--counts`)
+
+~~~~
+boss --counts -v6 \
+ --generate-uniform-dna \
+ --concat \
+  --begin \
+   PS00001.json --preset translate --double-strand \
+   --concat --generate-uniform-dna \
+   --count-copies n \
+  --end \
+ --accept-csv t/csv/nanopore_test.csv \
+ --params data/Ecoli_codon.json
+~~~~
+
+Note that this takes quite a long time! The log messages reveal that the bulk of the time is being taken by sorting the states. This may be [optimized](https://github.com/evoldoers/machineboss/issues/94) in future.
+
 ### Encode binary data as non-repeating DNA
 
 This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
 
-To encode we use prefix search (`--prefix-encode`), rather than beam search,
-which is unreliable in this case (it terminates prematurely):
+To encode we use beam search (`--beam-encode`).
+We could also use prefix search, but beam search is generally much faster:
 
 ~~~~
-boss --preset bintern --preset terndna --input-chars 1010101 --prefix-encode
+boss --preset bintern --preset terndna --input-chars 1010101 --beam-encode
 ~~~~
 
-To decode we can use beam search (or prefix search, but beam search is generally much faster):
+To decode we can use beam search too:
 
 ~~~~
 boss --preset bintern --preset terndna --output-chars CGATATGC --beam-decode
@@ -151,6 +174,7 @@ These example machines may be selected using the `--preset` keyword, e.g. `boss 
 | Repeat | `boss m.json --repeat 3` | Repeat `m.json` the specified number of times | Fixed quantifiers in regexes |
 | Reverse | `boss m.json --reverse` | Reverse the machine | |
 | Reverse complement | `boss m.json --revcomp` | As you might expect | |
+| Symmetrize forward & reverse strands | `boss m.json --double-strand` | Takes the union of a machine with its reverse complement | |
 | Normalize | `boss m.json --joint-norm` | Normalize transition weights, so that sum of outgoing weights from each state is 1 | Probabilistic normalization |
 | Sort | `boss m.json --sort` | Topologically sort the transition graph | |
 | Eliminate redundant states | `boss m.json --eliminate` | Try to eliminate unnecessary states and transitions | |
@@ -283,6 +307,7 @@ Postfix operators:
   --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
+  --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
   --joint-norm                 normalize jointly (outgoing transition weights 
                                sum to 1)
@@ -298,6 +323,7 @@ Postfix operators:
   --encode-sort                topologically sort non-inputting transition 
                                graph
   -n [ --eliminate ]           eliminate all silent transitions
+  --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions
   --weight-input arg           apply weight parameter with given prefix to 
@@ -324,7 +350,9 @@ Transducer application:
   -S [ --save ] arg            save machine to file
   -G [ --graphviz ]            write machine in Graphviz DOT format
   -M [ --memoize ]             memoize repeated expressions for compactness
-  -W [ --showparams ]          show unbound parameters in final machine
+  --show-params                show unbound parameters in final machine
+  --use-id                     use state id, rather than number, for 
+                               transitions
   -P [ --params ] arg          load parameters (JSON)
   -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
                                for unspecified parameters; this option is 
@@ -333,8 +361,10 @@ Transducer application:
   -N [ --constraints ] arg     load normalization constraints (JSON)
   -D [ --data ] arg            load sequence-pairs (JSON)
   -I [ --input-fasta ] arg     load input sequence(s) from FASTA file
+  --input-json arg             load input sequence from JSON file
   --input-chars arg            specify input character sequence explicitly
   -O [ --output-fasta ] arg    load output sequence(s) from FASTA file
+  --output-json arg            load output sequence from JSON file
   --output-chars arg           specify output character sequence explicitly
   -T [ --train ]               Baum-Welch parameter fit
   -R [ --wiggle-room ] arg     wiggle room (allowed departure from training 

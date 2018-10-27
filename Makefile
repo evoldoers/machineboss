@@ -195,10 +195,10 @@ test-stutter2:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitstutter.json t/expect/bitstutter-bitstutter.json
 
 test-noise2:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json t/machine/bitnoise.json --showparams t/expect/bitnoise-bitnoise.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json t/machine/bitnoise.json --show-params t/expect/bitnoise-bitnoise.json
 
 test-unitindel2:
-	@$(TEST) bin/$(BOSS) t/machine/unitindel.json t/machine/unitindel.json --showparams t/expect/unitindel-unitindel.json
+	@$(TEST) bin/$(BOSS) t/machine/unitindel.json t/machine/unitindel.json --show-params t/expect/unitindel-unitindel.json
 
 test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
@@ -316,7 +316,7 @@ test-echo-valid:
 	@$(TEST) bin/$(BOSS) t/expect/bitecho.json -idem
 
 test-unitindel2-valid:
-	@$(TEST) bin/$(BOSS) --showparams t/expect/unitindel-unitindel.json -idem
+	@$(TEST) bin/$(BOSS) --show-params t/expect/unitindel-unitindel.json -idem
 
 # Schema validation failure tests
 INVALID_SCHEMA_TESTS = test-not-json test-no-state test-bad-state test-bad-trans test-bad-weight

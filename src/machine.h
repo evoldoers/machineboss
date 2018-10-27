@@ -66,7 +66,7 @@ struct Machine {
   Constraints cons;
   vguard<MachineState> state;
 
-  void writeJson (ostream& out, bool memoizeRepeatedExpressions = false, bool showParams = false) const;
+  void writeJson (ostream& out, bool memoizeRepeatedExpressions = false, bool showParams = false, bool useStateIDs = false) const;
   void readJson (const json& json);
   void writeDot (ostream& out, const char* emptyLabelText = "&epsilon;") const;
 
@@ -126,6 +126,9 @@ struct Machine {
   bool isDecodingMachine() const;  // no non-outputting i->j transitions where j<i
   bool isAligningMachine() const;  // at most one i->j transition with given input & output labels
 
+  Machine padWithNullStates() const;  // adds "dummy" null states at start & end
+  bool hasNullPaddingStates() const;  // null transitions out of start & into end
+  
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
 
   Machine pointwiseReciprocal() const;
