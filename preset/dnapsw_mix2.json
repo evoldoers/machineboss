@@ -1,0 +1,358 @@
+{
+  "state": [
+    {
+      "id": "dnapsw_mix2-S",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-I1",
+          "weight": "gapOpen1"
+        },
+        {
+          "to": "dnapsw_mix2-I2",
+          "weight": "gapOpen2"
+        },
+        {
+          "to": "dnapsw_mix2-W",
+          "weight": "notGapOpen"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-J1",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-I1",
+          "weight": "gapExtend"
+        },
+        {
+          "to": "dnapsw_mix2-W",
+          "weight": {
+            "-": [
+              true,
+              "gapExtend"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-J2",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-I2",
+          "weight": "gapExtend"
+        },
+        {
+          "to": "dnapsw_mix2-W",
+          "weight": {
+            "-": [
+              true,
+              "gapExtend"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-W",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-M",
+          "weight": "notGapOpen"
+        },
+        {
+          "to": "dnapsw_mix2-D1",
+          "weight": "gapOpen"
+        },
+        {
+          "to": "dnapsw_mix2-D2",
+          "weight": "gapOpen"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-X1",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-D1",
+          "weight": "gapExtend"
+        },
+        {
+          "to": "dnapsw_mix2-M",
+          "weight": {
+            "-": [
+              true,
+              "gapExtend"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-X2",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-D2",
+          "weight": "gapExtend"
+        },
+        {
+          "to": "dnapsw_mix2-M",
+          "weight": {
+            "-": [
+              true,
+              "gapExtend"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-I1",
+      "trans": [
+        {
+          "out": "A",
+          "to": "dnapsw_mix2-J1",
+          "weight": "eqmA"
+        },
+        {
+          "out": "C",
+          "to": "dnapsw_mix2-J1",
+          "weight": "eqmC"
+        },
+        {
+          "out": "G",
+          "to": "dnapsw_mix2-J1",
+          "weight": "eqmG"
+        },
+        {
+          "out": "T",
+          "to": "dnapsw_mix2-J1",
+          "weight": "eqmT"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-I2",
+      "trans": [
+        {
+          "out": "A",
+          "to": "dnapsw_mix2-J2",
+          "weight": "eqmA"
+        },
+        {
+          "out": "C",
+          "to": "dnapsw_mix2-J2",
+          "weight": "eqmC"
+        },
+        {
+          "out": "G",
+          "to": "dnapsw_mix2-J2",
+          "weight": "eqmG"
+        },
+        {
+          "out": "T",
+          "to": "dnapsw_mix2-J2",
+          "weight": "eqmT"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-M",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-E"
+        },
+        {
+          "in": "A",
+          "out": "A",
+          "to": "dnapsw_mix2-S",
+          "weight": "subAA"
+        },
+        {
+          "in": "A",
+          "out": "C",
+          "to": "dnapsw_mix2-S",
+          "weight": "subAC"
+        },
+        {
+          "in": "A",
+          "out": "G",
+          "to": "dnapsw_mix2-S",
+          "weight": "subAG"
+        },
+        {
+          "in": "A",
+          "out": "T",
+          "to": "dnapsw_mix2-S",
+          "weight": "subAT"
+        },
+        {
+          "in": "C",
+          "out": "A",
+          "to": "dnapsw_mix2-S",
+          "weight": "subCA"
+        },
+        {
+          "in": "C",
+          "out": "C",
+          "to": "dnapsw_mix2-S",
+          "weight": "subCC"
+        },
+        {
+          "in": "C",
+          "out": "G",
+          "to": "dnapsw_mix2-S",
+          "weight": "subCG"
+        },
+        {
+          "in": "C",
+          "out": "T",
+          "to": "dnapsw_mix2-S",
+          "weight": "subCT"
+        },
+        {
+          "in": "G",
+          "out": "A",
+          "to": "dnapsw_mix2-S",
+          "weight": "subGA"
+        },
+        {
+          "in": "G",
+          "out": "C",
+          "to": "dnapsw_mix2-S",
+          "weight": "subGC"
+        },
+        {
+          "in": "G",
+          "out": "G",
+          "to": "dnapsw_mix2-S",
+          "weight": "subGG"
+        },
+        {
+          "in": "G",
+          "out": "T",
+          "to": "dnapsw_mix2-S",
+          "weight": "subGT"
+        },
+        {
+          "in": "T",
+          "out": "A",
+          "to": "dnapsw_mix2-S",
+          "weight": "subTA"
+        },
+        {
+          "in": "T",
+          "out": "C",
+          "to": "dnapsw_mix2-S",
+          "weight": "subTC"
+        },
+        {
+          "in": "T",
+          "out": "G",
+          "to": "dnapsw_mix2-S",
+          "weight": "subTG"
+        },
+        {
+          "in": "T",
+          "out": "T",
+          "to": "dnapsw_mix2-S",
+          "weight": "subTT"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-D1",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-E"
+        },
+        {
+          "in": "A",
+          "to": "dnapsw_mix2-X1"
+        },
+        {
+          "in": "C",
+          "to": "dnapsw_mix2-X1"
+        },
+        {
+          "in": "G",
+          "to": "dnapsw_mix2-X1"
+        },
+        {
+          "in": "T",
+          "to": "dnapsw_mix2-X1"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-D2",
+      "trans": [
+        {
+          "to": "dnapsw_mix2-E"
+        },
+        {
+          "in": "A",
+          "to": "dnapsw_mix2-X2"
+        },
+        {
+          "in": "C",
+          "to": "dnapsw_mix2-X2"
+        },
+        {
+          "in": "G",
+          "to": "dnapsw_mix2-X2"
+        },
+        {
+          "in": "T",
+          "to": "dnapsw_mix2-X2"
+        }
+      ]
+    },
+    {
+      "id": "dnapsw_mix2-E"
+    }
+  ],
+  "cons": {
+    "prob": [
+      "gapExtend1",
+      "gapExtend2"
+    ],
+    "norm": [
+      [
+        "eqmA",
+        "eqmC",
+        "eqmG",
+        "eqmT"
+      ],
+      [
+        "subAA",
+        "subAC",
+        "subAG",
+        "subAT"
+      ],
+      [
+        "subCA",
+        "subCC",
+        "subCG",
+        "subCT"
+      ],
+      [
+        "subGA",
+        "subGC",
+        "subGG",
+        "subGT"
+      ],
+      [
+        "subTA",
+        "subTC",
+        "subTG",
+        "subTT"
+      ],
+      [
+        "gapOpen1",
+        "gapOpen2",
+        "notGapOpen"
+      ]
+    ]
+  }
+}

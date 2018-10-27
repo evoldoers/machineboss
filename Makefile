@@ -147,10 +147,13 @@ src/preset/$(FILE).h: preset/$(FILE).json
 	xxd -i $< >$@
 
 preset/protpsw.json constraints/protpsw.json: js/makepsw.js
-	js/makepsw.js -a ACDEFGHIKLMNPQRSTVWY -n protpsw >$@
+	js/makepsw.js -w -a ACDEFGHIKLMNPQRSTVWY -n protpsw >$@
 
 preset/dnapsw.json constraints/dnapsw.json: js/makepsw.js
-	js/makepsw.js -a ACGT -n dnapsw >$@
+	js/makepsw.js -w -a ACGT -n dnapsw >$@
+
+preset/dnapsw_mix2.json: js/makepsw.js
+	js/makepsw.js -a ACGT -n dnapsw_mix2 -m 2 >$@
 
 preset/translate.json: js/translate.js
 	node $< -C constraints/translate.json -P params/translate.json >$@
