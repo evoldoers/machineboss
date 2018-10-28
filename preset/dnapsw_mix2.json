@@ -22,14 +22,14 @@
       "trans": [
         {
           "to": "dnapsw_mix2-I1",
-          "weight": "gapExtend"
+          "weight": "gapExtend1"
         },
         {
           "to": "dnapsw_mix2-W",
           "weight": {
             "-": [
               true,
-              "gapExtend"
+              "gapExtend1"
             ]
           }
         }
@@ -40,14 +40,14 @@
       "trans": [
         {
           "to": "dnapsw_mix2-I2",
-          "weight": "gapExtend"
+          "weight": "gapExtend2"
         },
         {
           "to": "dnapsw_mix2-W",
           "weight": {
             "-": [
               true,
-              "gapExtend"
+              "gapExtend2"
             ]
           }
         }
@@ -62,11 +62,11 @@
         },
         {
           "to": "dnapsw_mix2-D1",
-          "weight": "gapOpen"
+          "weight": "gapOpen1"
         },
         {
           "to": "dnapsw_mix2-D2",
-          "weight": "gapOpen"
+          "weight": "gapOpen2"
         }
       ]
     },
@@ -75,14 +75,14 @@
       "trans": [
         {
           "to": "dnapsw_mix2-D1",
-          "weight": "gapExtend"
+          "weight": "gapExtend1"
         },
         {
           "to": "dnapsw_mix2-M",
           "weight": {
             "-": [
               true,
-              "gapExtend"
+              "gapExtend1"
             ]
           }
         }
@@ -93,14 +93,14 @@
       "trans": [
         {
           "to": "dnapsw_mix2-D2",
-          "weight": "gapExtend"
+          "weight": "gapExtend2"
         },
         {
           "to": "dnapsw_mix2-M",
           "weight": {
             "-": [
               true,
-              "gapExtend"
+              "gapExtend2"
             ]
           }
         }

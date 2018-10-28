@@ -55,15 +55,15 @@ var machine = { state: [{id: name+"-S",
 			 trans: iotaMix.map ((k) => {return {to: name+"-I"+k, weight: "gapOpen"+k}} )
 			 .concat ([{ to: name+"-W", weight: (mixCpts ? "notGapOpen" : not("gapOpen")) }])}]
 		.concat (iotaMix.map ((k) => { return {id: name+"-J"+k,
-			                               trans: [{to: name+"-I"+k, weight: "gapExtend"},
-				                               {to: name+"-W", weight: not("gapExtend")}]} }))
+			                               trans: [{to: name+"-I"+k, weight: "gapExtend"+k},
+				                               {to: name+"-W", weight: not("gapExtend"+k)}]} }))
 		.concat ([{id: name+"-W",
 		           trans: [{ to: name+"-M", weight: (mixCpts ? "notGapOpen" : not("gapOpen")) }]
-                           .concat (iotaMix.map ((k) => { return {to: name+"-D"+k, weight: "gapOpen"} } ))
+                           .concat (iotaMix.map ((k) => { return {to: name+"-D"+k, weight: "gapOpen"+k} } ))
                           }])
                 .concat (iotaMix.map ((k) => { return {id: name+"-X"+k,
-			                               trans: [{to: name+"-D"+k, weight: "gapExtend"},
-				                               {to: name+"-M", weight: not("gapExtend")}]} } ))
+			                               trans: [{to: name+"-D"+k, weight: "gapExtend"+k},
+				                               {to: name+"-M", weight: not("gapExtend"+k)}]} } ))
                 .concat (iotaMix.map ((k) => { return {id: name+"-I"+k,
 			                               trans: alph.map ((c) => {return { out: c, to: name+"-J"+k, weight: "eqm"+c } })} }))
 		.concat ([{id: name+"-M",
