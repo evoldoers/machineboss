@@ -631,7 +631,7 @@ int main (int argc, char** argv) {
       if (vm.count("constraints"))
 	fitter.constraints = constraints;
       fitter.constants = funcs;
-      fitter.seed = fitter.allConstraints().defaultParams().combine (seed);
+      fitter.seed = fitter.allConstraints().defaultParams().combine (seed, true);
       params = vm.count("wiggle-room") ? fitter.fit(data,vm.at("wiggle-room").as<int>()) : fitter.fit(data);
       cout << JsonLoader<Params>::toJsonString(params) << endl;
     } else
