@@ -1116,6 +1116,15 @@ Machine Machine::advanceSort (bool decode) const {
 	  silentIncoming[trans.dest].insert (s);
 	}
     }
+    auto compareStates = [&] (StateIndex a, StateIndex b) {
+      const int aIncoming = (int) silentIncoming[a].size(), aDiff = aIncoming - (int) silentOutgoing[a].size();
+      const int bIncoming = (int) silentIncoming[b].size(), bDiff = bIncoming - (int) silentOutgoing[b].size();
+      return (aIncoming == bIncoming
+	      ? (aDiff == bDiff
+		 ? (a < b)
+		 : (aDiff < bDiff))
+	      : (aIncoming < bIncoming));
+    };
     vguard<StateIndex> order;
     vguard<bool> inOrder (nStates(), false);
     auto addToOrder = [&] (StateIndex s) {
@@ -1133,20 +1142,12 @@ Machine Machine::advanceSort (bool decode) const {
       deque<StateIndex> queue;
       for (StateIndex s = 1; s + 1 < nStates(); ++s)
 	queue.push_back (s);
+      sort (queue.begin() + 1, queue.end(), compareStates);
       ProgressLog(plogSort,6);
       plogSort.initProgress ("Advance-sorting %lu states", nStates() - 1);
       while (queue.size()) {
 	plogSort.logProgress ((nStates() - queue.size()) / (double) nStates(), "sorted %lu states", nStates() - queue.size());
-	partial_sort (queue.begin(), queue.begin() + 1, queue.end(),
-		      [&] (StateIndex a, StateIndex b) {
-			const int aIncoming = (int) silentIncoming[a].size(), aDiff = aIncoming - (int) silentOutgoing[a].size();
-			const int bIncoming = (int) silentIncoming[b].size(), bDiff = bIncoming - (int) silentOutgoing[b].size();
-			return (aIncoming == bIncoming
-				? (aDiff == bDiff
-				   ? (a < b)
-				   : (aDiff < bDiff))
-				: (aIncoming < bIncoming));
-		      });
+	partial_sort (queue.begin(), queue.begin() + 1, queue.end(), compareStates);
 	addToOrder (queue.front());
 	queue.erase (queue.begin());
       }
