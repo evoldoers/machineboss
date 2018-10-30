@@ -266,8 +266,8 @@ General options:
 Transducer construction:
   -l [ --load ] arg            load machine from file
   -p [ --preset ] arg          select preset (null, compdna, comprna, dnapsw, 
-                               protpsw, translate, prot2dna, psw2dna, bintern, 
-                               terndna)
+                               protpsw, translate, prot2dna, psw2dna, dna2rna, 
+                               rna2dna, bintern, terndna)
   -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
   --generate-one arg           generator for any one of specified characters
   --generate-wild arg          generator for Kleene closure over specified 

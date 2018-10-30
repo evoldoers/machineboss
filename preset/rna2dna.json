@@ -1,0 +1,9 @@
+{"state":
+ [{"n":0,
+   "id":"RNA_to_DNA",
+   "trans":[{"to":0,"in":"A","out":"A"},
+            {"to":0,"in":"C","out":"C"},
+            {"to":0,"in":"G","out":"G"},
+            {"to":0,"in":"U","out":"T"}]}
+ ]
+}
