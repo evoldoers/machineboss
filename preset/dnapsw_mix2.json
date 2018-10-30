@@ -27,10 +27,7 @@
         {
           "to": "dnapsw_mix2-W",
           "weight": {
-            "-": [
-              true,
-              "gapExtend1"
-            ]
+            "not": "gapExtend1"
           }
         }
       ]
@@ -45,10 +42,7 @@
         {
           "to": "dnapsw_mix2-W",
           "weight": {
-            "-": [
-              true,
-              "gapExtend2"
-            ]
+            "not": "gapExtend2"
           }
         }
       ]
@@ -80,10 +74,7 @@
         {
           "to": "dnapsw_mix2-M",
           "weight": {
-            "-": [
-              true,
-              "gapExtend1"
-            ]
+            "not": "gapExtend1"
           }
         }
       ]
@@ -98,10 +89,7 @@
         {
           "to": "dnapsw_mix2-M",
           "weight": {
-            "-": [
-              true,
-              "gapExtend2"
-            ]
+            "not": "gapExtend2"
           }
         }
       ]

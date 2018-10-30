@@ -21,6 +21,9 @@ struct PresetCache {
 #include "preset/prot2dna.h"
 #include "preset/psw2dna.h"
 
+#include "preset/dna2rna.h"
+#include "preset/rna2dna.h"
+
 #include "preset/bintern.h"
 #include "preset/terndna.h"
 
@@ -36,6 +39,9 @@ PresetCache::PresetCache() {
   addPreset(translate);
   addPreset(prot2dna);
   addPreset(psw2dna);
+
+  addPreset(dna2rna);
+  addPreset(rna2dna);
 
   addPreset(bintern);
   addPreset(terndna);
