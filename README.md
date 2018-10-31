@@ -355,6 +355,14 @@ Postfix operators:
   --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
+  --local-input                add flanking delete states: partially match 
+                               input
+  --local-output               add flanking insert states: partially match 
+                               ouput
+  --local-either               add flanking insert or delete states: partially 
+                               match either input or output at each end
+  --local-both                 add flanking insert & delete states: partially 
+                               match input and/or output
   --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
   --joint-norm                 normalize jointly (outgoing transition weights 

@@ -84,6 +84,10 @@ int main (int argc, char** argv) {
       ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
+      ("local-input", "add flanking delete states: partially match input")
+      ("local-output", "add flanking insert states: partially match ouput")
+      ("local-either", "add flanking insert or delete states: partially match either input or output at each end")
+      ("local-both", "add flanking insert & delete states: partially match input and/or output")
       ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
@@ -425,7 +429,23 @@ int main (int argc, char** argv) {
 	  m = Machine::takeUnion (r, revCompMachine(r), half, half);
 	} else if (command == "--transpose")
 	  m = popMachine().transpose();
-	else if (command == "--weight") {
+	else if (command == "--local-input") {
+	  const Machine core = popMachine();
+	  const Machine flank = Machine::wildAcceptor (core.inputAlphabet());
+	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
+	} else if (command == "--local-output") {
+	  const Machine core = popMachine();
+	  const Machine flank = Machine::wildGenerator (core.outputAlphabet());
+	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
+	} else if (command == "--local-either") {
+	  const Machine core = popMachine();
+	  const Machine flank = Machine::takeUnion (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
+	} else if (command == "--local-both") {
+	  const Machine core = popMachine();
+	  const Machine flank = Machine::concatenate (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
+	} else if (command == "--weight") {
 	  const string wArg = getArg();
 	  json wj;
 	  WeightExpr w;
