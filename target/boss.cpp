@@ -88,9 +88,9 @@ int main (int argc, char** argv) {
       ("transpose,t", "transpose: swap input/output")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
-      ("sort", "topologically sort silent transition graph, if possible, but preserve silent cycles")
-      ("sort-sum", "topologically sort, eliminating silent cycles")
-      ("sort-break", "topologically sort, breaking silent cycles (faster than --sort-sum, but less precise)")
+      ("sort", "topologically sort, eliminating silent cycles")
+      ("sort-fast", "topologically sort, breaking silent cycles (faster than --sort, but destructive)")
+      ("sort-cyclic", "topologically sort if possible, but preserve silent cycles")
       ("decode-sort", "topologically sort non-outputting transition graph")
       ("encode-sort", "topologically sort non-inputting transition graph")
       ("eliminate,n", "eliminate all silent transitions")
@@ -102,13 +102,13 @@ int main (int argc, char** argv) {
 
     po::options_description infixOpts("Infix operators");
     infixOpts.add_options()
-      ("compose-sum,m", "compose, summing out silent cycles '=>'")
-      ("compose", "compose, breaking silent cycles (faster)")
-      ("compose-unsort", "compose, leaving silent cycles")
+      ("compose,m", "compose, summing out silent cycles '=>'")
+      ("compose-fast", "compose, breaking silent cycles (faster, destructive)")
+      ("compose-cyclic", "compose, leaving silent cycles")
       ("concatenate,c", "concatenate '.'")
-      ("intersect-sum,i", "intersect, summing out silent cycles '&&'")
-      ("intersect", "intersect, breaking silent cycles (faster)")
-      ("intersect-unsort", "intersect, leaving silent cycles")
+      ("intersect,i", "intersect, summing out silent cycles '&&'")
+      ("intersect-fast", "intersect, breaking silent cycles (faster, destructive)")
+      ("intersect-cyclic", "intersect, leaving silent cycles")
       ("union,u", "union '||'")
       ("loop,o", "loop: x '?+' y = x(y.x)*")
       ;
@@ -123,10 +123,10 @@ int main (int argc, char** argv) {
     appOpts.add_options()
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
-      ("memoize,M", "memoize repeated expressions for compactness")
-      ("show-params", "show unbound parameters in final machine")
       ("evaluate", "evaluate all transition weights in final machine")
-      ("use-id", "use state id, rather than number, for transitions")
+      ("define-exprs", "define and re-use repeated (sub)expressions, for compactness")
+      ("show-params", "show unbound parameters in final machine")
+      ("name-states", "use state id, rather than number, to identify transition destinations")
 
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
       ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unspecified parameters; this option is implicit when training")
@@ -181,9 +181,9 @@ int main (int argc, char** argv) {
     map<string,string> alias;
     alias[string("<<")] = "--generate-chars";
     alias[string(">>")] = "--accept-chars";
-    alias[string("=>")] = "--compose-sum";
+    alias[string("=>")] = "--compose";
     alias[string(".")] = "--concatenate";
-    alias[string("&&")] = "--intersect-sum";
+    alias[string("&&")] = "--intersect";
     alias[string("||")] = "--union";
     alias[string("?")] = "--zero-or-one";
     alias[string("*")] = "--kleene-star";
@@ -364,11 +364,11 @@ int main (int argc, char** argv) {
 	} else if (command == "--echo-json") {
 	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
 	  m = Machine::echo (inSeq.seq, inSeq.name);
-	} else if (command == "--sort-sum")
+	} else if (command == "--sort")
 	  m = popMachine().advanceSort().advancingMachine();
-	else if (command == "--sort-break")
+	else if (command == "--sort-fast")
 	  m = popMachine().advanceSort().dropSilentBackTransitions();
-	else if (command == "--sort")
+	else if (command == "--sort-cyclic")
 	  m = popMachine().advanceSort();
 	else if (command == "--joint-norm")
 	  m = popMachine().normalizeJointly();
@@ -378,19 +378,19 @@ int main (int argc, char** argv) {
 	  m = popMachine().decodeSort();
 	else if (command == "--encode-sort")
 	  m = popMachine().encodeSort();
-	else if (command == "--compose-sum")
-	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose")
+	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
+	else if (command == "--compose-fast")
           m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::BreakSilentCycles);
-	else if (command == "--compose-unsort")
+	else if (command == "--compose-cyclic")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::LeaveSilentCycles);
 	else if (command == "--concatenate")
 	  m = Machine::concatenate (popMachine(), nextMachine());
-	else if (command == "--intersect-sum")
-	  m = Machine::intersect (popMachine(), nextMachine(), Machine::SumSilentCycles);
 	else if (command == "--intersect")
+	  m = Machine::intersect (popMachine(), nextMachine(), Machine::SumSilentCycles);
+	else if (command == "--intersect-fast")
 	  m = Machine::intersect (popMachine(), nextMachine(), Machine::BreakSilentCycles);
-	else if (command == "--intersect-unsort")
+	else if (command == "--intersect-cyclic")
 	  m = Machine::intersect (popMachine(), nextMachine(), Machine::LeaveSilentCycles);
 	else if (command == "--union")
 	  m = Machine::takeUnion (popMachine(), nextMachine());
@@ -534,8 +534,11 @@ int main (int argc, char** argv) {
 
     // evaluate transition weights, if requested
     if (vm.count("evaluate")) {
-      const EvaluatedMachine eval (machine, machine.funcs);
+      const EvaluatedMachine eval (machine, funcs.combine (seed));
       machine = eval.explicitMachine();
+      funcs.clear();
+      seed.clear();
+      constraints.clear();
     }
     
     // output transducer
@@ -543,7 +546,7 @@ int main (int argc, char** argv) {
       if (vm.count("graphviz"))
 	machine.writeDot (out);
       else
-	machine.writeJson (out, vm.count("memoize"), vm.count("show-params"), vm.count("use-id"));
+	machine.writeJson (out, vm.count("define-exprs"), vm.count("show-params"), vm.count("name-states"));
     };
     if (vm.count("save")) {
       const string savefile = vm.at("save").as<string>();

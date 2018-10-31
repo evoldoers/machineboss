@@ -117,6 +117,12 @@ Constraints Constraints::combine (const Constraints& cons) const {
   return result;
 }
 
+void Constraints::clear() {
+  prob.clear();
+  norm.clear();
+  rate.clear();
+}
+
 bool Constraints::empty() const {
   return prob.empty() && norm.empty() && rate.empty();
 }

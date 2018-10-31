@@ -313,11 +313,11 @@ Postfix operators:
                                sum to 1)
   --cond-norm                  normalize conditionally (outgoing transition 
                                weights for each input symbol sum to 1)
-  --sort                       topologically sort silent transition graph, if 
-                               possible, but preserve silent cycles
-  --sort-sum                   topologically sort, eliminating silent cycles
-  --sort-break                 topologically sort, breaking silent cycles 
-                               (faster than --sort-sum, but less precise)
+  --sort                       topologically sort, eliminating silent cycles
+  --sort-fast                  topologically sort, breaking silent cycles 
+                               (faster than --sort, but destructive)
+  --sort-cyclic                topologically sort if possible, but preserve 
+                               silent cycles
   --decode-sort                topologically sort non-outputting transition 
                                graph
   --encode-sort                topologically sort non-inputting transition 
@@ -332,13 +332,15 @@ Postfix operators:
                                outputs
 
 Infix operators:
-  -m [ --compose-sum ]         compose, summing out silent cycles '=&gt;'
-  --compose                    compose, breaking silent cycles (faster)
-  --compose-unsort             compose, leaving silent cycles
+  -m [ --compose ]             compose, summing out silent cycles '=&gt;'
+  --compose-fast               compose, breaking silent cycles (faster, 
+                               destructive)
+  --compose-cyclic             compose, leaving silent cycles
   -c [ --concatenate ]         concatenate '.'
-  -i [ --intersect-sum ]       intersect, summing out silent cycles '&&'
-  --intersect                  intersect, breaking silent cycles (faster)
-  --intersect-unsort           intersect, leaving silent cycles
+  -i [ --intersect ]           intersect, summing out silent cycles '&&'
+  --intersect-fast             intersect, breaking silent cycles (faster, 
+                               destructive)
+  --intersect-cyclic           intersect, leaving silent cycles
   -u [ --union ]               union '||'
   -o [ --loop ]                loop: x '?+' y = x(y.x)*
 
@@ -349,11 +351,12 @@ Miscellaneous:
 Transducer application:
   -S [ --save ] arg            save machine to file
   -G [ --graphviz ]            write machine in Graphviz DOT format
-  -M [ --memoize ]             memoize repeated expressions for compactness
-  --show-params                show unbound parameters in final machine
   --evaluate                   evaluate all transition weights in final machine
-  --use-id                     use state id, rather than number, for 
-                               transitions
+  --define-exprs               define and re-use repeated (sub)expressions, for
+                               compactness
+  --show-params                show unbound parameters in final machine
+  --name-states                use state id, rather than number, to identify 
+                               transition destinations
   -P [ --params ] arg          load parameters (JSON)
   -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
                                for unspecified parameters; this option is 
