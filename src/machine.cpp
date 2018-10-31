@@ -1107,58 +1107,80 @@ Machine Machine::advanceSort (bool decode) const {
   const size_t nSilentBackBefore = decode ? nEmptyOutputBackTransitions() : nSilentBackTransitions();
   const char* sortType = decode ? "non-outputting" : "silent";
   if (nSilentBackBefore) {
-    vguard<set<StateIndex> > silentIncoming (nStates()), silentOutgoing (nStates());
-    for (StateIndex s = 0; s < nStates(); ++s) {
+    vguard<vguard<StateIndex> > silentIncoming (nStates()), silentOutgoing (nStates());
+    vguard<int> nSilentIncoming (nStates()), nSilentOutgoing (nStates());
+    for (StateIndex s = 1; s + 1 < nStates(); ++s) {
       const MachineState& ms = state[s];
       for (const auto& trans: ms.trans)
-	if ((decode ? trans.outputEmpty() : trans.isSilent()) && trans.dest != s && trans.dest != endState()) {
-	  silentOutgoing[s].insert (trans.dest);
-	  silentIncoming[trans.dest].insert (s);
+	if ((decode ? trans.outputEmpty() : trans.isSilent()) && trans.dest != s && trans.dest != endState() && trans.dest != startState()) {
+	  silentOutgoing[s].push_back (trans.dest);
+	  silentIncoming[trans.dest].push_back (s);
+	  ++nSilentOutgoing[s];
+	  ++nSilentIncoming[trans.dest];
 	}
     }
     auto compareStates = [&] (StateIndex a, StateIndex b) {
-      const int aIncoming = (int) silentIncoming[a].size(), aDiff = aIncoming - (int) silentOutgoing[a].size();
-      const int bIncoming = (int) silentIncoming[b].size(), bDiff = bIncoming - (int) silentOutgoing[b].size();
+      const int aIncoming = nSilentIncoming[a], aDiff = aIncoming - (int) nSilentOutgoing[a];
+      const int bIncoming = nSilentIncoming[b], bDiff = bIncoming - (int) nSilentOutgoing[b];
       return (aIncoming == bIncoming
 	      ? (aDiff == bDiff
 		 ? (a < b)
 		 : (aDiff < bDiff))
 	      : (aIncoming < bIncoming));
     };
+    
     vguard<StateIndex> order;
     vguard<bool> inOrder (nStates(), false);
+    set<StateIndex, function<bool (StateIndex, StateIndex)> > queue (compareStates);
+    auto removeState = [&] (StateIndex s) -> bool {
+      auto iter = queue.find (s);
+      const bool found = iter != queue.end() && *iter == s;
+      if (found)
+	queue.erase (iter);
+      return found;
+    };
+    auto insertState = [&] (StateIndex s) {
+      queue.insert (s);
+    };
     auto addToOrder = [&] (StateIndex s) {
       order.push_back (s);
       inOrder[s] = true;
-      for (const auto& next: silentOutgoing[s])
-	if (next != s)
-	  silentIncoming[next].erase(s);
-      for (const auto& prev: silentIncoming[s])
-	if (prev != s)
-	  silentOutgoing[prev].erase(s);
+      for (const auto& next: silentOutgoing[s]) {
+	const bool found = removeState (next);
+	--nSilentIncoming[next];
+	if (found)
+	  insertState (next);
+      }
+      for (const auto& prev: silentIncoming[s]) {
+	const bool found = removeState (prev);
+	--nSilentOutgoing[prev];
+	if (found)
+	  insertState (prev);
+      }
     };
+
     addToOrder (startState());
     if (nStates() > 1) {
-      deque<StateIndex> queue;
       for (StateIndex s = 1; s + 1 < nStates(); ++s)
-	queue.push_back (s);
-      sort (queue.begin() + 1, queue.end(), compareStates);
+	queue.insert (s);
       ProgressLog(plogSort,6);
       plogSort.initProgress ("Advance-sorting %lu states", nStates() - 1);
-      while (queue.size()) {
+      while (!queue.empty()) {
 	plogSort.logProgress ((nStates() - queue.size()) / (double) nStates(), "sorted %lu states", nStates() - queue.size());
-	partial_sort (queue.begin(), queue.begin() + 1, queue.end(), compareStates);
-	addToOrder (queue.front());
+	StateIndex next = *queue.begin();
 	queue.erase (queue.begin());
+	addToOrder (next);
       }
       addToOrder (endState());
     }
+
     vguard<StateIndex> old2new (nStates());
     bool orderChanged = false;
     for (StateIndex n = 0; n < nStates(); ++n) {
       orderChanged = orderChanged || order[n] != n;
       old2new[order[n]] = n;
     }
+
     if (!orderChanged) {
       result = *this;
       LogThisAt(5,"Sorting left machine unchanged with " << nSilentBackBefore << " backward " << sortType << " transitions" << endl);
