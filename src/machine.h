@@ -132,13 +132,13 @@ struct Machine {
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
 
   Machine pointwiseReciprocal() const;
-  Machine weightInputs (const char* paramPrefix = MachineParamPrefix) const;
+  Machine weightInputs (const char* paramPrefix = MachineParamPrefix, bool reciprocal = false) const;
   Machine weightInputs (const map<InputSymbol,WeightExpr>&) const;
-  Machine weightOutputs (const char* paramPrefix = MachineParamPrefix) const;
+  Machine weightOutputs (const char* paramPrefix = MachineParamPrefix, bool reciprocal = false) const;
   Machine weightOutputs (const map<OutputSymbol,WeightExpr>&) const;
 
-  Machine weightInputsUniformly() const;
-  Machine weightOutputsUniformly() const;
+  Machine weightInputsUniformly (bool reciprocal = false) const;
+  Machine weightOutputsUniformly (bool reciprocal = false) const;
 
   Machine normalizeJointly() const;  // for each state, sum_{outgoing transitions} p(trans) = 1
   Machine normalizeConditionally() const;  // for each state & each input token, sum_{outgoing transitions} p(trans) = 1

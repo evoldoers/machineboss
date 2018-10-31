@@ -382,10 +382,14 @@ Postfix operators:
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions
-  --weight-input arg           apply weight parameter with given prefix to 
-                               inputs
-  --weight-output arg          apply weight parameter with given prefix to 
-                               outputs
+  --weight-input arg           multiply input weights by parameter with given 
+                               prefix
+  --weight-output arg          multiply output weights by parameter with given 
+                               prefix
+  --param-odds-ratio arg       divide output weights by parameter with given 
+                               prefix
+  --uniform-odds-ratio         divide output weights by uniform distribution 
+                               over output alphabet
 
 Infix operators:
   -m [ --compose ]             compose, summing out silent cycles '=&gt;'

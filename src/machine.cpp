@@ -501,13 +501,14 @@ Machine Machine::projectOutputToInput() const {
   return m;
 }
 
-Machine Machine::weightInputs (const char* paramPrefix) const {
+Machine Machine::weightInputs (const char* paramPrefix, bool recip) const {
   const string pp (paramPrefix);
   map<InputSymbol,WeightExpr> w;
   vguard<string> norm;
   for (const auto& inTok: inputAlphabet()) {
     const string p = pp + inTok;
-    w[inTok] = WeightAlgebra::param (p);
+    const auto param = WeightAlgebra::param (p);
+    w[inTok] = recip ? WeightAlgebra::reciprocal(param) : param;
     norm.push_back (p);
   }
   Machine m = weightInputs (w);
@@ -524,13 +525,14 @@ Machine Machine::weightInputs (const map<InputSymbol,WeightExpr>& w) const {
   return m;
 }
 
-Machine Machine::weightOutputs (const char* paramPrefix) const {
+Machine Machine::weightOutputs (const char* paramPrefix, bool recip) const {
   const string pp (paramPrefix);
   map<OutputSymbol,WeightExpr> w;
   vguard<string> norm;
   for (const auto& outTok: outputAlphabet()) {
     const string p = pp + outTok;
-    w[outTok] = WeightAlgebra::param (p);
+    const auto param = WeightAlgebra::param (p);
+    w[outTok] = recip ? WeightAlgebra::reciprocal(param) : param;
     norm.push_back (p);
   }
   Machine m = weightOutputs (w);
@@ -547,21 +549,25 @@ Machine Machine::weightOutputs (const map<OutputSymbol,WeightExpr>& w) const {
   return m;
 }
 
-Machine Machine::weightInputsUniformly() const {
+Machine Machine::weightInputsUniformly (bool recip) const {
   const auto alph = inputAlphabet();
   const size_t inSize = alph.size();
+  const WeightExpr c = WeightAlgebra::intConstant (inSize);
+  const WeightExpr tw = recip ? c : WeightAlgebra::reciprocal (c);
   map<InputSymbol,WeightExpr> w;
   for (const auto& inTok: alph)
-    w[inTok] = WeightAlgebra::reciprocal (WeightAlgebra::intConstant (inSize));
+    w[inTok] = tw;
   return weightInputs (w);
 }
 
-Machine Machine::weightOutputsUniformly() const {
+Machine Machine::weightOutputsUniformly (bool recip) const {
   const auto alph = outputAlphabet();
   const size_t outSize = alph.size();
+  const WeightExpr c = WeightAlgebra::intConstant (outSize);
+  const WeightExpr tw = recip ? c : WeightAlgebra::reciprocal (c);
   map<OutputSymbol,WeightExpr> w;
   for (const auto& outTok: alph)
-    w[outTok] = WeightAlgebra::reciprocal (WeightAlgebra::intConstant (outSize));
+    w[outTok] = tw;
   return weightOutputs (w);
 }
 

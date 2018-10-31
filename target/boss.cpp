@@ -100,8 +100,10 @@ int main (int argc, char** argv) {
       ("eliminate,n", "eliminate all silent transitions")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
-      ("weight-input", po::value<string>(), "apply weight parameter with given prefix to inputs")
-      ("weight-output", po::value<string>(), "apply weight parameter with given prefix to outputs")
+      ("weight-input", po::value<string>(), "multiply input weights by parameter with given prefix")
+      ("weight-output", po::value<string>(), "multiply output weights by parameter with given prefix")
+      ("param-odds-ratio", po::value<string>(), "divide output weights by parameter with given prefix")
+      ("uniform-odds-ratio", "divide output weights by uniform distribution over output alphabet")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -476,6 +478,10 @@ int main (int argc, char** argv) {
 	  m = popMachine().weightOutputs (getArg().c_str());
 	} else if (command == "--reciprocal") {
 	  m = popMachine().pointwiseReciprocal();
+	} else if (command == "--param-odds-ratio") {
+	  m = popMachine().weightOutputs (getArg().c_str(), true);
+	} else if (command == "--uniform-odds-ratio") {
+	  m = popMachine().weightOutputsUniformly (true);
 	} else if (command == "--begin") {
 	  list<Machine> pushedMachines;
 	  swap (pushedMachines, machines);
