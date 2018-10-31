@@ -28,7 +28,10 @@ JSON representation of a [weighted finite-state transducer](https://en.wikipedia
 
 Machine Boss has an associated command-line tool, `boss`, that makes many machine-building operations available through its command-line options -
 thereby defining a small expression language for building up automata.
+
 A brief usage guide for this tool follows below.
+
+
 
 ## Examples
 
@@ -123,6 +126,51 @@ Machine Boss uses a JSON format for transducers that also allows _&omega;_ to be
 In general, "constraining the output of machine _M_ to be equal to _Y_" is equivalent to "composing _M_ with a unit-weight acceptor for _Y_".
 Similarly, "constraining the input of _M_ to be equal to _X_" is equivalent to "composing a unit-weight generator for _X_ with _M_".
 
+### Command-line syntax
+
+The `boss` command does the following
+
+- Construct a machine via a series of _machine expressions_ specified as command-line arguments
+- Do any required inference with the machine (dynamic programming, decoding, etc.)
+
+For example, the following command creates an acceptor for any DNA sequence containing the subsequence `ACGCGT`:
+
+~~~~
+boss --generate-wild-dna --concat --generate-chars ACGCGT --concat --generate-wild-dna
+~~~~
+
+Some of the operations specified as command-line arguments can be replaced by "opcodes" comprising one or two characters.
+For example, concatenation (`--concat`) can be abbreviated as a period, so that the above could be written as
+
+~~~~
+boss --generate-wild-dna . --generate-chars ACGCGT . --generate-wild-dna
+~~~~
+
+If we specify an output sequence with `--output-chars`, along with the `--loglike` option to calculate the log-likelihood,
+then we can calculate the (log) weight of a given output sequence:
+
+~~~~
+boss --generate-wild-dna . --generate-chars ACGCGT . --generate-wild-dna --output-chars AAGCAACGCGTAATA --loglike
+~~~~
+
+The opcodes are listed in full by the command-line help (`boss --help`).
+Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters,
+e.g. `--begin` and `--end` which can be abbreviated (respectively) as opening and closing parentheses.
+
+An argument that is not an opcode will be interpreted as the filename of a JSON-format machine file.
+
+If more than one machine is specified without any explicit operation to combine them, then composition (matrix multiplication) is implicit.
+So, for example, this
+
+~~~~
+boss --preset translate --compose --preset dna2rna
+~~~~
+
+is equivalent to this
+
+~~~~
+boss --preset translate --preset dna2rna
+~~~~
 
 ### Ways of constructing machines
 
