@@ -125,6 +125,7 @@ int main (int argc, char** argv) {
       ("graphviz,G", "write machine in Graphviz DOT format")
       ("memoize,M", "memoize repeated expressions for compactness")
       ("show-params", "show unbound parameters in final machine")
+      ("evaluate", "evaluate all transition weights in final machine")
       ("use-id", "use state id, rather than number, for transitions")
 
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
@@ -529,6 +530,12 @@ int main (int argc, char** argv) {
     if (paramsSpecified	&& !inferenceRequested) {
       machine.funcs = funcs.combine (seed);
       machine.cons = constraints;
+    }
+
+    // evaluate transition weights, if requested
+    if (vm.count("evaluate")) {
+      const EvaluatedMachine eval (machine, machine.funcs);
+      machine = eval.explicitMachine();
     }
     
     // output transducer

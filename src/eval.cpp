@@ -167,3 +167,24 @@ vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
   
   return log_matrix (result);
 }
+
+Machine EvaluatedMachine::explicitMachine() const {
+  Machine m;
+  m.state = vguard<MachineState> (nStates());
+  vguard<MachineState>::iterator iter = m.state.begin();
+  for (const auto& ems: state) {
+    MachineState& ms = *(iter++);
+    ms.name = ems.name;
+    for (const auto& i_ostm: ems.outgoing)
+      for (const auto& o_stm: i_ostm.second)
+	for (const auto& s_t: o_stm.second)
+	  ms.trans.push_back (MachineTransition (inputTokenizer.tok2sym[i_ostm.first],
+						 outputTokenizer.tok2sym[o_stm.first],
+						 s_t.first,
+						 exp (s_t.second.logWeight)));
+  }
+  return m;
+}
+
+											     
+											   

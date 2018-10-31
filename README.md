@@ -351,6 +351,7 @@ Transducer application:
   -G [ --graphviz ]            write machine in Graphviz DOT format
   -M [ --memoize ]             memoize repeated expressions for compactness
   --show-params                show unbound parameters in final machine
+  --evaluate                   evaluate all transition weights in final machine
   --use-id                     use state id, rather than number, for 
                                transitions
   -P [ --params ] arg          load parameters (JSON)
