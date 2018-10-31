@@ -355,12 +355,12 @@ Transducer application:
   --define-exprs               define and re-use repeated (sub)expressions, for
                                compactness
   --show-params                show unbound parameters in final machine
+  -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
+                               for unbound parameters; this option is implicit 
+                               when training
   --name-states                use state id, rather than number, to identify 
                                transition destinations
   -P [ --params ] arg          load parameters (JSON)
-  -U [ --use-defaults ]        use defaults (uniform distributions, unit rates)
-                               for unspecified parameters; this option is 
-                               implicit when training
   -F [ --functions ] arg       load functions & constants (JSON)
   -N [ --constraints ] arg     load normalization constraints (JSON)
   -D [ --data ] arg            load sequence-pairs (JSON)

@@ -126,10 +126,10 @@ int main (int argc, char** argv) {
       ("evaluate", "evaluate all transition weights in final machine")
       ("define-exprs", "define and re-use repeated (sub)expressions, for compactness")
       ("show-params", "show unbound parameters in final machine")
+      ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unbound parameters; this option is implicit when training")
       ("name-states", "use state id, rather than number, to identify transition destinations")
 
       ("params,P", po::value<vector<string> >(), "load parameters (JSON)")
-      ("use-defaults,U", "use defaults (uniform distributions, unit rates) for unspecified parameters; this option is implicit when training")
       ("functions,F", po::value<vector<string> >(), "load functions & constants (JSON)")
       ("constraints,N", po::value<vector<string> >(), "load normalization constraints (JSON)")
       ("data,D", po::value<vector<string> >(), "load sequence-pairs (JSON)")
@@ -527,14 +527,15 @@ int main (int argc, char** argv) {
     // then add them to the model now; otherwise, save them for later
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
     const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
-    if (paramsSpecified	&& !inferenceRequested) {
+    const bool evalRequested = vm.count("evaluate");
+    if (paramsSpecified	&& (evalRequested || !inferenceRequested)) {
       machine.funcs = funcs.combine (seed);
       machine.cons = constraints;
     }
 
     // evaluate transition weights, if requested
-    if (vm.count("evaluate")) {
-      const EvaluatedMachine eval (machine, funcs.combine (seed));
+    if (evalRequested) {
+      const EvaluatedMachine eval (machine, machine.getParamDefs (vm.count("use-defaults")));
       machine = eval.explicitMachine();
       funcs.clear();
       seed.clear();
