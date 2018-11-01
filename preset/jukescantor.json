@@ -1,0 +1,30 @@
+{"state":[
+  {"n":0,
+   "id":"jukescantor",
+   "trans":[{"to":0,"in":"A","out":"A","weight":"pSame"},
+            {"to":0,"in":"A","out":"C","weight":"pDiff"},
+            {"to":0,"in":"A","out":"G","weight":"pDiff"},
+            {"to":0,"in":"A","out":"T","weight":"pDiff"},
+            {"to":0,"in":"C","out":"A","weight":"pDiff"},
+            {"to":0,"in":"C","out":"C","weight":"pSame"},
+            {"to":0,"in":"C","out":"G","weight":"pDiff"},
+            {"to":0,"in":"C","out":"T","weight":"pDiff"},
+            {"to":0,"in":"G","out":"A","weight":"pDiff"},
+            {"to":0,"in":"G","out":"C","weight":"pDiff"},
+            {"to":0,"in":"G","out":"G","weight":"pSame"},
+            {"to":0,"in":"G","out":"T","weight":"pDiff"},
+            {"to":0,"in":"T","out":"A","weight":"pDiff"},
+            {"to":0,"in":"T","out":"C","weight":"pDiff"},
+            {"to":0,"in":"T","out":"G","weight":"pDiff"},
+            {"to":0,"in":"T","out":"T","weight":"pSame"}]}
+],
+ "defs": {
+   "pNoSub":{"exp":{"-":[0,"t"]}},
+   "pSub":{"not":"pNoSub"},
+   "pDiff":{"/":["pSub",4]},
+   "pSame":{"+":["pNoSub","pDiff"]}
+ },
+ "cons":{
+   "rate":["t"]
+ }
+}

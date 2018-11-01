@@ -27,6 +27,8 @@ struct PresetCache {
 #include "preset/bintern.h"
 #include "preset/terndna.h"
 
+#include "preset/jukescantor.h"
+
 PresetCache::PresetCache() {
   addPreset(null);
 
@@ -45,6 +47,8 @@ PresetCache::PresetCache() {
 
   addPreset(bintern);
   addPreset(terndna);
+
+  addPreset(jukescantor);
 }
 
 PresetCache presetCache;  // singleton
