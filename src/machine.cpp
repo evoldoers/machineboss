@@ -1636,20 +1636,20 @@ void MachineBoundPath::writeJson (ostream& out) const {
   MachinePath::writeJson (out, machine);
 }
 
-void Machine::import (const Machine& m) {
-  funcs = ParamAssign (funcs.combine (m.funcs));
+void Machine::import (const Machine& m, bool overwrite) {
+  funcs = ParamAssign (funcs.combine (m.funcs, overwrite));
   cons = cons.combine (m.cons);
 }
 
-void Machine::import (const Machine& m1, const Machine& m2) {
-  import (m1);
-  import (m2);
+void Machine::import (const Machine& m1, const Machine& m2, bool overwrite) {
+  import (m1, overwrite);
+  import (m2, overwrite);
 }
 
 Params Machine::getParamDefs (bool assignDefaultValuesToMissingParams) const {
   Params p = funcs;
   if (assignDefaultValuesToMissingParams)
-    p = cons.defaultParams().combine (p);
+    p = cons.defaultParams().combine (p, true);
   return p;
 }
  

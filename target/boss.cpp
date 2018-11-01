@@ -555,8 +555,8 @@ int main (int argc, char** argv) {
     const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
     const bool evalRequested = vm.count("evaluate");
     if (paramsSpecified	&& (evalRequested || !inferenceRequested)) {
-      machine.funcs = funcs.combine (seed);
-      machine.cons = constraints;
+      machine.funcs = machine.funcs.combine(funcs,true).combine(seed,true);
+      machine.cons = machine.cons.combine (constraints);
     }
 
     // evaluate transition weights, if requested

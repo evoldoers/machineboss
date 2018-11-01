@@ -19,7 +19,7 @@
             {"to":0,"in":"T","out":"T","weight":"pSame"}]}
 ],
  "defs": {
-   "pNoSub":{"exp":{"-":[0,"t"]}},
+   "pNoSub":{"exp":{"*":[-1,"t"]}},
    "pSub":{"not":"pNoSub"},
    "pDiff":{"/":["pSub",4]},
    "pSame":{"+":["pNoSub","pDiff"]}
