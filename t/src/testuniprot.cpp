@@ -33,18 +33,7 @@ int main (int argc, char** argv)
     if (res->has_header("Location"))
       cerr << "Location: " << res->get_header_value("Location") << endl;
 
-    const regex fasta_re (">" RE_GROUP(RE_PLUS(RE_NONWHITE_CHAR_CLASS)) RE_GROUP(RE_DOT_STAR));
-    smatch match;
-
     const string fasta (res->body);
-    const vguard<string> fastaLine = split (fasta, "\n");
-    if (fastaLine.size()) {
-      if (regex_match (fastaLine[0], match, fasta_re))
-	cerr << "ok" << endl;
-      else
-	cerr << "not ok: [" << fastaLine[0] << "]" << endl;
-    }
-    
     const FastSeq fs = FastSeq::fromFasta (fasta);
     fs.writeFasta (cout);
   }

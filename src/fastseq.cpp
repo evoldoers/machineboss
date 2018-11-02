@@ -7,7 +7,7 @@
 
 KSEQ_INIT(gzFile, gzread)
 
-const regex fasta_re (">" RE_GROUP(RE_PLUS(RE_NONWHITE_CHAR_CLASS)) RE_GROUP(RE_DOT_STAR));
+const regex fasta_re (">([^ ]+)(.*)");
 FastSeq FastSeq::fromFasta (const string& fasta) {
   FastSeq fs;  
   smatch match;
