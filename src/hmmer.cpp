@@ -15,7 +15,7 @@ vguard<double> HmmerModel::strsToProbs (const vguard<string>& s) {
   return p;
 }
 
-void HmmerModel::read (ifstream& in) {
+void HmmerModel::read (istream& in) {
   node.clear();
   const regex tag_re ("^(" RE_PLUS(RE_CHAR_CLASS("A-Z")) ")");
   const regex end_re ("^//");

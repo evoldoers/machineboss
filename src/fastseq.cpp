@@ -3,8 +3,29 @@
 #include "fastseq.h"
 #include "util.h"
 #include "logger.h"
+#include "regexmacros.h"
 
 KSEQ_INIT(gzFile, gzread)
+
+const regex fasta_re (">" RE_GROUP(RE_PLUS(RE_NONWHITE_CHAR_CLASS)) RE_GROUP(RE_DOT_STAR));
+FastSeq FastSeq::fromFasta (const string& fasta) {
+  FastSeq fs;  
+  smatch match;
+  const vguard<string> fastaLine = split (fasta, "\n");
+  if (fastaLine.size() && regex_match (fastaLine[0], match, fasta_re)) {
+    fs.name = match.str (1);
+    if (match.str(2).size() > 1)
+      fs.comment = match.str(2).substr(1);
+    for (size_t n = 1; n < fastaLine.size(); ++n) {
+      if (regex_search (fastaLine[n], match, fasta_re))
+	Abort ("Multiple sequences in FASTA string");
+      for (const auto& nonwhite: split (fastaLine[n]))
+	fs.seq += nonwhite;
+    }
+  } else
+    Warn ("Does not look like FASTA\n%s\n", fasta.c_str());
+  return fs;
+}
 
 FastSeq FastSeq::fromSeq (const string& seq, const string& name) {
   FastSeq fs;

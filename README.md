@@ -315,7 +315,7 @@ Transducer construction:
   -l [ --load ] arg            load machine from file
   -p [ --preset ] arg          select preset (null, compdna, comprna, dnapsw, 
                                protpsw, translate, prot2dna, psw2dna, dna2rna, 
-                               rna2dna, bintern, terndna)
+                               rna2dna, bintern, terndna, jukescantor)
   -g [ --generate-chars ] arg  generator for explicit character sequence '&lt;&lt;'
   --generate-one arg           generator for any one of specified characters
   --generate-wild arg          generator for Kleene closure over specified 
@@ -327,6 +327,7 @@ Transducer construction:
   --generate-fasta arg         generator for FASTA-format sequence
   --generate-csv arg           create generator from CSV file
   --generate-json arg          sequence generator for JSON-format sequence
+  --generate-uniprot arg       create generator from Uniprot ID
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
   --accept-one arg             acceptor for any one of specified characters
   --accept-wild arg            acceptor for Kleene closure over specified 
@@ -345,7 +346,8 @@ Transducer construction:
   --echo-fasta arg             identity for FASTA-format sequence
   --echo-json arg              identity for JSON-format sequence
   -w [ --weight ] arg          weighted null transition '#'
-  -H [ --hmmer ] arg           create machine from HMMER3 model file
+  -H [ --hmmer ] arg           create generator from HMMER3 model file
+  --pfam arg                   create generator from PFAM ID
 
 Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
@@ -427,9 +429,11 @@ Transducer application:
   -I [ --input-fasta ] arg     load input sequence(s) from FASTA file
   --input-json arg             load input sequence from JSON file
   --input-chars arg            specify input character sequence explicitly
+  --input-uniprot arg          specify input sequence by Uniprot ID
   -O [ --output-fasta ] arg    load output sequence(s) from FASTA file
   --output-json arg            load output sequence from JSON file
   --output-chars arg           specify output character sequence explicitly
+  --output-uniprot arg         specify output sequence by Uniprot ID
   -T [ --train ]               Baum-Welch parameter fit
   -R [ --wiggle-room ] arg     wiggle room (allowed departure from training 
                                alignment)

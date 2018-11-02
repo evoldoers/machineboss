@@ -40,6 +40,7 @@ struct FastSeq {
   static const QualScore qualScoreRange;
   // methods
   static FastSeq fromSeq (const string& seq, const string& name = string(DefaultSeqName));
+  static FastSeq fromFasta (const string& fasta);
   SeqIdx length() const { return (SeqIdx) seq.size(); }
   bool hasQual() const { return qual.size() == length(); }
   static inline QualScore qualScoreForChar (char c) {

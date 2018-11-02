@@ -77,7 +77,7 @@ CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
 endif
 endif
 CPP_FLAGS += -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS = -lstdc++ -lz $(GSL_LIBS) $(BOOST_LIBS)
+LD_FLAGS = -lstdc++ -lz -lssl -lcrypto $(GSL_LIBS) $(BOOST_LIBS)
 
 # files
 CPP_FILES = $(wildcard src/*.cpp)

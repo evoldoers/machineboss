@@ -9,6 +9,9 @@
 #include <regex>
 #include <boost/program_options.hpp>
 
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+#include "../../ext/cpp-httplib/httplib.h"
+
 #include "../src/vguard.h"
 #include "../src/logger.h"
 #include "../src/fastseq.h"
@@ -32,6 +35,35 @@
 using namespace std;
 
 namespace po = boost::program_options;
+
+FastSeq getUniprot (const string& id) {
+  const char* host = "www.uniprot.org";
+  const int port = 443;
+  const char* prefix = "/uniprot/";
+  const char* suffix = ".fasta";
+
+  httplib::SSLClient cli (host, port);
+  const string path = string(prefix) + id + suffix;
+  auto res = cli.Get (path.c_str());
+  if (res->status != -1 && res->status != 200)
+    return FastSeq();
+  return FastSeq::fromFasta (string (res->body));
+}
+
+HmmerModel getPfam (const string& id) {
+  const char* host = "pfam.xfam.org";
+  const int port = 80;
+  const char* prefix = "/family/";
+  const char* suffix = "/hmm";
+
+  httplib::Client cli (host, port);
+  const string path = string(prefix) + id + suffix;
+  auto res = cli.Get (path.c_str());
+  istringstream iss (string (res->body));
+  HmmerModel hmm;
+  hmm.read (iss);
+  return hmm;
+}
 
 int main (int argc, char** argv) {
 
@@ -58,6 +90,7 @@ int main (int argc, char** argv) {
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
       ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
+      ("generate-uniprot", po::value<string>(), "create generator from Uniprot ID")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
@@ -72,7 +105,8 @@ int main (int argc, char** argv) {
       ("echo-fasta", po::value<string>(), "identity for FASTA-format sequence")
       ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
-      ("hmmer,H", po::value<string>(), "create machine from HMMER3 model file")
+      ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
+      ("pfam", po::value<string>(), "create generator from PFAM ID")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -142,9 +176,11 @@ int main (int argc, char** argv) {
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
       ("input-json", po::value<string>(), "load input sequence from JSON file")
       ("input-chars", po::value<string>(), "specify input character sequence explicitly")
+      ("input-uniprot", po::value<string>(), "specify input sequence by Uniprot ID")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
       ("output-json", po::value<string>(), "load output sequence from JSON file")
       ("output-chars", po::value<string>(), "specify output character sequence explicitly")
+      ("output-uniprot", po::value<string>(), "specify output sequence by Uniprot ID")
 
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
@@ -317,6 +353,9 @@ int main (int argc, char** argv) {
 	  const vguard<FastSeq> inSeqs = readFastSeqs (getArg().c_str());
 	  Require (inSeqs.size() == 1, "--generate-fasta file must contain exactly one FASTA-format sequence");
 	  m = Machine::generator (splitToChars (inSeqs[0].seq), inSeqs[0].name);
+	} else if (command == "--generate-uniprot") {
+	  const FastSeq fs = getUniprot (getArg());
+	  m = Machine::generator (splitToChars (fs.seq), fs.name);
 	} else if (command == "--generate-chars") {
 	  const string seq = getArg();
 	  m = Machine::generator (splitToChars (seq), seq);
@@ -339,6 +378,9 @@ int main (int argc, char** argv) {
 	  const vguard<FastSeq> outSeqs = readFastSeqs (getArg().c_str());
 	  Require (outSeqs.size() == 1, "--accept-fasta file must contain exactly one FASTA-format sequence");
 	  m = Machine::acceptor (splitToChars (outSeqs[0].seq), outSeqs[0].name);
+	} else if (command == "--accept-uniprot") {
+	  const FastSeq fs = getUniprot (getArg());
+	  m = Machine::acceptor (splitToChars (fs.seq), fs.name);
 	} else if (command == "--accept-chars") {
 	  const string seq = getArg();
 	  m = Machine::acceptor (splitToChars (seq), seq);
@@ -506,7 +548,9 @@ int main (int argc, char** argv) {
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine();
-	} else if (command == "--generate-csv") {
+	} else if (command == "--pfam")
+	  m = getPfam(getArg()).machine();
+	else if (command == "--generate-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");
@@ -629,6 +673,10 @@ int main (int argc, char** argv) {
       const string seq = vm.at("output-chars").as<string>();
       outFastSeqs.push_back (FastSeq::fromSeq (seq, seq));
     }
+    if (vm.count ("input-uniprot"))
+      inFastSeqs.push_back (getUniprot (vm.at("input-uniprot").as<string>()));
+    if (vm.count ("output-uniprot"))
+      outFastSeqs.push_back (getUniprot (vm.at("output-uniprot").as<string>()));
 
     vguard<NamedInputSeq> inSeqs;
     vguard<NamedOutputSeq> outSeqs;
