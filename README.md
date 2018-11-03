@@ -348,6 +348,7 @@ Transducer construction:
   -w [ --weight ] arg          weighted null transition '#'
   -H [ --hmmer ] arg           create generator from HMMER3 model file
   --pfam arg                   create generator from PFAM ID
+  --dfam arg                   create generator from DFAM ID
 
 Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
