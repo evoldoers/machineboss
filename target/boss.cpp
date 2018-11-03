@@ -58,7 +58,7 @@ int main (int argc, char** argv) {
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
       ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
-      ("generate-uniprot", po::value<string>(), "create generator from Uniprot ID")
+      ("generate-uniprot", po::value<string>(), "create generator from UniProt ID (e.g. P12345)")
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
@@ -74,8 +74,8 @@ int main (int argc, char** argv) {
       ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
-      ("pfam", po::value<string>(), "create generator from PFAM ID")
-      ("dfam", po::value<string>(), "create generator from DFAM ID")
+      ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
+      ("dfam", po::value<string>(), "create generator from DFAM ID (e.g. DF0004136)")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -145,11 +145,11 @@ int main (int argc, char** argv) {
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
       ("input-json", po::value<string>(), "load input sequence from JSON file")
       ("input-chars", po::value<string>(), "specify input character sequence explicitly")
-      ("input-uniprot", po::value<string>(), "specify input sequence by Uniprot ID")
+      ("input-uniprot", po::value<string>(), "specify input sequence by UniProt ID (e.g. P12345)")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
       ("output-json", po::value<string>(), "load output sequence from JSON file")
       ("output-chars", po::value<string>(), "specify output character sequence explicitly")
-      ("output-uniprot", po::value<string>(), "specify output sequence by Uniprot ID")
+      ("output-uniprot", po::value<string>(), "specify output sequence by UniProt ID (e.g. P12345)")
 
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")

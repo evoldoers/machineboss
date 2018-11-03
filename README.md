@@ -327,7 +327,7 @@ Transducer construction:
   --generate-fasta arg         generator for FASTA-format sequence
   --generate-csv arg           create generator from CSV file
   --generate-json arg          sequence generator for JSON-format sequence
-  --generate-uniprot arg       create generator from Uniprot ID
+  --generate-uniprot arg       create generator from UniProt ID (e.g. P12345)
   -a [ --accept-chars ] arg    acceptor for explicit character sequence '&gt;&gt;'
   --accept-one arg             acceptor for any one of specified characters
   --accept-wild arg            acceptor for Kleene closure over specified 
@@ -347,8 +347,8 @@ Transducer construction:
   --echo-json arg              identity for JSON-format sequence
   -w [ --weight ] arg          weighted null transition '#'
   -H [ --hmmer ] arg           create generator from HMMER3 model file
-  --pfam arg                   create generator from PFAM ID
-  --dfam arg                   create generator from DFAM ID
+  --pfam arg                   create generator from PFAM ID (e.g. Piwi)
+  --dfam arg                   create generator from DFAM ID (e.g. DF0004136)
 
 Postfix operators:
   -z [ --zero-or-one ]         union with null '?'
@@ -430,11 +430,13 @@ Transducer application:
   -I [ --input-fasta ] arg     load input sequence(s) from FASTA file
   --input-json arg             load input sequence from JSON file
   --input-chars arg            specify input character sequence explicitly
-  --input-uniprot arg          specify input sequence by Uniprot ID
+  --input-uniprot arg          specify input sequence by UniProt ID (e.g. 
+                               P12345)
   -O [ --output-fasta ] arg    load output sequence(s) from FASTA file
   --output-json arg            load output sequence from JSON file
   --output-chars arg           specify output character sequence explicitly
-  --output-uniprot arg         specify output sequence by Uniprot ID
+  --output-uniprot arg         specify output sequence by UniProt ID (e.g. 
+                               P12345)
   -T [ --train ]               Baum-Welch parameter fit
   -R [ --wiggle-room ] arg     wiggle room (allowed departure from training 
                                alignment)
