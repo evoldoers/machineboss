@@ -9,9 +9,6 @@
 #include <regex>
 #include <boost/program_options.hpp>
 
-#define CPPHTTPLIB_OPENSSL_SUPPORT
-#include "../../ext/cpp-httplib/httplib.h"
-
 #include "../src/vguard.h"
 #include "../src/logger.h"
 #include "../src/fastseq.h"
@@ -31,39 +28,10 @@
 #include "../src/compiler.h"
 #include "../src/ctc.h"
 #include "../src/beam.h"
+#include "../src/net.h"
 
 using namespace std;
-
 namespace po = boost::program_options;
-
-FastSeq getUniprot (const string& id) {
-  const char* host = "www.uniprot.org";
-  const int port = 443;
-  const char* prefix = "/uniprot/";
-  const char* suffix = ".fasta";
-
-  httplib::SSLClient cli (host, port);
-  const string path = string(prefix) + id + suffix;
-  auto res = cli.Get (path.c_str());
-  if (res->status != -1 && res->status != 200)
-    return FastSeq();
-  return FastSeq::fromFasta (string (res->body));
-}
-
-HmmerModel getPfam (const string& id) {
-  const char* host = "pfam.xfam.org";
-  const int port = 80;
-  const char* prefix = "/family/";
-  const char* suffix = "/hmm";
-
-  httplib::Client cli (host, port);
-  const string path = string(prefix) + id + suffix;
-  auto res = cli.Get (path.c_str());
-  istringstream iss (string (res->body));
-  HmmerModel hmm;
-  hmm.read (iss);
-  return hmm;
-}
 
 int main (int argc, char** argv) {
 
@@ -107,6 +75,7 @@ int main (int argc, char** argv) {
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
       ("pfam", po::value<string>(), "create generator from PFAM ID")
+      ("dfam", po::value<string>(), "create generator from DFAM ID")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -550,6 +519,8 @@ int main (int argc, char** argv) {
 	  m = hmmer.machine();
 	} else if (command == "--pfam")
 	  m = getPfam(getArg()).machine();
+	else if (command == "--dfam")
+	  m = getDfam(getArg()).machine();
 	else if (command == "--generate-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
