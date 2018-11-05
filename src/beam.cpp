@@ -35,7 +35,7 @@ BeamSearchMatrix::BeamSearchMatrix (const EvaluatedMachine& machine, const vguar
   plogDP.initProgress ("Performing beam-search (%lu cells)", nCells());
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos)
     for (StateIndex dest = 0; dest < nStates; ++dest) {
-      plogDP.logProgress ((nStates * outPos + dest) / nCells(), "filled %lu cells", nStates * outPos + dest);
+      plogDP.logProgress ((nStates * outPos + dest) / (double) nCells(), "filled %lu cells", nStates * outPos + dest);
       Cell& destCell = cell (outPos, dest);
       const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap = machine.state[dest].incoming;
       for (const auto& tok_ostm: inOutStateTransMap) {

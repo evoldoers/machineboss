@@ -17,7 +17,7 @@ void BackwardMatrix::fill() {
   ProgressLog(plogDP,7);
   plogDP.initProgress ("Filling Backward matrix (%lu cells)", nCells());
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
-    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / nCells(), "filled %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
+    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / (double) nCells(), "filled %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
     for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
@@ -50,7 +50,7 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& cou
   plogDP.initProgress ("Calculating Forward-Backward counts (%lu cells)", nCells());
   const double ll = logLike();
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
-    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / nCells(), "counted %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
+    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / (double) nCells(), "counted %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
     for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
