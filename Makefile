@@ -40,6 +40,9 @@ BOOST_FLAGS := -I$(BOOST_PREFIX)/include
 BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_program_options
 endif
 
+# SSL
+
+
 # HTSlib
 HTS_FLAGS = $(shell pkg-config --cflags htslib)
 HTS_LIBS = $(shell pkg-config --libs htslib)

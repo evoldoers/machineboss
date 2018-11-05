@@ -21,6 +21,7 @@ typedef unsigned long long StateIndex;
 #define MachineCatLeftTag    "concat-l"
 #define MachineCatRightTag   "concat-r"
 #define MachineDefaultSeqTag "seq"
+#define MachineStartTag      "start"
 #define MachineEndTag        "end"
 #define MachineParamPrefix   "p"
 

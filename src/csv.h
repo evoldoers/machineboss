@@ -17,6 +17,7 @@ struct CSVProfile {
   void read (ifstream&, const char* splitChars = DefaultCSVSplitChars);
 
   Machine machine() const;
+  Machine mergingMachine() const;  // merges consecutive repeated characters, as in Graves (2006) "Connectionist Temporal Classification"
 };
 
 #endif /* HMMER_INCLUDED */

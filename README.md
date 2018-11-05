@@ -338,6 +338,9 @@ Transducer construction:
                                alphabet size)
   --accept-fasta arg           acceptor for FASTA-format sequence
   --accept-csv arg             create acceptor from CSV file
+  --accept-merge-csv arg       create acceptor from CSV file, merging 
+                               consecutively repeated characters as in Graves 
+                               (2006) 'Connectionist Temporal Classification'
   --accept-json arg            sequence acceptor for JSON-format sequence
   --echo-one arg               identity for any one of specified characters
   --echo-wild arg              identity for Kleene closure over specified 

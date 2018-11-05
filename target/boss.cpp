@@ -66,6 +66,7 @@ int main (int argc, char** argv) {
       ("accept-uniform", po::value<string>(), "as --accept-iid, but weights outputs by 1/(input alphabet size)")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept-csv", po::value<string>(), "create acceptor from CSV file")
+      ("accept-merge-csv", po::value<string>(), "create acceptor from CSV file, merging consecutively repeated characters as in Graves (2006) 'Connectionist Temporal Classification'")
       ("accept-json", po::value<string>(), "sequence acceptor for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
@@ -533,6 +534,12 @@ int main (int argc, char** argv) {
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
 	  m = csv.machine().transpose();
+	} else if (command == "--accept-merge-csv") {
+	  CSVProfile csv;
+	  ifstream infile (getArg());
+	  Require (infile, "CSV file not found");
+	  csv.read (infile);
+	  m = csv.mergingMachine().transpose();
 	} else {
 	  cout << helpOpts << endl;
 	  throw runtime_error (string ("Unknown option: ") + arg);
