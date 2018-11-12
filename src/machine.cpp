@@ -1,6 +1,7 @@
 #include <iomanip>
 #include <fstream>
 #include <set>
+#include <functional>
 #include <json.hpp>
 
 #include "machine.h"
@@ -11,6 +12,7 @@
 #include "preset.h"
 
 using json = nlohmann::json;
+using placeholders::_1;
 
 struct TransAccumulator {
   TransList* transList;  // if non-null, will accumulate transitions direct to this list, without collapsing
@@ -1108,17 +1110,24 @@ Machine Machine::encodeSort() const {
   return transpose().advanceSort(true).transpose();
 }
 
+
 Machine Machine::advanceSort (bool decode) const {
   Machine result;
-  const size_t nSilentBackBefore = decode ? nEmptyOutputBackTransitions() : nSilentBackTransitions();
+  function<size_t(const Machine*)> countBackTransitions
+    = bind (decode ? &Machine::nEmptyOutputBackTransitions : &Machine::nSilentBackTransitions,
+	    _1);
+  function<bool(const MachineTransition*)> mustAdvance
+    = bind (decode ? &MachineTransition::outputEmpty : &MachineTransition::isSilent,
+	    _1);
   const char* sortType = decode ? "non-outputting" : "silent";
+  const size_t nSilentBackBefore = countBackTransitions (this);
   if (nSilentBackBefore) {
     vguard<vguard<StateIndex> > silentIncoming (nStates()), silentOutgoing (nStates());
     vguard<int> nSilentIncoming (nStates()), nSilentOutgoing (nStates());
     for (StateIndex s = 1; s + 1 < nStates(); ++s) {
       const MachineState& ms = state[s];
       for (const auto& trans: ms.trans)
-	if ((decode ? trans.outputEmpty() : trans.isSilent()) && trans.dest != s && trans.dest != endState() && trans.dest != startState()) {
+	if (mustAdvance(&trans) && trans.dest != s && trans.dest != endState() && trans.dest != startState()) {
 	  silentOutgoing[s].push_back (trans.dest);
 	  silentIncoming[trans.dest].push_back (s);
 	  ++nSilentOutgoing[s];
@@ -1200,7 +1209,7 @@ Machine Machine::advanceSort (bool decode) const {
       }
     }
 
-    const size_t nSilentBackAfter = decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions();
+    const size_t nSilentBackAfter = countBackTransitions (&result);
     if (nSilentBackAfter >= nSilentBackBefore) {
       if (orderChanged) {
 	if (nSilentBackAfter > nSilentBackBefore)
@@ -1217,7 +1226,7 @@ Machine Machine::advanceSort (bool decode) const {
       const Machine withDummy = padWithNullStates();
       Assert (withDummy.hasNullPaddingStates(), "Dummy machine does not look like a dummy, triggering infinite dummification loop");
       const Machine sortedWithDummy = withDummy.advanceSort (decode);
-      const size_t nSilentBackDummy = decode ? sortedWithDummy.nEmptyOutputBackTransitions() : sortedWithDummy.nSilentBackTransitions();
+      const size_t nSilentBackDummy = countBackTransitions (&sortedWithDummy);
       LogThisAt(5,"Padding with \"dummy\" null states " << (nSilentBackDummy < nSilentBackAfter ? (nSilentBackDummy ? "is better, though not perfect" : "worked!") : "failed") << endl);
       if (nSilentBackDummy < nSilentBackAfter)
 	result = sortedWithDummy;
@@ -1230,11 +1239,11 @@ Machine Machine::advanceSort (bool decode) const {
   
   // show silent backward transitions
 #define SilentBackwardLogLevel 9
-  if ((decode ? result.nEmptyOutputBackTransitions() : result.nSilentBackTransitions()) > 0 && LoggingThisAt(SilentBackwardLogLevel)) {
+  if (countBackTransitions (&result) > 0 && LoggingThisAt(SilentBackwardLogLevel)) {
     LogThisAt(SilentBackwardLogLevel,"Backward " << sortType << " transitions:" << endl);
     for (StateIndex s = 1; s < nStates(); ++s)
       for (const auto& t: result.state[s].trans)
-	if ((decode ? t.outputEmpty() : t.isSilent()) && t.dest <= s)
+	if (mustAdvance(&t) && t.dest <= s)
 	  LogThisAt(SilentBackwardLogLevel,"[" << s << "," << result.state[s].name << endl << "," << t.dest << "," << result.state[t.dest].name << "]" << endl);
   }
 
