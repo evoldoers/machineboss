@@ -76,3 +76,9 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& cou
 MachinePath BackwardMatrix::traceFrom (const Machine& machine, const ForwardMatrix& forward, InputIndex inPos, OutputIndex outPos, StateIndex state) const {
   return forward.traceBack (machine, inPos, outPos, state).concatenate (traceForward (machine, inPos, outPos, state));
 }
+
+MachinePath BackwardMatrix::traceFrom (const Machine& machine, const ForwardMatrix& forward, InputIndex inPos, OutputIndex outPos, StateIndex state, EvaluatedMachineState::TransIndex transIndex) const {
+  return forward.traceBack (machine, inPos, outPos, state)
+    .concatenate (MachinePath (machine.state[state].getTransition (transIndex))
+		  .concatenate (traceForward (machine, inPos, outPos, state)));
+}

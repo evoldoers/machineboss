@@ -1634,6 +1634,9 @@ TransList TransAccumulator::transitions() const {
   return trans;
 }
 
+MachinePath::MachinePath() {}
+MachinePath::MachinePath (const MachineTransition& mt) { trans.push_back (mt); }
+
 MachinePath MachinePath::concatenate (const MachinePath& m) const {
   MachinePath result (*this);
   result.trans.insert (result.trans.end(), m.trans.begin(), m.trans.end());

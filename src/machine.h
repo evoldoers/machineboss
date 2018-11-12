@@ -175,6 +175,8 @@ typedef JsonLoader<Machine> MachineLoader;
 
 struct MachinePath {
   TransList trans;
+  MachinePath();
+  MachinePath (const MachineTransition&);
   MachinePath concatenate (const MachinePath&) const;
   void writeJson (ostream&, const Machine&) const;
 };
