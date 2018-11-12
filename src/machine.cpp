@@ -665,6 +665,14 @@ bool Machine::isDecodingMachine() const {
   return true;
 }
 
+bool Machine::isToposortedMachine() const {
+  for (StateIndex s = 1; s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
+      if (t.dest < s)
+	return false;
+  return true;
+}
+
 inline StateIndex ij2compState (StateIndex i, StateIndex j, StateIndex jStates) {
   return i * jStates + j;
 }
@@ -1103,23 +1111,18 @@ Machine Machine::advancingMachine() const {
 }
 
 Machine Machine::decodeSort() const {
-  return advanceSort (true);
+  return advanceSort (&Machine::nEmptyOutputBackTransitions, &MachineTransition::outputEmpty, "non-outputting");
 }
 
 Machine Machine::encodeSort() const {
-  return transpose().advanceSort(true).transpose();
+  return transpose().decodeSort().transpose();
 }
 
-
-Machine Machine::advanceSort (bool decode) const {
+Machine Machine::advanceSort (function<size_t(const Machine*)> countBackTransitions,
+			      function<bool(const MachineTransition*)> mustAdvance,
+			      const char* sortType) const
+{
   Machine result;
-  function<size_t(const Machine*)> countBackTransitions
-    = bind (decode ? &Machine::nEmptyOutputBackTransitions : &Machine::nSilentBackTransitions,
-	    _1);
-  function<bool(const MachineTransition*)> mustAdvance
-    = bind (decode ? &MachineTransition::outputEmpty : &MachineTransition::isSilent,
-	    _1);
-  const char* sortType = decode ? "non-outputting" : "silent";
   const size_t nSilentBackBefore = countBackTransitions (this);
   if (nSilentBackBefore) {
     vguard<vguard<StateIndex> > silentIncoming (nStates()), silentOutgoing (nStates());
@@ -1225,7 +1228,7 @@ Machine Machine::advanceSort (bool decode) const {
       LogThisAt(5,"Trying to sort again with \"dummy\" null start & end states..." << endl);
       const Machine withDummy = padWithNullStates();
       Assert (withDummy.hasNullPaddingStates(), "Dummy machine does not look like a dummy, triggering infinite dummification loop");
-      const Machine sortedWithDummy = withDummy.advanceSort (decode);
+      const Machine sortedWithDummy = withDummy.advanceSort (countBackTransitions, mustAdvance);
       const size_t nSilentBackDummy = countBackTransitions (&sortedWithDummy);
       LogThisAt(5,"Padding with \"dummy\" null states " << (nSilentBackDummy < nSilentBackAfter ? (nSilentBackDummy ? "is better, though not perfect" : "worked!") : "failed") << endl);
       if (nSilentBackDummy < nSilentBackAfter)

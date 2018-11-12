@@ -124,8 +124,8 @@ struct Machine {
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
   bool isToposortedMachine() const;  // no i->j transitions where j<i
-  bool isAdvancingMachine() const;  // no silent i->j transitions where j<i
-  bool isDecodingMachine() const;  // no non-outputting i->j transitions where j<i
+  bool isAdvancingMachine() const;  // no silent i->j transitions where j<=i
+  bool isDecodingMachine() const;  // no non-outputting i->j transitions where j<=i
   bool isAligningMachine() const;  // at most one i->j transition with given input & output labels
 
   Machine padWithNullStates() const;  // adds "dummy" null states at start & end
@@ -152,8 +152,13 @@ struct Machine {
   size_t nEmptyOutputBackTransitions() const;
   Machine decodeSort() const;  // same as advanceSort(true)
   Machine encodeSort() const;  // same as transpose().advanceSort(true).transpose()
-  Machine advanceSort (bool decode = false) const;  // attempt to minimize number of silent i->j transitions where j<i (if decode=true, then s/silent/non-outputting/)
   Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
+
+  // advanceSort tries to minimize number of "silent" i->j transitions where j<i
+  // Different applications can override definition of "silent", e.g. for decoding s/silent/non-outputting/
+  Machine advanceSort (function<size_t(const Machine*)> countBackTransitions = &Machine::nSilentBackTransitions,
+		       function<bool(const MachineTransition*)> mustAdvance = &MachineTransition::isSilent,
+		       const char* mustAdvanceDescription = "silent") const;
 
   Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // returns either advancingMachine(), dropSilentBackTransitions(), or clone of self, depending on strategy
   Machine dropSilentBackTransitions() const;
