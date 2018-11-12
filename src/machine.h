@@ -148,10 +148,12 @@ struct Machine {
   Machine ergodicMachine() const;  // remove unreachable states
   Machine waitingMachine (const char* waitTag = MachineWaitTag, const char* continueTag = MachineContinueTag) const;  // convert to waiting machine
 
+  size_t nBackTransitions() const;
   size_t nSilentBackTransitions() const;
   size_t nEmptyOutputBackTransitions() const;
-  Machine decodeSort() const;  // same as advanceSort(true)
-  Machine encodeSort() const;  // same as transpose().advanceSort(true).transpose()
+  Machine decodeSort() const;  // does advanceSort() on non-outputting transitions
+  Machine encodeSort() const;  // same as transpose().decodeSort().transpose()
+  Machine toposort() const;  // does advanceSort() on all transitions
   Machine advancingMachine() const;  // convert to advancing machine by eliminating silent back-transitions
 
   // advanceSort tries to minimize number of "silent" i->j transitions where j<i

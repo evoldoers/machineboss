@@ -631,6 +631,15 @@ bool Machine::isWaitingMachine() const {
   return true;
 }
 
+size_t Machine::nBackTransitions() const {
+  size_t n = 0;
+  for (StateIndex s = 1; s < nStates(); ++s)
+    for (const auto& t: state[s].trans)
+      if (t.dest <= s)
+	++n;
+  return n;
+}
+
 size_t Machine::nSilentBackTransitions() const {
   size_t n = 0;
   for (StateIndex s = 1; s < nStates(); ++s)
@@ -1116,6 +1125,11 @@ Machine Machine::decodeSort() const {
 
 Machine Machine::encodeSort() const {
   return transpose().decodeSort().transpose();
+}
+
+bool isMachineTransition (const MachineTransition* mt) { return true; }
+Machine Machine::toposort() const {
+  return advanceSort (&Machine::nBackTransitions, &isMachineTransition, "general");
 }
 
 Machine Machine::advanceSort (function<size_t(const Machine*)> countBackTransitions,

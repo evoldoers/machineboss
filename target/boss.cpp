@@ -101,6 +101,7 @@ int main (int argc, char** argv) {
       ("sort-cyclic", "topologically sort if possible, but preserve silent cycles")
       ("decode-sort", "topologically sort non-outputting transition graph")
       ("encode-sort", "topologically sort non-inputting transition graph")
+      ("full-sort", "topologically sort entire transition graph")
       ("eliminate,n", "eliminate all silent transitions")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
@@ -396,6 +397,8 @@ int main (int argc, char** argv) {
 	  m = popMachine().decodeSort();
 	else if (command == "--encode-sort")
 	  m = popMachine().encodeSort();
+	else if (command == "--full-sort")
+	  m = popMachine().toposort();
 	else if (command == "--compose")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::SumSilentCycles);
 	else if (command == "--compose-fast")

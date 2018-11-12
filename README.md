@@ -384,6 +384,7 @@ Postfix operators:
                                graph
   --encode-sort                topologically sort non-inputting transition 
                                graph
+  --full-sort                  topologically sort entire transition graph
   -n [ --eliminate ]           eliminate all silent transitions
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
