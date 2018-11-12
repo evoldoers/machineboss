@@ -101,7 +101,7 @@ int main (int argc, char** argv) {
       ("sort-cyclic", "topologically sort if possible, but preserve silent cycles")
       ("decode-sort", "topologically sort non-outputting transition graph")
       ("encode-sort", "topologically sort non-inputting transition graph")
-      ("full-sort", "topologically sort entire transition graph")
+      ("full-sort", "topologically sort entire transition graph, not just silent transitions")
       ("eliminate,n", "eliminate all silent transitions")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")

@@ -48,6 +48,17 @@ protected:
     }
   }
 
+  inline void pathIterate (double& bestLogLike, StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
+    auto visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
+      if (tll > bestLogLike) {
+	bestLogLike = tll;
+	bestState = s;
+	bestTransIndex = ti;
+      }
+    };
+    iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
+  }
+  
   static inline double sum_reduce (double x, double y) { return log_sum_exp(x,y); }
   static inline double max_reduce (double x, double y) { return max(x,y); }
 
@@ -74,6 +85,15 @@ public:
   inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
     return env.contains(inPos,outPos) ? cellStorage[cellIndex(inPos,outPos,state)] : -numeric_limits<double>::infinity();
   }
+
+  double startCell() const { return cell (0, 0, machine.startState()); }
+  double endCell() const { return cell (inLen, outLen, machine.endState()); }
+  
+  MachinePath traceBack (const Machine& m) const;
+  MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
+
+  MachinePath traceForward (const Machine& m) const;
+  MachinePath traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
 };
 
 #endif /* DPMATRIX_INCLUDED */

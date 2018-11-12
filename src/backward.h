@@ -18,6 +18,7 @@ public:
   BackwardMatrix (const EvaluatedMachine&, const SeqPair&, const Envelope&);
   void getCounts (const ForwardMatrix&, MachineCounts&) const;
   double logLike() const;
+  MachinePath traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex) const;
 };
 
 #endif /* BACKWARD_INCLUDED */

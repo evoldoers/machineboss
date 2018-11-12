@@ -123,7 +123,7 @@ struct Machine {
 
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
-  bool isToposortedMachine() const;  // no i->j transitions where j<i
+  bool isToposortedMachine (bool acyclic = false) const;  // no i->j transitions where j<i (if acyclic==true, then i->i transitions must not be present either)
   bool isAdvancingMachine() const;  // no silent i->j transitions where j<=i
   bool isDecodingMachine() const;  // no non-outputting i->j transitions where j<=i
   bool isAligningMachine() const;  // at most one i->j transition with given input & output labels
@@ -175,6 +175,7 @@ typedef JsonLoader<Machine> MachineLoader;
 
 struct MachinePath {
   TransList trans;
+  MachinePath concatenate (const MachinePath&) const;
   void writeJson (ostream&, const Machine&) const;
 };
 

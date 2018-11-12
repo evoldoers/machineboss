@@ -674,10 +674,10 @@ bool Machine::isDecodingMachine() const {
   return true;
 }
 
-bool Machine::isToposortedMachine() const {
+bool Machine::isToposortedMachine (bool excludeSelfLoops) const {
   for (StateIndex s = 1; s < nStates(); ++s)
     for (const auto& t: state[s].trans)
-      if (t.dest < s)
+      if (excludeSelfLoops ? (t.dest <= s) : (t.dest < s))
 	return false;
   return true;
 }
@@ -1632,6 +1632,12 @@ TransList TransAccumulator::transitions() const {
       for (const auto& out_weight: in_map.second)
 	trans.push_back (MachineTransition (in_map.first, out_weight.first, dest_map.first, out_weight.second));
   return trans;
+}
+
+MachinePath MachinePath::concatenate (const MachinePath& m) const {
+  MachinePath result (*this);
+  result.trans.insert (result.trans.end(), m.trans.begin(), m.trans.end());
+  return result;
 }
 
 void MachinePath::writeJson (ostream& out, const Machine& m) const {

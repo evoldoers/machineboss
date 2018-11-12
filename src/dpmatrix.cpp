@@ -56,3 +56,66 @@ ostream& operator<< (ostream& out, const DPMatrix& m) {
   m.writeJson (out);
   return out;
 }
+
+MachinePath DPMatrix::traceBack (const Machine& m) const {
+  return traceBack (m, inLen, outLen, nStates - 1);
+}
+
+MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
+  Assert (endCell() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
+  MachinePath path;
+  while (inPos > 0 || outPos > 0 || s != 0) {
+    const EvaluatedMachineState& state = machine.state[s];
+    double bestLogLike = -numeric_limits<double>::infinity();
+    StateIndex bestSource;
+    EvaluatedMachineState::TransIndex bestTransIndex;
+    const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
+    const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
+    if (inPos && outPos)
+      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, outTok, inPos - 1, outPos - 1);
+    if (inPos)
+      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, OutputTokenizer::emptyToken(), inPos - 1, outPos);
+    if (outPos)
+      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), outTok, inPos, outPos - 1);
+    pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
+    const MachineTransition& bestTrans = m.state[bestSource].getTransition (bestTransIndex);
+    if (!bestTrans.inputEmpty()) --inPos;
+    if (!bestTrans.outputEmpty()) --outPos;
+    s = bestSource;
+    path.trans.push_front (bestTrans);
+  }
+  return path;
+}
+
+MachinePath DPMatrix::traceForward (const Machine& m) const {
+  return traceBack (m, 0, 0, 0);
+}
+
+MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
+  Assert (endCell() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
+  MachinePath path;
+  while (inPos < inLen || outPos < outLen || s != nStates - 1) {
+    const EvaluatedMachineState& state = machine.state[s];
+    double bestLogLike = -numeric_limits<double>::infinity();
+    StateIndex bestDest;
+    EvaluatedMachineState::TransIndex bestTransIndex;
+    const bool endOfInput = (inPos == inLen);
+    const bool endOfOutput = (outPos == outLen);
+    const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
+    const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
+    if (!endOfInput && !endOfOutput)
+      pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, inTok, outTok, inPos + 1, outPos + 1);
+    if (!endOfInput)
+      pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, inTok, OutputTokenizer::emptyToken(), inPos + 1, outPos);
+    if (!endOfOutput)
+      pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
+    pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
+    const MachineTransition& bestTrans = m.state[bestDest].getTransition (bestTransIndex);
+    if (!bestTrans.inputEmpty()) ++inPos;
+    if (!bestTrans.outputEmpty()) ++outPos;
+    s = bestDest;
+    path.trans.push_back (bestTrans);
+  }
+  return path;
+}
+
