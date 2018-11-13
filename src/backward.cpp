@@ -45,8 +45,14 @@ double BackwardMatrix::logLike() const {
   return cell (0, 0, machine.startState());
 }
 
+BackwardMatrix::PostTransQueue BackwardMatrix::postTransQueue (const ForwardMatrix& forward) const {
+  PostTransQueue ptq;
+  getCounts (forward, transitionSorter (ptq));
+  return ptq;
+}
+
 void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& counts) const {
-  return getCounts (forward, transitionCounter (counts));
+  getCounts (forward, transitionCounter (counts));
 }
 
 void BackwardMatrix::getCounts (const ForwardMatrix& forward, const TransVisitor& transCount) const {

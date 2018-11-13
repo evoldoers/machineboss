@@ -1,6 +1,7 @@
 #ifndef BACKWARD_INCLUDED
 #define BACKWARD_INCLUDED
 
+#include <queue>
 #include "forward.h"
 #include "counts.h"
 
@@ -13,6 +14,23 @@ public:
     };
     return tv;
   }
+
+  struct PostTrans {
+    InputIndex inPos;
+    OutputIndex outPos;
+    StateIndex src;
+    EvaluatedMachineState::TransIndex transIndex;
+    double weight;
+    bool operator< (const PostTrans& ptq) const { return weight < ptq.weight; }
+  };
+  typedef priority_queue<PostTrans> PostTransQueue;
+  static TransVisitor transitionSorter (PostTransQueue& ptq) {
+    TransVisitor tv = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, InputIndex ip, OutputIndex op, double postProb) {
+      ptq.push (PostTrans ({ .inPos = ip, .outPos = op, .src = s, .transIndex = ti, .weight = postProb }));
+    };
+    return tv;
+  }
+
 private:
   inline void accumulateCounts (double logOddsRatio, const TransVisitor& tv, StateIndex src, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
     auto visit = [&] (StateIndex, EvaluatedMachineState::TransIndex ti, double tll) {
@@ -29,6 +47,7 @@ public:
   void getCounts (const ForwardMatrix&, const TransVisitor&) const;
   void getCounts (const ForwardMatrix&, MachineCounts&) const;
   double logLike() const;
+  PostTransQueue postTransQueue (const ForwardMatrix&) const;
   MachinePath traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex) const;
   MachinePath traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex, EvaluatedMachineState::TransIndex) const;
 };

@@ -42,6 +42,8 @@ typedef double LogWeight;
 
 struct EvaluatedMachineState {
   typedef size_t TransIndex;
+  static TransIndex getTransIndex (const MachineState&, const MachineTransition&);
+
   struct Trans {
     LogWeight logWeight;
     TransIndex transIndex;  // index of this transition in source state's TransList. Need to track this so we can map forward-backward counts back to MachineTransitions
