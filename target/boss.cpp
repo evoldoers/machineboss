@@ -94,6 +94,7 @@ int main (int argc, char** argv) {
       ("local-both", "add flanking insert & delete states: partially match input and/or output")
       ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
+      ("downsample", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior weight")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
       ("sort", "topologically sort, eliminating silent cycles")
@@ -446,6 +447,8 @@ int main (int argc, char** argv) {
 	  m = Machine::takeUnion (r, revCompMachine(r), half, half);
 	} else if (command == "--transpose")
 	  m = popMachine().transpose();
+	else if (command == "--downsample")
+	  m = popMachine().downsample (stod (getArg()));
 	else if (command == "--local-input") {
 	  const Machine core = popMachine();
 	  const Machine flank = Machine::wildAcceptor (core.inputAlphabet());

@@ -166,6 +166,8 @@ struct Machine {
   Machine dropSilentBackTransitions() const;
   Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // eliminates silent transitions, first processing cycles using the selected strategy
 
+  Machine downsample (double proportionOfTransitionsToKeep) const;
+  
   // helpers to import defs & constraints from other machine(s)
   void import (const Machine& m, bool overwrite = false);
   void import (const Machine& m1, const Machine& m2, bool overwrite = false);

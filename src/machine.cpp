@@ -11,6 +11,8 @@
 #include "params.h"
 #include "preset.h"
 
+#include "backward.h"
+
 using json = nlohmann::json;
 using placeholders::_1;
 
@@ -1688,3 +1690,52 @@ Params Machine::getParamDefs (bool assignDefaultValuesToMissingParams) const {
   return p;
 }
  
+Machine Machine::downsample (double proportionOfTransitionsToKeep) const {
+  Assert (isToposortedMachine(true), "Machine must be acyclic & topologically sorted before downsampling can take place");
+
+  Machine null (*this);
+  vguard<vguard<bool> > transAllowed;
+  transAllowed.reserve (null.nStates());
+  for (auto& ms: null.state) {
+    for (auto& mt: ms.trans)
+      mt.in = mt.out = string();
+    transAllowed.push_back (vguard<bool> (ms.trans.size()));
+  }
+
+  const SeqPair emptySeqPair;
+  const EvaluatedMachine eval (null, getParamDefs (true));
+  const ForwardMatrix fwd (eval, emptySeqPair);
+  const BackwardMatrix back (eval, emptySeqPair);
+
+  const size_t maxTrans = null.nTransitions();
+  size_t nTrans = 0;
+  DPMatrix::TraceTerminator stopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, const MachineTransition& mt) {
+    const EvaluatedMachineState::TransIndex ti = EvaluatedMachineState::getTransIndex (null.state[s], mt);
+    if (transAllowed[s][ti])
+      return true;
+    transAllowed[s][ti] = true;
+    ++nTrans;
+    return false;
+  };
+
+  BackwardMatrix::PostTransQueue queue = back.postTransQueue (fwd);
+  while (!queue.empty() && (nTrans / (double) maxTrans) < proportionOfTransitionsToKeep) {
+    const BackwardMatrix::PostTrans pt = queue.top();
+    queue.pop();
+    back.traceFrom (null, fwd, pt.inPos, pt.outPos, pt.src, pt.transIndex, stopTrace);
+  }
+
+  Machine result (*this);
+  for (StateIndex s = 0; s < nStates(); ++s) {
+    const MachineState& ms = state[s];
+    MachineState& rs = result.state[s];
+    rs.trans.clear();
+    EvaluatedMachineState::TransIndex ti;
+    TransList::const_iterator iter;
+    for (ti = 0, iter = ms.trans.begin(); iter != ms.trans.end(); ++ti, ++iter)
+      if (transAllowed[s][ti])
+	rs.trans.push_back (*iter);
+  }
+  
+  return result;
+}
