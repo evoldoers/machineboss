@@ -46,6 +46,10 @@ double BackwardMatrix::logLike() const {
 }
 
 void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& counts) const {
+  return getCounts (forward, transitionCounter (counts));
+}
+
+void BackwardMatrix::getCounts (const ForwardMatrix& forward, const TransVisitor& transCount) const {
   ProgressLog(plogDP,6);
   plogDP.initProgress ("Calculating Forward-Backward counts (%lu cells)", nCells());
   const double ll = logLike();
@@ -60,14 +64,13 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& cou
 	const bool endState = (s == nStates - 1);
 	const EvaluatedMachineState& state = machine.state[(StateIndex) s];
 	const double logOddsRatio = forward.cell(inPos,outPos,(StateIndex) s) - ll;
-	vguard<double>& transCounts = counts.count[(StateIndex) s];
 	if (!endOfInput && !endOfOutput)
-	  accumulateCounts (logOddsRatio, transCounts, state.outgoing, inTok, outTok, inPos + 1, outPos + 1);
+	  accumulateCounts (logOddsRatio, transCount, s, state.outgoing, inTok, outTok, inPos + 1, outPos + 1);
 	if (!endOfInput)
-	  accumulateCounts (logOddsRatio, transCounts, state.outgoing, inTok, OutputTokenizer::emptyToken(), inPos + 1, outPos);
+	  accumulateCounts (logOddsRatio, transCount, s, state.outgoing, inTok, OutputTokenizer::emptyToken(), inPos + 1, outPos);
 	if (!endOfOutput)
-	  accumulateCounts (logOddsRatio, transCounts, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
-	accumulateCounts (logOddsRatio, transCounts, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
+	  accumulateCounts (logOddsRatio, transCount, s, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
+	accumulateCounts (logOddsRatio, transCount, s, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
       }
     }
   }
