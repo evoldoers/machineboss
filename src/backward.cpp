@@ -91,3 +91,8 @@ MachinePath BackwardMatrix::traceFrom (const Machine& machine, const ForwardMatr
     .concatenate (MachinePath (machine.state[state].getTransition (transIndex))
 		  .concatenate (traceForward (machine, inPos, outPos, state)));
 }
+
+void BackwardMatrix::traceFrom (const Machine& machine, const ForwardMatrix& forward, InputIndex inPos, OutputIndex outPos, StateIndex state, EvaluatedMachineState::TransIndex transIndex, TraceTerminator stopTrace) const {
+  forward.traceBack (machine, inPos, outPos, state, stopTrace);
+  traceForward (machine, inPos, outPos, state, stopTrace);
+}

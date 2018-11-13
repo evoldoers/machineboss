@@ -10,6 +10,8 @@ public:
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
 
+  typedef function<bool(InputIndex,OutputIndex,StateIndex,const MachineTransition&)> TraceTerminator;
+
 protected:
   typedef Envelope::Offset CellIndex;
   vguard<CellIndex> offsets;
@@ -91,9 +93,11 @@ public:
   
   MachinePath traceBack (const Machine& m) const;
   MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
+  void traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const;
 
   MachinePath traceForward (const Machine& m) const;
   MachinePath traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
+  void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const;
 };
 
 #endif /* DPMATRIX_INCLUDED */

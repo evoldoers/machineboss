@@ -62,8 +62,17 @@ MachinePath DPMatrix::traceBack (const Machine& m) const {
 }
 
 MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
-  Assert (endCell() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   MachinePath path;
+  TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, const MachineTransition& t) {
+    path.trans.push_front (t);
+    return false;
+  };
+  traceBack (m, inLen, outLen, s, stopTrace);
+  return path;
+}
+
+void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const {
+  Assert (cell(inPos,outPos,s) > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   while (inPos > 0 || outPos > 0 || s != 0) {
     const EvaluatedMachineState& state = machine.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
@@ -82,9 +91,9 @@ MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex
     if (!bestTrans.inputEmpty()) --inPos;
     if (!bestTrans.outputEmpty()) --outPos;
     s = bestSource;
-    path.trans.push_front (bestTrans);
+    if (stopTrace (inPos, outPos, s, bestTrans))
+      break;
   }
-  return path;
 }
 
 MachinePath DPMatrix::traceForward (const Machine& m) const {
@@ -92,8 +101,17 @@ MachinePath DPMatrix::traceForward (const Machine& m) const {
 }
 
 MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
-  Assert (endCell() > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   MachinePath path;
+  TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, const MachineTransition& t) {
+    path.trans.push_back (t);
+    return false;
+  };
+  traceForward (m, inLen, outLen, s, stopTrace);
+  return path;
+}
+
+void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const {
+  Assert (cell(inPos,outPos,s) > -numeric_limits<double>::infinity(), "Can't do traceforward: no finite-weight paths");
   while (inPos < inLen || outPos < outLen || s != nStates - 1) {
     const EvaluatedMachineState& state = machine.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
@@ -111,11 +129,11 @@ MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIn
       pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
     pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
     const MachineTransition& bestTrans = m.state[bestDest].getTransition (bestTransIndex);
+    if (stopTrace (inPos, outPos, s, bestTrans))
+      break;
     if (!bestTrans.inputEmpty()) ++inPos;
     if (!bestTrans.outputEmpty()) ++outPos;
     s = bestDest;
-    path.trans.push_back (bestTrans);
   }
-  return path;
 }
 

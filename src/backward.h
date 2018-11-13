@@ -50,6 +50,7 @@ public:
   PostTransQueue postTransQueue (const ForwardMatrix&) const;
   MachinePath traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex) const;
   MachinePath traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex, EvaluatedMachineState::TransIndex) const;
+  void traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex, EvaluatedMachineState::TransIndex, TraceTerminator) const;
 };
 
 #endif /* BACKWARD_INCLUDED */
