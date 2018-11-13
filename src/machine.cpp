@@ -1707,21 +1707,27 @@ Machine Machine::downsample (double proportionOfTransitionsToKeep) const {
   const ForwardMatrix fwd (eval, emptySeqPair);
   const BackwardMatrix back (eval, emptySeqPair);
 
-  const size_t maxTrans = null.nTransitions();
   size_t nTrans = 0;
-  DPMatrix::TraceTerminator stopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, const MachineTransition& mt) {
-    const EvaluatedMachineState::TransIndex ti = EvaluatedMachineState::getTransIndex (null.state[s], mt);
+  DPMatrix::TraceTerminator stopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     if (transAllowed[s][ti])
       return true;
+    LogThisAt(8,"Adding transition #" << ti << " from state #" << s << endl);
     transAllowed[s][ti] = true;
     ++nTrans;
     return false;
   };
 
   BackwardMatrix::PostTransQueue queue = back.postTransQueue (fwd);
-  while (!queue.empty() && (nTrans / (double) maxTrans) < proportionOfTransitionsToKeep) {
+  const size_t nTransTarget = null.nTransitions() * proportionOfTransitionsToKeep;
+
+  ProgressLog(plogTrace,6);
+  plogTrace.initProgress ("Finding highest-probability transitions (target %lu)", nTransTarget);
+  while (!queue.empty() && nTrans < nTransTarget) {
+    plogTrace.logProgress (nTrans / (double) nTransTarget, "added %lu transitions", nTrans);
     const BackwardMatrix::PostTrans pt = queue.top();
     queue.pop();
+    const MachineTransition& mt = state[pt.src].getTransition (pt.transIndex);
+    LogThisAt(7,"Tracing from " << pt.src << " -[" << mt.in << "/" << mt.out << "]-> " << mt.dest << " (transition #" << pt.transIndex << ", post.prob. " << pt.weight << "); " << nTrans << "/" << nTransTarget << " transitions" << endl);
     back.traceFrom (null, fwd, pt.inPos, pt.outPos, pt.src, pt.transIndex, stopTrace);
   }
 

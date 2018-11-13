@@ -8,15 +8,6 @@
 // if exit "probabilities" sum to more than this when trying to eliminate states using matrix algebra, issue a warning
 #define SuspiciouslyLargeProbabilityWarningThreshold 1.01
 
-EvaluatedMachineState::TransIndex EvaluatedMachineState::getTransIndex (const MachineState& ms, const MachineTransition& mt) {
-  TransIndex ti = 0;
-  for (TransList::const_iterator iter = ms.trans.begin(); iter != ms.trans.end(); ++ti, ++iter)
-    if ((*iter).in == mt.in && (*iter).out == mt.out && (*iter).dest == mt.dest)
-      return ti;
-  Abort ("Transition not found");
-  return 0;
-}
-
 void EvaluatedMachineState::Trans::init (LogWeight lw, TransIndex ti) {
   logWeight = lw;
   transIndex = ti;

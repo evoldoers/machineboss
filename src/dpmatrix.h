@@ -10,7 +10,7 @@ public:
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
 
-  typedef function<bool(InputIndex,OutputIndex,StateIndex,const MachineTransition&)> TraceTerminator;
+  typedef function<bool(InputIndex,OutputIndex,StateIndex,EvaluatedMachineState::TransIndex)> TraceTerminator;
 
 protected:
   typedef Envelope::Offset CellIndex;

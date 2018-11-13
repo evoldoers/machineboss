@@ -63,8 +63,8 @@ MachinePath DPMatrix::traceBack (const Machine& m) const {
 
 MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
   MachinePath path;
-  TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, const MachineTransition& t) {
-    path.trans.push_front (t);
+  TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
+    path.trans.push_front (m.state[s].getTransition (ti));
     return false;
   };
   traceBack (m, inLen, outLen, s, stopTrace);
@@ -91,7 +91,7 @@ void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos
     if (!bestTrans.inputEmpty()) --inPos;
     if (!bestTrans.outputEmpty()) --outPos;
     s = bestSource;
-    if (stopTrace (inPos, outPos, s, bestTrans))
+    if (stopTrace (inPos, outPos, s, bestTransIndex))
       break;
   }
 }
@@ -102,8 +102,8 @@ MachinePath DPMatrix::traceForward (const Machine& m) const {
 
 MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
   MachinePath path;
-  TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, const MachineTransition& t) {
-    path.trans.push_back (t);
+  TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
+    path.trans.push_back (m.state[s].getTransition (ti));
     return false;
   };
   traceForward (m, inLen, outLen, s, stopTrace);
@@ -128,9 +128,9 @@ void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex out
     if (!endOfOutput)
       pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
     pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
-    const MachineTransition& bestTrans = m.state[bestDest].getTransition (bestTransIndex);
-    if (stopTrace (inPos, outPos, s, bestTrans))
+    if (stopTrace (inPos, outPos, s, bestTransIndex))
       break;
+    const MachineTransition& bestTrans = m.state[bestDest].getTransition (bestTransIndex);
     if (!bestTrans.inputEmpty()) ++inPos;
     if (!bestTrans.outputEmpty()) ++outPos;
     s = bestDest;

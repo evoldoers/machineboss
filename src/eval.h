@@ -42,7 +42,6 @@ typedef double LogWeight;
 
 struct EvaluatedMachineState {
   typedef size_t TransIndex;
-  static TransIndex getTransIndex (const MachineState&, const MachineTransition&);
 
   struct Trans {
     LogWeight logWeight;

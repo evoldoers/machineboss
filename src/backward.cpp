@@ -57,7 +57,7 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& cou
 
 void BackwardMatrix::getCounts (const ForwardMatrix& forward, const TransVisitor& transCount) const {
   ProgressLog(plogDP,6);
-  plogDP.initProgress ("Calculating Forward-Backward counts (%lu cells)", nCells());
+  plogDP.initProgress ("Calculating posterior probabilities (%lu cells)", nCells());
   const double ll = logLike();
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
     plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / (double) nCells(), "counted %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
