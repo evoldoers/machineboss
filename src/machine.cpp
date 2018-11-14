@@ -1735,6 +1735,9 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
     transAllowed.push_back (vguard<bool> (ms.trans.size()));
   }
 
+  const size_t nTransNull = null.nTransitions();
+  LogThisAt(3,"Eliminating low-probability transitions from " << nTransNull << "-transition machine" << endl);
+  
   const SeqPair emptySeqPair;
   const EvaluatedMachine eval (null, getParamDefs (true));
   const ForwardMatrix fwd (eval, emptySeqPair);
@@ -1777,6 +1780,9 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
       if (transAllowed[s][ti])
 	rs.trans.push_back (*iter);
   }
+  const size_t nTransResult = result.nTransitions();
+
+  LogThisAt(5,"Downsampling reduced number of transitions from " << nTransNull << " to " << nTransResult << endl);
   
   return result;
 }
