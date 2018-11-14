@@ -371,6 +371,8 @@ Postfix operators:
                                match input and/or output
   --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
+  --downsample arg             keep only specified proportion of transitions, 
+                               discarding those with lowest posterior weight
   --joint-norm                 normalize jointly (outgoing transition weights 
                                sum to 1)
   --cond-norm                  normalize conditionally (outgoing transition 
@@ -384,7 +386,8 @@ Postfix operators:
                                graph
   --encode-sort                topologically sort non-inputting transition 
                                graph
-  --full-sort                  topologically sort entire transition graph
+  --full-sort                  topologically sort entire transition graph, not 
+                               just silent transitions
   -n [ --eliminate ]           eliminate all silent transitions
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 

@@ -8,11 +8,6 @@
 // if exit "probabilities" sum to more than this when trying to eliminate states using matrix algebra, issue a warning
 #define SuspiciouslyLargeProbabilityWarningThreshold 1.01
 
-void EvaluatedMachineState::Trans::init (LogWeight lw, TransIndex ti) {
-  logWeight = lw;
-  transIndex = ti;
-}
-
 EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params) :
   inputTokenizer (machine.inputAlphabet()),
   outputTokenizer (machine.outputAlphabet()),
@@ -46,8 +41,8 @@ void EvaluatedMachine::init (const Machine& machine, const Params* params)
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
       const LogWeight lw = params ? log (WeightAlgebra::eval (trans.weight, params->defs)) : 0.;
-      state[s].outgoing[in][out][d].init (lw, ti);
-      state[d].incoming[in][out][s].init (lw, ti);
+      state[s].outgoing[in][out].insert (EvaluatedMachineState::StateTransMap::value_type (d, EvaluatedMachineState::Trans ({ .logWeight = lw, .transIndex = ti})));
+      state[d].incoming[in][out].insert (EvaluatedMachineState::StateTransMap::value_type (s, EvaluatedMachineState::Trans ({ .logWeight = lw, .transIndex = ti})));
       ++ti;
     }
     state[s].nTransitions = ti;
