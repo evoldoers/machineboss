@@ -1315,8 +1315,6 @@ bool Machine::isAligningMachine() const {
 
 Machine Machine::eliminateRedundantStates() const {
   const Machine rm = isAdvancingMachine() ? *this : advanceSort();
-  Machine em;
-  em.import (*this);
   LogThisAt(3,"Eliminating redundant states from " << rm.nStates() << "-state transducer" << endl);
   vguard<StateIndex> proxyState (rm.nStates());
   for (StateIndex s = rm.nStates(); s > 0; ) {
@@ -1337,12 +1335,19 @@ Machine Machine::eliminateRedundantStates() const {
     if (proxyState[s] != s)
       newStateIndex[s] = newStateIndex[proxyState[s]];
   const StateIndex newStates = oldStateIndex.size();
+  if (newStates == rm.nStates()) {
+    LogThisAt(5,"No redundant states to eliminate" << endl);
+    return rm;
+  }
+  Machine em;
+  em.import (*this);
   em.state = vguard<MachineState> (newStates);
   for (StateIndex s = 0; s < newStates; ++s) {
     em.state[s] = rm.state[oldStateIndex[s]];
     for (auto& mt: em.state[s].trans)
       mt.dest = newStateIndex[mt.dest];
   }
+  LogThisAt(5,"Eliminating redundant states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
   return em;
 }
 

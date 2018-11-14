@@ -458,21 +458,22 @@ int main (int argc, char** argv) {
 	  m = popMachine().downsample (stod (getArg()));
 	else if (command == "--downsample-prob")
 	  m = popMachine().downsample (1., stod (getArg()));
-	else if (command == "--local-input") {
+	else if (command == "--local-input" || command == "--local-output" || command == "--local-either" || command == "--local-both"
+		 || command == "--flank-uniform-input" || command == "--flank-uniform-output") {
 	  const Machine core = popMachine();
-	  const Machine flank = Machine::wildAcceptor (core.inputAlphabet());
-	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
-	} else if (command == "--local-output") {
-	  const Machine core = popMachine();
-	  const Machine flank = Machine::wildGenerator (core.outputAlphabet());
-	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
-	} else if (command == "--local-either") {
-	  const Machine core = popMachine();
-	  const Machine flank = Machine::takeUnion (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
-	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
-	} else if (command == "--local-both") {
-	  const Machine core = popMachine();
-	  const Machine flank = Machine::concatenate (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	  Machine flank;
+	  if (command == "--local-input")
+	    flank = Machine::wildAcceptor (core.inputAlphabet());
+	  else if (command == "--local-output")
+	    flank = Machine::wildGenerator (core.outputAlphabet());
+	  else if (command == "--local-either")
+	    flank = Machine::takeUnion (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	  else if (command == "--local-both")
+	    flank = Machine::concatenate (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	  else if (command == "--flank-uniform-input")
+	    flank = Machine::wildAcceptor (core.inputAlphabet()).weightInputsUniformly();
+	  else if (command == "--flank-uniform-output")
+	    flank = Machine::wildGenerator (core.outputAlphabet()).weightOutputsUniformly();
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
 	} else if (command == "--weight") {
 	  const string wArg = getArg();
