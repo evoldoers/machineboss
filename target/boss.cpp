@@ -95,6 +95,7 @@ int main (int argc, char** argv) {
       ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
       ("downsample", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior weight")
+      ("downsample-prob", po::value<double>(), "keep only transitions above this posterior weight threshold, along with any required for ergodicity")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
       ("sort", "topologically sort, eliminating silent cycles")
@@ -104,7 +105,7 @@ int main (int argc, char** argv) {
       ("encode-sort", "topologically sort non-inputting transition graph")
       ("full-sort", "topologically sort entire transition graph, not just silent transitions")
       ("eliminate,n", "eliminate all silent transitions")
-      ("eliminate-states,n", "eliminate all states whose only outgoing transition is silent")
+      ("eliminate-states", "eliminate all states whose only outgoing transition is silent")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "multiply input weights by parameter with given prefix")
@@ -452,6 +453,8 @@ int main (int argc, char** argv) {
 	  m = popMachine().transpose();
 	else if (command == "--downsample")
 	  m = popMachine().downsample (stod (getArg()));
+	else if (command == "--downsample-prob")
+	  m = popMachine().downsample (1., stod (getArg()));
 	else if (command == "--local-input") {
 	  const Machine core = popMachine();
 	  const Machine flank = Machine::wildAcceptor (core.inputAlphabet());

@@ -1723,7 +1723,7 @@ Params Machine::getParamDefs (bool assignDefaultValuesToMissingParams) const {
   return p;
 }
  
-Machine Machine::downsample (double proportionOfTransitionsToKeep) const {
+Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions) const {
   Assert (isToposortedMachine(true), "Machine must be acyclic & topologically sorted before downsampling can take place");
 
   Machine null (*this);
@@ -1751,13 +1751,15 @@ Machine Machine::downsample (double proportionOfTransitionsToKeep) const {
   };
 
   BackwardMatrix::PostTransQueue queue = back.postTransQueue (fwd);
-  const size_t nTransTarget = null.nTransitions() * proportionOfTransitionsToKeep;
+  const size_t nTransTarget = null.nTransitions() * maxProportionOfTransitionsToKeep;
 
   ProgressLog(plogTrace,6);
   plogTrace.initProgress ("Finding highest-probability transitions (target %lu)", nTransTarget);
   while (!queue.empty() && nTrans < nTransTarget) {
     plogTrace.logProgress (nTrans / (double) nTransTarget, "added %lu transitions", nTrans);
     const BackwardMatrix::PostTrans pt = queue.top();
+    if (pt.weight < minPostProbOfSelectedTransitions && nTrans > 0)
+      break;
     queue.pop();
     const MachineTransition& mt = state[pt.src].getTransition (pt.transIndex);
     LogThisAt(7,"Tracing from " << pt.src << " -[" << mt.in << "/" << mt.out << "]-> " << mt.dest << " (transition #" << pt.transIndex << ", post.prob. " << pt.weight << "); " << nTrans << "/" << nTransTarget << " transitions" << endl);

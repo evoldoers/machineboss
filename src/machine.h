@@ -167,7 +167,7 @@ struct Machine {
   Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // eliminates silent transitions, first processing cycles using the selected strategy
   Machine eliminateRedundantStates() const;  // eliminates states which have only one outgoing transition that is silent
 
-  Machine downsample (double proportionOfTransitionsToKeep) const;
+  Machine downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions = 0.) const;
   
   // helpers to import defs & constraints from other machine(s)
   void import (const Machine& m, bool overwrite = false);

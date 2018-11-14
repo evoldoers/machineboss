@@ -373,6 +373,9 @@ Postfix operators:
   -t [ --transpose ]           transpose: swap input/output
   --downsample arg             keep only specified proportion of transitions, 
                                discarding those with lowest posterior weight
+  --downsample-prob arg        keep only transitions above this posterior 
+                               weight threshold, along with any required for 
+                               ergodicity
   --joint-norm                 normalize jointly (outgoing transition weights 
                                sum to 1)
   --cond-norm                  normalize conditionally (outgoing transition 
@@ -389,7 +392,7 @@ Postfix operators:
   --full-sort                  topologically sort entire transition graph, not 
                                just silent transitions
   -n [ --eliminate ]           eliminate all silent transitions
-  -n [ --eliminate-states ]    eliminate all states whose only outgoing 
+  --eliminate-states           eliminate all states whose only outgoing 
                                transition is silent
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
