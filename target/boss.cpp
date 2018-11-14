@@ -374,6 +374,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--echo-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildEcho (splitToChars (chars));
+	} else if (command == "--echo-uniform") {
+	  const string chars = getArg();
+	  m = Machine::wildEcho (splitToChars (chars)).weightInputsUniformly();
 	} else if (command == "--echo-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleEcho (splitToChars (chars));
