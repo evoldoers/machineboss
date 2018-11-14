@@ -364,7 +364,7 @@ Postfix operators:
   --local-input                add flanking delete states: partially match 
                                input
   --local-output               add flanking insert states: partially match 
-                               ouput
+                               output
   --local-either               add flanking insert or delete states: partially 
                                match either input or output at each end
   --local-both                 add flanking insert & delete states: partially 
@@ -394,6 +394,9 @@ Postfix operators:
   -n [ --eliminate ]           eliminate all silent transitions
   --eliminate-states           eliminate all states whose only outgoing 
                                transition is silent
+  --strip-names                remove all state names. Some algorithms (e.g. 
+                               composition of large transducers) are faster if 
+                               states are unnamed
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions

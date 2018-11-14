@@ -89,7 +89,7 @@ int main (int argc, char** argv) {
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
       ("local-input", "add flanking delete states: partially match input")
-      ("local-output", "add flanking insert states: partially match ouput")
+      ("local-output", "add flanking insert states: partially match output")
       ("local-either", "add flanking insert or delete states: partially match either input or output at each end")
       ("local-both", "add flanking insert & delete states: partially match input and/or output")
       ("double-strand", "union of machine with its reverse complement")
