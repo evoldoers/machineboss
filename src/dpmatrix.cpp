@@ -130,7 +130,8 @@ void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex out
     pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
     if (stopTrace (inPos, outPos, s, bestTransIndex))
       break;
-    const MachineTransition& bestTrans = m.state[bestDest].getTransition (bestTransIndex);
+    const MachineTransition& bestTrans = m.state[s].getTransition (bestTransIndex);
+    Assert (bestTrans.dest == bestDest, "Traceforward error");
     if (!bestTrans.inputEmpty()) ++inPos;
     if (!bestTrans.outputEmpty()) ++outPos;
     s = bestDest;
