@@ -106,6 +106,7 @@ int main (int argc, char** argv) {
       ("full-sort", "topologically sort entire transition graph, not just silent transitions")
       ("eliminate,n", "eliminate all silent transitions")
       ("eliminate-states", "eliminate all states whose only outgoing transition is silent")
+      ("strip-names", "remove all state names. Some algorithms (e.g. composition of large transducers) are faster if states are unnamed")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "multiply input weights by parameter with given prefix")
@@ -439,6 +440,8 @@ int main (int argc, char** argv) {
 	  m = popMachine().eliminateSilentTransitions();
 	else if (command == "--eliminate-states")
 	  m = popMachine().eliminateRedundantStates();
+	else if (command == "--strip-names")
+	  m = popMachine().stripNames();
 	else if (command == "--pad")
 	  m = popMachine().padWithNullStates();
 	else if (command == "--reverse")

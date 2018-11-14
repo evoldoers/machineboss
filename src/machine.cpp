@@ -1786,3 +1786,10 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
   
   return result.eliminateRedundantStates();
 }
+
+Machine Machine::stripNames() const {
+  Machine m (*this);
+  for (auto& ms: m.state)
+    ms.name.clear();
+  return m;
+}

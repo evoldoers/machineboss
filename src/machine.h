@@ -168,6 +168,7 @@ struct Machine {
   Machine eliminateRedundantStates() const;  // eliminates states which have only one outgoing transition that is silent
 
   Machine downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions = 0.) const;
+  Machine stripNames() const;  // some algorithms take a while to construct the namespace... this helps
   
   // helpers to import defs & constraints from other machine(s)
   void import (const Machine& m, bool overwrite = false);
