@@ -1784,5 +1784,5 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
 
   LogThisAt(5,"Downsampling reduced number of transitions from " << nTransNull << " to " << nTransResult << endl);
   
-  return result;
+  return result.eliminateRedundantStates();
 }
