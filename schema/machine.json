@@ -23,8 +23,6 @@
           "required": ["or"], "properties": { "or": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
         { "type": "object", "additionalProperties": false,
           "required": ["loop"], "properties": { "loop": { "type": "array", "items": { "$ref": "#/definitions/machine" }, "minItems": 2, "maxItems": 2 } } },
-        { "type": "object", "additionalProperties": false, "required": ["sort-sum"], "properties": { "sort-sum": { "$ref": "#/definitions/machine" } } },
-        { "type": "object", "additionalProperties": false, "required": ["sort-break"], "properties": { "sort-break": { "$ref": "#/definitions/machine" } } },
         { "type": "object", "additionalProperties": false, "required": ["opt"], "properties": { "opt": { "$ref": "#/definitions/machine" } } },
         { "type": "object", "additionalProperties": false, "required": ["star"], "properties": { "star": { "$ref": "#/definitions/machine" } } },
         { "type": "object", "additionalProperties": false, "required": ["plus"], "properties": { "plus": { "$ref": "#/definitions/machine" } } },

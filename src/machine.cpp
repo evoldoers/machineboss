@@ -378,12 +378,6 @@ void Machine::readJson (const json& pj) {
 
   } else if (pj.count("plus")) {  // Kleene plus
     *this = Machine::kleenePlus (JsonReader<Machine>::fromJson (pj["plus"]));
-
-  } else if (pj.count("sort-sum")) {  // toposort, summing out silent cycles
-    *this = Machine::kleeneStar (JsonReader<Machine>::fromJson (pj["sort-sum"]));
-
-  } else if (pj.count("sort-break")) {  // toposort, breaking silent cycles
-    *this = Machine::kleeneStar (JsonReader<Machine>::fromJson (pj["sort-break"]));
     
   } else if (pj.count("eliminate")) {
     *this = JsonReader<Machine>::fromJson (pj["eliminate"]).eliminateSilentTransitions();
@@ -1784,7 +1778,7 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
 
   LogThisAt(5,"Downsampling reduced number of transitions from " << nTransNull << " to " << nTransResult << endl);
   
-  return result.eliminateRedundantStates();
+  return result.ergodicMachine().eliminateRedundantStates();
 }
 
 Machine Machine::stripNames() const {
