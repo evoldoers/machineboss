@@ -389,6 +389,8 @@ Postfix operators:
   --full-sort                  topologically sort entire transition graph, not 
                                just silent transitions
   -n [ --eliminate ]           eliminate all silent transitions
+  -n [ --eliminate-states ]    eliminate all states whose only outgoing 
+                               transition is silent
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions

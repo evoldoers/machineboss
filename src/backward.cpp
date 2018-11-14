@@ -95,6 +95,10 @@ MachinePath BackwardMatrix::traceFrom (const Machine& machine, const ForwardMatr
 void BackwardMatrix::traceFrom (const Machine& machine, const ForwardMatrix& forward, InputIndex inPos, OutputIndex outPos, StateIndex state, EvaluatedMachineState::TransIndex transIndex, TraceTerminator stopTrace) const {
   if (!stopTrace (inPos, outPos, state, transIndex)) {
     forward.traceBack (machine, inPos, outPos, state, stopTrace);
-    traceForward (machine, inPos, outPos, state, stopTrace);
+    const MachineState& ms = machine.state[state];
+    const MachineTransition& mt = ms.getTransition (transIndex);
+    const InputIndex nextInPos = inPos + (mt.inputEmpty() ? 0 : 1);
+    const OutputIndex nextOutPos = outPos + (mt.outputEmpty() ? 0 : 1);
+    traceForward (machine, nextInPos, nextOutPos, mt.dest, stopTrace);
   }
 }

@@ -1319,6 +1319,39 @@ bool Machine::isAligningMachine() const {
   return true;
 }
 
+Machine Machine::eliminateRedundantStates() const {
+  const Machine rm = isAdvancingMachine() ? *this : advanceSort();
+  Machine em;
+  em.import (*this);
+  LogThisAt(3,"Eliminating redundant states from " << rm.nStates() << "-state transducer" << endl);
+  vguard<StateIndex> proxyState (rm.nStates());
+  for (StateIndex s = rm.nStates(); s > 0; ) {
+    --s;
+    StateIndex t = s;
+    while (t != rm.startState() && t != rm.endState() && rm.state[t].trans.size() == 1 && rm.state[t].trans.front().isSilent())
+      t = rm.state[t].trans.front().dest;
+    proxyState[s] = t;
+  }
+  vguard<StateIndex> newStateIndex (rm.nStates()), oldStateIndex;
+  oldStateIndex.reserve (rm.nStates());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    if (proxyState[s] == s) {
+      newStateIndex[s] = oldStateIndex.size();
+      oldStateIndex.push_back (s);
+    }
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    if (proxyState[s] != s)
+      newStateIndex[s] = newStateIndex[proxyState[s]];
+  const StateIndex newStates = oldStateIndex.size();
+  em.state = vguard<MachineState> (newStates);
+  for (StateIndex s = 0; s < newStates; ++s) {
+    em.state[s] = rm.state[oldStateIndex[s]];
+    for (auto& mt: em.state[s].trans)
+      mt.dest = newStateIndex[mt.dest];
+  }
+  return em;
+}
+
 Machine Machine::eliminateSilentTransitions (SilentCycleStrategy cycleStrategy) const {
   if (!isAdvancingMachine())
     return processCycles(cycleStrategy).eliminateSilentTransitions();
