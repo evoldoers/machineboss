@@ -154,7 +154,7 @@ WeightExpr WeightAlgebra::divide (const WeightExpr& l, const WeightExpr& r) {
     w = l;
   else if (isZero(l))
     w = factory.zero;
-  else if (l->type == Dbl && r->type == Dbl)
+  else if (isNumber(l) && isNumber(r) && (l->type == Dbl || r->type == Dbl))
     w = factory.newDouble (asDouble(l) / asDouble(r));
   else
     w = factory.newBinary (Div, l, r);
