@@ -94,8 +94,8 @@ int main (int argc, char** argv) {
       ("local-both", "add flanking insert & delete states: partially match input and/or output")
       ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
-      ("downsample", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior weight")
-      ("downsample-prob", po::value<double>(), "keep only transitions above this posterior weight threshold, along with any required for ergodicity")
+      ("downsample-size", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior probability")
+      ("downsample-prob", po::value<double>(), "keep only transitions above specified posterior probability threshold")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
       ("sort", "topologically sort, eliminating silent cycles")
@@ -457,7 +457,7 @@ int main (int argc, char** argv) {
 	  m = Machine::takeUnion (r, revCompMachine(r), half, half);
 	} else if (command == "--transpose")
 	  m = popMachine().transpose();
-	else if (command == "--downsample")
+	else if (command == "--downsample-size")
 	  m = popMachine().downsample (stod (getArg()));
 	else if (command == "--downsample-prob")
 	  m = popMachine().downsample (1., stod (getArg()));
