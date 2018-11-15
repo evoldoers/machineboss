@@ -369,6 +369,10 @@ Postfix operators:
                                match either input or output at each end
   --local-both                 add flanking insert & delete states: partially 
                                match input and/or output
+  --flank-uniform-input        like --local-input, but deletions weighted by 
+                               1/(input alphabet size)
+  --flank-uniform-output       like --local-output, but deletions weighted by 
+                               1/(output alphabet size)
   --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
   --downsample-size arg        keep only specified proportion of transitions, 

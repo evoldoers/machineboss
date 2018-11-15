@@ -92,6 +92,8 @@ int main (int argc, char** argv) {
       ("local-output", "add flanking insert states: partially match output")
       ("local-either", "add flanking insert or delete states: partially match either input or output at each end")
       ("local-both", "add flanking insert & delete states: partially match input and/or output")
+      ("flank-uniform-input", "like --local-input, but deletions weighted by 1/(input alphabet size)")
+      ("flank-uniform-output", "like --local-output, but deletions weighted by 1/(output alphabet size)")
       ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
       ("downsample-size", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior probability")
