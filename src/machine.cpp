@@ -1757,7 +1757,7 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
 
   ProgressLog(plogTrace,6);
   plogTrace.initProgress ("Discarding lowest-probability transitions (threshold %g, max %lu)", minPostProbOfSelectedTransitions, nTransTarget);
-  while (!queue.empty() && nTrans < nTransTarget) {
+  while (!queue.empty() && (nTrans == 0 || nTrans < nTransTarget)) {
     plogTrace.logProgress (nTrans / (double) nTransTarget, "kept %lu transitions", nTrans);
     const BackwardMatrix::PostTrans pt = queue.top();
     if (pt.weight < minPostProbOfSelectedTransitions && nTrans > 0)
