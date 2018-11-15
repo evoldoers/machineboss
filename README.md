@@ -361,18 +361,22 @@ Postfix operators:
   --repeat arg                 repeat N times
   -e [ --reverse ]             reverse
   -r [ --revcomp ]             reverse-complement '~'
-  --local-input                add flanking delete states: partially match 
+  --flank-input-wild           add flanking delete states: partially match 
                                input
-  --local-output               add flanking insert states: partially match 
+  --flank-output-wild          add flanking insert states: partially match 
                                output
-  --local-either               add flanking insert or delete states: partially 
+  --flank-either-wild          add flanking insert or delete states: partially 
                                match either input or output at each end
-  --local-both                 add flanking insert & delete states: partially 
+  --flank-both-wild            add flanking insert & delete states: partially 
                                match input and/or output
-  --flank-uniform-input        like --local-input, but deletions weighted by 
-                               1/(input alphabet size)
-  --flank-uniform-output       like --local-output, but insertions weighted by 
-                               1/(output alphabet size)
+  --flank-input-geom arg       like --flank-input-wild, but flanking input 
+                               sequence is uniform IID with 
+                               geometrically-distributed length, parameterized 
+                               using specified expression
+  --flank-output-geom arg      like --flank-output-wild, but flanking output 
+                               sequence is uniform IID with 
+                               geometrically-distributed length, parameterized 
+                               using specified expression
   --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
   --downsample-size arg        keep only specified proportion of transitions, 
@@ -410,6 +414,10 @@ Postfix operators:
   --weight-output arg          multiply output weights by specified JSON 
                                expression ($ expands to output symbol, # to 
                                output alphabet size)
+  --weight-input-geom arg      place geometric distribution with specified 
+                               parameter over input length
+  --weight-output-geom arg     place geometric distribution with specified 
+                               parameter over output length
 
 Infix operators:
   -m [ --compose ]             compose, summing out silent cycles '=&gt;'

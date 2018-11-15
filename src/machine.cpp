@@ -527,6 +527,14 @@ Machine Machine::weightOutputs (const string& macro) const {
   return weightOutputs (WeightAlgebra::makeSymbolExprs (outputAlphabet(), macro));
 }
 
+Machine Machine::weightInputsGeometrically (const string& gp) const {
+  return Machine::concatenate (weightInputs(gp), Machine::singleTransition (WeightAlgebra::negate (WeightAlgebra::fromJson (json::parse (gp)))));
+}
+
+Machine Machine::weightOutputsGeometrically (const string& gp) const {
+  return Machine::concatenate (weightOutputs(gp), Machine::singleTransition (WeightAlgebra::negate (WeightAlgebra::fromJson (json::parse (gp)))));
+}
+
 Machine Machine::normalizeJointly() const {
   Machine m = *this;
   for (auto& ms: m.state) {

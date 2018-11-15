@@ -88,12 +88,12 @@ int main (int argc, char** argv) {
       ("repeat", po::value<int>(), "repeat N times")
       ("reverse,e", "reverse")
       ("revcomp,r", "reverse-complement '~'")
-      ("local-input", "add flanking delete states: partially match input")
-      ("local-output", "add flanking insert states: partially match output")
-      ("local-either", "add flanking insert or delete states: partially match either input or output at each end")
-      ("local-both", "add flanking insert & delete states: partially match input and/or output")
-      ("flank-uniform-input", "like --local-input, but deletions weighted by 1/(input alphabet size)")
-      ("flank-uniform-output", "like --local-output, but insertions weighted by 1/(output alphabet size)")
+      ("flank-input-wild", "add flanking delete states: partially match input")
+      ("flank-output-wild", "add flanking insert states: partially match output")
+      ("flank-either-wild", "add flanking insert or delete states: partially match either input or output at each end")
+      ("flank-both-wild", "add flanking insert & delete states: partially match input and/or output")
+      ("flank-input-geom", po::value<string>(), "like --flank-input-wild, but flanking input sequence is uniform IID with geometrically-distributed length, parameterized using specified expression")
+      ("flank-output-geom", po::value<string>(), "like --flank-output-wild, but flanking output sequence is uniform IID with geometrically-distributed length, parameterized using specified expression")
       ("double-strand", "union of machine with its reverse complement")
       ("transpose,t", "transpose: swap input/output")
       ("downsample-size", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior probability")
@@ -113,8 +113,8 @@ int main (int argc, char** argv) {
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "multiply input weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to input symbol, " WeightMacroAlphabetSizePlaceholder " to input alphabet size)")
       ("weight-output", po::value<string>(), "multiply output weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to output symbol, " WeightMacroAlphabetSizePlaceholder " to output alphabet size)")
-      ("geom-input", po::value<string>(), "place geometric distribution with specified parameter over input length")
-      ("geom-output", po::value<string>(), "place geometric distribution with specified parameter over output length")
+      ("weight-input-geom", po::value<string>(), "place geometric distribution with specified parameter over input length")
+      ("weight-output-geom", po::value<string>(), "place geometric distribution with specified parameter over output length")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -463,22 +463,22 @@ int main (int argc, char** argv) {
 	  m = popMachine().toposort().downsample (stod (getArg()));
 	else if (command == "--downsample-prob")
 	  m = popMachine().toposort().downsample (1., stod (getArg()));
-	else if (command == "--local-input" || command == "--local-output" || command == "--local-either" || command == "--local-both"
-		 || command == "--flank-uniform-input" || command == "--flank-uniform-output") {
+	else if (command == "--flank-input-wild" || command == "--flank-output-wild" || command == "--flank-either-wild" || command == "--flank-both-wild"
+		 || command == "--flank-input-geom" || command == "--flank-output-geom") {
 	  const Machine core = popMachine();
 	  Machine flank;
-	  if (command == "--local-input")
+	  if (command == "--flank-input-wild")
 	    flank = Machine::wildAcceptor (core.inputAlphabet());
-	  else if (command == "--local-output")
+	  else if (command == "--flank-output-wild")
 	    flank = Machine::wildGenerator (core.outputAlphabet());
-	  else if (command == "--local-either")
+	  else if (command == "--flank-either-wild")
 	    flank = Machine::takeUnion (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
-	  else if (command == "--local-both")
+	  else if (command == "--flank-both-wild")
 	    flank = Machine::concatenate (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
-	  else if (command == "--flank-uniform-input")
-	    flank = Machine::wildAcceptor (core.inputAlphabet()).weightInputs (WeightMacroUniformPriorMacro);
-	  else if (command == "--flank-uniform-output")
-	    flank = Machine::wildGenerator (core.outputAlphabet()).weightOutputs (WeightMacroUniformPriorMacro);
+	  else if (command == "--flank-input-geom")
+	    flank = Machine::wildAcceptor (core.inputAlphabet()).weightInputs (WeightMacroUniformPriorMacro).weightInputsGeometrically (getArg());
+	  else if (command == "--flank-output-geom")
+	    flank = Machine::wildGenerator (core.outputAlphabet()).weightOutputs (WeightMacroUniformPriorMacro).weightOutputsGeometrically (getArg());
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
 	} else if (command == "--weight") {
 	  const string wArg = getArg();
@@ -509,12 +509,12 @@ int main (int argc, char** argv) {
 	  m = popMachine().weightInputs (getArg());
 	} else if (command == "--weight-output") {
 	  m = popMachine().weightOutputs (getArg());
-	} else if (command == "--geom-input") {
+	} else if (command == "--weight-input-geom") {
 	  const string gp = getArg();
-	  m = Machine::concatenate (popMachine().weightInputs(gp), Machine::singleTransition (WeightAlgebra::negate (WeightAlgebra::fromJson (json::parse (gp)))));
-	} else if (command == "--geom-output") {
+	  m = popMachine().weightInputsGeometrically (gp);
+	} else if (command == "--weight-output-geom") {
 	  const string gp = getArg();
-	  m = Machine::concatenate (popMachine().weightOutputs(gp), Machine::singleTransition (WeightAlgebra::negate (WeightAlgebra::fromJson (json::parse (gp)))));
+	  m = popMachine().weightOutputsGeometrically (gp);
 	} else if (command == "--reciprocal") {
 	  m = popMachine().pointwiseReciprocal();
 	} else if (command == "--begin") {

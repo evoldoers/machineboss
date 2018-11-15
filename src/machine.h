@@ -140,6 +140,9 @@ struct Machine {
   Machine weightInputs (const string& macro = string(WeightMacroDefaultMacro)) const;
   Machine weightOutputs (const string& macro = string(WeightMacroDefaultMacro)) const;
 
+  Machine weightInputsGeometrically (const string&) const;
+  Machine weightOutputsGeometrically (const string&) const;
+
   Machine normalizeJointly() const;  // for each state, sum_{outgoing transitions} p(trans) = 1
   Machine normalizeConditionally() const;  // for each state & each input token, sum_{outgoing transitions} p(trans) = 1
 
