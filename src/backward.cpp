@@ -14,16 +14,18 @@ BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& 
 }
 
 void BackwardMatrix::fill() {
-  ProgressLog(plogDP,7);
+  ProgressLog(plogDP,6);
   plogDP.initProgress ("Filling Backward matrix (%lu cells)", nCells());
+  CellIndex nCellsDone = 0;
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
-    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / (double) nCells(), "filled %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
     for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
       const bool endOfInput = (inPos == inLen);
       const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
       for (int s = nStates - 1; s >= 0; --s) {
+	plogDP.logProgress (nCellsDone / (double) nCells(), "filled %lu cells", nCellsDone);
+	++nCellsDone;
 	const bool endState = (s == nStates - 1);
 	const EvaluatedMachineState& state = machine.state[(StateIndex) s];
 	double ll = (endOfInput && endOfOutput && endState) ? 0 : -numeric_limits<double>::infinity();
@@ -58,15 +60,16 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& cou
 void BackwardMatrix::getCounts (const ForwardMatrix& forward, const TransVisitor& transCount) const {
   ProgressLog(plogDP,6);
   plogDP.initProgress ("Calculating posterior probabilities (%lu cells)", nCells());
+  CellIndex nCellsDone = 0;
   const double ll = logLike();
   for (OutputIndex outPos = outLen; outPos >= 0; --outPos) {
-    plogDP.logProgress (nStates * (offsets.back() - offsets[outPos+1]) / (double) nCells(), "counted %lu cells", nStates * (offsets.back() - offsets[outPos+1]));
     const bool endOfOutput = (outPos == outLen);
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
     for (InputIndex inPos = env.inEnd[outPos] - 1; inPos >= env.inStart[outPos]; --inPos) {
       const bool endOfInput = (inPos == inLen);
       const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
       for (int s = nStates - 1; s >= 0; --s) {
+	plogDP.logProgress (nCellsDone / (double) nCells(), "counted %lu cells", nCellsDone);
 	const bool endState = (s == nStates - 1);
 	const EvaluatedMachineState& state = machine.state[(StateIndex) s];
 	const double logOddsRatio = forward.cell(inPos,outPos,(StateIndex) s) - ll;

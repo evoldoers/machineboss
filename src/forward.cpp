@@ -16,12 +16,14 @@ ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& se
 void ForwardMatrix::fill() {
   ProgressLog(plogDP,6);
   plogDP.initProgress ("Filling Forward matrix (%lu cells)", nCells());
+  CellIndex nCellsDone = 0;
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
-    plogDP.logProgress (nStates * offsets[outPos] / (double) nCells(), "filled %lu cells", nStates * offsets[outPos]);
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     for (InputIndex inPos = env.inStart[outPos]; inPos < env.inEnd[outPos]; ++inPos) {
       const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
       for (StateIndex d = 0; d < nStates; ++d) {
+	plogDP.logProgress (nCellsDone / (double) nCells(), "filled %lu cells", nCellsDone);
+	++nCellsDone;
 	const EvaluatedMachineState& state = machine.state[d];
 	double ll = (inPos || outPos || d) ? -numeric_limits<double>::infinity() : 0;
 	if (inPos && outPos)
