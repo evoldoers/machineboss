@@ -321,7 +321,7 @@ Transducer construction:
   --generate-wild arg          generator for Kleene closure over specified 
                                characters
   --generate-iid arg           as --generate-wild, but followed by 
-                               --weight-output p
+                               --weight-output "p$"
   --generate-uniform arg       as --generate-iid, but weights outputs by 
                                1/(output alphabet size)
   --generate-fasta arg         generator for FASTA-format sequence
@@ -333,7 +333,7 @@ Transducer construction:
   --accept-wild arg            acceptor for Kleene closure over specified 
                                characters
   --accept-iid arg             as --accept-wild, but followed by --weight-input
-                               p
+                               "p$"
   --accept-uniform arg         as --accept-iid, but weights outputs by 1/(input
                                alphabet size)
   --accept-fasta arg           acceptor for FASTA-format sequence
@@ -371,11 +371,11 @@ Postfix operators:
                                match input and/or output
   --double-strand              union of machine with its reverse complement
   -t [ --transpose ]           transpose: swap input/output
-  --downsample arg             keep only specified proportion of transitions, 
-                               discarding those with lowest posterior weight
-  --downsample-prob arg        keep only transitions above this posterior 
-                               weight threshold, along with any required for 
-                               ergodicity
+  --downsample-size arg        keep only specified proportion of transitions, 
+                               discarding those with lowest posterior 
+                               probability
+  --downsample-prob arg        keep only transitions above specified posterior 
+                               probability threshold
   --joint-norm                 normalize jointly (outgoing transition weights 
                                sum to 1)
   --cond-norm                  normalize conditionally (outgoing transition 
@@ -400,10 +400,12 @@ Postfix operators:
   --pad                        pad with "dummy" start & end states
   --reciprocal                 element-wise reciprocal: invert all weight 
                                expressions
-  --weight-input arg           multiply input weights by parameter with given 
-                               prefix
-  --weight-output arg          multiply output weights by parameter with given 
-                               prefix
+  --weight-input arg           multiply input weights by specified JSON 
+                               expression ($ expands to input symbol, # to 
+                               input alphabet size)
+  --weight-output arg          multiply output weights by specified JSON 
+                               expression ($ expands to output symbol, # to 
+                               output alphabet size)
   --param-odds-ratio arg       divide output weights by parameter with given 
                                prefix
   --uniform-odds-ratio         divide output weights by uniform distribution 

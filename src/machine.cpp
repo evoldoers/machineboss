@@ -499,42 +499,12 @@ Machine Machine::projectOutputToInput() const {
   return m;
 }
 
-Machine Machine::weightInputs (const char* paramPrefix, bool recip) const {
-  const string pp (paramPrefix);
-  map<InputSymbol,WeightExpr> w;
-  vguard<string> norm;
-  for (const auto& inTok: inputAlphabet()) {
-    const string p = pp + inTok;
-    const auto param = WeightAlgebra::param (p);
-    w[inTok] = recip ? WeightAlgebra::reciprocal(param) : param;
-    norm.push_back (p);
-  }
-  Machine m = weightInputs (w);
-  m.cons.norm.push_back (norm);
-  return m;
-}
-
 Machine Machine::weightInputs (const map<InputSymbol,WeightExpr>& w) const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
       if (!t.inputEmpty())
 	t.weight = WeightAlgebra::multiply (t.weight, w.at (t.in));
-  return m;
-}
-
-Machine Machine::weightOutputs (const char* paramPrefix, bool recip) const {
-  const string pp (paramPrefix);
-  map<OutputSymbol,WeightExpr> w;
-  vguard<string> norm;
-  for (const auto& outTok: outputAlphabet()) {
-    const string p = pp + outTok;
-    const auto param = WeightAlgebra::param (p);
-    w[outTok] = recip ? WeightAlgebra::reciprocal(param) : param;
-    norm.push_back (p);
-  }
-  Machine m = weightOutputs (w);
-  m.cons.norm.push_back (norm);
   return m;
 }
 
@@ -547,26 +517,12 @@ Machine Machine::weightOutputs (const map<OutputSymbol,WeightExpr>& w) const {
   return m;
 }
 
-Machine Machine::weightInputsUniformly (bool recip) const {
-  const auto alph = inputAlphabet();
-  const size_t inSize = alph.size();
-  const WeightExpr c = WeightAlgebra::intConstant (inSize);
-  const WeightExpr tw = recip ? c : WeightAlgebra::reciprocal (c);
-  map<InputSymbol,WeightExpr> w;
-  for (const auto& inTok: alph)
-    w[inTok] = tw;
-  return weightInputs (w);
+Machine Machine::weightInputs (const string& macro) const {
+  return weightInputs (WeightAlgebra::makeSymbolExprs (inputAlphabet(), macro));
 }
 
-Machine Machine::weightOutputsUniformly (bool recip) const {
-  const auto alph = outputAlphabet();
-  const size_t outSize = alph.size();
-  const WeightExpr c = WeightAlgebra::intConstant (outSize);
-  const WeightExpr tw = recip ? c : WeightAlgebra::reciprocal (c);
-  map<OutputSymbol,WeightExpr> w;
-  for (const auto& outTok: alph)
-    w[outTok] = tw;
-  return weightOutputs (w);
+Machine Machine::weightOutputs (const string& macro) const {
+  return weightOutputs (WeightAlgebra::makeSymbolExprs (outputAlphabet(), macro));
 }
 
 Machine Machine::normalizeJointly() const {

@@ -645,3 +645,13 @@ vector<string> WeightAlgebra::toposortParams (const ParamDefs& defs) {
     sortDeps (defs, sorted, f_d.first, visited, refs);
   return sorted;
 }
+
+map<string,WeightExpr> WeightAlgebra::makeSymbolExprs (const vector<string>& alphabet, const string& macro) {
+  const string m1 = join (split (macro, WeightMacroAlphabetSizePlaceholder), to_string (alphabet.size()).c_str());
+  map<string,WeightExpr> result;
+  for (const auto& sym: alphabet) {
+    const string s = join (split (m1, WeightMacroSymbolPlaceholder), sym.c_str());
+    result[sym] = fromJson (json::parse (s));
+  }
+  return result;
+}

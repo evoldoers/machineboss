@@ -23,7 +23,6 @@ typedef unsigned long long StateIndex;
 #define MachineDefaultSeqTag "seq"
 #define MachineStartTag      "start"
 #define MachineEndTag        "end"
-#define MachineParamPrefix   "p"
 
 typedef string OutputSymbol;
 typedef string InputSymbol;
@@ -134,13 +133,10 @@ struct Machine {
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
 
   Machine pointwiseReciprocal() const;
-  Machine weightInputs (const char* paramPrefix = MachineParamPrefix, bool reciprocal = false) const;
   Machine weightInputs (const map<InputSymbol,WeightExpr>&) const;
-  Machine weightOutputs (const char* paramPrefix = MachineParamPrefix, bool reciprocal = false) const;
   Machine weightOutputs (const map<OutputSymbol,WeightExpr>&) const;
-
-  Machine weightInputsUniformly (bool reciprocal = false) const;
-  Machine weightOutputsUniformly (bool reciprocal = false) const;
+  Machine weightInputs (const string& macro = string(WeightMacroDefaultMacro)) const;
+  Machine weightOutputs (const string& macro = string(WeightMacroDefaultMacro)) const;
 
   Machine normalizeJointly() const;  // for each state, sum_{outgoing transitions} p(trans) = 1
   Machine normalizeConditionally() const;  // for each state & each input token, sum_{outgoing transitions} p(trans) = 1

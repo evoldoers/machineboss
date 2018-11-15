@@ -53,7 +53,7 @@ int main (int argc, char** argv) {
       ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
       ("generate-one", po::value<string>(), "generator for any one of specified characters")
       ("generate-wild", po::value<string>(), "generator for Kleene closure over specified characters")
-      ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output " MachineParamPrefix)
+      ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output " WeightMacroDefaultMacro)
       ("generate-uniform", po::value<string>(), "as --generate-iid, but weights outputs by 1/(output alphabet size)")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
@@ -62,7 +62,7 @@ int main (int argc, char** argv) {
       ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
       ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
       ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
-      ("accept-iid", po::value<string>(), "as --accept-wild, but followed by --weight-input " MachineParamPrefix)
+      ("accept-iid", po::value<string>(), "as --accept-wild, but followed by --weight-input " WeightMacroDefaultMacro)
       ("accept-uniform", po::value<string>(), "as --accept-iid, but weights outputs by 1/(input alphabet size)")
       ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
       ("accept-csv", po::value<string>(), "create acceptor from CSV file")
@@ -109,8 +109,8 @@ int main (int argc, char** argv) {
       ("strip-names", "remove all state names. Some algorithms (e.g. composition of large transducers) are faster if states are unnamed")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
-      ("weight-input", po::value<string>(), "multiply input weights by parameter with given prefix")
-      ("weight-output", po::value<string>(), "multiply output weights by parameter with given prefix")
+      ("weight-input", po::value<string>(), "multiply input weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to input symbol, " WeightMacroAlphabetSizePlaceholder " to input alphabet size)")
+      ("weight-output", po::value<string>(), "multiply output weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to output symbol, " WeightMacroAlphabetSizePlaceholder " to output alphabet size)")
       ("param-odds-ratio", po::value<string>(), "divide output weights by parameter with given prefix")
       ("uniform-odds-ratio", "divide output weights by uniform distribution over output alphabet")
       ;
@@ -338,11 +338,11 @@ int main (int argc, char** argv) {
 	  const string chars = getArg();
 	  m = Machine::wildGenerator (splitToChars (chars));
 	} else if (command == "--generate-iid") {
-	  const string chars = getArg();
-	  m = Machine::wildGenerator (splitToChars (chars)).weightOutputs (MachineParamPrefix);
+	  const vguard<OutputSymbol> chars = splitToChars (getArg());
+	  m = Machine::wildGenerator (chars).weightOutputs();
 	} else if (command == "--generate-uniform") {
-	  const string chars = getArg();
-	  m = Machine::wildGenerator (splitToChars (chars)).weightOutputsUniformly();
+	  const vguard<OutputSymbol> chars = splitToChars (getArg());
+	  m = Machine::wildGenerator (chars).weightOutputs (WeightMacroUniformPriorMacro);
 	} else if (command == "--generate-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleGenerator (splitToChars (chars));
@@ -363,11 +363,11 @@ int main (int argc, char** argv) {
 	  const string chars = getArg();
 	  m = Machine::wildAcceptor (splitToChars (chars));
 	} else if (command == "--accept-iid") {
-	  const string chars = getArg();
-	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputs (MachineParamPrefix);
+	  const vguard<InputSymbol> chars = splitToChars (getArg());
+	  m = Machine::wildAcceptor (chars).weightInputs();
 	} else if (command == "--accept-uniform") {
 	  const string chars = getArg();
-	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputsUniformly();
+	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputs (WeightMacroUniformPriorMacro);
 	} else if (command == "--accept-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleAcceptor (splitToChars (chars));
@@ -376,7 +376,7 @@ int main (int argc, char** argv) {
 	  m = Machine::wildEcho (splitToChars (chars));
 	} else if (command == "--echo-uniform") {
 	  const string chars = getArg();
-	  m = Machine::wildEcho (splitToChars (chars)).weightInputsUniformly();
+	  m = Machine::wildEcho (splitToChars (chars)).weightInputs (WeightMacroUniformPriorMacro);
 	} else if (command == "--echo-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleEcho (splitToChars (chars));
@@ -474,9 +474,9 @@ int main (int argc, char** argv) {
 	  else if (command == "--local-both")
 	    flank = Machine::concatenate (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
 	  else if (command == "--flank-uniform-input")
-	    flank = Machine::wildAcceptor (core.inputAlphabet()).weightInputsUniformly();
+	    flank = Machine::wildAcceptor (core.inputAlphabet()).weightInputs (WeightMacroUniformPriorMacro);
 	  else if (command == "--flank-uniform-output")
-	    flank = Machine::wildGenerator (core.outputAlphabet()).weightOutputsUniformly();
+	    flank = Machine::wildGenerator (core.outputAlphabet()).weightOutputs (WeightMacroUniformPriorMacro);
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
 	} else if (command == "--weight") {
 	  const string wArg = getArg();
@@ -504,15 +504,11 @@ int main (int argc, char** argv) {
 	  }
 	  m = Machine::singleTransition (w);
 	} else if (command == "--weight-input") {
-	  m = popMachine().weightInputs (getArg().c_str());
+	  m = popMachine().weightInputs (getArg());
 	} else if (command == "--weight-output") {
-	  m = popMachine().weightOutputs (getArg().c_str());
+	  m = popMachine().weightOutputs (getArg());
 	} else if (command == "--reciprocal") {
 	  m = popMachine().pointwiseReciprocal();
-	} else if (command == "--param-odds-ratio") {
-	  m = popMachine().weightOutputs (getArg().c_str(), true);
-	} else if (command == "--uniform-odds-ratio") {
-	  m = popMachine().weightOutputsUniformly (true);
 	} else if (command == "--begin") {
 	  list<Machine> pushedMachines;
 	  swap (pushedMachines, machines);

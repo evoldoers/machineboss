@@ -8,6 +8,11 @@
 using namespace std;
 using json = nlohmann::json;
 
+#define WeightMacroSymbolPlaceholder       "$"
+#define WeightMacroAlphabetSizePlaceholder "#"
+#define WeightMacroDefaultMacro            "\"p" WeightMacroSymbolPlaceholder "\""
+#define WeightMacroUniformPriorMacro       "{\"/\":[1," WeightMacroAlphabetSizePlaceholder "]}"
+
 typedef struct ExprStruct const* ExprPtr;
 typedef size_t ExprIndex;
 typedef list<ExprStruct>::const_iterator ExprIter;
@@ -98,6 +103,8 @@ struct WeightAlgebra {
 
   static WeightExpr fromJson (const json& j, const ParamDefs* defs = NULL);
 
+  static map<string,WeightExpr> makeSymbolExprs (const vector<string>& alphabet, const string& macro = string(WeightMacroDefaultMacro));
+  
   // trace refcount of functions. also used by params()
   static ExprRefCounts zeroRefCounts();
   static void countRefs (const WeightExpr w, ExprRefCounts& counts, set<string>& params, const ParamDefs& defs, const WeightExpr parent = NULL);
