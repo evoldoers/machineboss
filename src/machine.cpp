@@ -1287,24 +1287,32 @@ bool Machine::isAligningMachine() const {
 Machine Machine::eliminateRedundantStates() const {
   const Machine rm = isAdvancingMachine() ? *this : advanceSort();
   LogThisAt(3,"Eliminating redundant states from " << rm.nStates() << "-state transducer" << endl);
-  vguard<StateIndex> proxyState (rm.nStates());
+  vguard<StateIndex> eventualDest (rm.nStates());
+  vguard<WeightExpr> exitMultiplier (rm.nStates(), WeightAlgebra::one());
   for (StateIndex s = rm.nStates(); s > 0; ) {
     --s;
     StateIndex t = s;
-    while (t != rm.startState() && t != rm.endState() && rm.state[t].trans.size() == 1 && rm.state[t].trans.front().isSilent())
-      t = rm.state[t].trans.front().dest;
-    proxyState[s] = t;
+    WeightExpr mul = WeightAlgebra::one();
+    while (t != rm.startState() && t != rm.endState() && rm.state[t].trans.size() == 1) {
+      const auto& trans = rm.state[t].trans.front();
+      if (!trans.isSilent())
+	break;
+      mul = WeightAlgebra::multiply (mul, trans.weight);
+      t = trans.dest;
+    }
+    exitMultiplier[s] = mul;
+    eventualDest[s] = t;
   }
   vguard<StateIndex> newStateIndex (rm.nStates()), oldStateIndex;
   oldStateIndex.reserve (rm.nStates());
   for (StateIndex s = 0; s < rm.nStates(); ++s)
-    if (proxyState[s] == s) {
+    if (eventualDest[s] == s) {
       newStateIndex[s] = oldStateIndex.size();
       oldStateIndex.push_back (s);
     }
   for (StateIndex s = 0; s < rm.nStates(); ++s)
-    if (proxyState[s] != s)
-      newStateIndex[s] = newStateIndex[proxyState[s]];
+    if (eventualDest[s] != s)
+      newStateIndex[s] = newStateIndex[eventualDest[s]];
   const StateIndex newStates = oldStateIndex.size();
   if (newStates == rm.nStates()) {
     LogThisAt(5,"No redundant states to eliminate" << endl);
@@ -1315,8 +1323,10 @@ Machine Machine::eliminateRedundantStates() const {
   em.state = vguard<MachineState> (newStates);
   for (StateIndex s = 0; s < newStates; ++s) {
     em.state[s] = rm.state[oldStateIndex[s]];
-    for (auto& mt: em.state[s].trans)
+    for (auto& mt: em.state[s].trans) {
+      mt.weight = WeightAlgebra::multiply (mt.weight, exitMultiplier[mt.dest]);
       mt.dest = newStateIndex[mt.dest];
+    }
   }
   LogThisAt(5,"Eliminating redundant states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
   return em;
