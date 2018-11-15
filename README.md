@@ -406,10 +406,6 @@ Postfix operators:
   --weight-output arg          multiply output weights by specified JSON 
                                expression ($ expands to output symbol, # to 
                                output alphabet size)
-  --param-odds-ratio arg       divide output weights by parameter with given 
-                               prefix
-  --uniform-odds-ratio         divide output weights by uniform distribution 
-                               over output alphabet
 
 Infix operators:
   -m [ --compose ]             compose, summing out silent cycles '=&gt;'

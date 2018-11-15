@@ -111,8 +111,6 @@ int main (int argc, char** argv) {
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "multiply input weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to input symbol, " WeightMacroAlphabetSizePlaceholder " to input alphabet size)")
       ("weight-output", po::value<string>(), "multiply output weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to output symbol, " WeightMacroAlphabetSizePlaceholder " to output alphabet size)")
-      ("param-odds-ratio", po::value<string>(), "divide output weights by parameter with given prefix")
-      ("uniform-odds-ratio", "divide output weights by uniform distribution over output alphabet")
       ;
 
     po::options_description infixOpts("Infix operators");
