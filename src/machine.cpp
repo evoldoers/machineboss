@@ -646,12 +646,13 @@ inline StateIndex compState2j (StateIndex comp, StateIndex jStates) {
   return comp % jStates;
 }
 
-Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignCompositeStateNames, bool collapseDegenerateTransitions, SilentCycleStrategy cycleStrategy) {
+Machine Machine::compose (const Machine& first, const Machine& origSecond, bool assignStateNames, bool collapseDegenerateTransitions, SilentCycleStrategy cycleStrategy) {
   LogThisAt(3,"Composing " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to compose transducers A*B where B is not a waiting machine");
 
   const StateIndex iStates = first.nStates(), jStates = second.nStates();
+  assignStateNames = assignStateNames && !first.stateNamesAreAllNull() && !second.stateNamesAreAllNull();
 
   // first, a quick optimization hack to filter out inaccessible states
   LogThisAt(6,"Finding accessible states" << endl);
@@ -703,7 +704,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
   LogThisAt(7,"Initializing composite machine states" << endl);
   comp.resize (keptState.size());
 
-  if (assignCompositeStateNames) {
+  if (assignStateNames) {
     ProgressLog(plogName,6);
     plogName.initProgress ("Constructing namespace (%lu states)", keptState.size());
     for (StateIndex k = 0; k < keptState.size(); ++k) {
@@ -773,10 +774,14 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond, Sil
   auto interState = [&](StateIndex i,StateIndex j) -> StateIndex {
     return i * second.nStates() + j;
   };
+
+  const bool assignStateNames = !first.stateNamesAreAllNull() && !second.stateNamesAreAllNull();
+
   for (StateIndex i = 0; i < first.nStates(); ++i)
     for (StateIndex j = 0; j < second.nStates(); ++j) {
       MachineState& ms = inter[interState(i,j)];
-      ms.name = StateName ({first.state[i].name, second.state[j].name});
+      if (assignStateNames)
+	ms.name = StateName ({first.state[i].name, second.state[j].name});
     }
 
   for (StateIndex i = 0; i < first.nStates(); ++i)
@@ -1502,7 +1507,8 @@ Machine Machine::zeroOrOne (const Machine& q) {
 	ms.name = json::array ({"quant-main", ms.name});
     m.state.back().trans.push_back (MachineTransition (string(), string(), m.endState() + 1, WeightAlgebra::one()));
     m.state.push_back (MachineState());
-    m.state.back().name = json::array ({"quant-end"});
+    if (!q.stateNamesAreAllNull())
+      m.state.back().name = json::array ({"quant-end"});
   }
   m.state[m.startState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
   return m;
@@ -1512,7 +1518,8 @@ Machine Machine::kleenePlus (const Machine& k) {
   Assert (k.nStates(), "Attempt to form Kleene closure of uninitialized transducer");
   Machine m (k);
   m.state.insert (m.state.begin(), MachineState());
-  m.state.front().name = "kleene-plus";
+  if (!k.stateNamesAreAllNull())
+    m.state.front().name = "kleene-plus";
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
       ++t.dest;
@@ -1528,21 +1535,23 @@ Machine Machine::kleeneStar (const Machine& k) {
 Machine Machine::kleeneLoop (const Machine& main, const Machine& loop) {
   Assert (main.nStates(), "Attempt to form Kleene closure of uninitialized transducer");
   Assert (loop.nStates(), "Attempt to form Kleene closure with uninitialized loop transducer");
+  const bool assignStateNames = !main.stateNamesAreAllNull() && !loop.stateNamesAreAllNull();
   Machine m (main);
   m.state.reserve (main.nStates() + loop.nStates() + 1);
   for (auto& ms: m.state)
-    if (!ms.name.is_null())
+    if (assignStateNames && !ms.name.is_null())
       ms.name = json::array ({"loop-main", ms.name});
   m.state.insert (m.state.end(), loop.state.begin(), loop.state.end());
   for (StateIndex s = main.nStates(); s < m.nStates(); ++s) {
     MachineState& ms = m.state[s];
-    if (!ms.name.is_null())
+    if (assignStateNames && !ms.name.is_null())
       ms.name = json::array ({"loop-continue", m.state[s].name});
     for (auto& t: ms.trans)
       t.dest += main.nStates();
   }
   m.state.push_back (MachineState());
-  m.state.back().name = json::array ({"loop-end"});
+  if (assignStateNames)
+    m.state.back().name = json::array ({"loop-end"});
   m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), main.nStates() + loop.startState(), WeightAlgebra::one()));
   m.state[main.endState()].trans.push_back (MachineTransition (string(), string(), m.endState(), WeightAlgebra::one()));
   m.state[main.nStates() + loop.endState()].trans.push_back (MachineTransition (string(), string(), m.startState(), WeightAlgebra::one()));
@@ -1677,7 +1686,14 @@ Params Machine::getParamDefs (bool assignDefaultValuesToMissingParams) const {
     p = cons.defaultParams().combine (p, true);
   return p;
 }
- 
+
+bool Machine::stateNamesAreAllNull() const {
+  for (const auto& ms: state)
+    if (!ms.name.is_null())
+      return false;
+  return true;
+}
+
 Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions) const {
   Assert (isToposortedMachine(true), "Machine must be acyclic & topologically sorted before downsampling can take place");
 
@@ -1745,6 +1761,6 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
 Machine Machine::stripNames() const {
   Machine m (*this);
   for (auto& ms: m.state)
-    ms.name.clear();
+    ms.name = nullptr;
   return m;
 }

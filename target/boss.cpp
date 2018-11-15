@@ -458,9 +458,9 @@ int main (int argc, char** argv) {
 	} else if (command == "--transpose")
 	  m = popMachine().transpose();
 	else if (command == "--downsample-size")
-	  m = popMachine().downsample (stod (getArg()));
+	  m = popMachine().toposort().downsample (stod (getArg()));
 	else if (command == "--downsample-prob")
-	  m = popMachine().downsample (1., stod (getArg()));
+	  m = popMachine().toposort().downsample (1., stod (getArg()));
 	else if (command == "--local-input" || command == "--local-output" || command == "--local-either" || command == "--local-both"
 		 || command == "--flank-uniform-input" || command == "--flank-uniform-output") {
 	  const Machine core = popMachine();

@@ -84,6 +84,8 @@ struct Machine {
   set<string> params() const;
 
   Params getParamDefs (bool assignDefaultValuesToMissingParams = false) const;
+
+  bool stateNamesAreAllNull() const;
   
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
