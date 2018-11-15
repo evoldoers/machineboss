@@ -500,6 +500,7 @@ Machine Machine::projectOutputToInput() const {
 }
 
 Machine Machine::weightInputs (const map<InputSymbol,WeightExpr>& w) const {
+  Test (!inputEmpty(), "Redundant call to weightInputs(): input alphabet is empty");
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
@@ -509,6 +510,7 @@ Machine Machine::weightInputs (const map<InputSymbol,WeightExpr>& w) const {
 }
 
 Machine Machine::weightOutputs (const map<OutputSymbol,WeightExpr>& w) const {
+  Test (!outputEmpty(), "Redundant call to weightOutputs(): output alphabet is empty");
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
@@ -1329,9 +1331,12 @@ Machine Machine::eliminateSilentTransitions (SilentCycleStrategy cycleStrategy) 
       MachineState& ems = em.state[s];
       ems.name = ms.name;
       TransAccumulator silent, loud;
+      WeightExpr selfLoop = WeightAlgebra::zero();
       for (const auto& t: ms.trans)
 	if (t.isSilent()) {
-	  if (state[t.dest].terminates() || t.dest == nStates() - 1)
+	  if (t.dest == s)
+	    selfLoop = WeightAlgebra::add (selfLoop, t.weight);
+	  else if (state[t.dest].terminates() || t.dest == nStates() - 1)
 	    silent.accumulate(t);
 	  else {
 	    for (const auto& t2: silentTrans[t.dest])
@@ -1343,6 +1348,11 @@ Machine Machine::eliminateSilentTransitions (SilentCycleStrategy cycleStrategy) 
 	  loud.accumulate(t);
       ems.trans = loud.transitions();
       silentTrans[s] = silent.transitions();
+      if (!WeightAlgebra::isZero (selfLoop)) {
+	const WeightExpr selfExit = WeightAlgebra::geometricSum (selfLoop);
+	for (auto& t: silentTrans[s])
+	  t.weight = WeightAlgebra::multiply (selfExit, t.weight);
+      }
     }
     for (MachineState& ems: em.state) {
       TransAccumulator loud;

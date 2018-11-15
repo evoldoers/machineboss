@@ -113,6 +113,8 @@ int main (int argc, char** argv) {
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")
       ("weight-input", po::value<string>(), "multiply input weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to input symbol, " WeightMacroAlphabetSizePlaceholder " to input alphabet size)")
       ("weight-output", po::value<string>(), "multiply output weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to output symbol, " WeightMacroAlphabetSizePlaceholder " to output alphabet size)")
+      ("geom-input", po::value<string>(), "place geometric distribution with specified parameter over input length")
+      ("geom-output", po::value<string>(), "place geometric distribution with specified parameter over output length")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -507,6 +509,12 @@ int main (int argc, char** argv) {
 	  m = popMachine().weightInputs (getArg());
 	} else if (command == "--weight-output") {
 	  m = popMachine().weightOutputs (getArg());
+	} else if (command == "--geom-input") {
+	  const string gp = getArg();
+	  m = Machine::concatenate (popMachine().weightInputs(gp), Machine::singleTransition (WeightAlgebra::negate (WeightAlgebra::fromJson (json::parse (gp)))));
+	} else if (command == "--geom-output") {
+	  const string gp = getArg();
+	  m = Machine::concatenate (popMachine().weightOutputs(gp), Machine::singleTransition (WeightAlgebra::negate (WeightAlgebra::fromJson (json::parse (gp)))));
 	} else if (command == "--reciprocal") {
 	  m = popMachine().pointwiseReciprocal();
 	} else if (command == "--begin") {
@@ -683,9 +691,10 @@ int main (int argc, char** argv) {
       outSeqs.push_back (JsonReader<NamedOutputSeq>::fromFile (vm.at("output-json").as<string>()));
     
     // if inputs/outputs specified individually, create all input-output pairs
-    if (inSeqs.empty() && ((!outSeqs.empty() && machine.inputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
+    const bool inputEmpty = machine.inputAlphabet().empty(), outputEmpty = machine.outputAlphabet().empty();
+    if (inSeqs.empty() && ((inputEmpty && ((outputEmpty && inferenceRequested) || !outSeqs.empty())) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
       inSeqs.push_back (NamedInputSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
-    if (outSeqs.empty() && ((!inSeqs.empty() && machine.outputAlphabet().empty()) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")))
+    if (outSeqs.empty() && ((!inSeqs.empty() && outputEmpty) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")))
       outSeqs.push_back (NamedOutputSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
