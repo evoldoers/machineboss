@@ -5,6 +5,8 @@
 #include <map>
 #include <set>
 #include <list>
+#include <random>
+
 #include "jsonio.h"
 #include "weight.h"
 #include "vguard.h"
@@ -168,7 +170,10 @@ struct Machine {
   Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // eliminates silent transitions, first processing cycles using the selected strategy
   Machine eliminateRedundantStates() const;  // eliminates states which have only one outgoing transition that is silent
 
+  Machine subgraph (const vguard<vguard<bool> >&) const;
   Machine downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions = 0.) const;
+  Machine stochasticDownsample (mt19937& rng, double maxProportionOfTransitionsToKeep, int maxNumberOfPathsToSample) const;
+
   Machine stripNames() const;  // some algorithms take a while to construct the namespace... this helps
   
   // helpers to import defs & constraints from other machine(s)

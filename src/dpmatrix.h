@@ -59,10 +59,6 @@ protected:
 
   static inline double sum_reduce (double x, double y) { return log_sum_exp(x,y); }
   static inline double max_reduce (double x, double y) { return max(x,y); }
-
-  static TransVisitor selectMaxTrans (InputIndex, OutputIndex, StateIndex&, EvaluatedMachineState::TransIndex&, double&);
-  static TransSelector maxTransSelector() { return DPMatrix::selectMaxTrans; }
-  TransSelector randomTransSelector (mt19937&) const;
   
 public:
   const EvaluatedMachine& machine;
@@ -90,6 +86,10 @@ public:
 
   double startCell() const { return cell (0, 0, machine.startState()); }
   double endCell() const { return cell (inLen, outLen, machine.endState()); }
+
+  static TransVisitor selectMaxTrans (InputIndex, OutputIndex, StateIndex&, EvaluatedMachineState::TransIndex&, double&);
+  static TransSelector maxTransSelector() { return DPMatrix::selectMaxTrans; }
+  TransSelector randomTransSelector (mt19937&) const;
   
   MachinePath traceBack (const Machine& m, TransSelector ts = DPMatrix::selectMaxTrans) const;
   MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;

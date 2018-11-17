@@ -1758,8 +1758,8 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
   ProgressLog(plogTrace,6);
   plogTrace.initProgress ("Discarding lowest-probability transitions (threshold %g, max %lu)", minPostProbOfSelectedTransitions, nTransTarget);
   while (!queue.empty() && (nTrans == 0 || nTrans < nTransTarget)) {
-    plogTrace.logProgress (nTrans / (double) nTransTarget, "kept %lu transitions", nTrans);
     const BackwardMatrix::PostTrans pt = queue.top();
+    plogTrace.logProgress (nTrans / (double) nTransTarget, "kept %lu transitions; next has weight %g", nTrans, pt.weight);
     if (pt.weight < minPostProbOfSelectedTransitions && nTrans > 0)
       break;
     queue.pop();
@@ -1768,6 +1768,51 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
     back.traceFrom (null, fwd, pt.inPos, pt.outPos, pt.src, pt.transIndex, stopTrace);
   }
 
+  return subgraph (transAllowed);
+}
+
+Machine Machine::stochasticDownsample (mt19937& rng, double maxProportionOfTransitionsToKeep, int maxNumberOfPathsToSample) const {
+  Assert (isToposortedMachine(true), "Machine must be acyclic & topologically sorted before stochastic downsampling can take place");
+
+  Machine null (*this);
+  vguard<vguard<bool> > transAllowed;
+  transAllowed.reserve (null.nStates());
+  for (auto& ms: null.state) {
+    for (auto& mt: ms.trans)
+      mt.in = mt.out = string();
+    transAllowed.push_back (vguard<bool> (ms.trans.size()));
+  }
+
+  const size_t nTransNull = null.nTransitions();
+  const size_t nTransTarget = null.nTransitions() * maxProportionOfTransitionsToKeep;
+  LogThisAt(3,"Sampling transitions from " << nTransNull << "-transition machine" << endl);
+  
+  const SeqPair emptySeqPair;
+  const EvaluatedMachine eval (null, getParamDefs (true));
+  const ForwardMatrix fwd (eval, emptySeqPair);
+
+  size_t nTrans = 0;
+  DPMatrix::TraceTerminator neverStopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
+    if (!transAllowed[s][ti]) {
+      LogThisAt(8,"Adding transition #" << ti << " from state #" << s << endl);
+      transAllowed[s][ti] = true;
+      ++nTrans;
+    }
+    return false;
+  };
+
+  ProgressLog(plogTrace,6);
+  plogTrace.initProgress ("Sampling %d paths (max %lu transitions)", maxNumberOfPathsToSample, nTransTarget);
+  ForwardMatrix::TransSelector selectRandomTrans = fwd.randomTransSelector (rng);
+  for (size_t nPath = 0; nPath < maxNumberOfPathsToSample && nTrans < nTransTarget; ++nPath) {
+    plogTrace.logProgress (max (nPath / (double) maxNumberOfPathsToSample, nTrans / (double) nTransTarget), "sampled %d paths, %lu transitions", nPath, nTrans);
+    (void) fwd.traceBack (null, fwd.inLen, fwd.outLen, null.endState(), neverStopTrace, selectRandomTrans);
+  }
+
+  return subgraph (transAllowed);
+}
+
+Machine Machine::subgraph (const vguard<vguard<bool> >& transAllowed) const {
   Machine result (*this);
   for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
@@ -1779,10 +1824,7 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
       if (transAllowed[s][ti])
 	rs.trans.push_back (*iter);
   }
-  const size_t nTransResult = result.nTransitions();
-
-  LogThisAt(5,"Downsampling reduced number of transitions from " << nTransNull << " to " << nTransResult << endl);
-  
+  LogThisAt(5,"Subgraph of " << nTransitions() << "-transition machine has " << result.nTransitions() << " transitions" << endl);
   return result.ergodicMachine().eliminateRedundantStates();
 }
 
