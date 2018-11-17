@@ -98,6 +98,8 @@ int main (int argc, char** argv) {
       ("transpose,t", "transpose: swap input/output")
       ("downsample-size", po::value<double>(), "keep only specified proportion of transitions, discarding those with lowest posterior probability")
       ("downsample-prob", po::value<double>(), "keep only transitions above specified posterior probability threshold")
+      ("downsample-path", po::value<int>(), "stochastically sample specified number of paths, discard unsampled transitions")
+      ("downsample-frac", po::value<double>(), "sample paths until specified fraction of transitions covered")
       ("joint-norm", "normalize jointly (outgoing transition weights sum to 1)")
       ("cond-norm", "normalize conditionally (outgoing transition weights for each input symbol sum to 1)")
       ("sort", "topologically sort, eliminating silent cycles")
@@ -234,6 +236,16 @@ int main (int argc, char** argv) {
       return 1;
     }
     logger.parseLogArgs (vm);
+
+    // random seed
+    auto makeRnd = [&] () -> mt19937 {
+      time_t timer;
+      time (&timer);
+      const int seed = vm.count("seed") ? vm.at("seed").as<int>() : timer;
+      LogThisAt(2,"Random seed is " << seed << endl);
+      mt19937 mt (seed);
+      return mt;
+    };
 
     // create transducer
     list<Machine> machines;
@@ -463,7 +475,14 @@ int main (int argc, char** argv) {
 	  m = popMachine().toposort().downsample (stod (getArg()));
 	else if (command == "--downsample-prob")
 	  m = popMachine().toposort().downsample (1., stod (getArg()));
-	else if (command == "--flank-input-wild" || command == "--flank-output-wild" || command == "--flank-either-wild" || command == "--flank-both-wild"
+	else if (command == "--downsample-path") {
+	  auto rng = makeRnd();
+	  m = popMachine().toposort().stochasticDownsample (rng, 1., stoi (getArg()));
+	} else if (command == "--downsample-frac") {
+	  const Machine dm = popMachine();
+	  auto rng = makeRnd();
+	  m = dm.toposort().stochasticDownsample (rng, stod (getArg()), dm.nStates());
+	} else if (command == "--flank-input-wild" || command == "--flank-output-wild" || command == "--flank-either-wild" || command == "--flank-both-wild"
 		 || command == "--flank-input-geom" || command == "--flank-output-geom") {
 	  const Machine core = popMachine();
 	  Machine flank;
@@ -760,16 +779,6 @@ int main (int argc, char** argv) {
       alignResults.writeJson (cout);
     }
 
-    // random seed
-    auto makeRnd = [&] () -> mt19937 {
-      time_t timer;
-      time (&timer);
-      const int seed = vm.count("seed") ? vm.at("seed").as<int>() : timer;
-      LogThisAt(2,"Random seed is " << seed << endl);
-      mt19937 mt (seed);
-      return mt;
-    };
-    
     // encode
     const long maxBacktrack = vm.count("backtrack") ? vm.at("backtrack").as<long>() : numeric_limits<long>::max();
     if (vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")) {

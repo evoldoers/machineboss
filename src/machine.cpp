@@ -1690,6 +1690,8 @@ void MachinePath::writeJson (ostream& out, const Machine& m) const {
   out << "]}";
 }
 
+void MachinePath::clear() { trans.clear(); }
+
 MachineBoundPath::MachineBoundPath (const MachinePath& mp, const Machine& m)
   : MachinePath (mp), machine (m)
 { }
@@ -1792,10 +1794,12 @@ Machine Machine::stochasticDownsample (mt19937& rng, double maxProportionOfTrans
   const ForwardMatrix fwd (eval, emptySeqPair);
 
   size_t nTrans = 0;
+  MachinePath mp;
   DPMatrix::TraceTerminator neverStopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     if (!transAllowed[s][ti]) {
       LogThisAt(8,"Adding transition #" << ti << " from state #" << s << endl);
       transAllowed[s][ti] = true;
+      mp.trans.push_front (null.state[s].getTransition (ti));
       ++nTrans;
     }
     return false;
@@ -1806,7 +1810,9 @@ Machine Machine::stochasticDownsample (mt19937& rng, double maxProportionOfTrans
   ForwardMatrix::TransSelector selectRandomTrans = fwd.randomTransSelector (rng);
   for (size_t nPath = 0; nPath < maxNumberOfPathsToSample && nTrans < nTransTarget; ++nPath) {
     plogTrace.logProgress (max (nPath / (double) maxNumberOfPathsToSample, nTrans / (double) nTransTarget), "sampled %d paths, %lu transitions", nPath, nTrans);
-    (void) fwd.traceBack (null, fwd.inLen, fwd.outLen, null.endState(), neverStopTrace, selectRandomTrans);
+    mp.clear();
+    fwd.traceBack (null, fwd.inLen, fwd.outLen, null.endState(), neverStopTrace, selectRandomTrans);
+    LogThisAt(7,JsonWriter<MachineBoundPath>::toJsonString (MachineBoundPath (mp, null)) << endl);
   }
 
   return subgraph (transAllowed);

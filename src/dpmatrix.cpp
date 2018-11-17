@@ -155,10 +155,14 @@ DPMatrix::TransSelector DPMatrix::randomTransSelector (mt19937& rng) const {
   uniform_real_distribution<double> distrib (0, 1);
   TransSelector selector = [&] (InputIndex i, OutputIndex o, StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) -> TransVisitor {
     TransVisitor visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
-      const double cellLogLike = cell (i, o, s);
-      const double pKeep = exp(bestLogLike-cellLogLike), pDiscard = exp(tll-cellLogLike);
-      const double p = distrib(rng) * (pDiscard + pKeep);
-      if (p < pDiscard) {
+      bool discard = true;
+      if (bestLogLike > -numeric_limits<double>::infinity()) {
+	const double cellLogLike = cell (i, o, s);
+	const double pKeep = exp(bestLogLike-cellLogLike), pDiscard = exp(tll-cellLogLike);
+	const double p = distrib(rng) * (pDiscard + pKeep);
+	discard = (p < pDiscard);
+      }
+      if (discard) {
 	bestState = s;
 	bestTransIndex = ti;
       }

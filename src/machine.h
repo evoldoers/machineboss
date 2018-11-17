@@ -187,6 +187,7 @@ struct MachinePath {
   TransList trans;
   MachinePath();
   MachinePath (const MachineTransition&);
+  void clear();
   MachinePath concatenate (const MachinePath&) const;
   void writeJson (ostream&, const Machine&) const;
 };
