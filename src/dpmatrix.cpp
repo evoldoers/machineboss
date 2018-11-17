@@ -57,17 +57,17 @@ ostream& operator<< (ostream& out, const DPMatrix& m) {
   return out;
 }
 
-MachinePath DPMatrix::traceBack (const Machine& m) const {
-  return traceBack (m, inLen, outLen, nStates - 1);
+MachinePath DPMatrix::traceBack (const Machine& m, TransSelector ts) const {
+  return traceBack (m, inLen, outLen, nStates - 1, ts);
 }
 
-MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
+MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts) const {
   MachinePath path;
   TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     path.trans.push_front (m.state[s].getTransition (ti));
     return false;
   };
-  traceBack (m, inLen, outLen, s, stopTrace);
+  traceBack (m, inLen, outLen, s, stopTrace, ts);
   return path;
 }
 
@@ -78,7 +78,7 @@ void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos
     double bestLogLike = -numeric_limits<double>::infinity();
     StateIndex bestSource;
     EvaluatedMachineState::TransIndex bestTransIndex;
-    TransVisitor tv = selectTrans (bestSource, bestTransIndex, bestLogLike);
+    TransVisitor tv = selectTrans (inPos, outPos, bestSource, bestTransIndex, bestLogLike);
     const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     if (inPos && outPos)
@@ -97,17 +97,17 @@ void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos
   }
 }
 
-MachinePath DPMatrix::traceForward (const Machine& m) const {
-  return traceBack (m, 0, 0, 0);
+MachinePath DPMatrix::traceForward (const Machine& m, TransSelector ts) const {
+  return traceBack (m, 0, 0, 0, ts);
 }
 
-MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const {
+MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts) const {
   MachinePath path;
   TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     path.trans.push_back (m.state[s].getTransition (ti));
     return false;
   };
-  traceForward (m, inLen, outLen, s, stopTrace);
+  traceForward (m, inLen, outLen, s, stopTrace, ts);
   return path;
 }
 
@@ -118,7 +118,7 @@ void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex out
     double bestLogLike = -numeric_limits<double>::infinity();
     StateIndex bestDest;
     EvaluatedMachineState::TransIndex bestTransIndex;
-    TransVisitor tv = selectTrans (bestDest, bestTransIndex, bestLogLike);
+    TransVisitor tv = selectTrans (inPos, outPos, bestDest, bestTransIndex, bestLogLike);
     const bool endOfInput = (inPos == inLen);
     const bool endOfOutput = (outPos == outLen);
     const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
@@ -140,7 +140,7 @@ void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex out
   }
 }
 
-DPMatrix::TransVisitor DPMatrix::selectMaxTrans (StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) {
+DPMatrix::TransVisitor DPMatrix::selectMaxTrans (InputIndex i, OutputIndex o, StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) {
   TransVisitor visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
     if (tll > bestLogLike) {
       bestLogLike = tll;
@@ -151,10 +151,11 @@ DPMatrix::TransVisitor DPMatrix::selectMaxTrans (StateIndex& bestState, Evaluate
   return visit;
 }
 
-DPMatrix::TransSelector DPMatrix::randomTransSelector (mt19937& rng, double cellLogLike) {
+DPMatrix::TransSelector DPMatrix::randomTransSelector (mt19937& rng) const {
   uniform_real_distribution<double> distrib (0, 1);
-  TransSelector selector = [&] (StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) -> TransVisitor {
+  TransSelector selector = [&] (InputIndex i, OutputIndex o, StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) -> TransVisitor {
     TransVisitor visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
+      const double cellLogLike = cell (i, o, s);
       const double pKeep = exp(bestLogLike-cellLogLike), pDiscard = exp(tll-cellLogLike);
       const double p = distrib(rng) * (pDiscard + pKeep);
       if (p < pDiscard) {
@@ -167,4 +168,4 @@ DPMatrix::TransSelector DPMatrix::randomTransSelector (mt19937& rng, double cell
   };
   return selector;
 }
-  
+

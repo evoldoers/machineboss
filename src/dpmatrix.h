@@ -13,7 +13,7 @@ public:
 
   typedef function<bool(InputIndex,OutputIndex,StateIndex,EvaluatedMachineState::TransIndex)> TraceTerminator;
   typedef function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> TransVisitor;
-  typedef function<TransVisitor(StateIndex&,EvaluatedMachineState::TransIndex&,double&)> TransSelector;
+  typedef function<TransVisitor(InputIndex,OutputIndex,StateIndex&,EvaluatedMachineState::TransIndex&,double&)> TransSelector;
 
 protected:
   typedef Envelope::Offset CellIndex;
@@ -60,9 +60,9 @@ protected:
   static inline double sum_reduce (double x, double y) { return log_sum_exp(x,y); }
   static inline double max_reduce (double x, double y) { return max(x,y); }
 
-  static TransVisitor selectMaxTrans (StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike);
+  static TransVisitor selectMaxTrans (InputIndex, OutputIndex, StateIndex&, EvaluatedMachineState::TransIndex&, double&);
   static TransSelector maxTransSelector() { return DPMatrix::selectMaxTrans; }
-  static TransSelector randomTransSelector (mt19937&, double);
+  TransSelector randomTransSelector (mt19937&) const;
   
 public:
   const EvaluatedMachine& machine;
@@ -91,13 +91,13 @@ public:
   double startCell() const { return cell (0, 0, machine.startState()); }
   double endCell() const { return cell (inLen, outLen, machine.endState()); }
   
-  MachinePath traceBack (const Machine& m) const;
-  MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
-  void traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector = DPMatrix::selectMaxTrans) const;
+  MachinePath traceBack (const Machine& m, TransSelector ts = DPMatrix::selectMaxTrans) const;
+  MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;
+  void traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector ts = DPMatrix::selectMaxTrans) const;
 
-  MachinePath traceForward (const Machine& m) const;
-  MachinePath traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
-  void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector = DPMatrix::selectMaxTrans) const;
+  MachinePath traceForward (const Machine& m, TransSelector ts = DPMatrix::selectMaxTrans) const;
+  MachinePath traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;
+  void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector ts = DPMatrix::selectMaxTrans) const;
 };
 
 #endif /* DPMATRIX_INCLUDED */

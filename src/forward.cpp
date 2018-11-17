@@ -43,3 +43,7 @@ void ForwardMatrix::fill() {
 double ForwardMatrix::logLike() const {
   return cell (inLen, outLen, machine.endState());
 }
+
+MachinePath ForwardMatrix::samplePath (const Machine& m, mt19937& rng) const {
+  return traceBack (m, randomTransSelector (rng));
+}
