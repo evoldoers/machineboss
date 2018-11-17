@@ -1799,9 +1799,9 @@ Machine Machine::stochasticDownsample (mt19937& rng, double maxProportionOfTrans
     if (!transAllowed[s][ti]) {
       LogThisAt(8,"Adding transition #" << ti << " from state #" << s << endl);
       transAllowed[s][ti] = true;
-      mp.trans.push_front (null.state[s].getTransition (ti));
       ++nTrans;
     }
+    mp.trans.push_front (null.state[s].getTransition (ti));
     return false;
   };
 
