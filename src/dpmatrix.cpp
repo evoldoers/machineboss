@@ -71,22 +71,23 @@ MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex
   return path;
 }
 
-void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const {
+void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector selectTrans) const {
   Assert (cell(inPos,outPos,s) > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   while (inPos > 0 || outPos > 0 || s != 0) {
     const EvaluatedMachineState& state = machine.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
     StateIndex bestSource;
     EvaluatedMachineState::TransIndex bestTransIndex;
+    TransVisitor tv = selectTrans (bestSource, bestTransIndex, bestLogLike);
     const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     if (inPos && outPos)
-      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, outTok, inPos - 1, outPos - 1);
+      pathIterate (tv, state.incoming, inTok, outTok, inPos - 1, outPos - 1);
     if (inPos)
-      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, inTok, OutputTokenizer::emptyToken(), inPos - 1, outPos);
+      pathIterate (tv, state.incoming, inTok, OutputTokenizer::emptyToken(), inPos - 1, outPos);
     if (outPos)
-      pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), outTok, inPos, outPos - 1);
-    pathIterate (bestLogLike, bestSource, bestTransIndex, state.incoming, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
+      pathIterate (tv, state.incoming, InputTokenizer::emptyToken(), outTok, inPos, outPos - 1);
+    pathIterate (tv, state.incoming, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
     const MachineTransition& bestTrans = m.state[bestSource].getTransition (bestTransIndex);
     if (!bestTrans.inputEmpty()) --inPos;
     if (!bestTrans.outputEmpty()) --outPos;
@@ -110,24 +111,25 @@ MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIn
   return path;
 }
 
-void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const {
+void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector selectTrans) const {
   Assert (cell(inPos,outPos,s) > -numeric_limits<double>::infinity(), "Can't do traceforward: no finite-weight paths");
   while (inPos < inLen || outPos < outLen || s != nStates - 1) {
     const EvaluatedMachineState& state = machine.state[s];
     double bestLogLike = -numeric_limits<double>::infinity();
     StateIndex bestDest;
     EvaluatedMachineState::TransIndex bestTransIndex;
+    TransVisitor tv = selectTrans (bestDest, bestTransIndex, bestLogLike);
     const bool endOfInput = (inPos == inLen);
     const bool endOfOutput = (outPos == outLen);
     const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
     const OutputToken outTok = endOfOutput ? OutputTokenizer::emptyToken() : output[outPos];
     if (!endOfInput && !endOfOutput)
-      pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, inTok, outTok, inPos + 1, outPos + 1);
+      pathIterate (tv, state.outgoing, inTok, outTok, inPos + 1, outPos + 1);
     if (!endOfInput)
-      pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, inTok, OutputTokenizer::emptyToken(), inPos + 1, outPos);
+      pathIterate (tv, state.outgoing, inTok, OutputTokenizer::emptyToken(), inPos + 1, outPos);
     if (!endOfOutput)
-      pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
-    pathIterate (bestLogLike, bestDest, bestTransIndex, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
+      pathIterate (tv, state.outgoing, InputTokenizer::emptyToken(), outTok, inPos, outPos + 1);
+    pathIterate (tv, state.outgoing, InputTokenizer::emptyToken(), OutputTokenizer::emptyToken(), inPos, outPos);
     if (stopTrace (inPos, outPos, s, bestTransIndex))
       break;
     const MachineTransition& bestTrans = m.state[s].getTransition (bestTransIndex);
@@ -138,3 +140,31 @@ void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex out
   }
 }
 
+DPMatrix::TransVisitor DPMatrix::selectMaxTrans (StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) {
+  TransVisitor visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
+    if (tll > bestLogLike) {
+      bestLogLike = tll;
+      bestState = s;
+      bestTransIndex = ti;
+    }
+  };
+  return visit;
+}
+
+DPMatrix::TransSelector DPMatrix::randomTransSelector (mt19937& rng, double cellLogLike) {
+  uniform_real_distribution<double> distrib (0, 1);
+  TransSelector selector = [&] (StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike) -> TransVisitor {
+    TransVisitor visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
+      const double pKeep = exp(bestLogLike-cellLogLike), pDiscard = exp(tll-cellLogLike);
+      const double p = distrib(rng) * (pDiscard + pKeep);
+      if (p < pDiscard) {
+	bestState = s;
+	bestTransIndex = ti;
+      }
+      log_accum_exp (bestLogLike, tll);
+    };
+    return visit;
+  };
+  return selector;
+}
+  

@@ -1,6 +1,7 @@
 #ifndef DPMATRIX_INCLUDED
 #define DPMATRIX_INCLUDED
 
+#include <random>
 #include "eval.h"
 #include "seqpair.h"
 #include "logsumexp.h"
@@ -11,6 +12,8 @@ public:
   typedef Envelope::OutputIndex OutputIndex;
 
   typedef function<bool(InputIndex,OutputIndex,StateIndex,EvaluatedMachineState::TransIndex)> TraceTerminator;
+  typedef function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> TransVisitor;
+  typedef function<TransVisitor(StateIndex&,EvaluatedMachineState::TransIndex&,double&)> TransSelector;
 
 protected:
   typedef Envelope::Offset CellIndex;
@@ -49,21 +52,18 @@ protected:
 	}
     }
   }
-
-  inline void pathIterate (double& bestLogLike, StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
-    auto visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
-      if (tll > bestLogLike) {
-	bestLogLike = tll;
-	bestState = s;
-	bestTransIndex = ti;
-      }
-    };
+  
+  inline void pathIterate (TransVisitor visit, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos) const {
     iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
   }
-  
+
   static inline double sum_reduce (double x, double y) { return log_sum_exp(x,y); }
   static inline double max_reduce (double x, double y) { return max(x,y); }
 
+  static TransVisitor selectMaxTrans (StateIndex& bestState, EvaluatedMachineState::TransIndex& bestTransIndex, double& bestLogLike);
+  static TransSelector maxTransSelector() { return DPMatrix::selectMaxTrans; }
+  static TransSelector randomTransSelector (mt19937&, double);
+  
 public:
   const EvaluatedMachine& machine;
   const SeqPair& seqPair;
@@ -93,11 +93,11 @@ public:
   
   MachinePath traceBack (const Machine& m) const;
   MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
-  void traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const;
+  void traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector = DPMatrix::selectMaxTrans) const;
 
   MachinePath traceForward (const Machine& m) const;
   MachinePath traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s) const;
-  void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace) const;
+  void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector = DPMatrix::selectMaxTrans) const;
 };
 
 #endif /* DPMATRIX_INCLUDED */
