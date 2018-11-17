@@ -384,6 +384,10 @@ Postfix operators:
                                probability
   --downsample-prob arg        keep only transitions above specified posterior 
                                probability threshold
+  --downsample-path arg        stochastically sample specified number of paths,
+                               discard unsampled transitions
+  --downsample-frac arg        sample paths until specified fraction of 
+                               transitions covered
   --joint-norm                 normalize jointly (outgoing transition weights 
                                sum to 1)
   --cond-norm                  normalize conditionally (outgoing transition 
