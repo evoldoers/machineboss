@@ -11,9 +11,10 @@ public:
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
 
+  typedef function<double(double,double)> Reducer;
   typedef function<bool(InputIndex,OutputIndex,StateIndex,EvaluatedMachineState::TransIndex)> TraceTerminator;
   typedef function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> TransVisitor;
-  typedef function<TransVisitor(InputIndex,OutputIndex,StateIndex&,EvaluatedMachineState::TransIndex&,double&)> TransSelector;
+  typedef function<size_t(const vguard<double>&)> TransSelector;
 
 protected:
   typedef Envelope::Offset CellIndex;
@@ -37,12 +38,12 @@ private:
   void alloc();
   
 protected:
-  inline void accumulate (double& ll, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<double(double,double)> reduce) const {
+  inline void accumulate (double& ll, const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, Reducer reduce) const {
     auto visit = [&] (StateIndex, EvaluatedMachineState::TransIndex, double t) { ll = reduce(ll,t); };
     iterate (inOutStateTransMap, inTok, outTok, inPos, outPos, visit);
   }
 
-  inline void iterate (const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, function<void(StateIndex,EvaluatedMachineState::TransIndex,double)> visit) const {
+  inline void iterate (const EvaluatedMachineState::InOutStateTransMap& inOutStateTransMap, InputToken inTok, OutputToken outTok, InputIndex inPos, OutputIndex outPos, TransVisitor visit) const {
     if (inOutStateTransMap.count (inTok)) {
       const EvaluatedMachineState::OutStateTransMap& outStateTransMap = inOutStateTransMap.at (inTok);
       if (outStateTransMap.count (outTok))
@@ -87,9 +88,9 @@ public:
   double startCell() const { return cell (0, 0, machine.startState()); }
   double endCell() const { return cell (inLen, outLen, machine.endState()); }
 
-  static TransVisitor selectMaxTrans (InputIndex, OutputIndex, StateIndex&, EvaluatedMachineState::TransIndex&, double&);
-  static TransSelector maxTransSelector() { return DPMatrix::selectMaxTrans; }
-  TransSelector randomTransSelector (mt19937&) const;
+  static TransVisitor addTransToTraceOptions (vguard<StateIndex>&, vguard<EvaluatedMachineState::TransIndex>&, vguard<double>&);
+  static size_t selectMaxTrans (const vguard<double>&);
+  static TransSelector randomTransSelector (mt19937&);
   
   MachinePath traceBack (const Machine& m, TransSelector ts = DPMatrix::selectMaxTrans) const;
   MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;

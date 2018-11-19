@@ -57,7 +57,7 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, MachineCounts& cou
   getCounts (forward, transitionCounter (counts));
 }
 
-void BackwardMatrix::getCounts (const ForwardMatrix& forward, const TransVisitor& transCount) const {
+void BackwardMatrix::getCounts (const ForwardMatrix& forward, const BackTransVisitor& transCount) const {
   ProgressLog(plogDP,6);
   plogDP.initProgress ("Calculating posterior probabilities (%lu cells)", nCells());
   CellIndex nCellsDone = 0;
