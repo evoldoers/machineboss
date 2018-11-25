@@ -97,15 +97,15 @@ struct Machine {
   static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);
 
   static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
-  static Machine acceptor (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
+  static Machine recognizer (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
   static Machine echo (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
 
   static Machine wildGenerator (const vguard<OutputSymbol>& symbols);
-  static Machine wildAcceptor (const vguard<InputSymbol>& symbols);
+  static Machine wildRecognizer (const vguard<InputSymbol>& symbols);
   static Machine wildEcho (const vguard<InputSymbol>& symbols);
 
   static Machine wildSingleGenerator (const vguard<OutputSymbol>& symbols);
-  static Machine wildSingleAcceptor (const vguard<InputSymbol>& symbols);
+  static Machine wildSingleRecognizer (const vguard<InputSymbol>& symbols);
   static Machine wildSingleEcho (const vguard<InputSymbol>& symbols);
 
   static Machine takeUnion (const Machine& first, const Machine& second);

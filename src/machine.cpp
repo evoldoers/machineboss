@@ -1398,7 +1398,7 @@ Machine Machine::generator (const vguard<OutputSymbol>& seq, const string& name)
   return m;
 }
 
-Machine Machine::acceptor (const vguard<InputSymbol>& seq, const string& name) {
+Machine Machine::recognizer (const vguard<InputSymbol>& seq, const string& name) {
   Machine m;
   m.state.resize (seq.size() + 1);
   for (SeqIdx pos = 0; pos <= seq.size(); ++pos)
@@ -1421,7 +1421,7 @@ Machine Machine::wildGenerator (const vguard<OutputSymbol>& symbols) {
   return m;
 }
 
-Machine Machine::wildAcceptor (const vguard<InputSymbol>& symbols) {
+Machine Machine::wildRecognizer (const vguard<InputSymbol>& symbols) {
   Machine m;
   m.state.resize (1);
   m.state[0].name = json (symbols);
@@ -1449,7 +1449,7 @@ Machine Machine::wildSingleGenerator (const vguard<OutputSymbol>& symbols) {
   return m;
 }
 
-Machine Machine::wildSingleAcceptor (const vguard<InputSymbol>& symbols) {
+Machine Machine::wildSingleRecognizer (const vguard<InputSymbol>& symbols) {
   Machine m;
   m.state.resize (2);
   m.state[0].name = json (symbols);
