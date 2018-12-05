@@ -59,15 +59,15 @@ int main (int argc, char** argv) {
       ("generate-csv", po::value<string>(), "create generator from CSV file")
       ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
       ("generate-uniprot", po::value<string>(), "create generator from UniProt ID (e.g. P12345)")
-      ("accept-chars,a", po::value<string>(), "acceptor for explicit character sequence '>>'")
-      ("accept-one", po::value<string>(), "acceptor for any one of specified characters")
-      ("accept-wild", po::value<string>(), "acceptor for Kleene closure over specified characters")
-      ("accept-iid", po::value<string>(), "as --accept-wild, but followed by --weight-input " WeightMacroDefaultMacro)
-      ("accept-uniform", po::value<string>(), "as --accept-iid, but weights outputs by 1/(input alphabet size)")
-      ("accept-fasta", po::value<string>(), "acceptor for FASTA-format sequence")
-      ("accept-csv", po::value<string>(), "create acceptor from CSV file")
-      ("accept-merge-csv", po::value<string>(), "create acceptor from CSV file, merging consecutively repeated characters as in Graves (2006) 'Connectionist Temporal Classification'")
-      ("accept-json", po::value<string>(), "sequence acceptor for JSON-format sequence")
+      ("recognize-chars,a", po::value<string>(), "recognizer for explicit character sequence '>>'")
+      ("recognize-one", po::value<string>(), "recognizer for any one of specified characters")
+      ("recognize-wild", po::value<string>(), "recognizer for Kleene closure over specified characters")
+      ("recognize-iid", po::value<string>(), "as --recognize-wild, but followed by --weight-input " WeightMacroDefaultMacro)
+      ("recognize-uniform", po::value<string>(), "as --recognize-iid, but weights outputs by 1/(input alphabet size)")
+      ("recognize-fasta", po::value<string>(), "recognizer for FASTA-format sequence")
+      ("recognize-csv", po::value<string>(), "create recognizer from CSV file")
+      ("recognize-merge-csv", po::value<string>(), "create recognizer from CSV file, merging consecutively repeated characters as in Graves (2006) 'Connectionist Temporal Classification'")
+      ("recognize-json", po::value<string>(), "sequence recognizer for JSON-format sequence")
       ("echo-one", po::value<string>(), "identity for any one of specified characters")
       ("echo-wild", po::value<string>(), "identity for Kleene closure over specified characters")
       ("echo-chars", po::value<string>(), "identity for explicit character sequence")
@@ -201,7 +201,7 @@ int main (int argc, char** argv) {
 
     map<string,string> alias;
     alias[string("<<")] = "--generate-chars";
-    alias[string(">>")] = "--accept-chars";
+    alias[string(">>")] = "--recognize-chars";
     alias[string("=>")] = "--compose";
     alias[string(".")] = "--concatenate";
     alias[string("&&")] = "--intersect";
@@ -219,7 +219,7 @@ int main (int argc, char** argv) {
     alias[string("--concat")] = "--concatenate";
     alias[string("--or")] = "--union";
 
-    const regex presetAlphRegex ("^--(generate|accept|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
+    const regex presetAlphRegex ("^--(generate|recognize|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
     map<string,string> presetAlph;
     presetAlph[string("dna")] = "ACGT";
     presetAlph[string("rna")] = "ACGU";
@@ -360,31 +360,31 @@ int main (int argc, char** argv) {
 	} else if (command == "--generate-one") {
 	  const string chars = getArg();
 	  m = Machine::wildSingleGenerator (splitToChars (chars));
-	} else if (command == "--accept-json") {
+	} else if (command == "--recognize-json") {
 	  const NamedOutputSeq outSeq = JsonLoader<NamedOutputSeq>::fromFile (getArg());
-	  m = Machine::acceptor (outSeq.seq, outSeq.name);
-	} else if (command == "--accept-fasta") {
+	  m = Machine::recognizer (outSeq.seq, outSeq.name);
+	} else if (command == "--recognize-fasta") {
 	  const vguard<FastSeq> outSeqs = readFastSeqs (getArg().c_str());
-	  Require (outSeqs.size() == 1, "--accept-fasta file must contain exactly one FASTA-format sequence");
-	  m = Machine::acceptor (splitToChars (outSeqs[0].seq), outSeqs[0].name);
-	} else if (command == "--accept-uniprot") {
+	  Require (outSeqs.size() == 1, "--recognize-fasta file must contain exactly one FASTA-format sequence");
+	  m = Machine::recognizer (splitToChars (outSeqs[0].seq), outSeqs[0].name);
+	} else if (command == "--recognize-uniprot") {
 	  const FastSeq fs = getUniprot (getArg());
-	  m = Machine::acceptor (splitToChars (fs.seq), fs.name);
-	} else if (command == "--accept-chars") {
+	  m = Machine::recognizer (splitToChars (fs.seq), fs.name);
+	} else if (command == "--recognize-chars") {
 	  const string seq = getArg();
-	  m = Machine::acceptor (splitToChars (seq), seq);
-	} else if (command == "--accept-wild") {
+	  m = Machine::recognizer (splitToChars (seq), seq);
+	} else if (command == "--recognize-wild") {
 	  const string chars = getArg();
-	  m = Machine::wildAcceptor (splitToChars (chars));
-	} else if (command == "--accept-iid") {
+	  m = Machine::wildRecognizer (splitToChars (chars));
+	} else if (command == "--recognize-iid") {
 	  const vguard<InputSymbol> chars = splitToChars (getArg());
-	  m = Machine::wildAcceptor (chars).weightInputs();
-	} else if (command == "--accept-uniform") {
+	  m = Machine::wildRecognizer (chars).weightInputs();
+	} else if (command == "--recognize-uniform") {
 	  const string chars = getArg();
-	  m = Machine::wildAcceptor (splitToChars (chars)).weightInputs (WeightMacroUniformPriorMacro);
-	} else if (command == "--accept-one") {
+	  m = Machine::wildRecognizer (splitToChars (chars)).weightInputs (WeightMacroUniformPriorMacro);
+	} else if (command == "--recognize-one") {
 	  const string chars = getArg();
-	  m = Machine::wildSingleAcceptor (splitToChars (chars));
+	  m = Machine::wildSingleRecognizer (splitToChars (chars));
 	} else if (command == "--echo-wild") {
 	  const string chars = getArg();
 	  m = Machine::wildEcho (splitToChars (chars));
@@ -487,15 +487,15 @@ int main (int argc, char** argv) {
 	  const Machine core = popMachine();
 	  Machine flank;
 	  if (command == "--flank-input-wild")
-	    flank = Machine::wildAcceptor (core.inputAlphabet());
+	    flank = Machine::wildRecognizer (core.inputAlphabet());
 	  else if (command == "--flank-output-wild")
 	    flank = Machine::wildGenerator (core.outputAlphabet());
 	  else if (command == "--flank-either-wild")
-	    flank = Machine::takeUnion (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	    flank = Machine::takeUnion (Machine::wildRecognizer (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
 	  else if (command == "--flank-both-wild")
-	    flank = Machine::concatenate (Machine::wildAcceptor (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
+	    flank = Machine::concatenate (Machine::wildRecognizer (core.inputAlphabet()), Machine::wildGenerator (core.outputAlphabet()));
 	  else if (command == "--flank-input-geom")
-	    flank = Machine::wildAcceptor (core.inputAlphabet()).weightInputs (WeightMacroUniformPriorMacro).weightInputsGeometrically (getArg());
+	    flank = Machine::wildRecognizer (core.inputAlphabet()).weightInputs (WeightMacroUniformPriorMacro).weightInputsGeometrically (getArg());
 	  else if (command == "--flank-output-geom")
 	    flank = Machine::wildGenerator (core.outputAlphabet()).weightOutputs (WeightMacroUniformPriorMacro).weightOutputsGeometrically (getArg());
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
@@ -570,13 +570,13 @@ int main (int argc, char** argv) {
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
 	  m = csv.machine();
-	} else if (command == "--accept-csv") {
+	} else if (command == "--recognize-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");
 	  csv.read (infile);
 	  m = csv.machine().transpose();
-	} else if (command == "--accept-merge-csv") {
+	} else if (command == "--recognize-merge-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
 	  Require (infile, "CSV file not found");

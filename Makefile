@@ -210,38 +210,38 @@ test-machine-params:
 	@$(TEST) bin/$(BOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-acceptor test-wild-generator test-wild-acceptor test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
 test-generator:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
-test-acceptor:
-	@$(TEST) bin/$(BOSS) --accept-json t/io/seq001.json t/expect/acceptor001.json
+test-recognizer:
+	@$(TEST) bin/$(BOSS) --recognize-json t/io/seq001.json t/expect/recognizer001.json
 
 test-wild-generator:
 	@$(TEST) bin/$(BOSS) --generate-wild ACGT t/expect/ACGT_generator.json
 	@$(TEST) bin/$(BOSS) --generate-wild-dna t/expect/ACGT_generator.json
 
-test-wild-acceptor:
-	@$(TEST) bin/$(BOSS) --accept-wild ACGT t/expect/ACGT_acceptor.json
-	@$(TEST) bin/$(BOSS) --accept-wild-dna t/expect/ACGT_acceptor.json
+test-wild-recognizer:
+	@$(TEST) bin/$(BOSS) --recognize-wild ACGT t/expect/ACGT_recognizer.json
+	@$(TEST) bin/$(BOSS) --recognize-wild-dna t/expect/ACGT_recognizer.json
 
 test-union:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -u t/expect/generator101.json t/expect/generate-101-or-001.json
 
 test-intersection:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m --accept-json t/io/seq001.json -i --accept-json t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-brackets:
-	@$(TEST) bin/$(BOSS) --begin t/machine/bitnoise.json --accept-json t/io/seq001.json --end -i --accept-json t/io/seq101.json t/expect/noise-001-and-101.json
+	@$(TEST) bin/$(BOSS) --begin t/machine/bitnoise.json --recognize-json t/io/seq001.json --end -i --recognize-json t/io/seq101.json t/expect/noise-001-and-101.json
 
 test-kleene:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -K t/expect/generate-multiple-001.json
 
 test-loop:
-	@$(TEST) bin/$(BOSS) --accept-json t/io/seq101.json -o --accept-json t/io/seq001.json t/expect/101-loop-001.json
+	@$(TEST) bin/$(BOSS) --recognize-json t/io/seq101.json -o --recognize-json t/io/seq001.json t/expect/101-loop-001.json
 
 test-noisy-loop:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --begin --accept-json t/io/seq101.json -o --accept-json t/io/seq001.json --end t/expect/noisy-101-loop-001.json
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --begin --recognize-json t/io/seq101.json -o --recognize-json t/io/seq001.json --end t/expect/noisy-101-loop-001.json
 
 test-concat:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -c t/expect/generator101.json t/expect/concat-001-101.json
@@ -258,7 +258,7 @@ test-revcomp:
 	@$(TEST) bin/$(BOSS) --generate-json t/io/seqAGC.json -r t/expect/generatorAGC-revcomp.json
 
 test-transpose:
-	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -t t/expect/acceptor001.json
+	@$(TEST) bin/$(BOSS) --generate-json t/io/seq001.json -t t/expect/recognizer001.json
 
 test-weight:
 	@$(TEST) bin/$(BOSS) -w p t/expect/null-p.json
@@ -267,7 +267,7 @@ test-weight:
 	@$(TEST) bin/$(BOSS) -w '{"*":["p","q"]}' t/expect/null-pq.json
 	@$(TEST) bin/$(BOSS) -w '{"*":[1,2]}' t/expect/null-2.json
 	@$(TEST) bin/$(BOSS) -w '{"/":[1,2]}' t/expect/null-1div2.json
-	@$(TEST) bin/$(BOSS) --accept-wild ACGT --weight-input '"p$$"' --reciprocal t/expect/null-weight-recip.json
+	@$(TEST) bin/$(BOSS) --recognize-wild ACGT --weight-input '"p$$"' --reciprocal t/expect/null-weight-recip.json
 
 test-shorthand:
 	@$(TEST) bin/$(BOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' x t/expect/shorthand.json
@@ -278,26 +278,26 @@ test-hmmer:
 test-csv:
 	@$(TEST) bin/$(BOSS) --generate-csv t/csv/test.csv t/expect/csvtest.json
 	@$(TEST) bin/$(BOSS) --generate-csv t/csv/test.csv --cond-norm t/expect/normcsvtest.json
-	@$(TEST) bin/$(BOSS) --accept-csv t/csv/test.csv --transpose t/expect/csvtest.json
-	@$(TEST) bin/$(BOSS) --accept-csv t/csv/test.csv --transpose --joint-norm t/expect/normcsvtest.json
+	@$(TEST) bin/$(BOSS) --recognize-csv t/csv/test.csv --transpose t/expect/csvtest.json
+	@$(TEST) bin/$(BOSS) --recognize-csv t/csv/test.csv --transpose --joint-norm t/expect/normcsvtest.json
 
 test-csv-tiny:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_uc.json --accept-csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_uc.json --recognize-csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
 
 test-csv-tiny-fail:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_lc.json --accept-csv t/csv/tiny_uc.csv -fail
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/tiny_lc.json --recognize-csv t/csv/tiny_uc.csv -fail
 
 test-csv-tiny-empty:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/empty.json --accept-csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/empty.json --recognize-csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
 
 test-nanopore:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --accept-csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --recognize-csv t/csv/nanopore_test.csv t/expect/nanopore_test.json
 
 test-nanopore-prefix:
-	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --accept-csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
+	@$(TEST) js/stripnames.js bin/$(BOSS) -L --generate-json t/io/nanopore_test_seq.json --concat t/machine/acgt_wild.json --recognize-csv t/csv/nanopore_test.csv t/expect/nanopore_test_prefix.json
 
 test-nanopore-decode:
-	@$(TEST) bin/$(BOSS) --accept-csv t/csv/nanopore_test.csv --beam-decode t/expect/nanopore_beam_decode.json
+	@$(TEST) bin/$(BOSS) --recognize-csv t/csv/nanopore_test.csv --beam-decode t/expect/nanopore_beam_decode.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
@@ -314,7 +314,7 @@ test-missing-machine:
 	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
-	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --begin --accept-json t/io/seq001.json -i --accept-json t/io/seq101.json --end -fail
+	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --begin --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json --end -fail
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid
@@ -425,7 +425,7 @@ test-align-stutter-noise:
 	@$(TEST) bin/$(BOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
 
 test-counts:
-	@$(TEST) bin/$(BOSS) --generate-chars 101 -m t/machine/bitnoise.json --accept-chars 001 -P t/io/params.json -N t/io/pqcons.json -C t/expect/counts.json
+	@$(TEST) bin/$(BOSS) --generate-chars 101 -m t/machine/bitnoise.json --recognize-chars 001 -P t/io/params.json -N t/io/pqcons.json -C t/expect/counts.json
 
 test-counts2:
 	@$(TEST) bin/$(BOSS) t/machine/bitnoise.json --input-chars 101 --output-chars 001 -P t/io/params.json -N t/io/pqcons.json -C t/expect/counts.json
@@ -435,9 +435,9 @@ test-counts3:
 	@$(TEST) bin/$(BOSS) --generate-one x --count-copies p --output-chars xxx -C t/expect/counter.json
 
 test-count-motif:
-	@$(TEST) bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --accept-json t/io/nanopore_test_seq.json -C t/expect/count11.json
-	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --accept-csv t/csv/nanopore_test.csv -C t/expect/count9.json
-	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --accept-csv t/csv/nanopore_test.csv -C t/expect/count4.json
+	@$(TEST) bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --recognize-json t/io/nanopore_test_seq.json -C t/expect/count11.json
+	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count9.json
+	@$(TEST) t/roundfloats.pl 1 bin/$(BOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count4.json
 
 # Code generation tests
 CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
@@ -469,7 +469,7 @@ t/src/%/fasta2strand/test.cpp: t/machine/%.json bin/$(BOSS) src/softplus.h src/g
 	@cp t/src/testcompiledfasta2strand.cpp $@
 
 test-101-bitnoise-001:
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js bin/$(BOSS) --generate-json t/io/seq101.json -m t/machine/bitnoise.json --accept-json t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
+	@$(TEST) t/roundfloats.pl 4 js/stripnames.js bin/$(BOSS) --generate-json t/io/seq101.json -m t/machine/bitnoise.json --recognize-json t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled: t/codegen/bitnoise/prof/test
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
@@ -512,14 +512,14 @@ test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
 DECODE_TESTS = test-decode-bitecho-101 test-bintern
 
 test-decode-bitecho-101:
-	@$(TEST) bin/$(BOSS) t/machine/bitecho.json --accept-chars 101 --prefix-decode t/expect/decode-bitecho-101.json
+	@$(TEST) bin/$(BOSS) t/machine/bitecho.json --recognize-chars 101 --prefix-decode t/expect/decode-bitecho-101.json
 
 test-bintern:
 	@$(TEST) bin/$(BOSS) --generate-chars 101 t/machine/bintern.json --prefix-encode t/expect/encode-g101-bintern.json
 	@$(TEST) bin/$(BOSS) --input-chars 101 t/machine/bintern.json --prefix-encode t/expect/encode-i101-bintern.json
-	@$(TEST) bin/$(BOSS) t/machine/bintern.json --accept-chars 12222 --prefix-decode t/expect/decode-a12222-bintern.json
+	@$(TEST) bin/$(BOSS) t/machine/bintern.json --recognize-chars 12222 --prefix-decode t/expect/decode-a12222-bintern.json
 	@$(TEST) bin/$(BOSS) t/machine/bintern.json --output-chars 12222 --prefix-decode t/expect/decode-o12222-bintern.json
-	@$(TEST) bin/$(BOSS) t/machine/bintern.json --accept-chars 12222 --beam-decode t/expect/decode-a12222-bintern.json
+	@$(TEST) bin/$(BOSS) t/machine/bintern.json --recognize-chars 12222 --beam-decode t/expect/decode-a12222-bintern.json
 	@$(TEST) bin/$(BOSS) t/machine/bintern.json --output-chars 12222 --beam-decode t/expect/decode-o12222-bintern.json
 
 # Top-level test target
