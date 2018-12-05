@@ -28,6 +28,7 @@ struct PresetCache {
 #include "preset/terndna.h"
 
 #include "preset/jukescantor.h"
+#include "preset/dnapswnbr.h"
 
 PresetCache::PresetCache() {
   addPreset(null);
@@ -49,6 +50,7 @@ PresetCache::PresetCache() {
   addPreset(terndna);
 
   addPreset(jukescantor);
+  addPreset(dnapswnbr);
 }
 
 PresetCache presetCache;  // singleton
