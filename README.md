@@ -93,6 +93,19 @@ We could also use prefix search, but beam search is generally much faster:
 boss --preset bintern --preset terndna --input-chars 1010101 --beam-encode
 ~~~~
 
+Note that the encoder is a composite two-stage machine.
+First it converts base-2 binary to base-3 ternary, using the preset machine `bintern`;
+then it converts ternary to nonrepeating DNA, using the preset `terndna`.
+We could have done this in two steps:
+
+~~~~
+boss --preset bintern --input-chars 1010101 --beam-encode
+boss --preset terndna --input-chars 12022212 --beam-encode
+~~~~
+
+The first step yields the output sequence `12022212`; this is the input to the second step, which yields the output sequence `CGATATGC`.
+That is the same output we get when we use the composite two-stage machine (`--preset bintern --preset terndna`).
+
 To decode we can use beam search too:
 
 ~~~~
@@ -138,6 +151,8 @@ For example, the following command creates an recognizer for any DNA sequence co
 ~~~~
 boss --recognize-wild-dna --concat --recognize-chars ACGCGT --concat --recognize-wild-dna
 ~~~~
+
+This is equivalent to the regular expression `/^[ACGT]*ACGCGT[ACGT]*$/`.
 
 Some of the operations specified as command-line arguments can be replaced by "opcodes" comprising one or two characters.
 For example, concatenation (`--concat`) can be abbreviated as a period, so that the above could be written as
