@@ -136,22 +136,33 @@ The `boss` command does the following
 For example, the following command creates an recognizer for any DNA sequence containing the subsequence `ACGCGT`:
 
 ~~~~
-boss --generate-wild-dna --concat --generate-chars ACGCGT --concat --generate-wild-dna
+boss --recognize-wild-dna --concat --recognize-chars ACGCGT --concat --recognize-wild-dna
 ~~~~
 
 Some of the operations specified as command-line arguments can be replaced by "opcodes" comprising one or two characters.
 For example, concatenation (`--concat`) can be abbreviated as a period, so that the above could be written as
 
 ~~~~
-boss --generate-wild-dna . --generate-chars ACGCGT . --generate-wild-dna
+boss --recognize-wild-dna . --recognize-chars ACGCGT . --recognize-wild-dna
 ~~~~
 
-If we specify an output sequence with `--output-chars`, along with the `--loglike` option to calculate the log-likelihood,
+If we use `--generate` instead of `--recognize`,
+replace `wild-dna` (every nucleotide has unit weight) with `uniformly-dna` (every nucleotide has weight 1/4),
+specify an output sequence with `--output-chars`,
+and specify the `--loglike` option to calculate the log-likelihood,
 then we can calculate the (log) weight of a given output sequence:
 
 ~~~~
-boss --generate-wild-dna . --generate-chars ACGCGT . --generate-wild-dna --output-chars AAGCAACGCGTAATA --loglike
+boss --generate-uniform-dna . --generate-chars ACGCGT . --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
 ~~~~
+
+Compare this log-likelihood (-12.4766, or 18 bits) to the log-likelihood of the null model, without the motif `ACGCGT`
+
+~~~~
+boss --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
+~~~~
+
+This log-likelihood should be (-20.7944, or 30 bits). Twelve more bits than before; reflecting the information content of the 6-base motif.
 
 The opcodes are listed in full by the command-line help (`boss --help`).
 Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters,
