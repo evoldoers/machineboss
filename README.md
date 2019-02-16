@@ -181,8 +181,9 @@ boss --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
 This log-likelihood (-20.7944, or 30 bits) differs from the previous one by 12 bits; reflecting the information content of the 6-base motif.
 
 The opcodes are listed in full by the command-line help (`boss --help`).
-Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters,
-e.g. `--begin` and `--end` which can be abbreviated (respectively) as opening and closing parentheses.
+Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters.
+For example, `--begin` and `--end` can be abbreviated (respectively) as opening and closing parentheses, `(` and `)`,
+but these must be quoted or they will be intercepted by the shell.
 
 An argument that is not an opcode will be interpreted as the filename of a JSON-format machine file.
 
