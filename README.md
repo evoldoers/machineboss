@@ -171,13 +171,14 @@ We can then specify the `--loglike` option to calculate the log-likelihood of a 
 boss --generate-uniform-dna . --generate-chars ACGCGT . --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
 ~~~~
 
-Compare this log-likelihood (-12.4766, or 18 bits) to the log-likelihood of the null model, without the motif `ACGCGT`
+Compare this log-likelihood (-12.4766, or 18 bits) to the log-likelihood of the null model,
+which does not specify that the output must contain the motif `ACGCGT`
 
 ~~~~
 boss --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
 ~~~~
 
-This log-likelihood should be (-20.7944, or 30 bits). Twelve more bits than before; reflecting the information content of the 6-base motif.
+This log-likelihood (-20.7944, or 30 bits) differs from the previous one by 12 bits; reflecting the information content of the 6-base motif.
 
 The opcodes are listed in full by the command-line help (`boss --help`).
 Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters,
