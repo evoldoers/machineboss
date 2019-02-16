@@ -164,8 +164,8 @@ boss --recognize-wild-dna . --recognize-chars ACGCGT . --recognize-wild-dna
 If we use `--generate` instead of `--recognize`,
 replace `wild-dna` (every nucleotide has unit weight) with `uniform-dna` (every nucleotide has weight 1/4),
 specify an output sequence with `--output-chars`,
-and specify the `--loglike` option to calculate the log-likelihood,
-then we can calculate the (log) weight of a given output sequence:
+then instead of a regular expression we have a probabilistically-normalized HMM.
+We can then specify the `--loglike` option to calculate the log-likelihood of a given output sequence:
 
 ~~~~
 boss --generate-uniform-dna . --generate-chars ACGCGT . --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
