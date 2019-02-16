@@ -84,7 +84,7 @@ Note that this takes quite a long time! The log messages reveal that the bulk of
 
 ### Encode binary data as non-repeating DNA
 
-This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
+This example implements a DNA storage code very similar to that of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
 
 To encode we use beam search (`--beam-encode`).
 We could also use prefix search, but beam search is generally much faster:
