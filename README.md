@@ -84,7 +84,7 @@ Note that this takes quite a long time! The log messages reveal that the bulk of
 
 ### Encode binary data as non-repeating DNA
 
-This example implements the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
+This example implements a DNA storage code very similar to that of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/).
 
 To encode we use beam search (`--beam-encode`).
 We could also use prefix search, but beam search is generally much faster:
@@ -92,6 +92,19 @@ We could also use prefix search, but beam search is generally much faster:
 ~~~~
 boss --preset bintern --preset terndna --input-chars 1010101 --beam-encode
 ~~~~
+
+Note that the encoder is a composite two-stage machine.
+First it converts base-2 binary to base-3 ternary, using the preset machine `bintern`;
+then it converts ternary to nonrepeating DNA, using the preset `terndna`.
+We could have done this in two steps:
+
+~~~~
+boss --preset bintern --input-chars 1010101 --beam-encode
+boss --preset terndna --input-chars 12022212 --beam-encode
+~~~~
+
+The first step yields the output sequence `12022212`; this is the input to the second step, which yields the output sequence `CGATATGC`.
+That is the same output we get when we use the composite two-stage machine (`--preset bintern --preset terndna`).
 
 To decode we can use beam search too:
 
@@ -136,26 +149,41 @@ The `boss` command does the following
 For example, the following command creates an recognizer for any DNA sequence containing the subsequence `ACGCGT`:
 
 ~~~~
-boss --generate-wild-dna --concat --generate-chars ACGCGT --concat --generate-wild-dna
+boss --recognize-wild-dna --concat --recognize-chars ACGCGT --concat --recognize-wild-dna
 ~~~~
+
+This is equivalent to the regular expression `/^[ACGT]*ACGCGT[ACGT]*$/`.
 
 Some of the operations specified as command-line arguments can be replaced by "opcodes" comprising one or two characters.
 For example, concatenation (`--concat`) can be abbreviated as a period, so that the above could be written as
 
 ~~~~
-boss --generate-wild-dna . --generate-chars ACGCGT . --generate-wild-dna
+boss --recognize-wild-dna . --recognize-chars ACGCGT . --recognize-wild-dna
 ~~~~
 
-If we specify an output sequence with `--output-chars`, along with the `--loglike` option to calculate the log-likelihood,
-then we can calculate the (log) weight of a given output sequence:
+If we use `--generate` instead of `--recognize`,
+replace `wild-dna` (every nucleotide has unit weight) with `uniform-dna` (every nucleotide has weight 1/4),
+specify an output sequence with `--output-chars`,
+then instead of a regular expression we have a probabilistically-normalized HMM.
+We can then specify the `--loglike` option to calculate the log-likelihood of a given output sequence:
 
 ~~~~
-boss --generate-wild-dna . --generate-chars ACGCGT . --generate-wild-dna --output-chars AAGCAACGCGTAATA --loglike
+boss --generate-uniform-dna . --generate-chars ACGCGT . --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
 ~~~~
+
+Compare this log-likelihood (-12.4766, or 18 bits) to the log-likelihood of the null model,
+which does not specify that the output must contain the motif `ACGCGT`
+
+~~~~
+boss --generate-uniform-dna --output-chars AAGCAACGCGTAATA --loglike
+~~~~
+
+This log-likelihood (-20.7944, or 30 bits) differs from the previous one by 12 bits; reflecting the information content of the 6-base motif.
 
 The opcodes are listed in full by the command-line help (`boss --help`).
-Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters,
-e.g. `--begin` and `--end` which can be abbreviated (respectively) as opening and closing parentheses.
+Some of them may need to be quoted in order to prevent the Unix shell from interpreting them as special characters.
+For example, `--begin` and `--end` can be abbreviated (respectively) as opening and closing parentheses, `(` and `)`,
+but these must be quoted or they will be intercepted by the shell.
 
 An argument that is not an opcode will be interpreted as the filename of a JSON-format machine file.
 

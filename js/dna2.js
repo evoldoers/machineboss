@@ -1,7 +1,18 @@
 #!/usr/bin/env node
 
-var alph = "ACGT".split("")
-var name = "dna2"
+var fs = require('fs'),
+    Getopt = require('node-getopt')
+
+var getopt = Getopt.create([
+    ['a' , 'alphabet=STRING'  , 'alphabet'],
+    ['n' , 'name=STRING'      , 'name'],
+    ['h' , 'help'             , 'display this help message']
+])              // create Getopt instance
+.bindHelp()     // bind option 'help' to default action
+var opt = getopt.parseSystem() // parse command line
+
+var alph = (opt.options.alphabet || "ACGT").split("")
+var name = opt.options.name || "dna2"
 
 function not (param) {
     return { "-": [true, param] }
