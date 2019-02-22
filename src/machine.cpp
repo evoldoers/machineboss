@@ -317,6 +317,8 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
+  // This JSON notation for machine manipulation is untested, unused, and should probably go.... IH, 2/22/2019
+  
   // Check for composite, concatenated, tranposed, reversed, etc etc transducers
   if (pj.count("compose")) {
     const auto arg = pj["compose"];

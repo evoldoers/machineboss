@@ -101,6 +101,7 @@ SH = /bin/sh
 # Targets
 
 BOSS = boss
+AUTOWAX = autowax
 
 all: $(BOSS)
 
@@ -134,6 +135,8 @@ obj/%.o: t/src/%.cpp
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
 $(BOSS): bin/$(BOSS)
+
+$(AUTOWAX): bin/$(AUTOWAX)
 
 clean:
 	rm -rf bin/* t/bin/* obj/*
