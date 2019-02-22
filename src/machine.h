@@ -89,21 +89,27 @@ struct Machine {
   Params getParamDefs (bool assignDefaultValuesToMissingParams = false) const;
 
   bool stateNamesAreAllNull() const;
-  
+
+  // Machine operations
+  // Note the guarantees in the comments for some methods (wild*, concatenate)
+  // These guarantees allow construction of local-alignment machines with predictable properties.
+  // For example:
+  //   wildGenerator.X.wildGenerator  where "." represents concatenation
+  // always yields a single left-flanking state, then X's states, then a single right-flanking state
   static Machine null();
   static Machine singleTransition (const WeightExpr& weight);
 
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, SilentCycleStrategy cycleStrategy = SumSilentCycles);
   static Machine intersect (const Machine& first, const Machine& second, SilentCycleStrategy cycleStrategy = SumSilentCycles);
-  static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);
+  static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);  // guaranteed: left's states followed by right's states
 
   static Machine generator (const vguard<OutputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
   static Machine recognizer (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
   static Machine echo (const vguard<InputSymbol>& seq, const string& name = string(MachineDefaultSeqTag));
 
-  static Machine wildGenerator (const vguard<OutputSymbol>& symbols);
-  static Machine wildRecognizer (const vguard<InputSymbol>& symbols);
-  static Machine wildEcho (const vguard<InputSymbol>& symbols);
+  static Machine wildGenerator (const vguard<OutputSymbol>& symbols);  // guaranteed: returns a single-state Machine
+  static Machine wildRecognizer (const vguard<InputSymbol>& symbols);  // guaranteed: returns a single-state Machine
+  static Machine wildEcho (const vguard<InputSymbol>& symbols);  // guaranteed: returns a single-state Machine
 
   static Machine wildSingleGenerator (const vguard<OutputSymbol>& symbols);
   static Machine wildSingleRecognizer (const vguard<InputSymbol>& symbols);
@@ -185,12 +191,17 @@ struct Machine {
 typedef JsonLoader<Machine> MachineLoader;
 
 struct MachinePath {
+  typedef pair<InputSymbol,OutputSymbol> AlignCol;
+  typedef list<AlignCol> AlignPath;
   TransList trans;
   MachinePath();
   MachinePath (const MachineTransition&);
   void clear();
   MachinePath concatenate (const MachinePath&) const;
   void writeJson (ostream&, const Machine&) const;
+  vguard<InputSymbol> inputSequence() const;
+  vguard<OutputSymbol> outputSequence() const;
+  AlignPath alignment() const;
 };
 
 struct MachineBoundPath : MachinePath {

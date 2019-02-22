@@ -52,8 +52,8 @@ typedef NamedSeq<InputSymbol> NamedInputSeq;
 typedef NamedSeq<OutputSymbol> NamedOutputSeq;
 
 struct SeqPair {
-  typedef pair<InputSymbol,OutputSymbol> AlignCol;
-  typedef list<AlignCol> AlignPath;
+  typedef MachinePath::AlignCol AlignCol;
+  typedef MachinePath::AlignPath AlignPath;
   NamedInputSeq input;
   NamedOutputSeq output;
   AlignPath alignment;
@@ -93,8 +93,8 @@ struct Envelope {
   bool connected() const;
 
   Envelope();
-  Envelope (const SeqPair& sp);   // calls initPath if sp.trans is nonempty, otherwise calls initFull
-  Envelope (const SeqPair& sp, size_t width);   // calls initPathArea(width) if sp.trans is nonempty, otherwise calls initFull
+  Envelope (const SeqPair& sp);   // calls initPath if sp.alignment is nonempty, otherwise calls initFull
+  Envelope (const SeqPair& sp, size_t width);   // calls initPathArea(width) if sp.alignment is nonempty, otherwise calls initFull
 
   void clear();
   void initFull (const SeqPair&);

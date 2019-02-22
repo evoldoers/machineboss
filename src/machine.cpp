@@ -1683,6 +1683,18 @@ MachinePath MachinePath::concatenate (const MachinePath& m) const {
   return result;
 }
 
+vguard<InputSymbol> MachinePath::inputSequence() const {
+  return SeqPair::getInput (alignment());
+}
+
+vguard<OutputSymbol> MachinePath::outputSequence() const {
+  return SeqPair::getOutput (alignment());
+}
+
+MachinePath::AlignPath MachinePath::alignment() const {
+  return SeqPair::getAlignment (*this);
+}
+
 void MachinePath::writeJson (ostream& out, const Machine& m) const {
   out << "{\"start\":" << m.startState();
   if (!m.state[m.startState()].name.is_null())

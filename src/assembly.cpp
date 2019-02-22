@@ -11,6 +11,18 @@ void CompactMachinePath::writeJson (ostream& out) const {
   out << "[" << to_string_join (trans, ",") << "]";
 }
 
+MachinePath CompactMachinePath::toMachinePath (const Machine& m) const {
+  MachinePath mp;
+  StateIndex s = m.startState();
+  for (auto& ti: trans) {
+    const MachineState& ms = m.state[s];
+    const MachineTransition& mt = ms.getTransition (ti);
+    mp.trans.push_back (mt);
+    s = mt.dest;
+  }
+  return mp;
+}
+
 CompactMachinePath CompactMachinePath::fromMachinePath (const MachinePath& mp, const Machine& m) {
   CompactMachinePath cmp;
   cmp.trans.reserve (mp.trans.size());
@@ -146,6 +158,51 @@ void Assembly::resampleAnnotation (mt19937& rng) {
   const ForwardMatrix forward (evalGen, seqPair);
   const MachinePath fwdTrace = forward.samplePath (generator, rng);
   generatorPath = CompactMachinePath::fromMachinePath (fwdTrace, generator);
+
+  // Check we didn't change the sequence
+  // Should be unnecessary, let's do it anyway
   const auto newSeq = sequence();
   Assert (equal (newSeq.begin(), newSeq.end(), seqPair.output.seq.begin()), "Sequence changed during annotation resampling move");
+}
+
+void Assembly::resampleAlignment (mt19937& rng, size_t maxAlignSlideWidth) {
+  if (errorPaths.size()) {
+    uniform_int_distribution<size_t> pAlignNum (0, errorPaths.size() - 1);
+    const size_t nAlign = pAlignNum (rng);
+    resampleIdentifiedAlignment (rng, nAlign, maxAlignSlideWidth);
+  }
+}
+
+void Assembly::resampleIdentifiedAlignment (mt19937& rng, size_t nAlign, size_t maxAlignSlideWidth) {
+  CompactLocalMachinePath& errorPath = errorPaths[nAlign];
+  const MachinePath machineErrorPath = errorPath.toMachinePath (error);
+
+  auto inSeq = machineErrorPath.inputSequence();
+  auto outSeq = machineErrorPath.outputSequence();
+  auto align = machineErrorPath.alignment();
+  
+  // Check that inSeq == localSeq
+  // Should be unnecessary, let's do it anyway
+  auto globalSeq = sequence();
+  vguard<InputSymbol> localSeq (globalSeq.begin() + errorPath.start,
+				globalSeq.begin() + errorPath.start + inSeq.size());
+  Assert (localSeq.size() == inSeq.size() && equal (localSeq.begin(), localSeq.end(), inSeq.begin()), "Resampling alignment: error input sequence does not match generator output sequence");
+
+  // OK, now create the seqPair and do the Forward traceback
+  SeqPair seqPair;
+  seqPair.input.name = "assembly";
+  seqPair.input.seq = inSeq;
+  seqPair.output.name = "read";
+  seqPair.output.seq = outSeq;
+  seqPair.alignment = align;
+  
+  const Envelope envelope (seqPair, maxAlignSlideWidth);
+
+  const ForwardMatrix forward (evalErr, seqPair, envelope);
+  const MachinePath fwdTrace = forward.samplePath (error, rng);
+
+  // strictly speaking we should check the Forward likelihood in the other direction here,
+  // and reject the move if it doesn't match. Instead...
+  // Let's do a cast-assignment hack and exit.
+  ((CompactMachinePath&)errorPath) = CompactMachinePath::fromMachinePath (fwdTrace, error);
 }

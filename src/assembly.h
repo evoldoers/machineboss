@@ -9,16 +9,20 @@
 
 struct CompactMachinePath {
   typedef EvaluatedMachineState::TransIndex TransIndex;
-  vguard<TransIndex> trans;
+  typedef Envelope::InputIndex InputIndex;
 
+  vguard<TransIndex> trans;
+  
   void readJson (const json&);
   void writeJson (ostream&) const;
 
+  InputIndex inLen() const;
+  
+  MachinePath toMachinePath (const Machine&) const;
   static CompactMachinePath fromMachinePath (const MachinePath&, const Machine&);
 };
 
 struct CompactLocalMachinePath : CompactMachinePath {
-  typedef Envelope::InputIndex InputIndex;
   InputIndex start;
 
   void readJson (const json&);
@@ -49,8 +53,9 @@ struct Assembly {
   LogProb logProb() const;  // log P(sequence,annotation,alignments|machines)
 
   // MCMC
-  void resampleAlignment (mt19937&, size_t maxAlignSlideWidth);
   void resampleSequence (mt19937&, size_t maxResampledTransitions);
+  void resampleAlignment (mt19937&, size_t maxAlignSlideWidth);
+  void resampleIdentifiedAlignment (mt19937&, size_t nAlign, size_t maxAlignSlideWidth);
   void resampleAnnotation (mt19937&);
 
   // Compression
