@@ -9,6 +9,7 @@ template<typename Symbol,typename Token>
 struct Tokenizer {
   vguard<Symbol> tok2sym;
   map<Symbol,Token> sym2tok;
+  Tokenizer() { }
   Tokenizer (const vguard<Symbol>& symbols) {
     tok2sym.push_back (string());   // token zero is the empty string
     tok2sym.insert (tok2sym.end(), symbols.begin(), symbols.end());
@@ -54,6 +55,7 @@ struct EvaluatedMachineState {
   StateName name;
   TransIndex nTransitions, transOffset;
   InOutStateTransMap incoming, outgoing;  // indexed by input token, output token, and (source or destination) state
+  vguard<LogWeight> logTransWeight;  // indexed by TransIndex
 };
 
 struct EvaluatedMachine {
@@ -61,8 +63,9 @@ struct EvaluatedMachine {
   OutputTokenizer outputTokenizer;
   vguard<EvaluatedMachineState> state;
   EvaluatedMachineState::TransIndex nTransitions;
-  EvaluatedMachine (const Machine&, const Params&);
-  EvaluatedMachine (const Machine&);  // if no Params are supplied, all logWeight's will be zero
+  EvaluatedMachine() { }
+  EvaluatedMachine (const Machine&, const Params&);  // use machine.getParamDefs(true) to set missing parameters automatically
+  EvaluatedMachine (const Machine&);  // WARNING: if this constructor is used, and no Params are supplied, all logWeight's will be zero
   void init (const Machine&, const Params*);
   void writeJson (ostream&) const;
   string toJsonString() const;

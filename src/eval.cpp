@@ -35,14 +35,16 @@ void EvaluatedMachine::init (const Machine& machine, const Params* params)
   for (StateIndex s = 0; s < nStates(); ++s) {
     plog.logProgress (s / (double) nStates(), "state %lu/%lu", s, nStates());
     state[s].name = machine.state[s].name;
+    state[s].logTransWeight.reserve (machine.state[s].trans.size());
     EvaluatedMachineState::TransIndex ti = 0;
     for (const auto& trans: machine.state[s].trans) {
       const StateIndex d = trans.dest;
       const InputToken in = inputTokenizer.sym2tok.at (trans.in);
       const OutputToken out = outputTokenizer.sym2tok.at (trans.out);
       const LogWeight lw = params ? log (WeightAlgebra::eval (trans.weight, params->defs)) : 0.;
-      state[s].outgoing[in][out].insert (EvaluatedMachineState::StateTransMap::value_type (d, EvaluatedMachineState::Trans ({ .logWeight = lw, .transIndex = ti})));
-      state[d].incoming[in][out].insert (EvaluatedMachineState::StateTransMap::value_type (s, EvaluatedMachineState::Trans ({ .logWeight = lw, .transIndex = ti})));
+      state[s].outgoing[in][out].insert (EvaluatedMachineState::StateTransMap::value_type (d, EvaluatedMachineState::Trans ({ .logWeight = lw, .transIndex = ti })));
+      state[d].incoming[in][out].insert (EvaluatedMachineState::StateTransMap::value_type (s, EvaluatedMachineState::Trans ({ .logWeight = lw, .transIndex = ti })));
+      state[s].logTransWeight.push_back (lw);
       ++ti;
     }
     state[s].nTransitions = ti;

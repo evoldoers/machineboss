@@ -72,6 +72,17 @@ MachineTransition MachineState::getTransition (size_t n) const {
   return *iter;
 }
 
+size_t MachineState::findTransition (const MachineTransition& t) const {
+  size_t n = 0;
+  for (const auto& mt: trans) {
+    if (mt.in == t.in && mt.out == t.out && mt.dest == t.dest)
+      return n;
+    ++n;
+  }
+  Abort ("Transition not found");
+  return numeric_limits<size_t>::max();
+}
+
 bool MachineState::exitsWithInput() const {
   for (const auto& t: trans)
     if (!t.inputEmpty())

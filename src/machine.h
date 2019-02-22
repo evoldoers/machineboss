@@ -50,6 +50,7 @@ struct MachineState {
   TransList trans;
   MachineState();
   MachineTransition getTransition (size_t) const;  // gets the n'th element from trans
+  size_t findTransition (const MachineTransition&) const;  // finds the index of a trans element, using in/out/dest only (ignoring weight)
   bool exitsWithInput() const;  // true if this has an input transition
   bool exitsWithoutInput() const;  // true if this has a non-input transition
   bool exitsWithIO() const;  // true if this has any transitions with input and/or output

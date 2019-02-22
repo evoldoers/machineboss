@@ -2,11 +2,12 @@
  {"state":
   [{"n":0,
     "id":["A","C","G","T"],
-    "trans":[{"to":0,"out":"A","weight":{"/":[1,4]}},
-             {"to":0,"out":"C","weight":{"/":[1,4]}},
-             {"to":0,"out":"G","weight":{"/":[1,4]}},
-             {"to":0,"out":"T","weight":{"/":[1,4]}}]}
-  ]
+    "trans":[{"to":0,"out":"A","weight":{"/":["extend",4]}},
+             {"to":0,"out":"C","weight":{"/":["extend",4]}},
+             {"to":0,"out":"G","weight":{"/":["extend",4]}},
+             {"to":0,"out":"T","weight":{"/":["extend",4]}}]}
+  ],
+  "cons":{"prob":["extend"]}
  },
   "error":
  {"state":
