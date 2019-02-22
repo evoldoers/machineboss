@@ -1,13 +1,15 @@
 {"generator":
  {"state":
   [{"n":0,
-    "id":["A","C","G","T"],
-    "trans":[{"to":0,"out":"A","weight":{"/":["extend",4]}},
-             {"to":0,"out":"C","weight":{"/":["extend",4]}},
-             {"to":0,"out":"G","weight":{"/":["extend",4]}},
-             {"to":0,"out":"T","weight":{"/":["extend",4]}}]}
-  ],
-  "cons":{"prob":["extend"]}
+    "trans":[{"to":1}]},
+   {"n":1,
+    "trans":[{"to":1,"out":"A","weight":{"/":[1,4]}},
+             {"to":1,"out":"C","weight":{"/":[1,4]}},
+             {"to":1,"out":"G","weight":{"/":[1,4]}},
+             {"to":1,"out":"T","weight":{"/":[1,4]}},
+             {"to":2}]},
+   {"n":2}
+  ]
  },
   "error":
  {"state":
@@ -71,8 +73,8 @@
     ["subTA","subTC","subTG","subTT"]],
    "prob":["gapOpen","gapExtend"]}
  },
- "sequence": [2,0,3,3,0,1,0],
- "alignments": [{"start":0,"path":[1,0,11,1,0,1,1,1,4,1,0]},
-		{"start":1,"path":[1,0,1,1,0,0]}]
+ "sequence": [0,2,0,3,3,0,1,0,4],
+ "alignments": [{"start":0,"len":3,"path":[1,0,11,1,0,1,1,1,4,1,0]},
+		{"start":1,"len":1,"path":[1,0,1,1,0,0]}]
 }
 

@@ -37,11 +37,12 @@ CompactMachinePath CompactMachinePath::fromMachinePath (const MachinePath& mp, c
 
 void CompactLocalMachinePath::readJson (const json& pj) {
   start = pj.at("start").get<InputIndex>();
+  len = pj.at("len").get<InputIndex>();
   CompactMachinePath::readJson (pj.at("path"));
 }
 
 void CompactLocalMachinePath::writeJson (ostream& out) const {
-  out << "{\"start\":" << start << ",\"path\":";
+  out << "{\"start\":" << start << ",\"len\":" << len << ",\"path\":";
   CompactMachinePath::writeJson (out);
   out << "}";
 }
@@ -79,6 +80,7 @@ void Assembly::writeJson (ostream& out) const {
 
 void Assembly::validate() const {
   Assert (generator.inputEmpty(), "Generator has nonempty input alphabet");
+  Assert (generator.hasNullPaddingStates(), "Generator does not have separate start & end states");
 
   StateIndex gState = generator.startState();
   size_t ngTrans = 0;
@@ -111,6 +113,7 @@ void Assembly::validate() const {
       eState = emt.dest;
     }
     Assert (eState == error.endState(), "Alignment %u: Alignment path finishes in state %u, not the error machine's end state which is %u", nPath, eState, error.endState());
+    Assert (ePos - errorPath.start == errorPath.len, "Alignment %u: Alignment input sequence length is %lu instead of the expected %lu", nPath, ePos - errorPath.start, errorPath.len);
   }
 }
 

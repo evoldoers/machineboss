@@ -15,15 +15,14 @@ struct CompactMachinePath {
   
   void readJson (const json&);
   void writeJson (ostream&) const;
-
-  InputIndex inLen() const;
+  void updateLen();
   
   MachinePath toMachinePath (const Machine&) const;
   static CompactMachinePath fromMachinePath (const MachinePath&, const Machine&);
 };
 
 struct CompactLocalMachinePath : CompactMachinePath {
-  InputIndex start;
+  InputIndex start, len;
 
   void readJson (const json&);
   void writeJson (ostream&) const;
