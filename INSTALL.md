@@ -9,3 +9,10 @@ brew install openssl
 brew install htslib
 brew install pkgconfig
 make
+~~~~
+
+## Testing
+
+~~~~
+npm install
+make test
