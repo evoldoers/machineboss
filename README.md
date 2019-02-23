@@ -24,6 +24,10 @@ and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
+# Installation
+
+For installation instructions see [INSTALL.md](INSTALL.md).
+
 # Command-line interface
 
 Machine Boss has an associated command-line tool, `boss`, that makes many machine-building operations available through its command-line options -

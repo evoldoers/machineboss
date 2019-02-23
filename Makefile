@@ -41,7 +41,8 @@ BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_program_options
 endif
 
 # SSL
-
+SSL_FLAGS = -I/usr/local/opt/openssl/include
+SSL_LIBS = -L/usr/local/opt/openssl/lib
 
 # HTSlib
 HTS_FLAGS = $(shell pkg-config --cflags htslib)
@@ -70,17 +71,20 @@ else
 BUILD_FLAGS =
 endif
 
+ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS) $(SSL_FLAGS) $(HTS_FLAGS)
+ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS) $(SSL_LIBS) $(HTS_LIBS)
+
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
-CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
+CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG
 else
 ifneq (,$(findstring unoptimized,$(MAKECMDGOALS)))
-CPP_FLAGS = -std=c++11 -g $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
+CPP_FLAGS = -std=c++11 -g
 else
-CPP_FLAGS = -std=c++11 -g -O3 $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
+CPP_FLAGS = -std=c++11 -g -O3
 endif
 endif
-CPP_FLAGS += -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS = -lstdc++ -lz -lssl -lcrypto $(GSL_LIBS) $(BOOST_LIBS)
+CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
+LD_FLAGS = -lstdc++ -lz -lssl -lcrypto $(ALL_LIBS)
 
 # files
 CPP_FILES = $(wildcard src/*.cpp)
