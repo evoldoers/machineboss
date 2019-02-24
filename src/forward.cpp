@@ -4,16 +4,22 @@
 ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
 {
-  fill();
+  fill (machine.startState());
 }
 
 ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& env) :
   DPMatrix (machine, seqPair, env)
 {
-  fill();
+  fill (machine.startState());
 }
 
-void ForwardMatrix::fill() {
+ForwardMatrix::ForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& env, StateIndex startState) :
+  DPMatrix (machine, seqPair, env)
+{
+  fill (startState);
+}
+
+void ForwardMatrix::fill (StateIndex startState) {
   ProgressLog(plogDP,6);
   plogDP.initProgress ("Filling Forward matrix (%lu cells)", nCells());
   CellIndex nCellsDone = 0;
@@ -25,7 +31,7 @@ void ForwardMatrix::fill() {
 	plogDP.logProgress (nCellsDone / (double) nCells(), "filled %lu cells", nCellsDone);
 	++nCellsDone;
 	const EvaluatedMachineState& state = machine.state[d];
-	double ll = (inPos || outPos || d) ? -numeric_limits<double>::infinity() : 0;
+	double ll = (inPos || outPos || d != startState) ? -numeric_limits<double>::infinity() : 0;
 	if (inPos && outPos)
 	  accumulate (ll, state.incoming, inTok, outTok, inPos - 1, outPos - 1, sum_reduce);
 	if (inPos)
@@ -46,4 +52,8 @@ double ForwardMatrix::logLike() const {
 
 MachinePath ForwardMatrix::samplePath (const Machine& m, mt19937& rng) const {
   return traceBack (m, randomTransSelector (rng));
+}
+
+MachinePath ForwardMatrix::samplePath (const Machine& m, StateIndex s, mt19937& rng) const {
+  return traceBack (m, s, randomTransSelector (rng));
 }

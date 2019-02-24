@@ -62,6 +62,10 @@ MachinePath DPMatrix::traceBack (const Machine& m, TransSelector selectTrans) co
   return traceBack (m, inLen, outLen, nStates - 1, selectTrans);
 }
 
+MachinePath DPMatrix::traceBack (const Machine& m, StateIndex s, TransSelector selectTrans) const {
+  return traceBack (m, inLen, outLen, s, selectTrans);
+}
+
 MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector selectTrans) const {
   MachinePath path;
   TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {

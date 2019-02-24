@@ -51,6 +51,12 @@ struct Assembly {
   // Scoring
   LogProb logProb() const;  // log P(sequence,annotation,alignments|machines)
 
+  // Helpers
+  static size_t nSequenceMoves (size_t maxResampledTransitions, const CompactMachinePath&);
+  static vguard<OutputSymbol> getOutputSeq (const MachinePath&, size_t transStart, size_t transLen);
+  static InputIndex getOutputSeqLen (const MachinePath&, size_t transLen);
+  static StateIndex getPathState (const MachinePath&, size_t nTrans);
+  
   // MCMC
   void resampleSequence (mt19937&, size_t maxResampledTransitions);
   void resampleAlignment (mt19937&, size_t maxAlignSlideWidth);

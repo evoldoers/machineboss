@@ -122,19 +122,6 @@ void Assembly::evaluateMachines() {
   evalErr = EvaluatedMachine (error, error.getParamDefs (true));
 }
 
-vguard<OutputSymbol> Assembly::sequence() const {
-  vguard<OutputSymbol> seq;
-  seq.reserve (generatorPath.trans.size());
-  StateIndex gState = generator.startState();
-  for (auto t: generatorPath.trans) {
-    const MachineTransition gmt = generator.state[gState].getTransition (t);
-    if (!gmt.outputEmpty())
-      seq.push_back (gmt.out);
-    gState = gmt.dest;
-  }
-  return seq;
-}
-
 LogProb Assembly::logProb() const {
   LogProb lp = 0;
   StateIndex gState = generator.startState();
@@ -208,4 +195,68 @@ void Assembly::resampleIdentifiedAlignment (mt19937& rng, size_t nAlign, size_t 
   // and reject the move if it doesn't match. Instead...
   // Let's do a cast-assignment hack and exit.
   ((CompactMachinePath&)errorPath) = CompactMachinePath::fromMachinePath (fwdTrace, error);
+}
+
+size_t Assembly::nSequenceMoves (size_t maxResampledTransitions, const CompactMachinePath& gPath) {
+  const size_t pathLen = gPath.trans.size();
+  return (2*pathLen + 2 - maxResampledTransitions) * (maxResampledTransitions + 1) / 2;
+}
+
+Assembly::InputIndex Assembly::getOutputSeqLen (const MachinePath& mp, size_t transLen) {
+  InputIndex len = 0;
+  for (auto& t: mp.trans) {
+    if (!transLen)
+      break;
+    --transLen;
+    if (!t.outputEmpty())
+      ++len;
+  }
+  return len;
+}
+
+vguard<OutputSymbol> Assembly::sequence() const {
+  return getOutputSeq (generatorPath.toMachinePath (generator), 0, generatorPath.trans.size());
+}
+
+vguard<OutputSymbol> Assembly::getOutputSeq (const MachinePath& mp, size_t transStart, size_t transLen) {
+  vguard<OutputSymbol> seq;
+  seq.reserve (transLen);
+  TransList::const_iterator iter = mp.trans.begin();
+  advance (iter, transStart);
+  for (size_t ti = 0; ti < transLen; ++ti) {
+    if (!(*iter).outputEmpty())
+      seq.push_back ((*iter).out);
+    ++iter;
+  }
+  return seq;
+}
+
+StateIndex Assembly::getPathState (const MachinePath& mp, size_t nTrans) {
+  StateIndex s = 0;
+  for (TransList::const_iterator iter = mp.trans.begin(); iter != mp.trans.end() && nTrans > 0; ++iter, --nTrans)
+    s = (*iter).dest;
+  return s;
+}
+
+void Assembly::resampleSequence (mt19937& rng, size_t maxResampledTransitions) {
+  // pick a section of the generator path to resample
+  const size_t z12_old = nSequenceMoves (maxResampledTransitions, generatorPath);
+  uniform_int_distribution<size_t> pGenTrans (0, z12_old - 1);
+  const size_t rvGenTrans = pGenTrans (rng);
+  size_t oldGenTransLen = 0;
+  while (rvGenTrans > nSequenceMoves (oldGenTransLen, generatorPath))
+    ++oldGenTransLen;
+  const size_t oldGenTransStart = rvGenTrans - nSequenceMoves (oldGenTransLen - 1, generatorPath);
+  const MachinePath oldGenPath = generatorPath.toMachinePath (generator);
+  const InputIndex oldGenStart = getOutputSeqLen (oldGenPath, oldGenTransStart);
+  const vguard<OutputSymbol> oldGenSeq = getOutputSeq (oldGenPath, oldGenTransStart, oldGenTransLen);
+  const InputIndex oldGenLen = oldGenSeq.size();
+  const StateIndex oldGenStartState = getPathState (oldGenPath, oldGenTransStart);
+  const StateIndex oldGenEndState = getPathState (oldGenPath, oldGenTransStart + oldGenTransLen);
+
+  // propose new path by stochastic Forward traceback, constraining end & start states
+  // TODO: need to implement general traceback by matrix inversion
+  
+  // loop through all alignments testing for overlap
+  // propose new alignment by stochastic Forward traceback, constraining end & start states
 }

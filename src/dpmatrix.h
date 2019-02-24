@@ -93,6 +93,7 @@ public:
   static TransSelector randomTransSelector (mt19937&);
   
   MachinePath traceBack (const Machine& m, TransSelector ts = DPMatrix::selectMaxTrans) const;
+  MachinePath traceBack (const Machine& m, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;
   MachinePath traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;
   void traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector ts = DPMatrix::selectMaxTrans) const;
 
