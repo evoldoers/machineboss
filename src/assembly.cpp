@@ -255,7 +255,9 @@ void Assembly::resampleSequence (mt19937& rng, size_t maxResampledTransitions) {
   const StateIndex oldGenEndState = getPathState (oldGenPath, oldGenTransStart + oldGenTransLen);
 
   // propose new path by stochastic Forward traceback, constraining end & start states
+
   // TODO: need to implement general traceback by matrix inversion
+  // If t(i,j) is the transition matrix, we need S = \sum_{n=0}^\infty t^n = (1-t)^{-1}
   
   // loop through all alignments testing for overlap
   // propose new alignment by stochastic Forward traceback, constraining end & start states
