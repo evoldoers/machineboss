@@ -128,24 +128,23 @@ string EvaluatedMachine::stateNameJson (StateIndex s) const {
   return state[s].name.dump();
 }
 
-vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
+vguard<vguard<double> > EvaluatedMachine::sumInTrans (bool allPaths) const {
   const OutputToken nullToken = outputTokenizer.emptyToken();
 
   vguard<vguard<double> > oneMinusNullTrans (nStates(), vguard<double> (nStates()));
   vguard<double> pExit (nStates(), 0.);
   for (StateIndex src = 0; src < nStates(); ++src) {
     oneMinusNullTrans[src][src] = 1;
-    for (const auto& in_ost: state[src].outgoing) {
-      const auto& ost = in_ost.second;
-      if (ost.count(nullToken))
-	for (const auto& s_t: ost.at(nullToken)) {
-	  const double p = exp (s_t.second.logWeight);
-	  oneMinusNullTrans[src][s_t.first] -= p;
-	  pExit[src] += p;
-	  if (pExit[src] > SuspiciouslyLargeProbabilityWarningThreshold)
-	    LogThisAt (6, "Warning: when eliminating absorbing transitions, pExit[" << src << "] = " << pExit[src] << endl);
-	}
-    }
+    for (const auto& in_ost: state[src].outgoing)
+      for (const auto& out_st: in_ost.second)
+	if (allPaths || out_st.first == nullToken)
+	  for (const auto& s_t: out_st.second) {
+	    const double p = exp (s_t.second.logWeight);
+	    oneMinusNullTrans[src][s_t.first] -= p;
+	    pExit[src] += p;
+	    if (pExit[src] > SuspiciouslyLargeProbabilityWarningThreshold)
+	      LogThisAt (6, "Warning: when eliminating transitions, pExit[" << src << "] = " << pExit[src] << endl);
+	  }
   }
 
   gsl_matrix* gOneMinusNullTrans = stl_to_gsl_matrix (oneMinusNullTrans);
@@ -161,8 +160,12 @@ vguard<vguard<LogWeight> > EvaluatedMachine::sumInTrans() const {
   gsl_permutation_free (perm);
   gsl_matrix_free (gOneMinusNullTrans);
   gsl_matrix_free (gGeomSumNullTrans);
-  
-  return log_matrix (result);
+
+  return result;
+}
+
+vguard<vguard<LogWeight> > EvaluatedMachine::logSumInTrans (bool allPaths) const {
+  return log_matrix (sumInTrans (allPaths));
 }
 
 Machine EvaluatedMachine::explicitMachine() const {

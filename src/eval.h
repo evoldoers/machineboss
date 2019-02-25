@@ -73,7 +73,8 @@ struct EvaluatedMachine {
   StateIndex startState() const;
   StateIndex endState() const;
   string stateNameJson (StateIndex) const;
-  vguard<vguard<LogWeight> > sumInTrans() const;  // returns effective transitions between states, summing over all non-outputting paths
+  vguard<vguard<double> > sumInTrans (bool allPaths = false) const;  // returns effective transitions between states, summing over all non-outputting paths (or over ALL paths, if allPaths is true)
+  vguard<vguard<LogWeight> > logSumInTrans (bool allPaths = false) const;  // log of sumInTrans(allPaths)
   Machine explicitMachine() const;  // returns the Machine without parameters, i.e. all transitions have numeric weights
 };
 

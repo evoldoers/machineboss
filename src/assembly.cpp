@@ -120,6 +120,7 @@ void Assembly::validate() const {
 void Assembly::evaluateMachines() {
   evalGen = EvaluatedMachine (generator, generator.getParamDefs (true));
   evalErr = EvaluatedMachine (error, error.getParamDefs (true));
+  genSumTrans = evalGen.sumInTrans (true);
 }
 
 LogProb Assembly::logProb() const {
@@ -254,11 +255,8 @@ void Assembly::resampleSequence (mt19937& rng, size_t maxResampledTransitions) {
   const StateIndex oldGenStartState = getPathState (oldGenPath, oldGenTransStart);
   const StateIndex oldGenEndState = getPathState (oldGenPath, oldGenTransStart + oldGenTransLen);
 
-  // propose new path by stochastic Forward traceback, constraining end & start states
+  // propose new path by stochastic traceback through genSumTrans, constraining end & start states
 
-  // TODO: need to implement general traceback by matrix inversion
-  // If t(i,j) is the transition matrix, we need S = \sum_{n=0}^\infty t^n = (1-t)^{-1}
-  
   // loop through all alignments testing for overlap
   // propose new alignment by stochastic Forward traceback, constraining end & start states
 }

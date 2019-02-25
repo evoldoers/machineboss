@@ -37,6 +37,7 @@ struct Assembly {
   vguard<CompactLocalMachinePath> errorPaths;
 
   EvaluatedMachine evalGen, evalErr;
+  vguard<vguard<double> > genSumTrans;
 
   // I/O and initialization
   void readJson (const json&);

@@ -50,7 +50,7 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 	accumulateSeqCell (ll, *nonAbsorbing, *this, OutputTokenizer::emptyToken(), outPos);
       LogThisAt(8,"seqCell("<<outPos<<","<<d<<")="<<ll<<endl);
     }
-    // looping over d AND prevState seems inefficient! Could precompute sumInTrans*outTrans for each outTok
+    // looping over d AND prevState seems inefficient! Could precompute logSumInTrans*outTrans for each outTok
     for (StateIndex d = 0; d < nStates; ++d) {
       double& ll = prefixCell (outPos, d);
       if (outPos) {
@@ -62,9 +62,9 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
 	      const EvaluatedMachineState::Trans& trans = st.second;
 	      for (StateIndex prevState = 0; prevState < nStates; ++prevState) {
 		const double prevCell = prefixCell (outPos - 1, prevState);
-		const double logEmitWeight = prevCell + tree.sumInTrans[prevState][st.first] + trans.logWeight;
+		const double logEmitWeight = prevCell + tree.logSumInTrans[prevState][st.first] + trans.logWeight;
 		log_accum_exp (ll, logEmitWeight);
-		LogThisAt(9,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.sumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<" ... now "<<ll<<endl);
+		LogThisAt(9,"prefixCell("<<outPos<<","<<d<<") logsum+= "<<prevCell<<" + "<<tree.logSumInTrans[prevState][st.first]<<" + "<<trans.logWeight<<" ("<<prevState<<"->"<<st.first<<"->"<<d<<")"<<" ... now "<<ll<<endl);
 	      }
 	    }
 	}
@@ -74,8 +74,8 @@ void PrefixTree::Node::fill (const PrefixTree& tree)
   }
 
   for (StateIndex d = 0; d < nStates; ++d) {
-    log_accum_exp (logPrefixProb, prefixCell(outLen,d) + tree.sumInTrans[d][tree.nStates - 1]);
-    LogThisAt(9,"logPrefixProb logsum+= "<<prefixCell(outLen,d)<<" + "<<tree.sumInTrans[d][tree.nStates - 1]<<" ("<<d<<"->end)"<<endl);
+    log_accum_exp (logPrefixProb, prefixCell(outLen,d) + tree.logSumInTrans[d][tree.nStates - 1]);
+    LogThisAt(9,"logPrefixProb logsum+= "<<prefixCell(outLen,d)<<" + "<<tree.logSumInTrans[d][tree.nStates - 1]<<" ("<<d<<"->end)"<<endl);
   }
 
   if (parent && logPrefixProb > parent->logPrefixProb)
@@ -108,7 +108,7 @@ PrefixTree::Node* PrefixTree::Node::randomChild (mt19937& mt) const {
 
 PrefixTree::PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, InputIndex maxBacktrack) :
   machine (machine),
-  sumInTrans (machine.sumInTrans()),
+  logSumInTrans (machine.logSumInTrans()),
   output (machine.outputTokenizer.tokenize (outSym)),
   outLen (output.size()),
   nStates (machine.nStates()),

@@ -83,7 +83,7 @@ struct PrefixTree {
   typedef vector<PrefixTree::Node*> NodePtrQueue;
 
   const EvaluatedMachine& machine;
-  const vguard<vguard<LogWeight> > sumInTrans;
+  const vguard<vguard<LogWeight> > logSumInTrans;
   const vguard<OutputToken> output;
   const OutputIndex outLen;
   const StateIndex nStates;
