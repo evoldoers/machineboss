@@ -280,7 +280,7 @@ test-shorthand:
 	@$(TEST) bin/$(BOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' x t/expect/shorthand.json
 
 test-hmmer:
-	@$(TEST) bin/$(BOSS) --hmmer t/hmmer/fn3.hmm t/expect/fn3.json
+	@$(TEST) t/roundfloats.pl 4 bin/$(BOSS) --hmmer t/hmmer/fn3.hmm t/expect/fn3.json
 
 test-csv:
 	@$(TEST) bin/$(BOSS) --generate-csv t/csv/test.csv t/expect/csvtest.json
