@@ -41,12 +41,20 @@ BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_program_options
 endif
 
 # SSL
+# Compile with "no-ssl" as a target to skip SSL
+ifneq (,$(findstring no-ssl,$(MAKECMDGOALS)))
+SSL_FLAGS = -DNO_SSL
+SSL_LIBS =
+else
 SSL_FLAGS = -I/usr/local/opt/openssl/include
 SSL_LIBS = -L/usr/local/opt/openssl/lib
+endif
 
 # HTSlib
-HTS_FLAGS = $(shell pkg-config --cflags htslib)
-HTS_LIBS = $(shell pkg-config --libs htslib)
+#HTS_FLAGS = $(shell pkg-config --cflags htslib)
+#HTS_LIBS = $(shell pkg-config --libs htslib)
+HTS_FLAGS =
+HTS_LIBS =
 
 # HDF5
 HDF5_DIR ?= /usr/local
@@ -145,7 +153,8 @@ $(AUTOWAX): bin/$(AUTOWAX)
 clean:
 	rm -rf bin/* t/bin/* obj/*
 
-debug unoptimized 32bit:
+# Fake pseudotargets
+debug unoptimized 32bit no-ssl:
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)

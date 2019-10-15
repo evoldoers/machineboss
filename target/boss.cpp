@@ -58,7 +58,9 @@ int main (int argc, char** argv) {
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
       ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
+#ifndef NO_SSL
       ("generate-uniprot", po::value<string>(), "create generator from UniProt ID (e.g. P12345)")
+#endif /* NO_SSL */
       ("recognize-chars,a", po::value<string>(), "recognizer for explicit character sequence '>>'")
       ("recognize-one", po::value<string>(), "recognizer for any one of specified characters")
       ("recognize-wild", po::value<string>(), "recognizer for Kleene closure over specified characters")
@@ -75,8 +77,10 @@ int main (int argc, char** argv) {
       ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
+#ifndef NO_SSL
       ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
       ("dfam", po::value<string>(), "create generator from DFAM ID (e.g. DF0004136)")
+#endif /* NO_SSL */
       ;
 
     po::options_description postfixOpts("Postfix operators");

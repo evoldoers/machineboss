@@ -1,5 +1,21 @@
 #include "net.h"
 
+#ifdef NO_SSL
+FastSeq getUniprot (const string& id) {
+  Abort ("MachineBoss compiled without network functionality; getUniprot will not work");
+  return FastSeq();
+}
+
+HmmerModel getPfam (const string& id) {
+  Abort ("MachineBoss compiled without network functionality; getPfam will not work");
+  return HmmerModel();
+}
+
+HmmerModel getDfam (const string& id) {
+  Abort ("MachineBoss compiled without network functionality; getDfam will not work");
+  return HmmerModel();
+}
+#else
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "../../ext/cpp-httplib/httplib.h"
 
@@ -50,6 +66,7 @@ HmmerModel getDfam (const string& id) {
   hmm.read (iss);
   return hmm;
 }
+#endif
 
 string inflateString (const string& compressed) {
   size_t bufSize = compressed.size() * 2;
