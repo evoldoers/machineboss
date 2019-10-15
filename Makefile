@@ -41,7 +41,7 @@ BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_program_options
 endif
 
 # SSL
-# Compile with "no-ssl" as a target to skip SSL
+# Compile with "no-ssl" as a target to skip SSL (use with emscripten)
 ifneq (,$(findstring no-ssl,$(MAKECMDGOALS)))
 SSL_FLAGS = -DNO_SSL
 SSL_LIBS =
@@ -49,24 +49,6 @@ else
 SSL_FLAGS = -I/usr/local/opt/openssl/include
 SSL_LIBS = -L/usr/local/opt/openssl/lib
 endif
-
-# HTSlib
-#HTS_FLAGS = $(shell pkg-config --cflags htslib)
-#HTS_LIBS = $(shell pkg-config --libs htslib)
-HTS_FLAGS =
-HTS_LIBS =
-
-# HDF5
-HDF5_DIR ?= /usr/local
-HDF5_INCLUDE_DIR ?= $(HDF5_DIR)/include
-HDF5_LIB_DIR ?= $(HDF5_DIR)/lib
-HDF5_LIB ?= hdf5
-HDF5_FLAGS = -isystem $(HDF5_INCLUDE_DIR)
-HDF5_LIBS = -L$(HDF5_LIB_DIR) -l$(HDF5_LIB)
-
-# Uncomment if no HDF5
-#HDF5_FLAGS =
-#HDF5_LIBS =
 
 # install dir
 PREFIX = /usr/local
@@ -79,8 +61,8 @@ else
 BUILD_FLAGS =
 endif
 
-ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS) $(SSL_FLAGS) $(HTS_FLAGS)
-ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS) $(SSL_LIBS) $(HTS_LIBS)
+ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS) $(SSL_FLAGS)
+ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS) $(SSL_LIBS)
 
 ifneq (,$(findstring debug,$(MAKECMDGOALS)))
 CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG
@@ -98,10 +80,16 @@ LD_FLAGS = -lstdc++ -lz -lssl -lcrypto $(ALL_LIBS)
 CPP_FILES = $(wildcard src/*.cpp)
 OBJ_FILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES)))
 
+# Emscripten?
+ifneq (,$(findstring emscripten,$(MAKECMDGOALS)))
+CPP = emcc
+CPP_FLAGS += -DNO_SSL -s USE_BOOST_HEADERS=1 -s USE_ZLIB=1
+else
 # try clang++, fall back to g++
 CPP = clang++
 ifeq (, $(shell which $(CPP)))
 CPP = g++
+endif
 endif
 
 # pwd
@@ -154,7 +142,7 @@ clean:
 	rm -rf bin/* t/bin/* obj/*
 
 # Fake pseudotargets
-debug unoptimized 32bit no-ssl:
+debug unoptimized 32bit no-ssl emscripten:
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)

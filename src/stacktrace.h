@@ -2,10 +2,13 @@
 #define STACKTRACE_INCLUDED
 
 #include <stdio.h>
+#ifndef __EMSCRIPTEN__
 #include <execinfo.h>
+#endif /* __EMSCRIPTEN__ */
 
 // http://oroboro.com/stack-trace-on-crash/
 static inline void printStackTrace( FILE *out = stderr, unsigned int max_frames = 63 ) {
+#ifndef __EMSCRIPTEN__
   fprintf(out, "Stack trace:\n");
  
   // storage array for stack trace address data
@@ -28,6 +31,7 @@ static inline void printStackTrace( FILE *out = stderr, unsigned int max_frames 
     fprintf( out, "%s\n", symbollist[i] );
  
   free(symbollist);
+#endif /* __EMSCRIPTEN__ */
 }
 
 #endif /* STACKTRACE_INCLUDED */

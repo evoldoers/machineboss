@@ -1,4 +1,3 @@
-#include <zlib.h>
 #include <iostream>
 #include "fastseq.h"
 #include "util.h"
