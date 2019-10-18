@@ -3,7 +3,33 @@
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
 
-# try to figure out where GSL is
+# Pseudotargets that control compilation
+NO_SSL = $(findstring no-ssl,$(MAKECMDGOALS))
+USING_EMSCRIPTEN = $(findstring emscripten,$(MAKECMDGOALS))
+IS_32BIT = $(findstring 32bit,$(MAKECMDGOALS))
+IS_DEBUG = $(findstring debug,$(MAKECMDGOALS))
+IS_UNOPTIMIZED = $(findstring unoptimized,$(MAKECMDGOALS))
+
+# C++ compiler: Emscripten, Clang, or GCC?
+ifneq (,$(USING_EMSCRIPTEN))
+CPP = emcc
+else
+# try clang++, fall back to g++
+CPP = clang++
+ifeq (, $(shell which $(CPP)))
+CPP = g++
+endif
+endif
+
+# If using emscripten, we need to compile gsl-js ourselves
+ifneq (,$(USING_EMSCRIPTEN))
+GSL_PREFIX = gsl-js
+GSL_FLAGS = -I$(GSL_PREFIX)
+GSL_LIBS = -L$(GSL_PREFIX)/.libs -lgsl
+GSL_DEPS = $(GSL_PREFIX)/.libs
+else
+GSL_DEPS =
+# Try to figure out where GSL is
 # autoconf would be better but we just need a quick hack for now :)
 # Thanks to Torsten Seemann for gsl-config and pkg-config formulae
 GSL_PREFIX = $(shell gsl-config --prefix)
@@ -23,7 +49,14 @@ GSL_LIBS = $(shell pkg-config --libs gsl)
 ifeq (, $(GSL_LIBS))
 GSL_LIBS = -L$(GSL_PREFIX)/lib -lgsl -lgslcblas -lm
 endif
+endif
 
+# If using emscripten, don't link to Boost
+ifneq (,$(USING_EMSCRIPTEN))
+BOOST_FLAGS = -s USE_BOOST_HEADERS=1
+BOOST_LIBS =
+else
+# Try to figure out where Boost is
 # NB pkg-config support for Boost is lacking; see https://svn.boost.org/trac/boost/ticket/1094
 BOOST_PREFIX = /usr
 ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
@@ -39,10 +72,11 @@ ifneq (,$(BOOST_PREFIX))
 BOOST_FLAGS := -I$(BOOST_PREFIX)/include
 BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_program_options
 endif
+endif
 
 # SSL
 # Compile with "no-ssl" as a target to skip SSL (use with emscripten)
-ifneq (,$(findstring no-ssl,$(MAKECMDGOALS)))
+ifneq (,$(USING_EMSCRIPTEN))
 SSL_FLAGS = -DNO_SSL
 SSL_LIBS =
 else
@@ -55,7 +89,7 @@ PREFIX = /usr/local
 INSTALL_BIN = $(PREFIX)/bin
 
 # other flags
-ifneq (,$(findstring 32bit,$(MAKECMDGOALS)))
+ifneq (,$(IS_32BIT))
 BUILD_FLAGS = -DIS32BIT
 else
 BUILD_FLAGS =
@@ -64,10 +98,10 @@ endif
 ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS) $(SSL_FLAGS)
 ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS) $(SSL_LIBS)
 
-ifneq (,$(findstring debug,$(MAKECMDGOALS)))
+ifneq (,$(IS_DEBUG))
 CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG
 else
-ifneq (,$(findstring unoptimized,$(MAKECMDGOALS)))
+ifneq (,$(IS_UNOPTIMIZED))
 CPP_FLAGS = -std=c++11 -g
 else
 CPP_FLAGS = -std=c++11 -g -O3
@@ -76,21 +110,13 @@ endif
 CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz $(ALL_LIBS)
 
+ifneq (,$(USING_EMSCRIPTEN))
+CPP_FLAGS += -s USE_ZLIB=1
+endif
+
 # files
 CPP_FILES = $(wildcard src/*.cpp)
 OBJ_FILES = $(subst src/,obj/,$(subst .cpp,.o,$(CPP_FILES)))
-
-# Emscripten?
-ifneq (,$(findstring emscripten,$(MAKECMDGOALS)))
-CPP = emcc
-CPP_FLAGS += -DNO_SSL -s USE_BOOST_HEADERS=1 -s USE_ZLIB=1
-else
-# try clang++, fall back to g++
-CPP = clang++
-ifeq (, $(shell which $(CPP)))
-CPP = g++
-endif
-endif
 
 # pwd
 PWD = $(shell pwd)
@@ -101,6 +127,7 @@ SH = /bin/sh
 # Targets
 
 BOSS = boss
+BOSSJS = boss.js
 AUTOWAX = autowax
 
 all: $(BOSS)
@@ -109,15 +136,15 @@ install: $(BOSS)
 	cp bin/$(BOSS) $(INSTALL_BIN)/$(BOSS)
 
 # Main build rules
-bin/%: $(OBJ_FILES) obj/%.o target/%.cpp
+bin/% bin/%.js: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
 
-obj/%.o: src/%.cpp
+obj/%.o: src/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
-obj/%.o: target/%.cpp
+obj/%.o: target/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
@@ -136,13 +163,22 @@ obj/%.o: t/src/%.cpp
 
 $(BOSS): bin/$(BOSS)
 
+emscripten: bin/$(BOSSJS)
+
 $(AUTOWAX): bin/$(AUTOWAX)
 
 clean:
 	rm -rf bin/* t/bin/* obj/*
 
 # Fake pseudotargets
-debug unoptimized 32bit no-ssl emscripten:
+debug unoptimized 32bit no-ssl:
+
+# gsl-js
+gsl-js:
+	git clone https://github.com/GSL-for-JS/gsl-js.git
+
+gsl-js/.libs: gsl-js
+	cd gsl-js; emmake make
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)
