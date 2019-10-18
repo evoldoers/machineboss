@@ -6,9 +6,7 @@
 #include <map>
 #include <set>
 
-#ifndef __EMSCRIPTEN__
 #include <zlib.h>
-#endif /* __EMSCRIPTEN__ */
 
 #include "vguard.h"
 #include "../ext/htslib/kseq.h"
