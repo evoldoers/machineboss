@@ -47,7 +47,7 @@ SSL_FLAGS = -DNO_SSL
 SSL_LIBS =
 else
 SSL_FLAGS = -I/usr/local/opt/openssl/include
-SSL_LIBS = -L/usr/local/opt/openssl/lib
+SSL_LIBS = -lssl -lcrypto -L/usr/local/opt/openssl/lib
 endif
 
 # install dir
@@ -74,7 +74,7 @@ CPP_FLAGS = -std=c++11 -g -O3
 endif
 endif
 CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS = -lstdc++ -lz -lssl -lcrypto $(ALL_LIBS)
+LD_FLAGS = -lstdc++ -lz $(ALL_LIBS)
 
 # files
 CPP_FILES = $(wildcard src/*.cpp)
