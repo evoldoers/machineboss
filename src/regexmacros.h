@@ -1,7 +1,7 @@
 #ifndef REGEXMACROS_INCLUDED
 #define REGEXMACROS_INCLUDED
 
-#ifdef USE_BOOST
+#ifdef USE_BOOST_REGEX
 #include <boost/regex.hpp>
 using namespace boost;
 #else

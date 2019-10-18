@@ -178,7 +178,7 @@ gsl-js:
 	git clone https://github.com/GSL-for-JS/gsl-js.git
 
 gsl-js/.libs: gsl-js
-	cd gsl-js; emconfigure ./configure; emmake make
+	cd gsl-js; emconfigure ./configure; emmake make -k
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)
