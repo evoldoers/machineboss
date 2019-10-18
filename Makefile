@@ -24,9 +24,12 @@ endif
 # If using emscripten, we need to compile gsl-js ourselves
 ifneq (,$(USING_EMSCRIPTEN))
 GSL_PREFIX = gsl-js
-GSL_FLAGS = -I$(GSL_PREFIX)
-GSL_LIBS = -L$(GSL_PREFIX)/.libs -lgsl
-GSL_DEPS = $(GSL_PREFIX)/.libs
+GSL_SOURCE = $(GSL_PREFIX)/gsl-js
+GSL_LIB = $(GSL_PREFIX)/lib
+GSL_FLAGS = -I$(GSL_SOURCE)
+GSL_LIBS = -L$(GSL_LIB) -lgsl -lgslcblas -lm
+GSL_DEPS = $(GSL_LIB)
+GSL_PATH = $(realpath $(GSL_PREFIX))
 else
 GSL_DEPS =
 # Try to figure out where GSL is
@@ -174,11 +177,10 @@ clean:
 debug unoptimized 32bit no-ssl:
 
 # gsl-js
-gsl-js:
-	git clone https://github.com/GSL-for-JS/gsl-js.git
-
-gsl-js/.libs: gsl-js
-	cd gsl-js; emconfigure ./configure; emmake make -k
+$(GSL_LIB):
+	mkdir $(GSL_PREFIX)
+	cd $(GSL_PREFIX); git clone https://github.com/GSL-for-JS/gsl-js.git
+	cd $(GSL_SOURCE); emconfigure ./configure --prefix=$(GSL_PATH); emmake make -k install
 
 # Schemas & presets
 # The relevant pseudotargets are generate-schemas and generate-presets (biomake required)
