@@ -57,7 +57,7 @@ endif
 # If using emscripten, don't link to Boost
 ifneq (,$(USING_EMSCRIPTEN))
 BOOST_FLAGS = -s USE_BOOST_HEADERS=1
-BOOST_LIBS =
+BOOST_LIBS = -s USE_BOOST_HEADERS=1
 else
 # Try to figure out where Boost is
 # NB pkg-config support for Boost is lacking; see https://svn.boost.org/trac/boost/ticket/1094
@@ -115,6 +115,7 @@ LD_FLAGS = -lstdc++ -lz $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
 CPP_FLAGS += -s USE_ZLIB=1
+LD_FLAGS += -s USE_ZLIB=1
 endif
 
 # files
