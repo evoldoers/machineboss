@@ -27,11 +27,15 @@ GSL_PREFIX = gsl-js
 GSL_SOURCE = $(GSL_PREFIX)/gsl-js
 GSL_LIB = $(GSL_PREFIX)/lib
 GSL_FLAGS = -I$(GSL_SOURCE)
-GSL_LIBS = -L$(GSL_LIB) -lgsl -lgslcblas -lm
+#GSL_LIBS = -L$(GSL_LIB) -lgsl -lgslcblas
+GSL_LIBS =
+GSL_SUBDIRS = vector matrix utils linalg blas cblas block err multimin permutation sys poly
+GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o))
 GSL_DEPS = $(GSL_LIB)
 GSL_PATH = $(realpath $(GSL_PREFIX))
 else
 GSL_DEPS =
+GSL_OBJ_FILES =
 # Try to figure out where GSL is
 # autoconf would be better but we just need a quick hack for now :)
 # Thanks to Torsten Seemann for gsl-config and pkg-config formulae
@@ -50,7 +54,7 @@ endif
 
 GSL_LIBS = $(shell pkg-config --libs gsl)
 ifeq (, $(GSL_LIBS))
-GSL_LIBS = -L$(GSL_PREFIX)/lib -lgsl -lgslcblas -lm
+GSL_LIBS = -L$(GSL_PREFIX)/lib -lgsl -lgslcblas
 endif
 endif
 
@@ -111,7 +115,7 @@ CPP_FLAGS = -std=c++11 -g -O3
 endif
 endif
 CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS = -lstdc++ -lz $(ALL_LIBS)
+LD_FLAGS = -lstdc++ -lz -lm $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
 CPP_FLAGS += -s USE_ZLIB=1
@@ -142,7 +146,7 @@ install: $(BOSS)
 # Main build rules
 bin/% bin/%.js: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES)
+	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES)
 
 obj/%.o: src/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
