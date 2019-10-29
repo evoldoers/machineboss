@@ -60,8 +60,8 @@ endif
 # If using emscripten, don't link to Boost
 ifneq (,$(USING_EMSCRIPTEN))
 BOOST_PROGRAM_OPTIONS = program_options
-BOOST_FLAGS = -s USE_BOOST_HEADERS=1
-BOOST_LIBS = -s USE_BOOST_HEADERS=1
+BOOST_FLAGS = -s USE_BOOST_HEADERS=1 -s FORCE_FILESYSTEM=1
+BOOST_LIBS = -s USE_BOOST_HEADERS=1 -s FORCE_FILESYSTEM=1
 BOOST_OBJ_FILES = $(subst $(BOOST_PROGRAM_OPTIONS)/src/,obj/boost/,$(subst .cpp,.o,$(wildcard $(BOOST_PROGRAM_OPTIONS)/src/*.cpp)))
 else
 BOOST_OBJ_FILES =
@@ -166,7 +166,7 @@ obj/%.o: target/%.cpp $(GSL_DEPS)
 
 obj/boost/%.o: $(BOOST_PROGRAM_OPTIONS) $(BOOST_PROGRAM_OPTIONS)/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(CPP_FLAGS) -c -o $@ $<
+	$(CPP) $(CPP_FLAGS) -c -o $@ $(BOOST_PROGRAM_OPTIONS)/src/$*.cpp
 
 t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
