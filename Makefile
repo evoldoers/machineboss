@@ -27,7 +27,6 @@ GSL_PREFIX = gsl-js
 GSL_SOURCE = $(GSL_PREFIX)/gsl-js
 GSL_LIB = $(GSL_PREFIX)/lib
 GSL_FLAGS = -I$(GSL_SOURCE)
-#GSL_LIBS = -L$(GSL_LIB) -lgsl -lgslcblas
 GSL_LIBS =
 GSL_SUBDIRS = vector matrix utils linalg blas cblas block err multimin permutation sys poly
 GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o))
