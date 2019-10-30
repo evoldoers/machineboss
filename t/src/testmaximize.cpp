@@ -15,5 +15,6 @@ int main (int argc, char** argv) {
   MachineObjective objective (machine, counts, constraints, Params());
   Params optParams = objective.optimize (params);
   optParams.writeJson (cout);
+  cout << endl;
   exit(0);
 }

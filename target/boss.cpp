@@ -780,6 +780,7 @@ int main (int argc, char** argv) {
 	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
       }
       alignResults.writeJson (cout);
+      cout << endl;
     }
 
     // encode
