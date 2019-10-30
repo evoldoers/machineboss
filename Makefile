@@ -120,7 +120,7 @@ CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz -lm $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
-EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" -s ALLOW_MEMORY_GROWTH=1 --pre-js emcc/pre.js
+EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" -s ALLOW_MEMORY_GROWTH=1 -s EXIT_RUNTIME=1 --pre-js emcc/pre.js
 CPP_FLAGS += $(EMCC_FLAGS)
 LD_FLAGS += $(EMCC_FLAGS)
 endif
@@ -143,9 +143,11 @@ AUTOWAX = autowax
 ifneq (,$(USING_EMSCRIPTEN))
 WRAP = node wasm/wrap.js
 WRAPBOSS = $(WRAP) wasm/boss.js
+TESTSUFFIX = .js
 else
 WRAP =
 WRAPBOSS = bin/$(BOSS)
+TESTSUFFIX =
 endif
 
 all: $(BOSS)
@@ -172,7 +174,8 @@ obj/boost/%.o: $(BOOST_PROGRAM_OPTIONS) $(BOOST_PROGRAM_OPTIONS)/src/%.cpp
 
 t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp $(GSL_DEPS) $(BOOST_OBJ_FILES)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
+	$(CPP) $(LD_FLAGS) -o $@$(TESTSUFFIX) obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
+	mv $@$(TESTSUFFIX) $@
 
 t/codegen/%: $(OBJ_FILES) obj/%.o
 	$(MAKE) `ls $(dir t/src/$*)computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`

@@ -1,7 +1,10 @@
 #include <fstream>
+#include <iostream>
 #include "../../src/weight.h"
 #include "../../src/schema.h"
 #include "../../src/util.h"
+
+using namespace std;
 
 int main (int argc, char** argv) {
   if (argc != 2) {
