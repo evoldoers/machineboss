@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-var opts = process.argv.slice(2)
+var prog = process.argv[2]
+var opts = process.argv.slice(3)
 
-var boss = require ('./boss.js')
+var boss = require ('../' + prog)
 var fs = require ('fs')
 
 boss.onRuntimeInitialized = () => {

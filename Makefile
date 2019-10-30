@@ -120,7 +120,7 @@ CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz -lm $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
-EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" --pre-js emcc/pre.js -s DISABLE_EXCEPTION_CATCHING=0
+EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" --pre-js emcc/pre.js
 CPP_FLAGS += $(EMCC_FLAGS)
 LD_FLAGS += $(EMCC_FLAGS)
 endif
@@ -140,8 +140,10 @@ SH = /bin/sh
 BOSS = boss
 AUTOWAX = autowax
 
+TEST = t/testexpect.pl $@ $(TESTLEN)
 ifneq (,$(USING_EMSCRIPTEN))
-RUNBOSS = node wasm/fileboss.js
+RUNBOSS = wasm/boss.js
+TEST += node wasm/wrap.js
 else
 RUNBOSS = bin/$(BOSS)
 endif
@@ -589,7 +591,6 @@ test-bintern:
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS)
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
-TEST = t/testexpect.pl $@ $(TESTLEN)
 
 test: $(TESTS)
 
