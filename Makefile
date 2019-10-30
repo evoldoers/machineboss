@@ -60,8 +60,8 @@ endif
 # If using emscripten, don't link to Boost
 ifneq (,$(USING_EMSCRIPTEN))
 BOOST_PROGRAM_OPTIONS = program_options
-BOOST_FLAGS = -s USE_BOOST_HEADERS=1 -s FORCE_FILESYSTEM=1
-BOOST_LIBS = -s USE_BOOST_HEADERS=1 -s FORCE_FILESYSTEM=1
+BOOST_FLAGS = -s USE_BOOST_HEADERS=1
+BOOST_LIBS = -s USE_BOOST_HEADERS=1
 BOOST_OBJ_FILES = $(subst $(BOOST_PROGRAM_OPTIONS)/src/,obj/boost/,$(subst .cpp,.o,$(wildcard $(BOOST_PROGRAM_OPTIONS)/src/*.cpp)))
 else
 BOOST_OBJ_FILES =
@@ -120,8 +120,9 @@ CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
 LD_FLAGS = -lstdc++ -lz -lm $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
-CPP_FLAGS += -s USE_ZLIB=1
-LD_FLAGS += -s USE_ZLIB=1
+EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" --pre-js emcc/pre.js -s DISABLE_EXCEPTION_CATCHING=0
+CPP_FLAGS += $(EMCC_FLAGS)
+LD_FLAGS += $(EMCC_FLAGS)
 endif
 
 # files
@@ -137,11 +138,10 @@ SH = /bin/sh
 # Targets
 
 BOSS = boss
-BOSSJS = boss.js
 AUTOWAX = autowax
 
 ifneq (,$(USING_EMSCRIPTEN))
-RUNBOSS = node bin/$(BOSSJS)
+RUNBOSS = node wasm/fileboss.js
 else
 RUNBOSS = bin/$(BOSS)
 endif
@@ -152,7 +152,7 @@ install: $(BOSS)
 	cp bin/$(BOSS) $(INSTALL_BIN)/$(BOSS)
 
 # Main build rules
-bin/% bin/%.js: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_OBJ_FILES)
+bin/% wasm/%.js: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_OBJ_FILES)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
 
@@ -183,12 +183,12 @@ obj/%.o: t/src/%.cpp
 
 $(BOSS): bin/$(BOSS)
 
-emscripten: bin/$(BOSSJS)
-
 $(AUTOWAX): bin/$(AUTOWAX)
 
+emscripten: wasm/$(BOSS).js
+
 clean:
-	rm -rf bin/* t/bin/* obj/*
+	rm -rf bin/$(BOSS) bin/$(AUTOWAX) wasm/$(BOSS).js t/bin/* obj/*
 
 # Fake pseudotargets
 debug unoptimized 32bit no-ssl:
@@ -591,7 +591,7 @@ TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRU
 TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
 TEST = t/testexpect.pl $@ $(TESTLEN)
 
-test: $(BOSS) $(TESTS)
+test: $(TESTS)
 
 # Schema validator
 ajv:
