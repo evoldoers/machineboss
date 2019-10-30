@@ -58,8 +58,8 @@ endif
 endif
 
 # If using emscripten, don't link to Boost
-ifneq (,$(USING_EMSCRIPTEN))
 BOOST_PROGRAM_OPTIONS = program_options
+ifneq (,$(USING_EMSCRIPTEN))
 BOOST_FLAGS = -s USE_BOOST_HEADERS=1
 BOOST_LIBS = -s USE_BOOST_HEADERS=1
 BOOST_OBJ_FILES = $(subst $(BOOST_PROGRAM_OPTIONS)/src/,obj/boost/,$(subst .cpp,.o,$(wildcard $(BOOST_PROGRAM_OPTIONS)/src/*.cpp)))
@@ -193,7 +193,7 @@ $(BOSS): bin/$(BOSS)
 
 $(AUTOWAX): bin/$(AUTOWAX)
 
-emscripten: wasm/$(BOSS).js
+emscripten: $(BOSSTARGET)
 
 clean:
 	rm -rf bin/$(BOSS) bin/$(AUTOWAX) wasm/$(BOSS).js t/bin/* obj/*
@@ -604,7 +604,7 @@ TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TEST
 TEST = t/testexpect.pl $@ $(TESTLEN)
 WRAPTEST = $(TEST) $(WRAP)
 
-test: $(TESTS)
+test: $(BOSSTARGET) $(TESTS)
 
 # Schema validator
 ajv:
