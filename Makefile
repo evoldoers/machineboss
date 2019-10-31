@@ -31,7 +31,6 @@ GSL_LIBS =
 GSL_SUBDIRS = vector matrix utils linalg blas cblas block err multimin permutation sys poly
 GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o))
 GSL_DEPS = $(GSL_LIB)
-GSL_PATH = $(realpath $(GSL_PREFIX))
 else
 GSL_DEPS =
 GSL_OBJ_FILES =
@@ -206,7 +205,7 @@ debug unoptimized 32bit no-ssl:
 $(GSL_LIB):
 	mkdir $(GSL_PREFIX)
 	cd $(GSL_PREFIX); git clone https://github.com/GSL-for-JS/gsl-js.git
-	cd $(GSL_SOURCE); emconfigure ./configure --prefix=$(GSL_PATH); emmake make -k install
+	cd $(GSL_SOURCE); emconfigure ./configure --prefix=$(abspath $(CURDIR)/$(GSL_PREFIX)); emmake make -k install
 
 # boost::program_options
 $(BOOST_PROGRAM_OPTIONS):
