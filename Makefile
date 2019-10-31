@@ -116,12 +116,14 @@ CPP_FLAGS = -std=c++11 -g -O3
 endif
 endif
 CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS = -lstdc++ -lz -lm $(ALL_LIBS)
+LD_FLAGS = -lstdc++ -lm $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
 EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" -s ALLOW_MEMORY_GROWTH=1 -s EXIT_RUNTIME=1 --pre-js emcc/pre.js
 CPP_FLAGS += $(EMCC_FLAGS)
 LD_FLAGS += $(EMCC_FLAGS)
+else
+LD_FLAGS += -lz
 endif
 
 # files
