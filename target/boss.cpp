@@ -509,13 +509,12 @@ int main (int argc, char** argv) {
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
 	} else if (command == "--weight") {
 	  const string wArg = getArg();
-	  json wj;
 	  WeightExpr w;
-	  try {
-	    wj = json::parse(wArg);
+	  json wj = json::parse (wArg, nullptr, false);
+          if (!wj.is_discarded()) {
 	    if (MachineSchema::validate ("expr", wj))
 	      w = WeightAlgebra::fromJson (wj);
-	  } catch (...) {
+	  } else {  // not valid json
 	    const char* wc = wArg.c_str();
 	    char* p;
 	    const long intValue = strtol (wc, &p, 10);
@@ -785,6 +784,7 @@ int main (int argc, char** argv) {
 	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
       }
       alignResults.writeJson (cout);
+      cout << endl;
     }
 
     // encode
