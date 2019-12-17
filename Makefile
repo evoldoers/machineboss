@@ -33,6 +33,7 @@ GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o
 GSL_DEPS = $(GSL_LIB)
 GSL_PATH = $(realpath $(GSL_PREFIX))
 else
+GSL_LIB =
 GSL_DEPS =
 GSL_OBJ_FILES =
 # Try to figure out where GSL is
