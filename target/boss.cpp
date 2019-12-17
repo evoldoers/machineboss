@@ -134,6 +134,7 @@ int main (int argc, char** argv) {
       ("intersect-cyclic", "intersect, leaving silent cycles")
       ("union,u", "union '||'")
       ("loop,o", "loop: x '?+' y = x(y.x)*")
+      ("flank,f", "flank: y . x . y")
       ;
 
     po::options_description miscOpts("Miscellaneous");
@@ -430,7 +431,10 @@ int main (int argc, char** argv) {
           m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::BreakSilentCycles);
 	else if (command == "--compose-cyclic")
 	  m = Machine::compose (popMachine(), nextMachine(), true, true, Machine::LeaveSilentCycles);
-	else if (command == "--concatenate")
+	else if (command == "--flank") {
+	  const auto central = popMachine(), flanking = nextMachine();
+	  m = Machine::concatenate (Machine::concatenate (flanking, central), flanking);
+	} else if (command == "--concatenate")
 	  m = Machine::concatenate (popMachine(), nextMachine());
 	else if (command == "--intersect")
 	  m = Machine::intersect (popMachine(), nextMachine(), Machine::SumSilentCycles);

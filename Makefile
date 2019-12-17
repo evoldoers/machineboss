@@ -31,7 +31,6 @@ GSL_LIBS =
 GSL_SUBDIRS = vector matrix utils linalg blas cblas block err multimin permutation sys poly
 GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o))
 GSL_DEPS = $(GSL_LIB)
-GSL_PATH = $(realpath $(GSL_PREFIX))
 else
 GSL_LIB =
 GSL_DEPS =
@@ -118,12 +117,14 @@ CPP_FLAGS = -std=c++11 -g -O3
 endif
 endif
 CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS = -lstdc++ -lz -lm $(ALL_LIBS)
+LD_FLAGS = -lstdc++ -lm $(ALL_LIBS)
 
 ifneq (,$(USING_EMSCRIPTEN))
 EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" -s ALLOW_MEMORY_GROWTH=1 -s EXIT_RUNTIME=1 --pre-js emcc/pre.js
 CPP_FLAGS += $(EMCC_FLAGS)
 LD_FLAGS += $(EMCC_FLAGS)
+else
+LD_FLAGS += -lz
 endif
 
 # files
@@ -207,7 +208,7 @@ debug unoptimized 32bit no-ssl:
 $(GSL_LIB):
 	mkdir $(GSL_PREFIX)
 	cd $(GSL_PREFIX); git clone https://github.com/GSL-for-JS/gsl-js.git
-	cd $(GSL_SOURCE); emconfigure ./configure --prefix=$(GSL_PATH); emmake make -k install
+	cd $(GSL_SOURCE); emconfigure ./configure --prefix=$(abspath $(CURDIR)/$(GSL_PREFIX)); emmake make -k install
 
 # boost::program_options
 $(BOOST_PROGRAM_OPTIONS):

@@ -347,7 +347,8 @@ Transducer construction:
   -l [ --load ] arg             load machine from file
   -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
                                 protpsw, translate, prot2dna, psw2dna, dna2rna,
-                                rna2dna, bintern, terndna, jukescantor)
+                                rna2dna, bintern, terndna, jukescantor, 
+                                dnapswnbr)
   -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
@@ -467,6 +468,7 @@ Infix operators:
   --intersect-cyclic            intersect, leaving silent cycles
   -u [ --union ]                union '||'
   -o [ --loop ]                 loop: x '?+' y = x(y.x)*
+  -f [ --flank ]                flank: y . x . y
 
 Miscellaneous:
   -B [ --begin ]                left bracket '('
