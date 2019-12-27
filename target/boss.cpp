@@ -756,7 +756,7 @@ int main (int argc, char** argv) {
       cout << "[";
       size_t n = 0;
       for (const auto& seqPair: data.seqPairs) {
-	const ForwardMatrix forward (eval, seqPair);
+	const RollingOutputForwardMatrix forward (eval, seqPair);
 	cout << (n++ ? ",\n " : "")
 	     << "[\"" << escaped_str(seqPair.input.name)
 	     << "\",\"" << escaped_str(seqPair.output.name)

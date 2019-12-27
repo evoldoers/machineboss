@@ -23,6 +23,8 @@ public:
   MachinePath samplePath (const Machine&, StateIndex, mt19937&) const;
 };
 
+typedef MappedForwardMatrix<RollingOutputIndexMapper> RollingOutputForwardMatrix;
+
 #include "forward_defs.h"
 
 #endif /* FORWARD_INCLUDED */

@@ -21,7 +21,7 @@ struct IdentityIndexMapper : IndexMapperBase {
   IdentityIndexMapper (const Envelope& e) :
     IndexMapperBase (e)
   { }
-  void alloc() {
+  void preAlloc() {
     offsets = env.offsets();
   }
   inline CellIndex nSuperCells() const {
@@ -29,6 +29,21 @@ struct IdentityIndexMapper : IndexMapperBase {
   }
   inline CellIndex superCellIndex (InputIndex inPos, OutputIndex outPos) const {
     return offsets[outPos] + inPos - env.inStart[outPos];
+  }
+};
+
+struct RollingOutputIndexMapper : IndexMapperBase {
+  const InputIndex inSuperCells;
+  RollingOutputIndexMapper (const Envelope& e) :
+    IndexMapperBase (e),
+    inSuperCells (e.inLen + 1)
+  { }
+  void preAlloc() { }
+  inline CellIndex nSuperCells() const {
+    return 2 * inSuperCells;
+  }
+  inline CellIndex superCellIndex (InputIndex inPos, OutputIndex outPos) const {
+    return (outPos % 2) * inSuperCells + inPos;
   }
 };
 
