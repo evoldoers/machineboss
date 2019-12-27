@@ -32,6 +32,7 @@ GSL_SUBDIRS = vector matrix utils linalg blas cblas block err multimin permutati
 GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o))
 GSL_DEPS = $(GSL_LIB)
 else
+GSL_LIB =
 GSL_DEPS =
 GSL_OBJ_FILES =
 # Try to figure out where GSL is
