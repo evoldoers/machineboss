@@ -1770,7 +1770,7 @@ Machine Machine::downsample (double maxProportionOfTransitionsToKeep, double min
   const BackwardMatrix back (eval, emptySeqPair);
 
   size_t nTrans = 0;
-  DPMatrix::TraceTerminator stopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
+  DPMatrix<IdentityIndexMapper>::TraceTerminator stopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     if (transAllowed[s][ti])
       return true;
     LogThisAt(8,"Adding transition #" << ti << " from state #" << s << endl);
@@ -1820,7 +1820,7 @@ Machine Machine::stochasticDownsample (mt19937& rng, double maxProportionOfTrans
 
   size_t nTrans = 0;
   MachinePath mp;
-  DPMatrix::TraceTerminator neverStopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
+  DPMatrix<IdentityIndexMapper>::TraceTerminator neverStopTrace = [&] (Envelope::InputIndex inPos, Envelope::OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     if (!transAllowed[s][ti]) {
       LogThisAt(8,"Adding transition #" << ti << " from state #" << s << endl);
       transAllowed[s][ti] = true;

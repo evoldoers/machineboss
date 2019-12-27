@@ -5,7 +5,7 @@
 #include "forward.h"
 #include "counts.h"
 
-class BackwardMatrix : public DPMatrix {
+class BackwardMatrix : public DPMatrix<IdentityIndexMapper> {
 public:
   typedef function<void(StateIndex,EvaluatedMachineState::TransIndex,InputIndex,OutputIndex,double)> BackTransVisitor;
   static BackTransVisitor transitionCounter (MachineCounts& counts) {

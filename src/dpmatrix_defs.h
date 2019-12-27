@@ -3,7 +3,8 @@
 #include "dpmatrix.h"
 #include "logger.h"
 
-DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
+template<class IndexMapper>
+DPMatrix<IndexMapper>::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   machine (machine),
   seqPair (seqPair),
   input (machine.inputTokenizer.tokenize (seqPair.input.seq)),
@@ -16,7 +17,8 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   alloc();
 }
 
-DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& envelope) :
+template<class IndexMapper>
+DPMatrix<IndexMapper>::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& envelope) :
   machine (machine),
   seqPair (seqPair),
   input (machine.inputTokenizer.tokenize (seqPair.input.seq)),
@@ -29,7 +31,8 @@ DPMatrix::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, con
   alloc();
 }
 
-void DPMatrix::alloc() {
+template<class IndexMapper>
+void DPMatrix<IndexMapper>::alloc() {
   Assert (env.fits(seqPair), "Envelope/sequence mismatch:\n%s\n%s\n", JsonWriter<Envelope>::toJsonString(env).c_str(), JsonWriter<SeqPair>::toJsonString(seqPair).c_str());
   Assert (env.connected(), "Envelope is not connected:\n%s\n", JsonWriter<Envelope>::toJsonString(env).c_str());
   offsets = env.offsets();  // initializes nCells()
@@ -38,7 +41,8 @@ void DPMatrix::alloc() {
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());
 }
 
-void DPMatrix::writeJson (ostream& outs) const {
+template<class IndexMapper>
+void DPMatrix<IndexMapper>::writeJson (ostream& outs) const {
   outs << "{" << endl
        << " \"input\": \"" << seqPair.input.name << "\"," << endl
        << " \"output\": \"" << seqPair.output.name << "\"," << endl
@@ -53,20 +57,24 @@ void DPMatrix::writeJson (ostream& outs) const {
        << "}" << endl;
 }
 
-ostream& operator<< (ostream& out, const DPMatrix& m) {
+template<class IndexMapper>
+ostream& operator<< (ostream& out, const DPMatrix<IndexMapper>& m) {
   m.writeJson (out);
   return out;
 }
 
-MachinePath DPMatrix::traceBack (const Machine& m, TransSelector selectTrans) const {
+template<class IndexMapper>
+MachinePath DPMatrix<IndexMapper>::traceBack (const Machine& m, TransSelector selectTrans) const {
   return traceBack (m, inLen, outLen, nStates - 1, selectTrans);
 }
 
-MachinePath DPMatrix::traceBack (const Machine& m, StateIndex s, TransSelector selectTrans) const {
+template<class IndexMapper>
+MachinePath DPMatrix<IndexMapper>::traceBack (const Machine& m, StateIndex s, TransSelector selectTrans) const {
   return traceBack (m, inLen, outLen, s, selectTrans);
 }
 
-MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector selectTrans) const {
+template<class IndexMapper>
+MachinePath DPMatrix<IndexMapper>::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector selectTrans) const {
   MachinePath path;
   TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     path.trans.push_front (m.state[s].getTransition (ti));
@@ -76,7 +84,8 @@ MachinePath DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex
   return path;
 }
 
-void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector selectTrans) const {
+template<class IndexMapper>
+void DPMatrix<IndexMapper>::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector selectTrans) const {
   Assert (cell(inPos,outPos,s) > -numeric_limits<double>::infinity(), "Can't do traceback: no finite-weight paths");
   while (inPos > 0 || outPos > 0 || s != 0) {
     const EvaluatedMachineState& state = machine.state[s];
@@ -105,11 +114,13 @@ void DPMatrix::traceBack (const Machine& m, InputIndex inPos, OutputIndex outPos
   }
 }
 
-MachinePath DPMatrix::traceForward (const Machine& m, TransSelector selectTrans) const {
+template<class IndexMapper>
+MachinePath DPMatrix<IndexMapper>::traceForward (const Machine& m, TransSelector selectTrans) const {
   return traceBack (m, 0, 0, 0, selectTrans);
 }
 
-MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector selectTrans) const {
+template<class IndexMapper>
+MachinePath DPMatrix<IndexMapper>::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector selectTrans) const {
   MachinePath path;
   TraceTerminator stopTrace = [&] (InputIndex inPos, OutputIndex outPos, StateIndex s, EvaluatedMachineState::TransIndex ti) {
     path.trans.push_back (m.state[s].getTransition (ti));
@@ -119,7 +130,8 @@ MachinePath DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIn
   return path;
 }
 
-void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector selectTrans) const {
+template<class IndexMapper>
+void DPMatrix<IndexMapper>::traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector selectTrans) const {
   Assert (cell(inPos,outPos,s) > -numeric_limits<double>::infinity(), "Can't do traceforward: no finite-weight paths");
   while (inPos < inLen || outPos < outLen || s != nStates - 1) {
     const EvaluatedMachineState& state = machine.state[s];
@@ -151,7 +163,8 @@ void DPMatrix::traceForward (const Machine& m, InputIndex inPos, OutputIndex out
   }
 }
 
-DPMatrix::TransVisitor DPMatrix::addTransToTraceOptions (vguard<StateIndex>& state, vguard<EvaluatedMachineState::TransIndex>& transIndex, vguard<double>& loglike) {
+template<class IndexMapper>
+typename DPMatrix<IndexMapper>::TransVisitor DPMatrix<IndexMapper>::addTransToTraceOptions (vguard<StateIndex>& state, vguard<EvaluatedMachineState::TransIndex>& transIndex, vguard<double>& loglike) {
   TransVisitor visit = [&] (StateIndex s, EvaluatedMachineState::TransIndex ti, double tll) {
     state.push_back (s);
     transIndex.push_back (ti);
@@ -160,11 +173,13 @@ DPMatrix::TransVisitor DPMatrix::addTransToTraceOptions (vguard<StateIndex>& sta
   return visit;
 }
 
-size_t DPMatrix::selectMaxTrans (const vguard<double>& logWeights) {
+template<class IndexMapper>
+size_t DPMatrix<IndexMapper>::selectMaxTrans (const vguard<double>& logWeights) {
   return distance (logWeights.begin(), max_element (logWeights.begin(), logWeights.end()));
 }
 
-DPMatrix::TransSelector DPMatrix::randomTransSelector (mt19937& rng) {
+template<class IndexMapper>
+typename DPMatrix<IndexMapper>::TransSelector DPMatrix<IndexMapper>::randomTransSelector (mt19937& rng) {
   TransSelector selector = [&] (const vguard<double>& logWeights) -> size_t {
     vguard<double> weights;
     weights.reserve (logWeights.size());

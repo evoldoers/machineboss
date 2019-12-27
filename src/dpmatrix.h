@@ -6,10 +6,31 @@
 #include "seqpair.h"
 #include "logsumexp.h"
 
-class DPMatrix {
+struct IndexMapperBase {
+  typedef typename Envelope::InputIndex InputIndex;
+  typedef typename Envelope::OutputIndex OutputIndex;
+};
+
+struct IdentityIndexMapper : IndexMapperBase {
+  static inline InputIndex mappedInput (InputIndex i) { return i; }
+  static inline OutputIndex mappedOutput (OutputIndex j) { return j; }
+};
+
+struct RollingInputIndexMapper : IndexMapperBase {
+  static inline InputIndex mappedInput (InputIndex i) { return i % 2; }
+  static inline OutputIndex mappedOutput (OutputIndex j) { return j; }
+};
+
+struct RollingOutputIndexMapper : IndexMapperBase {
+  static inline InputIndex mappedInput (InputIndex i) { return i; }
+  static inline OutputIndex mappedOutput (OutputIndex j) { return j % 2; }
+};
+
+template<class IndexMapper>
+class DPMatrix : protected IndexMapper {
 public:
-  typedef Envelope::InputIndex InputIndex;
-  typedef Envelope::OutputIndex OutputIndex;
+  typedef typename IndexMapper::InputIndex InputIndex;
+  typedef typename IndexMapper::OutputIndex OutputIndex;
 
   typedef function<double(double,double)> Reducer;
   typedef function<bool(InputIndex,OutputIndex,StateIndex,EvaluatedMachineState::TransIndex)> TraceTerminator;
@@ -32,7 +53,8 @@ private:
     if (!env.contains (inPos, outPos))
       throw runtime_error ("Envelope out-of-bounds access error");
 #endif
-    return (offsets[outPos] + inPos - env.inStart[outPos]) * nStates + state;
+    const OutputIndex mappedOutPos = IndexMapper::mappedOutput(outPos);
+    return (offsets[mappedOutPos] + IndexMapper::mappedInput(inPos) - env.inStart[mappedOutPos]) * nStates + state;
   }
 
   void alloc();
@@ -75,7 +97,6 @@ public:
   DPMatrix (const EvaluatedMachine&, const SeqPair&, const Envelope&);
 
   void writeJson (ostream& out) const;
-  friend ostream& operator<< (ostream&, const DPMatrix&);
   
   inline double& cell (InputIndex inPos, OutputIndex outPos, StateIndex state) {
     return cellStorage[cellIndex(inPos,outPos,state)];
@@ -101,5 +122,7 @@ public:
   MachinePath traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TransSelector ts = DPMatrix::selectMaxTrans) const;
   void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector ts = DPMatrix::selectMaxTrans) const;
 };
+
+#include "dpmatrix_defs.h"
 
 #endif /* DPMATRIX_INCLUDED */

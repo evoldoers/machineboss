@@ -3,7 +3,7 @@
 
 #include "dpmatrix.h"
 
-class ForwardMatrix : public DPMatrix {
+class ForwardMatrix : public DPMatrix<IdentityIndexMapper> {
 private:
   void fill (StateIndex startState);
 public:

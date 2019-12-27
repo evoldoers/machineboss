@@ -3,7 +3,7 @@
 
 #include "dpmatrix.h"
 
-class ViterbiMatrix : public DPMatrix {
+class ViterbiMatrix : public DPMatrix<IdentityIndexMapper> {
 private:
   void fill();
   
