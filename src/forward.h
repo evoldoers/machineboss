@@ -25,6 +25,6 @@ public:
 
 typedef MappedForwardMatrix<RollingOutputIndexMapper> RollingOutputForwardMatrix;
 
-#include "forward_defs.h"
+#include "forward.defs.h"
 
 #endif /* FORWARD_INCLUDED */

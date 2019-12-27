@@ -141,6 +141,6 @@ public:
   void traceForward (const Machine& m, InputIndex inPos, OutputIndex outPos, StateIndex s, TraceTerminator stopTrace, TransSelector ts = DPMatrix::selectMaxTrans) const;
 };
 
-#include "dpmatrix_defs.h"
+#include "dpmatrix.defs.h"
 
 #endif /* DPMATRIX_INCLUDED */
