@@ -1,6 +1,5 @@
 #include <iomanip>
 #include <algorithm>
-#include "dpmatrix.h"
 #include "logger.h"
 
 template<class IndexMapper>
