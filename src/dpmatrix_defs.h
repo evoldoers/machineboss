@@ -4,37 +4,37 @@
 
 template<class IndexMapper>
 DPMatrix<IndexMapper>::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
+  IndexMapper (seqPair),
   machine (machine),
   seqPair (seqPair),
   input (machine.inputTokenizer.tokenize (seqPair.input.seq)),
   output (machine.outputTokenizer.tokenize (seqPair.output.seq)),
   inLen (input.size()),
   outLen (output.size()),
-  nStates (machine.nStates()),
-  env (seqPair)
+  nStates (machine.nStates())
 {
   alloc();
 }
 
 template<class IndexMapper>
 DPMatrix<IndexMapper>::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair, const Envelope& envelope) :
+  IndexMapper (seqPair),
   machine (machine),
   seqPair (seqPair),
   input (machine.inputTokenizer.tokenize (seqPair.input.seq)),
   output (machine.outputTokenizer.tokenize (seqPair.output.seq)),
   inLen (input.size()),
   outLen (output.size()),
-  nStates (machine.nStates()),
-  env (envelope)
+  nStates (machine.nStates())
 {
   alloc();
 }
 
 template<class IndexMapper>
 void DPMatrix<IndexMapper>::alloc() {
-  Assert (env.fits(seqPair), "Envelope/sequence mismatch:\n%s\n%s\n", JsonWriter<Envelope>::toJsonString(env).c_str(), JsonWriter<SeqPair>::toJsonString(seqPair).c_str());
-  Assert (env.connected(), "Envelope is not connected:\n%s\n", JsonWriter<Envelope>::toJsonString(env).c_str());
-  offsets = env.offsets();  // initializes nCells()
+  Assert (IndexMapper::env.fits(seqPair), "Envelope/sequence mismatch:\n%s\n%s\n", JsonWriter<Envelope>::toJsonString(IndexMapper::env).c_str(), JsonWriter<SeqPair>::toJsonString(seqPair).c_str());
+  Assert (IndexMapper::env.connected(), "Envelope is not connected:\n%s\n", JsonWriter<Envelope>::toJsonString(IndexMapper::env).c_str());
+  IndexMapper::alloc();  // initializes nCells()
   LogThisAt(7,"Creating matrix with " << nCells() << " cells (<=" << (inLen+1) << "*" << (outLen+1) << "*" << nStates << ")" << endl);
   LogThisAt(8,"Machine:" << endl << machine.toJsonString() << endl);
   cellStorage.resize (nCells(), -numeric_limits<double>::infinity());

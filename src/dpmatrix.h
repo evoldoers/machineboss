@@ -9,21 +9,27 @@
 struct IndexMapperBase {
   typedef typename Envelope::InputIndex InputIndex;
   typedef typename Envelope::OutputIndex OutputIndex;
+  typedef typename Envelope::Offset CellIndex;
+  const Envelope env;
+  IndexMapperBase (const Envelope& e) :
+    env (e)
+  { }
 };
 
 struct IdentityIndexMapper : IndexMapperBase {
-  static inline InputIndex mappedInput (InputIndex i) { return i; }
-  static inline OutputIndex mappedOutput (OutputIndex j) { return j; }
-};
-
-struct RollingInputIndexMapper : IndexMapperBase {
-  static inline InputIndex mappedInput (InputIndex i) { return i % 2; }
-  static inline OutputIndex mappedOutput (OutputIndex j) { return j; }
-};
-
-struct RollingOutputIndexMapper : IndexMapperBase {
-  static inline InputIndex mappedInput (InputIndex i) { return i; }
-  static inline OutputIndex mappedOutput (OutputIndex j) { return j % 2; }
+  vguard<CellIndex> offsets;
+  IdentityIndexMapper (const Envelope& e) :
+    IndexMapperBase (e)
+  { }
+  void alloc() {
+    offsets = env.offsets();
+  }
+  inline CellIndex nSuperCells() const {
+    return offsets.back();
+  }
+  inline CellIndex superCellIndex (InputIndex inPos, OutputIndex outPos) const {
+    return offsets[outPos] + inPos - env.inStart[outPos];
+  }
 };
 
 template<class IndexMapper>
@@ -38,11 +44,10 @@ public:
   typedef function<size_t(const vguard<double>&)> TransSelector;
 
 protected:
-  typedef Envelope::Offset CellIndex;
-  vguard<CellIndex> offsets;
+  typedef typename IndexMapper::CellIndex CellIndex;
   
   inline CellIndex nCells() const {
-    return nStates * offsets.back();
+    return nStates * IndexMapper::nSuperCells();
   }
 
 private:
@@ -50,11 +55,10 @@ private:
 
   inline CellIndex cellIndex (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
 #ifdef USE_VECTOR_GUARDS
-    if (!env.contains (inPos, outPos))
+    if (!IndexMapper::env.contains (inPos, outPos))
       throw runtime_error ("Envelope out-of-bounds access error");
 #endif
-    const OutputIndex mappedOutPos = IndexMapper::mappedOutput(outPos);
-    return (offsets[mappedOutPos] + IndexMapper::mappedInput(inPos) - env.inStart[mappedOutPos]) * nStates + state;
+    return IndexMapper::superCellIndex (inPos, outPos) * nStates + state;
   }
 
   void alloc();
@@ -91,7 +95,6 @@ public:
   const InputIndex inLen;
   const OutputIndex outLen;
   const StateIndex nStates;
-  const Envelope env;
 
   DPMatrix (const EvaluatedMachine&, const SeqPair&);
   DPMatrix (const EvaluatedMachine&, const SeqPair&, const Envelope&);
@@ -103,7 +106,7 @@ public:
   }
 
   inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
-    return env.contains(inPos,outPos) ? cellStorage[cellIndex(inPos,outPos,state)] : -numeric_limits<double>::infinity();
+    return IndexMapper::env.contains(inPos,outPos) ? cellStorage[cellIndex(inPos,outPos,state)] : -numeric_limits<double>::infinity();
   }
 
   double startCell() const { return cell (0, 0, machine.startState()); }
