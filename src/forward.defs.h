@@ -25,14 +25,14 @@ template<class IndexMapper>
 void MappedForwardMatrix<IndexMapper>::fill (StateIndex startState) {
   typedef DPMatrix<IndexMapper> DPM;
   ProgressLog(plogDP,6);
-  plogDP.initProgress ("Filling Forward matrix (%lu cells)", DPM::nCells());
+  plogDP.initProgress ("Filling Forward matrix (%lu cells)", DPM::nCellsComputed());
   typename DPM::CellIndex nCellsDone = 0;
   for (typename DPM::OutputIndex outPos = 0; outPos <= DPM::outLen; ++outPos) {
     const OutputToken outTok = outPos ? DPM::output[outPos-1] : OutputTokenizer::emptyToken();
     for (typename DPM::InputIndex inPos = DPM::env.inStart[outPos]; inPos < DPM::env.inEnd[outPos]; ++inPos) {
       const InputToken inTok = inPos ? DPM::input[inPos-1] : InputTokenizer::emptyToken();
       for (StateIndex d = 0; d < DPM::nStates; ++d) {
-	plogDP.logProgress (nCellsDone / (double) DPM::nCells(), "filled %lu cells", nCellsDone);
+	plogDP.logProgress (nCellsDone / (double) DPM::nCellsComputed(), "filled %lu cells", nCellsDone);
 	++nCellsDone;
 	const EvaluatedMachineState& state = DPM::machine.state[d];
 	double ll = (inPos || outPos || d != startState) ? -numeric_limits<double>::infinity() : 0;

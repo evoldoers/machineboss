@@ -11,21 +11,24 @@ struct IndexMapperBase {
   typedef typename Envelope::OutputIndex OutputIndex;
   typedef typename Envelope::Offset CellIndex;
   const Envelope env;
+  vguard<CellIndex> offsets;
   IndexMapperBase (const Envelope& e) :
     env (e)
-  { }
-};
-
-struct IdentityIndexMapper : IndexMapperBase {
-  vguard<CellIndex> offsets;
-  IdentityIndexMapper (const Envelope& e) :
-    IndexMapperBase (e)
   { }
   void preAlloc() {
     offsets = env.offsets();
   }
-  inline CellIndex nSuperCells() const {
+  inline CellIndex nSuperCellsComputed() const {
     return offsets.back();
+  }
+};
+
+struct IdentityIndexMapper : IndexMapperBase {
+  IdentityIndexMapper (const Envelope& e) :
+    IndexMapperBase (e)
+  { }
+  inline CellIndex nSuperCells() const {
+    return nSuperCellsComputed();
   }
   inline CellIndex superCellIndex (InputIndex inPos, OutputIndex outPos) const {
     return offsets[outPos] + inPos - env.inStart[outPos];
@@ -38,7 +41,6 @@ struct RollingOutputIndexMapper : IndexMapperBase {
     IndexMapperBase (e),
     inSuperCells (e.inLen + 1)
   { }
-  void preAlloc() { }
   inline CellIndex nSuperCells() const {
     return 2 * inSuperCells;
   }
@@ -63,6 +65,10 @@ protected:
   
   inline CellIndex nCells() const {
     return nStates * IndexMapper::nSuperCells();
+  }
+
+  inline CellIndex nCellsComputed() const {
+    return nStates * IndexMapper::nSuperCellsComputed();
   }
 
 private:

@@ -15,14 +15,14 @@ ViterbiMatrix::ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& se
 
 void ViterbiMatrix::fill() {
   ProgressLog(plogDP,6);
-  plogDP.initProgress ("Filling Viterbi matrix (%lu cells)", nCells());
+  plogDP.initProgress ("Filling Viterbi matrix (%lu cells)", nCellsComputed());
   CellIndex nCellsDone = 0;
   for (OutputIndex outPos = 0; outPos <= outLen; ++outPos) {
     const OutputToken outTok = outPos ? output[outPos-1] : OutputTokenizer::emptyToken();
     for (InputIndex inPos = env.inStart[outPos]; inPos < env.inEnd[outPos]; ++inPos, ++nCellsDone) {
       const InputToken inTok = inPos ? input[inPos-1] : InputTokenizer::emptyToken();
       for (StateIndex d = 0; d < nStates; ++d) {
-	plogDP.logProgress (nCellsDone / (double) nCells(), "filled %lu cells", nCellsDone);
+	plogDP.logProgress (nCellsDone / (double) nCellsComputed(), "filled %lu cells", nCellsDone);
 	++nCellsDone;
 	const EvaluatedMachineState& state = machine.state[d];
 	double ll = (inPos || outPos || d) ? -numeric_limits<double>::infinity() : 0;
