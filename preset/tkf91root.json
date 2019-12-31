@@ -1,0 +1,16 @@
+{"state":
+ [{"id":"emit",
+   "trans":[{"to":"emit","out":"A","weight":{"/":["pExtend",4]}},
+            {"to":"emit","out":"C","weight":{"/":["pExtend",4]}},
+            {"to":"emit","out":"G","weight":{"/":["pExtend",4]}},
+            {"to":"emit","out":"T","weight":{"/":["pExtend",4]}},
+            {"to":"stop","weight":"pNoExtend"}]},
+  {"id":"stop"}],
+ "defs": {
+   "pExtend":{"/":["insRate","delRate"]},
+   "pNoExtend":{"not":"pExtend"}
+ },
+ "cons": {
+   "rate":["insRate","delRate"]
+ }
+}

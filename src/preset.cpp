@@ -30,6 +30,9 @@ struct PresetCache {
 #include "preset/jukescantor.h"
 #include "preset/dnapswnbr.h"
 
+#include "preset/tkf91root.h"
+#include "preset/tkf91branch.h"
+
 PresetCache::PresetCache() {
   addPreset(null);
 
@@ -51,6 +54,9 @@ PresetCache::PresetCache() {
 
   addPreset(jukescantor);
   addPreset(dnapswnbr);
+
+  addPreset(tkf91root);
+  addPreset(tkf91branch);
 }
 
 PresetCache presetCache;  // singleton
