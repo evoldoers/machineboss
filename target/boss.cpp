@@ -147,6 +147,7 @@ int main (int argc, char** argv) {
     appOpts.add_options()
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
+      ("stats", "show model statistics (#states, #transitions, #params)")
       ("evaluate", "evaluate all transition weights in final machine")
       ("define-exprs", "define and re-use repeated (sub)expressions, for compactness")
       ("show-params", "show unbound parameters in final machine")
@@ -639,6 +640,13 @@ int main (int argc, char** argv) {
       constraints.clear();
     }
     
+    // output transducer statistics, if requested
+    const bool statsRequested = vm.count("stats");
+    if (statsRequested)
+      cout << machine.nStates() << " states, "
+	   << machine.nTransitions() << " transitions, "
+	   << machine.params().size() << " parameters" << endl;
+
     // output transducer
     function<void(ostream&)> showMachine = [&](ostream& out) {
       if (vm.count("graphviz"))
@@ -650,7 +658,7 @@ int main (int argc, char** argv) {
       const string savefile = vm.at("save").as<string>();
       ofstream out (savefile);
       showMachine (out);
-    } else if (!inferenceRequested && !vm.count("codegen"))
+    } else if (!inferenceRequested && !statsRequested && !vm.count("codegen"))
       showMachine (cout);
 
     // code generation
