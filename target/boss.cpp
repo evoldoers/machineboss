@@ -796,7 +796,7 @@ int main (int argc, char** argv) {
     }
 
     // encode
-    const long maxBacktrack = vm.count("backtrack") ? vm.at("backtrack").as<long>() : numeric_limits<long>::max();
+    const long maxBacktrack = vm.count("prefix-backtrack") ? vm.at("prefix-backtrack").as<long>() : numeric_limits<long>::max();
     if (vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
       const Machine trans = machine.transpose().advanceSort().advancingMachine();
