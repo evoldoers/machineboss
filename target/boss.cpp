@@ -644,8 +644,10 @@ int main (int argc, char** argv) {
     const bool statsRequested = vm.count("stats");
     if (statsRequested)
       cout << machine.nStates() << " states, "
-	   << machine.nTransitions() << " transitions, "
-	   << machine.params().size() << " parameters" << endl;
+	   << machine.nTransitions() << " transitions ("
+	   << machine.nConditionedTransitions() << " IO-conditioned), "
+	   << machine.params().size() << " parameters"
+	   << endl;
 
     // output transducer
     function<void(ostream&)> showMachine = [&](ostream& out) {

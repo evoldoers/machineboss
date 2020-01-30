@@ -75,6 +75,7 @@ struct Machine {
 
   StateIndex nStates() const;
   size_t nTransitions() const;
+  size_t nConditionedTransitions() const;  // number of transitions conditional on given input-output labels (calculated as a max over all such labels, plus null transitions)
   StateIndex startState() const;
   StateIndex endState() const;
 

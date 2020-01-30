@@ -138,6 +138,21 @@ size_t Machine::nTransitions() const {
   return n;
 }
 
+size_t Machine::nConditionedTransitions() const {
+  map<pair<InputSymbol,OutputSymbol>,size_t> count;
+  size_t nullCount = 0;
+  for (const auto& ms: state)
+    for (const auto& t: ms.trans)
+      if (t.isSilent())
+	++nullCount;
+      else
+	++count[make_pair (t.in, t.out)];
+  size_t maxCount = 0;
+  for (const auto& p_c: count)
+    maxCount = max (maxCount, p_c.second);
+  return maxCount + nullCount;
+}
+
 StateIndex Machine::startState() const {
   Assert (nStates() > 0, "Machine has no states");
   return 0;
