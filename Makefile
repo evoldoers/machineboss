@@ -423,6 +423,9 @@ IO_TESTS = test-fastseq test-seqpair test-seqpairlist test-env test-params test-
 test-fastseq: t/bin/testfastseq
 	@$(WRAPTEST) t/bin/testfastseq t/tc1/CAA25498.fa t/expect/CAA25498.fa
 
+test-empty-fastseq: t/bin/testfastseq
+	@$(WRAPTEST) t/bin/testfastseq t/io/empty.fa -idem
+
 test-seqpair: t/bin/testseqpair
 	@$(WRAPTEST) t/bin/testseqpair t/io/tiny.json -idem
 	@$(WRAPTEST) t/bin/testseqpair t/io/tinypath.json -idem
