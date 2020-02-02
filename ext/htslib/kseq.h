@@ -191,7 +191,9 @@ typedef struct __kstring_t {
 			}															\
 		}																\
 		if (c == '>' || c == '@') seq->last_char = c; /* the first header char has been read */	\
-		seq->seq.s[seq->seq.l] = 0;	/* null terminated string */		\
+		if (!seq->seq.s) /* just in case s has not been allocated yet... only happens if l==0 */ \
+		  seq->seq.s = (char*)malloc(seq->seq.l + 1);  \
+		seq->seq.s[seq->seq.l] = 0;	/* null terminated string */ \
 		if (c != '+') return seq->seq.l; /* FASTA */					\
 		if (seq->qual.m < seq->seq.m) {	/* allocate enough memory */	\
 			seq->qual.m = seq->seq.m;									\

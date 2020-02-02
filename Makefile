@@ -419,12 +419,13 @@ test-cyclic:
 	@$(TEST) $(WRAPBOSS) t/invalid/cyclic.json -fail
 
 # Non-transducer I/O tests
-IO_TESTS = test-fastseq test-seqpair test-seqpairlist test-env test-params test-constraints test-dot
+IO_TESTS = test-fastseq test-empty-fastseq test-seqpair test-seqpairlist test-env test-params test-constraints test-dot
 test-fastseq: t/bin/testfastseq
 	@$(WRAPTEST) t/bin/testfastseq t/tc1/CAA25498.fa t/expect/CAA25498.fa
 
 test-empty-fastseq: t/bin/testfastseq
-	@$(WRAPTEST) t/bin/testfastseq t/io/empty.fa -idem
+	@$(WRAPTEST) t/bin/testfastseq t/io/empty-1line.fa -idem
+	@$(WRAPTEST) t/bin/testfastseq t/io/empty.fa t/io/empty-1line.fa
 
 test-seqpair: t/bin/testseqpair
 	@$(WRAPTEST) t/bin/testseqpair t/io/tiny.json -idem
