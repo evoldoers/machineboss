@@ -7,7 +7,10 @@ struct RegexParser {
   string nonwhite, white;
   RegexParser();
   string alphabet() const;
+
   Machine parse (const string&) const;
+
+  static vguard<InputSymbol> stringToSymbols (const string&);
 };
 
 #endif /* PARSEREGEX_INCLUDED */

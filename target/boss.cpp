@@ -23,6 +23,7 @@
 #include "../src/counts.h"
 #include "../src/util.h"
 #include "../src/schema.h"
+#include "../src/parseregex.h"
 #include "../src/hmmer.h"
 #include "../src/csv.h"
 #include "../src/compiler.h"
@@ -76,6 +77,7 @@ int main (int argc, char** argv) {
       ("echo-fasta", po::value<string>(), "identity for FASTA-format sequence")
       ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
+      ("regex,X", po::value<string>(), "create text recognizer from regular expression")
       ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
 #ifndef NO_SSL
       ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
@@ -562,7 +564,10 @@ int main (int argc, char** argv) {
 	  swap (pushedMachines, machines);
 	} else if (command == "--end")
 	  throw runtime_error (string("Unmatched '") + arg + "'");
-	else if (command == "--hmmer") {
+	else if (command == "--regex") {
+	  RegexParser rp;
+	  m = rp.parse (getArg());
+	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());
 	  Require (infile, "HMMer model file not found");
