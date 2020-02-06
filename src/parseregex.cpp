@@ -38,13 +38,34 @@ Machine RegexParser::parse (const string& str) const {
   auto ok = parser.load_grammar(grammar);
   assert(ok);
 
-  const Machine dotStar = Machine::wildRecognizer (stringToSymbols (alphabet()));
+  const string w = white, nw = nonwhite, alph = alphabet();
+  const auto alphVec = stringToSymbols (alph);
+  const Machine dotStar = Machine::wildRecognizer (alphVec);
+
+  auto quantify = [] (const Machine& m, const SemanticValues& sv) {
+    auto min_max = any_cast<pair<int,int>> (sv[1]);
+    Machine qm;
+    if (min_max.first == -1)  // *
+      qm = Machine::kleeneStar (m);
+    else if (min_max.first == -2)  // +
+      qm = Machine::kleenePlus (m);
+    else {
+      qm = Machine::null();
+      for (size_t n = min_max.first; n < min_max.second; ++n)
+	qm = Machine::zeroOrOne (Machine::concatenate (m, qm));
+      for (size_t n = 0; n < min_max.first; ++n)
+	qm = Machine::concatenate (m, qm);
+    }
+    return qm;
+  };
   
   parser["REGEX"] = [&](const SemanticValues& sv) {
+    // cerr << "REGEX " << sv.str() << endl;
+    auto carets = any_cast<int> (sv[0]);
     Machine m = any_cast<Machine> (sv[1]);
-    if (!sv.token(0).length())
+    auto dollars = any_cast<int> (sv[2]);
+    if (!carets)
       m = Machine::concatenate (dotStar, m);
-    auto dollars = sv.token(2).length();
     if (dollars) {
       if (dollars > 1)
 	m = Machine::concatenate (m, Machine::recognizer (vguard<InputSymbol> (dollars - 1, InputSymbol("$"))));
@@ -53,45 +74,36 @@ Machine RegexParser::parse (const string& str) const {
     return m.eliminateRedundantStates().stripNames();
   };
 
-  parser["REGEX_BODY"] = [](const SemanticValues& sv) {
-    return sv.choice() ? Machine::null() : any_cast<Machine> (sv[0]);
-  };
-
-  parser["REGEX_BODY"] = [](const SemanticValues& sv) {
-    return sv.choice() ? Machine::null() : any_cast<Machine> (sv[0]);
-  };
-
   parser["NONEMPTY_REGEX_BODY"] = [](const SemanticValues& sv) {
+    // cerr << "NONEMPTY_REGEX_BODY " << sv.str() << endl;
     return Machine::concatenate (any_cast<Machine> (sv[0]), any_cast<Machine> (sv[1]));
   };
 
-  parser["END_ANCHOR"] = [](const SemanticValues& sv) {
+  parser["REGEX_BODY"] = [](const SemanticValues& sv) {
+    // cerr << "REGEX_BODY " << sv.str() << endl;
+    return sv.choice() ? Machine::null() : any_cast<Machine> (sv[0]);
+  };
+
+  parser["BEGIN_ANCHOR"] =
+    parser["END_ANCHOR"] = [](const SemanticValues& sv) {
+    return (int) sv.length();
+  };
+
+  parser["DOLLAR"] = [](const SemanticValues& sv) {
     return Machine::recognizer (vguard<InputSymbol> (1, InputSymbol("$")));
   };
 
   parser["QUANT_SYMBOLS"] = [](const SemanticValues& sv) {
+    // cerr << "QUANT_SYMBOLS " << sv.str() << endl;
     Machine l = any_cast<Machine> (sv[0]);
     return sv.choice() ? l : Machine::concatenate (l, any_cast<Machine> (sv[1]));
   };
 
-  parser["QUANT_SYMBOL"] = [](const SemanticValues& sv) {
+  parser["QUANT_SYMBOL"] = [&](const SemanticValues& sv) {
+    // cerr << "QUANT_SYMBOL " << sv.str() << endl;
     Machine m = any_cast<Machine> (sv[0]);
-    if (sv.choice() < 2) {
-      const string qstr = sv.token(1);
-      if (qstr[0] == '*')
-	m = Machine::kleeneStar (m);
-      else if (qstr[1] == '+')
-	m = Machine::kleenePlus (m);
-      else {
-	auto min_max = any_cast<pair<int,int>> (sv[1]);
-	Machine reps = Machine::null();
-	for (size_t n = min_max.first; n < min_max.second; ++n)
-	  reps = Machine::zeroOrOne (Machine::concatenate (m, reps));
-	for (size_t n = 0; n < min_max.first; ++n)
-	  reps = Machine::concatenate (m, reps);
-	m = reps;
-      }
-    }
+    if (sv.choice() == 0)
+      m = quantify (m, sv);
     return m;
   };
 
@@ -99,24 +111,191 @@ Machine RegexParser::parse (const string& str) const {
     return any_cast<Machine> (sv[0]);
   };
 
-  parser["LITERAL_CHAR"] = [](const SemanticValues& sv) {
-    const char c = any_cast<char> (sv[0]);
-    return Machine::recognizer (vguard<InputSymbol> (1, InputSymbol (1, c)));
+  parser["TOP_SYMBOL"] = [](const SemanticValues& sv) {
+    // cerr << "TOP_SYMBOL " << sv.str() << endl;
+    auto m = any_cast<Machine> (sv[0]);
+    return m;
   };
-  
+
+  parser["MACHINE_SYMBOL"] = [](const SemanticValues& sv) {
+    // cerr << "MACHINE_SYMBOL " << sv.str() << endl;
+    auto m = any_cast<Machine> (sv[0]);
+    return m;
+  };
+
+  parser["MACHINE_CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "MACHINE_CHAR " << sv.str() << endl;
+    const char c = any_cast<char> (sv[0]);
+    Machine m = Machine::wildSingleRecognizer (vguard<InputSymbol> (1, InputSymbol (1, c)));
+    return m;
+  };
+
   parser["QUANTIFIER"] = [](const SemanticValues& sv) {
-    if (sv.choice() == 2) {
-      const int reps = any_cast<int> (sv[1]);
-      return make_pair (reps, reps);
-    } else if (sv.choice() == 3)
-      return make_pair (any_cast<int> (sv[1]), any_cast<int> (sv[3]));
-    return make_pair ((int) 0, (int) 0);
+    // cerr << "QUANTIFIER " << sv.choice() << endl;
+    pair<int,int> result;
+    switch (sv.choice()) {
+    case 0: result = make_pair ((int) -1, (int) -1); break;
+    case 1: result = make_pair ((int) -2, (int) -2); break;
+    case 2: {
+      const int reps = any_cast<int> (sv[0]);
+      result = make_pair (reps, reps);
+      break;
+    }
+    case 3:
+      result = make_pair (any_cast<int> (sv[0]), any_cast<int> (sv[1]));
+      break;
+    default: break;
+    }
+    return result;
   };
 
   parser["INTEGER"] = [](const SemanticValues& sv) {
-    return stoi(sv.token(), nullptr, 10);
+    // cerr << "INTEGER " << sv.str() << endl;
+    return stoi(sv.str(), nullptr, 10);
   };
-  
+
+  parser["CHAR_CLASS"] =
+    parser["IMPLICIT_CHAR_CLASS"] = [](const SemanticValues& sv) {
+    // cerr << "CHAR_CLASS or IMPLICIT_CHAR_CLASS " << sv.str() << endl;
+    const string s = any_cast<string> (sv[0]);
+    return Machine::wildSingleRecognizer (RegexParser::stringToSymbols (s));
+  };
+
+  parser["NEGATED_CHAR_CLASS"] = [&](const SemanticValues& sv) {
+    // cerr << "NEGATED_CHAR_CLASS " << sv.str() << endl;
+    const auto str = RegexParser::stringToSymbols (any_cast<string> (sv[0]));
+    const set<InputSymbol> negated (str.begin(), str.end());
+    vguard<InputSymbol> nc;
+    nc.reserve (alphVec.size());
+    for (const auto& sym: alphVec)
+      if (negated.find(sym) == negated.end())
+	nc.push_back (sym);
+    return Machine::wildSingleRecognizer (nc);
+  };
+
+  parser["PRESET_CHAR_CLASS"] = [](const SemanticValues& sv) {
+    // cerr << "PRESET_CHAR_CLASS " << sv.str() << endl;
+    return any_cast<string> (sv[0]);
+  };
+
+  parser["CHARS"] = [](const SemanticValues& sv) {
+    // cerr << "CHARS " << sv.str() << endl;
+    string s = any_cast<string> (sv[0]);
+    if (sv.choice() == 0)
+      s.append (any_cast<string> (sv[1]));
+    return s;
+  };
+
+  parser["CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "CHAR " << sv.str() << endl;
+    return any_cast<string> (sv[0]);
+  };
+
+  parser["DIGIT_CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "DIGIT_CHAR " << sv.str() << endl;
+    return string ("0123456789");
+  };
+
+  parser["WHITE_CHAR"] = [&](const SemanticValues& sv) {
+    // cerr << "WHITE_CHAR " << sv.str() << endl;
+    return w;
+  };
+
+  parser["NONWHITE_CHAR"] = [&](const SemanticValues& sv) {
+    // cerr << "NONWHITE_CHAR " << sv.str() << endl;
+    return nw;
+  };
+
+  parser["WILD_CHAR"] = [&](const SemanticValues& sv) {
+    return alph;
+  };
+
+  parser["CHAR_RANGE"] = [](const SemanticValues& sv) {
+    // cerr << "CHAR_RANGE " << sv.str() << endl;
+    const string b = any_cast<string> (sv[0]), e = any_cast<string> (sv[1]);
+    const char bc = b.at(0), ec = e.at(0);
+    if (ec < bc)
+      throw peg::parse_error("illegal range in character class");
+    string s;
+    s.reserve (ec + 1 - bc);
+    for (char c = bc; c <= ec; ++c)
+      s.push_back (c);
+    return s;
+  };
+
+  parser["CHAR_INSIDE_CLASS"] = [](const SemanticValues& sv) {
+    // cerr << "CHAR_INSIDE_CLASS " << sv.str() << endl;
+    const char c = any_cast<char> (sv[0]);
+    return string (1, c);
+  };
+
+  parser["ESCAPED_OR_SINGLE_CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "ESCAPED_OR_SINGLE_CHAR " << sv.str() << endl;
+    return any_cast<char> (sv[0]);
+  };
+
+  parser["ESCAPED_CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "ESCAPED_CHAR " << sv.str() << endl;
+    return any_cast<char> (sv[0]);
+  };
+
+  parser["SINGLE_CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "SINGLE_CHAR " << sv.str() << endl;
+    return (char) sv.str()[0];
+  };
+
+  parser["ESCAPE_CHAR"] = [](const SemanticValues& sv) {
+    // cerr << "ESCAPE_CHAR " << sv.str() << endl;
+    const char c = sv.str()[0];
+    switch (c) {
+    case 'n': return '\n';
+    case 'r': return '\r';
+    case 't': return '\t';
+    default: break;
+    }
+    return c;
+  };
+
+  parser["OCTAL"] = [](const SemanticValues& sv) {
+    // cerr << "OCTAL " << sv.str() << endl;
+    return (char) stoi (sv.str(), nullptr, 8);
+  };
+
+  parser["HEX"] = [](const SemanticValues& sv) {
+    // cerr << "HEX " << sv.str() << endl;
+    return (char) stoi (sv.str(), nullptr, 16);
+  };
+
+  parser["ALTERNATION"] = [](const SemanticValues& sv) {
+    // cerr << "ALTERNATION " << sv.str() << endl;
+    return any_cast<Machine> (sv[0]);
+  };
+
+  parser["ALT_OPTIONS"] = [](const SemanticValues& sv) {
+    // cerr << "ALT_OPTIONS " << sv.str() << endl;
+    auto m = any_cast<Machine> (sv[0]);
+    return sv.choice() == 0 ? Machine::takeUnion (m, any_cast<Machine> (sv[1])) : m;
+  };
+
+  parser["ALT_SYMBOLS"] = [](const SemanticValues& sv) {
+    // cerr << "ALT_SYMBOLS " << sv.str() << endl;
+    return sv.choice() ? Machine::null() : Machine::concatenate (any_cast<Machine> (sv[0]),
+								 any_cast<Machine> (sv[1]));
+  };
+
+  parser["ALT_SYMBOL"] = [](const SemanticValues& sv) {
+    // cerr << "ALT_SYMBOL " << sv.str() << endl;
+    return any_cast<Machine> (sv[0]);
+  };
+
+  parser["QUANT_ALT_SYMBOL"] = [&](const SemanticValues& sv) {
+    // cerr << "QUANT_ALT_SYMBOL " << sv.str() << endl;
+    auto m = any_cast<Machine> (sv[0]);
+    if (sv.choice() == 0)
+      m = quantify (m, sv);
+    return m;
+  };
+
   Machine m;
   parser.parse (str.c_str(), m);
   return m;

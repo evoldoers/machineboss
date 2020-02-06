@@ -229,9 +229,9 @@ int main (int argc, char** argv) {
 
     const regex presetAlphRegex ("^--(generate|recognize|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
     map<string,string> presetAlph;
-    presetAlph[string("dna")] = "ACGT";
-    presetAlph[string("rna")] = "ACGU";
-    presetAlph[string("aa")] = "ACDEFGHIKLMNPQRSTVWY";
+    const string dnaAlphabet = presetAlph[string("dna")] = "ACGT";
+    const string rnaAlphabet = presetAlph[string("rna")] = "ACGU";
+    const string aaAlphabet = presetAlph[string("aa")] = "ACDEFGHIKLMNPQRSTVWY";
 
     po::variables_map vm;
     po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).allow_unregistered().run();
@@ -566,6 +566,21 @@ int main (int argc, char** argv) {
 	  throw runtime_error (string("Unmatched '") + arg + "'");
 	else if (command == "--regex") {
 	  RegexParser rp;
+	  m = rp.parse (getArg());
+	} else if (command == "--dna-regex") {
+	  RegexParser rp;
+	  rp.white = "";
+	  rp.nonwhite = dnaAlphabet;
+	  m = rp.parse (getArg());
+	} else if (command == "--rna-regex") {
+	  RegexParser rp;
+	  rp.white = "";
+	  rp.nonwhite = rnaAlphabet;
+	  m = rp.parse (getArg());
+	} else if (command == "--protein-regex") {
+	  RegexParser rp;
+	  rp.white = "";
+	  rp.nonwhite = aaAlphabet;
 	  m = rp.parse (getArg());
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;

@@ -60,12 +60,24 @@ boss --generate-chars N \
  --concat --generate-one ACDEFGHIKLMNQRSTVWY \
  --concat --generate-one ST \
  --concat --generate-one ACDEFGHIKLMNQRSTVWY \
- --eliminate >PS00001.json
+ --eliminate >PS00001_generator.json
 ~~~~
+
+You can also do this more compactly with the `--protein-regex` option,
+which parses regular expression syntax
+(also available are `--dna-regex` for DNA, `--rna-regex` for RNA, or `--regex` for general text)
+
+~~~~
+bin/boss --protein-regex '^N[^P][ST][^P]$' >PS00001_recognizer.json
+~~~~
+
+Note that the `--protein-regex` option (and the other regex options)
+build recognizers rather than generators, by convention.
+You can convert the former to the latter (or vice versa) using `--transpose`.
 
 ### Search the N-glycosylation regex against the MinION read
 
-This command takes the `PS00001.json` regex from the previous example,
+This command takes the `PS00001_generator.json` regex from the previous example,
 runs it through a reverse-translation machine (`--preset translate`),
 adds a self-loop with a dummy parameter (`--count-copies n`),
 flanks it with a null model (`--generate-uniform-dna`),
@@ -76,7 +88,7 @@ boss --counts -v6 \
  --generate-uniform-dna \
  --concat \
   --begin \
-   PS00001.json --preset translate --double-strand \
+   PS00001_generator.json --preset translate --double-strand \
    --concat --generate-uniform-dna \
    --count-copies n \
   --end \
@@ -348,7 +360,7 @@ Transducer construction:
   -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
                                 protpsw, translate, prot2dna, psw2dna, dna2rna,
                                 rna2dna, bintern, terndna, jukescantor, 
-                                dnapswnbr)
+                                dnapswnbr, tkf91root, tkf91branch)
   -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
@@ -382,6 +394,7 @@ Transducer construction:
   --echo-fasta arg              identity for FASTA-format sequence
   --echo-json arg               identity for JSON-format sequence
   -w [ --weight ] arg           weighted null transition '#'
+  -X [ --regex ] arg            create text recognizer from regular expression
   -H [ --hmmer ] arg            create generator from HMMER3 model file
   --pfam arg                    create generator from PFAM ID (e.g. Piwi)
   --dfam arg                    create generator from DFAM ID (e.g. DF0004136)
@@ -477,6 +490,8 @@ Miscellaneous:
 Transducer application:
   -S [ --save ] arg             save machine to file
   -G [ --graphviz ]             write machine in Graphviz DOT format
+  --stats                       show model statistics (#states, #transitions, 
+                                #params)
   --evaluate                    evaluate all transition weights in final 
                                 machine
   --define-exprs                define and re-use repeated (sub)expressions, 
