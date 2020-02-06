@@ -2,9 +2,11 @@
 
 Many C++ HMM libraries for bioinformatics
 focus on inference tasks, such as likelihood calculation, parameter-fitting, and alignment.
-Machine Boss can do these things too, but it also introduces a set of operations for **manipulation** of the state machines themselves. The aim is to make it as easy to quick and easy to prototype automata-based tests in bioinformatics as it is to prototype regular expressions. (Often, this means building up the state machine using Unix one-liners.)
+Machine Boss can do these things too, but it also introduces a set of operations for **manipulation** of the state machines themselves. The aim is to make it as easy to quick and easy to prototype automata-based experiments in bioinformatics as it is to prototype regular expressions.
+In fact, Machine Boss supports regular expression syntax---along with many other file formats and patterns.
 
-Manipulations can include concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
+Machine Boss allows you to manipulate state machines
+by concatenating, composing, intersecting, reverse complementing, Kleene-starring, and other such [operations](https://en.wikipedia.org/wiki/Finite-state_transducer).
 Brief descriptions of these operations are included below.
 Any state machine resulting from such operations can be run through the usual inference algorithms too (Forward, Backward, Viterbi, EM, beam search, prefix search, and so on).
 
@@ -60,7 +62,7 @@ boss --generate-chars N \
  --concat --generate-one ACDEFGHIKLMNQRSTVWY \
  --concat --generate-one ST \
  --concat --generate-one ACDEFGHIKLMNQRSTVWY \
- --eliminate >PS00001_generator.json
+ --eliminate >PS00001.json
 ~~~~
 
 You can also do this more compactly with the `--protein-regex` option,
@@ -68,16 +70,16 @@ which parses regular expression syntax
 (also available are `--dna-regex` for DNA, `--rna-regex` for RNA, or `--regex` for general text)
 
 ~~~~
-bin/boss --protein-regex '^N[^P][ST][^P]$' >PS00001_recognizer.json
+bin/boss --protein-regex '^N[^P][ST][^P]$' --make-generator >PS00001.json
 ~~~~
 
 Note that the `--protein-regex` option (and the other regex options)
-build recognizers rather than generators, by convention.
-You can convert the former to the latter (or vice versa) using `--transpose`.
+construct identity machines rather than generators, by convention.
+You can convert an identity machine to a generator using `--make-generator`.
 
 ### Search the N-glycosylation regex against the MinION read
 
-This command takes the `PS00001_generator.json` regex from the previous example,
+This command takes the `PS00001.json` regex from the previous example,
 runs it through a reverse-translation machine (`--preset translate`),
 adds a self-loop with a dummy parameter (`--count-copies n`),
 flanks it with a null model (`--generate-uniform-dna`),
@@ -88,7 +90,7 @@ boss --counts -v6 \
  --generate-uniform-dna \
  --concat \
   --begin \
-   PS00001_generator.json --preset translate --double-strand \
+   PS00001.json --preset translate --double-strand \
    --concat --generate-uniform-dna \
    --count-copies n \
   --end \
@@ -469,6 +471,8 @@ Postfix operators:
                                 parameter over input length
   --weight-output-geom arg      place geometric distribution with specified 
                                 parameter over output length
+  --make-generator              convert a machine into a generator
+  --make-recognizer             convert a machine into a recognizer
 
 Infix operators:
   -m [ --compose ]              compose, summing out silent cycles '=&gt;'

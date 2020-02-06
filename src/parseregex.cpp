@@ -40,7 +40,7 @@ Machine RegexParser::parse (const string& str) const {
 
   const string w = white, nw = nonwhite, alph = alphabet();
   const auto alphVec = stringToSymbols (alph);
-  const Machine dotStar = Machine::wildRecognizer (alphVec);
+  const Machine dotStar = Machine::wildEcho (alphVec);
 
   auto quantify = [] (const Machine& m, const SemanticValues& sv) {
     auto min_max = any_cast<pair<int,int>> (sv[1]);
@@ -68,7 +68,7 @@ Machine RegexParser::parse (const string& str) const {
       m = Machine::concatenate (dotStar, m);
     if (dollars) {
       if (dollars > 1)
-	m = Machine::concatenate (m, Machine::recognizer (vguard<InputSymbol> (dollars - 1, InputSymbol("$"))));
+	m = Machine::concatenate (m, Machine::echo (vguard<InputSymbol> (dollars - 1, InputSymbol("$"))));
     } else
       m = Machine::concatenate (m, dotStar);
     return m.eliminateRedundantStates().stripNames();
@@ -90,7 +90,7 @@ Machine RegexParser::parse (const string& str) const {
   };
 
   parser["DOLLAR"] = [](const SemanticValues& sv) {
-    return Machine::recognizer (vguard<InputSymbol> (1, InputSymbol("$")));
+    return Machine::echo (vguard<InputSymbol> (1, InputSymbol("$")));
   };
 
   parser["QUANT_SYMBOLS"] = [](const SemanticValues& sv) {
@@ -126,7 +126,7 @@ Machine RegexParser::parse (const string& str) const {
   parser["MACHINE_CHAR"] = [](const SemanticValues& sv) {
     // cerr << "MACHINE_CHAR " << sv.str() << endl;
     const char c = any_cast<char> (sv[0]);
-    Machine m = Machine::wildSingleRecognizer (vguard<InputSymbol> (1, InputSymbol (1, c)));
+    Machine m = Machine::wildSingleEcho (vguard<InputSymbol> (1, InputSymbol (1, c)));
     return m;
   };
 
@@ -158,7 +158,7 @@ Machine RegexParser::parse (const string& str) const {
     parser["IMPLICIT_CHAR_CLASS"] = [](const SemanticValues& sv) {
     // cerr << "CHAR_CLASS or IMPLICIT_CHAR_CLASS " << sv.str() << endl;
     const string s = any_cast<string> (sv[0]);
-    return Machine::wildSingleRecognizer (RegexParser::stringToSymbols (s));
+    return Machine::wildSingleEcho (RegexParser::stringToSymbols (s));
   };
 
   parser["NEGATED_CHAR_CLASS"] = [&](const SemanticValues& sv) {
@@ -170,7 +170,7 @@ Machine RegexParser::parse (const string& str) const {
     for (const auto& sym: alphVec)
       if (negated.find(sym) == negated.end())
 	nc.push_back (sym);
-    return Machine::wildSingleRecognizer (nc);
+    return Machine::wildSingleEcho (nc);
   };
 
   parser["PRESET_CHAR_CLASS"] = [](const SemanticValues& sv) {

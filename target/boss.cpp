@@ -123,6 +123,8 @@ int main (int argc, char** argv) {
       ("weight-output", po::value<string>(), "multiply output weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to output symbol, " WeightMacroAlphabetSizePlaceholder " to output alphabet size)")
       ("weight-input-geom", po::value<string>(), "place geometric distribution with specified parameter over input length")
       ("weight-output-geom", po::value<string>(), "place geometric distribution with specified parameter over output length")
+      ("make-generator", "convert a machine into a generator")
+      ("make-recognizer", "convert a machine into a recognizer")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -582,6 +584,12 @@ int main (int argc, char** argv) {
 	  rp.white = "";
 	  rp.nonwhite = aaAlphabet;
 	  m = rp.parse (getArg());
+	} else if (command == "--make-generator") {
+	  const Machine prev = popMachine();
+	  m = Machine::compose (Machine::wildGenerator (prev.inputAlphabet()).stripNames(), prev, true, true, Machine::LeaveSilentCycles);
+	} else if (command == "--make-recognizer") {
+	  const Machine prev = popMachine();
+	  m = Machine::compose (prev, Machine::wildRecognizer (prev.outputAlphabet()).stripNames(), true, true, Machine::LeaveSilentCycles);
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());
