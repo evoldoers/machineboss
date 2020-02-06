@@ -33,6 +33,9 @@ struct PresetCache {
 #include "preset/tkf91root.h"
 #include "preset/tkf91branch.h"
 
+#include "preset/tolower.h"
+#include "preset/toupper.h"
+
 PresetCache::PresetCache() {
   addPreset(null);
 
@@ -57,6 +60,9 @@ PresetCache::PresetCache() {
 
   addPreset(tkf91root);
   addPreset(tkf91branch);
+
+  addPreset(tolower);
+  addPreset(toupper);
 }
 
 PresetCache presetCache;  // singleton

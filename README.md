@@ -360,7 +360,8 @@ Transducer construction:
   -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
                                 protpsw, translate, prot2dna, psw2dna, dna2rna,
                                 rna2dna, bintern, terndna, jukescantor, 
-                                dnapswnbr, tkf91root, tkf91branch)
+                                dnapswnbr, tkf91root, tkf91branch, tolower, 
+                                toupper)
   -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
