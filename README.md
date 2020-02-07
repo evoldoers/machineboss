@@ -363,7 +363,7 @@ Transducer construction:
                                 protpsw, translate, prot2dna, psw2dna, dna2rna,
                                 rna2dna, bintern, terndna, jukescantor, 
                                 dnapswnbr, tkf91root, tkf91branch, tolower, 
-                                toupper)
+                                toupper, hamming31, hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
@@ -535,11 +535,13 @@ Transducer application:
   --prefix-decode               find most likely input by CTC prefix search
   --prefix-backtrack arg        specify max backtracking length for CTC prefix 
                                 search
+  --viterbi-decode              find most likely input by Viterbi traceback
   --cool-decode                 find most likely input by simulated annealing
   --mcmc-decode                 find most likely input by MCMC search
   --decode-steps arg            simulated annealing steps per initial symbol
   -Y [ --beam-encode ]          find most likely output by beam search
   --prefix-encode               find most likely output by CTC prefix search
+  --viterbi-encode              find most likely output by Viterbi traceback
   --random-encode               sample random output by stochastic prefix 
                                 search
   --seed arg                    random number seed

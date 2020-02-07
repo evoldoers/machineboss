@@ -36,6 +36,9 @@ struct PresetCache {
 #include "preset/tolower.h"
 #include "preset/toupper.h"
 
+#include "preset/hamming31.h"
+#include "preset/hamming74.h"
+
 PresetCache::PresetCache() {
   addPreset(null);
 
@@ -63,6 +66,9 @@ PresetCache::PresetCache() {
 
   addPreset(tolower);
   addPreset(toupper);
+
+  addPreset(hamming31);
+  addPreset(hamming74);
 }
 
 PresetCache presetCache;  // singleton
