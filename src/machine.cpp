@@ -536,7 +536,7 @@ Machine Machine::projectOutputToInput() const {
   return m;
 }
 
-Machine Machine::maskOutput() const {
+Machine Machine::silenceOutput() const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)
@@ -544,7 +544,7 @@ Machine Machine::maskOutput() const {
   return m;
 }
 
-Machine Machine::maskInput() const {
+Machine Machine::silenceInput() const {
   Machine m (*this);
   for (auto& ms: m.state)
     for (auto& t: ms.trans)

@@ -76,8 +76,8 @@ struct Machine {
   StateIndex nStates() const;
   size_t nTransitions() const;
   size_t nConditionedTransitions() const;  // number of transitions conditional on given input-output labels (calculated as a max over all such labels, plus null transitions)
-  StateIndex startState() const;
-  StateIndex endState() const;
+  StateIndex startState() const;  // always 0 (method checks that machine has at least one state)
+  StateIndex endState() const;  // always final state (method checks that machine has at least one state)
 
   string stateNameJson (StateIndex) const;
 
@@ -142,8 +142,8 @@ struct Machine {
   Machine padWithNullStates() const;  // adds "dummy" null states at start & end
   bool hasNullPaddingStates() const;  // null transitions out of start & into end
   
-  Machine maskInput() const;  // clears all output labels
-  Machine maskOutput() const;  // clears all output labels
+  Machine silenceInput() const;  // clears all output labels
+  Machine silenceOutput() const;  // clears all output labels
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
   Machine projectInputToOutput() const;  // copies all input labels to output labels, turning a recognizer into an echoer. Requires outputEmpty()
 

@@ -180,11 +180,13 @@ int main (int argc, char** argv) {
       ("beam-width", po::value<size_t>(), (string("number of sequences to track during beam search (default ") + to_string((size_t)DefaultBeamWidth) + ")").c_str())
       ("prefix-decode", "find most likely input by CTC prefix search")
       ("prefix-backtrack", po::value<long>(), "specify max backtracking length for CTC prefix search")
+      ("viterbi-decode", "find most likely input by Viterbi traceback")
       ("cool-decode", "find most likely input by simulated annealing")
       ("mcmc-decode", "find most likely input by MCMC search")
       ("decode-steps", po::value<int>(), "simulated annealing steps per initial symbol")
       ("beam-encode,Y", "find most likely output by beam search")
       ("prefix-encode", "find most likely output by CTC prefix search")
+      ("viterbi-encode", "find most likely output by Viterbi traceback")
       ("random-encode", "sample random output by stochastic prefix search")
       ("seed", po::value<int>(), "random number seed")
       ;
@@ -652,7 +654,10 @@ int main (int argc, char** argv) {
     // if constraints or parameters were specified without a training or alignment step,
     // then add them to the model now; otherwise, save them for later
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
-    const bool inferenceRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts") || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
+    const bool encodingRequested = vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("viterbi-encode") || vm.count("random-encode");
+    const bool decodingRequested = vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("viterbi-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
+    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts");
+    const bool inferenceRequested = dpRequested || encodingRequested || decodingRequested;
     const bool evalRequested = vm.count("evaluate");
     if (paramsSpecified	&& (evalRequested || !inferenceRequested)) {
       machine.funcs = machine.funcs.combine(funcs,true).combine(seed,true);
@@ -756,9 +761,9 @@ int main (int argc, char** argv) {
     
     // if inputs/outputs specified individually, create all input-output pairs
     const bool inputEmpty = machine.inputAlphabet().empty(), outputEmpty = machine.outputAlphabet().empty();
-    if (inSeqs.empty() && ((inputEmpty && ((outputEmpty && inferenceRequested) || !outSeqs.empty())) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode") || vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")))
+    if (inSeqs.empty() && ((inputEmpty && ((outputEmpty && inferenceRequested) || !outSeqs.empty())) || encodingRequested || decodingRequested))
       inSeqs.push_back (NamedInputSeq());  // create a dummy input if we have outputs & either the input alphabet is empty, or we're encoding/decoding
-    if (outSeqs.empty() && ((!inSeqs.empty() && outputEmpty) || vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")))
+    if (outSeqs.empty() && ((!inSeqs.empty() && outputEmpty) || encodingRequested))
       outSeqs.push_back (NamedOutputSeq());  // create a dummy output if the output alphabet is empty, or we're encoding
     for (const auto& inSeq: inSeqs)
       for (const auto& outSeq: outSeqs)
@@ -769,7 +774,7 @@ int main (int argc, char** argv) {
     if (inferenceRequested && data.seqPairs.empty() && noIO)
       data.seqPairs.push_back (SeqPair());  // if the model has no I/O, then add an automatic pair of empty, nameless sequences (the only possible evidence)
     const bool gotData = !data.seqPairs.empty();
-    Require (!gotData || inferenceRequested, "No point in specifying input/output data without --train, --loglike, --counts, --align, --encode, or --decode");
+    Require (!gotData || inferenceRequested, "No point in specifying input/output data without --train, --loglike, --counts, --align, --*-encode, or --*-decode");
 
     // fit parameters
     Params params;
@@ -827,11 +832,13 @@ int main (int argc, char** argv) {
 
     // encode
     const long maxBacktrack = vm.count("prefix-backtrack") ? vm.at("prefix-backtrack").as<long>() : numeric_limits<long>::max();
-    if (vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("random-encode")) {
+    if (encodingRequested) {
       Require (gotData, "To encode an output sequence, please specify an input sequence file");
-      const Machine trans = machine.transpose().advanceSort().advancingMachine();
-      const Machine decodeTrans = vm.count("beam-encode") ? trans.decodeSort() : trans;
-      const EvaluatedMachine eval (decodeTrans, params);
+      const Machine trans = machine.transpose().advanceSort().advancingMachine();   // transposing makes the encoding problem into a decoding problem
+      const Machine decodeTrans = (vm.count("beam-encode") || vm.count("viterbi-encode")) ? trans.decodeSort() : trans;
+      const Machine silentTrans = vm.count("viterbi-encode") ? decodeTrans.silenceInput() : decodeTrans;  // silentTrans must have same state ordering as decodeTrans for Viterbi coding to work
+      LogThisAt(7,"Encoding machine:" << endl << MachineLoader::toJsonString(decodeTrans) << endl);
+      const EvaluatedMachine eval (silentTrans, params);
       SeqPairList encodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.output.seq.size() == 0, "You cannot specify output sequences when encoding; the goal of encoding is to generate %s output for a given input", vm.count("random-encode") ? "random" : "the most likely");
@@ -842,6 +849,10 @@ int main (int argc, char** argv) {
 	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
 	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);
 	  encoded = beam.bestSeq();
+	} else if (vm.count("viterbi-encode")) {
+	  const ViterbiMatrix viterbi (eval, seqPair);
+	  const MachinePath path = viterbi.path (silentTrans);
+	  encoded = EvaluatedMachine::decode (path, decodeTrans, params);
 	} else {
 	  PrefixTree tree (eval, (vguard<OutputSymbol>) seqPair.input.seq, maxBacktrack);
 	  if (vm.count("random-encode")) {
@@ -857,20 +868,25 @@ int main (int argc, char** argv) {
     }
 
     // decode
-    if (vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("mcmc-decode") || vm.count("beam-decode")) {
+    if (decodingRequested) {
       Require (gotData, "To decode an input sequence, please specify an output sequence file");
-      const Machine decodeMachine = vm.count("beam-decode") ? machine.decodeSort() : machine;
-      const EvaluatedMachine eval (decodeMachine, params);
+      const Machine decodeTrans = vm.count("beam-decode") ? machine.decodeSort() : machine;
+      const Machine silentTrans = vm.count("viterbi-decode") ? decodeTrans.silenceInput() : decodeTrans;  // silentTrans must have same state ordering as decodeTrans for Viterbi coding to work
+      const EvaluatedMachine eval (silentTrans, params);
       SeqPairList decodeResults;
       for (const auto& seqPair: data.seqPairs) {
 	Require (seqPair.input.seq.size() == 0, "You cannot specify input sequences when decoding; the goal of decoding is to impute the most likely input for a given output");
 	vguard<InputSymbol> decoded;
 	if (vm.count("beam-decode")) {
-	  if (!decodeMachine.isDecodingMachine())
+	  if (!decodeTrans.isDecodingMachine())
 	    Warn ("Machine is not topologically sorted for decoding; some valid inputs may be missed");
 	  const size_t beamWidth = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
 	  BeamSearchMatrix beam (eval, seqPair.output.seq, beamWidth);
 	  decoded = beam.bestSeq();
+	} else if (vm.count("viterbi-decode")) {
+	  const ViterbiMatrix viterbi (eval, seqPair);
+	  const MachinePath path = viterbi.path (silentTrans);
+	  decoded = EvaluatedMachine::decode (path, decodeTrans, params);
 	} else {
 	  PrefixTree tree (eval, seqPair.output.seq, maxBacktrack);
 	  if (vm.count("cool-decode") || vm.count("mcmc-decode")) {

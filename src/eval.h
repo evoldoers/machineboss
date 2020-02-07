@@ -56,6 +56,8 @@ struct EvaluatedMachineState {
   TransIndex nTransitions, transOffset;
   InOutStateTransMap incoming, outgoing;  // indexed by input token, output token, and (source or destination) state
   vguard<LogWeight> logTransWeight;  // indexed by TransIndex
+
+  InputToken bestOutgoingToken (StateIndex dest, OutputToken out) const;  // for a given destination state & output token, find the best input token
 };
 
 struct EvaluatedMachine {
@@ -76,6 +78,7 @@ struct EvaluatedMachine {
   vguard<vguard<double> > sumInTrans (bool allPaths = false) const;  // returns effective transitions between states, summing over all non-outputting paths (or over ALL paths, if allPaths is true)
   vguard<vguard<LogWeight> > logSumInTrans (bool allPaths = false) const;  // log of sumInTrans(allPaths)
   Machine explicitMachine() const;  // returns the Machine without parameters, i.e. all transitions have numeric weights
+  static vguard<InputSymbol> decode (const MachinePath&, const Machine&, const Params&);  // returns the input symbols for the most likely transition path consistent with the state path & output sequence specified by the MachinePath
 };
 
 #endif /* EVAL_INCLUDED */

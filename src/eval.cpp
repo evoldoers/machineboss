@@ -8,6 +8,19 @@
 // if exit "probabilities" sum to more than this when trying to eliminate states using matrix algebra, issue a warning
 #define SuspiciouslyLargeProbabilityWarningThreshold 1.01
 
+InputToken EvaluatedMachineState::bestOutgoingToken (StateIndex dest, OutputToken out) const {
+  InputToken tok = 0;
+  LogWeight lw = -numeric_limits<double>::infinity();
+  for (const auto& i_ost: outgoing)
+    if (i_ost.second.count (out))
+      for (const auto& o_st: i_ost.second.at(out))
+	if (o_st.first == dest && o_st.second.logWeight > lw) {
+	  lw = o_st.second.logWeight;
+	  tok = i_ost.first;
+	}
+  return tok;
+}
+
 EvaluatedMachine::EvaluatedMachine (const Machine& machine, const Params& params) :
   inputTokenizer (machine.inputAlphabet()),
   outputTokenizer (machine.outputAlphabet()),
@@ -186,5 +199,16 @@ Machine EvaluatedMachine::explicitMachine() const {
   return m;
 }
 
-											     
-											   
+vguard<InputSymbol> EvaluatedMachine::decode (const MachinePath& path, const Machine& machine, const Params& params) {
+  vguard<InputSymbol> inSeq;
+  const EvaluatedMachine eval (machine, params);
+  StateIndex s = machine.startState();
+  for (const auto& t: path.trans) {
+    StateIndex d = t.dest;
+    const InputToken tok = eval.state[s].bestOutgoingToken (d, eval.outputTokenizer.sym2tok.at (t.out));
+    if (tok)
+      inSeq.push_back (eval.inputTokenizer.tok2sym.at (tok));
+    s = d;
+  }
+  return inSeq;
+}
