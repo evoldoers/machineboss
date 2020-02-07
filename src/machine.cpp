@@ -527,6 +527,31 @@ Machine Machine::projectOutputToInput() const {
   return m;
 }
 
+ Machine Machine::projectInputToOutput() const {
+  Assert (outputEmpty(), "Attempt to project input->output for transducer whose output is nonempty");
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      t.out = t.in;
+  return m;
+}
+
+Machine Machine::maskOutput() const {
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      t.out.clear();
+  return m;
+}
+
+Machine Machine::maskInput() const {
+  Machine m (*this);
+  for (auto& ms: m.state)
+    for (auto& t: ms.trans)
+      t.in.clear();
+  return m;
+}
+
 Machine Machine::weightInputs (const map<InputSymbol,WeightExpr>& w) const {
   Test (!inputEmpty(), "Redundant call to weightInputs(): input alphabet is empty");
   Machine m (*this);

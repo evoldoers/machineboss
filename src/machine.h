@@ -129,8 +129,8 @@ struct Machine {
   Machine reverse() const;
   Machine transpose() const;
 
-  bool inputEmpty() const;
-  bool outputEmpty() const;
+  bool inputEmpty() const;  // true iff machine is a generator
+  bool outputEmpty() const;  // true iff machine is a recognizer
 
   bool isErgodicMachine() const;  // all states accessible
   bool isWaitingMachine() const;  // all states wait or continue
@@ -142,7 +142,10 @@ struct Machine {
   Machine padWithNullStates() const;  // adds "dummy" null states at start & end
   bool hasNullPaddingStates() const;  // null transitions out of start & into end
   
+  Machine maskInput() const;  // clears all output labels
+  Machine maskOutput() const;  // clears all output labels
   Machine projectOutputToInput() const;  // copies all output labels to input labels, turning a generator into an echoer. Requires inputEmpty()
+  Machine projectInputToOutput() const;  // copies all input labels to output labels, turning a recognizer into an echoer. Requires outputEmpty()
 
   Machine pointwiseReciprocal() const;
   Machine weightInputs (const map<InputSymbol,WeightExpr>&) const;
