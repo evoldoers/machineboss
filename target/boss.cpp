@@ -123,8 +123,10 @@ int main (int argc, char** argv) {
       ("weight-output", po::value<string>(), "multiply output weights by specified JSON expression (" WeightMacroSymbolPlaceholder " expands to output symbol, " WeightMacroAlphabetSizePlaceholder " to output alphabet size)")
       ("weight-input-geom", po::value<string>(), "place geometric distribution with specified parameter over input length")
       ("weight-output-geom", po::value<string>(), "place geometric distribution with specified parameter over output length")
-      ("make-generator", "convert a machine into a generator")
-      ("make-recognizer", "convert a machine into a recognizer")
+      ("silence-input", "silence inputs, converting a machine into a generator")
+      ("silence-output", "silence outputs, converting a machine into a recognizer")
+      ("copy-output-to-input", "copy outputs to inputs, converting a generator into an echo machine")
+      ("copy-input-to-output", "copy inputs to outputs, converting a recognizer into an echo machine")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -581,17 +583,19 @@ int main (int argc, char** argv) {
 	  rp.white = "";
 	  rp.nonwhite = rnaAlphabet;
 	  m = rp.parse (getArg());
-	} else if (command == "--protein-regex") {
+	} else if (command == "--aa-regex") {
 	  RegexParser rp;
 	  rp.white = "";
 	  rp.nonwhite = aaAlphabet;
 	  m = rp.parse (getArg());
-	} else if (command == "--make-generator") {
-	  const Machine prev = popMachine();
-	  m = Machine::compose (Machine::wildGenerator (prev.inputAlphabet()).stripNames(), prev, true, true, Machine::LeaveSilentCycles);
-	} else if (command == "--make-recognizer") {
-	  const Machine prev = popMachine();
-	  m = Machine::compose (prev, Machine::wildRecognizer (prev.outputAlphabet()).stripNames(), true, true, Machine::LeaveSilentCycles);
+	} else if (command == "--silence-input") {
+	  m = popMachine().silenceInput();
+	} else if (command == "--silence-output") {
+	  m = popMachine().silenceOutput();
+	} else if (command == "--copy-input-to-output") {
+	  m = popMachine().projectInputToOutput();
+	} else if (command == "--copy-output-to-input") {
+	  m = popMachine().projectOutputToInput();
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());

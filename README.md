@@ -65,17 +65,17 @@ boss --generate-chars N \
  --eliminate >PS00001.json
 ~~~~
 
-You can also do this more compactly with the `--protein-regex` option,
+You can also do this more compactly with the `--aa-regex` option,
 which parses regular expression syntax
 (also available are `--dna-regex` for DNA, `--rna-regex` for RNA, or `--regex` for general text)
 
 ~~~~
-bin/boss --protein-regex '^N[^P][ST][^P]$' --make-generator >PS00001.json
+bin/boss --protein-aa '^N[^P][ST][^P]$' --transpose >PS00001.json
 ~~~~
 
-Note that the `--protein-regex` option (and the other regex options)
-construct identity machines rather than generators, by convention.
-You can convert an identity machine to a generator using `--make-generator`.
+Note that the `--aa-regex` option (and the other regex options)
+construct recognizers rather than generators, by convention.
+You can convert a recognizer to a generator (and vice versa) by swapping the input and output labels, using `--tranpose`.
 
 ### Search the N-glycosylation regex against the MinION read
 
@@ -229,11 +229,13 @@ so e.g. the first example may be run by typing `boss --generate-one ACGT`
 | `--generate-wild ACGT` | A unit-weight generator for any _string_ made up of the specified characters (here `A`, `C`, `G` or `T`, i.e. it will output any DNA sequence). Similar to a regex wildcard |
 | `--generate-iid ACGT` | A generator for any string made up of the specified characters, with each character emission weighted (via parameters) to the respective character frequencies. Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
 | `--generate-uniform ACGT` | A generator for any string made up of the specified characters, with each character emission weighted uniformly by (1/alphabet size). Note that this is not a true probability distribution over output sequences, as no distribution is placed on the sequence length |
-| `--generate-uniform-dna`, etc. | Any of the above `--generate-XXX` forms may have `-dna`, `-rna` or `-aa` tacked on the end, in which case the alphabet does not need to be specified but is taken to be (respectively) `ACGT`, `ACGU` or `ACDEFGHIKLMNPQRSTVWY` |
+| `--generate-uniform-dna`, `--generate-uniform-aa` etc. | Any of the above `--generate-XXX` forms may have `-dna`, `-rna` or `-aa` tacked on the end, in which case the alphabet does not need to be specified but is taken to be (respectively) `ACGT`, `ACGU` or `ACDEFGHIKLMNPQRSTVWY` |
 | `--generate-chars AGATTC` | A unit-weight generator for the single string specified (which will be split into single-character symbols) |
 | `--generate-fasta FILENAME.fasta` | A unit-weight generator for a sequence of characters read from a [FASTA-format](https://en.wikipedia.org/wiki/FASTA_format) file |
 | `--generate-csv FILENAME.csv` | A generator corresponding to a [position-specific probability weight matrix](https://en.wikipedia.org/wiki/Position_weight_matrix) stored in a [CSV-format](https://en.wikipedia.org/wiki/Comma-separated_values) file, where the column titles in the first row correspond to output symbols (and a column with an empty title corresponds to gap characters in the weight matrix) |
 | `--generate-json FILENAME.json` | A generator for a sequence of symbols read from a Machine Boss JSON file |
+| `--regex REGEX` | A recognizer state machine for the corresponding [regular expression](https://en.wikipedia.org/wiki/Regular_expression). By default this will be a local regular expression; use the `^` and `$` anchors to make it global. |
+| `--dna-regex REGEX`, `--rna-regex REGEX`, `--aa-regex REGEX` | A DNA, RNA, or protein regular expression. Practically, the only difference is that the wildcard character (`.`) is defined for the appropriate (upper-case) alphabet. |
 | `--hmmer HMMERFILE.hmm` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM |
 
 For each of the `--generate-XXX` options, the `--generate` can be replaced with `--recognize` to construct the corresponding recognizer, or (in most cases) with `--echo` for the identity.
@@ -250,16 +252,27 @@ These example machines may be selected using the `--preset` keyword, e.g. `boss 
 | `translate` | A machine that inputs amino acids and outputs codons (yes, this should probably be called "reverse translate") |
 | `prot2dna` | A [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model, finds a protein in DNA |
 | `psw2dna` | Another [GeneWise](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/)-style model, allows substitutions & indels in the protein |
-| `dnapsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for DNA |
-| `protpsw` | A machine that implements [probabilistic Smith-Waterman](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for proteins |
+| `dnapsw` | A machine that implements [probabilistic Smith-Waterman alignment](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for DNA |
+| `protpsw` | A machine that implements [probabilistic Smith-Waterman alignment](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for proteins |
+| `jukescantor` | A machine that implements the [Jukes-Cantor (1969) substitution model](https://en.wikipedia.org/wiki/Models_of_DNA_evolution) for DNA |
+| `tkf91branch` | A machine that implements the [Thorne-Kishino-Felsenstein (1991) indel model](https://www.ncbi.nlm.nih.gov/pubmed/1920447) for DNA, with Jukes-Cantor as a substitution model |
+| `tkf91root` | A machine that generates sequences from the equilibrium distribution of the Thorne-Kishino-Felsenstein indel model |
 | `bintern` | A machine that converts binary digits (in groups of 3) into ternary digits (in group of 2). To handle situations where the input isn't a multiple of 3 bits in length, the machine also outputs an escape code at the end, with any dangling bits converted to ternary |
 | `terndna` | A machine that converts a ternary sequence into a non-repeating DNA sequence. Composed with the `bintern` preset, this can be used to implement the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/) |
+| `tolower` | A machine that converts text to lower case |
+| `toupper` | A machine that converts text to upper case |
+| `hamming31` | A machine that implements a [Hamming (3,1)](https://en.wikipedia.org/wiki/Hamming_code) error correction code |
+| `hamming74` | A machine that implements a [Hamming (7,4)](https://en.wikipedia.org/wiki/Hamming(7,4)) error correction code |
 
 ### Operations transforming a single machine
 
 | Operation | Command | Description | Analogy |
 |---|---|---|---|
 | Transpose | `boss m.json --transpose` | Swaps the inputs and outputs | Matrix transposition |
+| Silence inputs | `boss m.json --silence-input` | Clears all the input labels | Summing columns |
+| Silence outputs | `boss m.json --silence-output` | Clears all the output labels | Summing rows |
+| Copy inputs to outputs | `boss m.json --copy-input-to-output` | Sets the output labels equal to the input labels | Make diagonal matrix from column vector |
+| Copy outputs to inputs | `boss m.json --copy-output-to-input` | Sets the input labels equal to the output labels | Make diagonal matrix from row vector |
 | Make optional (`?`) | `boss m.json --zero-or-one` | Zero or one tours through `m.json` | Union with the empty-string identity. Like the `?` in regexes |
 | Form Kleene closure (`+`) | `boss m.json --kleene-plus` | One or more tours through `m.json` | Like the `+` in regexes |
 | Form Kleene closure (`*`) | `boss m.json --kleene-star` | Zero or more tours through `m.json` | Like the `*` in regexes |
@@ -332,6 +345,8 @@ There are several ways to specify input and output sequences.
 | `--counts` | Calculates derivatives of the log-weight with respect to the logs of the parameters, a.k.a. the posterior expectations of the number of time each parameter is used |
 | `--beam-decode` | Uses [beam search](https://en.wikipedia.org/wiki/Beam_search) to find the most likely input for a given output. Beam width can be specified using `--beam-width` |
 | `--beam-encode` | Uses beam search to find the most likely output for a given input |
+| `--viterbi-decode` | Uses Viterbi algorithm to find the input sequence for most likely state path consistent with a given output |
+| `--viterbi-encode` | Uses Viterbi algorithm to find the output sequence for most likely state path consistent with a given input |
 | `--codegen DIR` | Generate C++ or JavaScript code implementing the Forward algorithm |
 
 
@@ -471,8 +486,14 @@ Postfix operators:
                                 parameter over input length
   --weight-output-geom arg      place geometric distribution with specified 
                                 parameter over output length
-  --make-generator              convert a machine into a generator
-  --make-recognizer             convert a machine into a recognizer
+  --silence-input               silence inputs, converting a machine into a 
+                                generator
+  --silence-output              silence outputs, converting a machine into a 
+                                recognizer
+  --copy-output-to-input        copy outputs to inputs, converting a generator 
+                                into an echo machine
+  --copy-input-to-output        copy inputs to outputs, converting a recognizer
+                                into an echo machine
 
 Infix operators:
   -m [ --compose ]              compose, summing out silent cycles '=&gt;'
