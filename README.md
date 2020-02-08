@@ -235,7 +235,7 @@ so e.g. the first example may be run by typing `boss --generate-one ACGT`
 | `--generate-csv FILENAME.csv` | A generator corresponding to a [position-specific probability weight matrix](https://en.wikipedia.org/wiki/Position_weight_matrix) stored in a [CSV-format](https://en.wikipedia.org/wiki/Comma-separated_values) file, where the column titles in the first row correspond to output symbols (and a column with an empty title corresponds to gap characters in the weight matrix) |
 | `--generate-json FILENAME.json` | A generator for a sequence of symbols read from a Machine Boss JSON file |
 | `--regex REGEX` | A recognizer state machine for the corresponding [regular expression](https://en.wikipedia.org/wiki/Regular_expression). By default this will be a local regular expression; use the `^` and `$` anchors to make it global. |
-| `--dna-regex REGEX`, `--rna-regex REGEX`, `--aa-regex REGEX` | A DNA, RNA, or protein regular expression. Practically, the only difference is that the wildcard character (`.`) is defined for the appropriate (upper-case) alphabet. |
+| `--dna-regex REGEX`, `--rna-regex REGEX`, `--aa-regex REGEX` | A DNA, RNA, or protein regular expression. Practically, the only difference between this and `--regex` is that the wildcard character (`.`) is defined for the appropriate (upper-case) molecular residue alphabet, instead of ASCII text. |
 | `--hmmer HMMERFILE.hmm` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM |
 
 For each of the `--generate-XXX` options, the `--generate` can be replaced with `--recognize` to construct the corresponding recognizer, or (in most cases) with `--echo` for the identity.
