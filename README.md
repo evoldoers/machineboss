@@ -56,12 +56,12 @@ boss --generate-chars N \
  --eliminate >PS00001.json
 ~~~~
 
-You can also do this more compactly with the `--aa-regex` option,
+You can do this more compactly with the `--aa-regex` option,
 which parses regular expression syntax
 (also available are `--dna-regex` for DNA, `--rna-regex` for RNA, or `--regex` for general text)
 
 ~~~~
-boss --protein-aa '^N[^P][ST][^P]$' --transpose >PS00001.json
+boss --aa-regex '^N[^P][ST][^P]$' --transpose >PS00001.json
 ~~~~
 
 Note that the `--aa-regex` option (and the other regex options)
