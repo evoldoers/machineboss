@@ -66,6 +66,7 @@ boss --aa-regex '^N[^P][ST][^P]$' --transpose >PS00001.json
 
 Note that the `--aa-regex` option (and the other regex options)
 construct recognizers rather than generators, by convention.
+(A recognizer is an input machine; a generator is an output machine.)
 You can convert a recognizer to a generator (and vice versa) by swapping the input and output labels, using `--tranpose`.
 
 ### Search the N-glycosylation regex against the MinION read
