@@ -1,0 +1,19 @@
+{
+  "name": "machineboss",
+  "version": "1.0.0",
+  "description": "Manipulation of state machines for bioinformatics and other applications",
+  "main": "jsonwrap.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evoldoers/machineboss.git"
+  },
+  "author": "Ian Holmes",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/evoldoers/machineboss/issues"
+  },
+  "homepage": "https://github.com/evoldoers/machineboss#readme"
+}
