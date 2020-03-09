@@ -1229,11 +1229,11 @@ function updateGlobalBufferAndViews(buf) {
 }
 
 var STATIC_BASE = 1024,
-    STACK_BASE = 921424,
+    STACK_BASE = 921776,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 6164304,
-    DYNAMIC_BASE = 6164304,
-    DYNAMICTOP_PTR = 921232;
+    STACK_MAX = 6164656,
+    DYNAMIC_BASE = 6164656,
+    DYNAMICTOP_PTR = 921584;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
@@ -1754,7 +1754,7 @@ var ASM_CONSTS = [];
 
 
 
-// STATICTOP = STATIC_BASE + 920400;
+// STATICTOP = STATIC_BASE + 920752;
 /* global initializers */  __ATINIT__.push({ func: function() { globalCtors() } });
 
 
@@ -1765,7 +1765,7 @@ var ASM_CONSTS = [];
 
 
 /* no memory initializer */
-var tempDoublePtr = 921408
+var tempDoublePtr = 921760
 assert(tempDoublePtr % 8 == 0);
 
 function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much
@@ -5334,7 +5334,7 @@ function copyTempDouble(ptr) {
     }
 
   
-  var ___tm_formatted=921328;
+  var ___tm_formatted=921680;
   
   
   
@@ -5569,10 +5569,10 @@ function copyTempDouble(ptr) {
     }
 
   
-  var ___tm_current=921264;
+  var ___tm_current=921616;
   
   
-  var ___tm_timezone=(stringToUTF8("GMT", 921312, 4), 921312);function _localtime_r(time, tmPtr) {
+  var ___tm_timezone=(stringToUTF8("GMT", 921664, 4), 921664);function _localtime_r(time, tmPtr) {
       _tzset();
       var date = new Date(HEAP32[((time)>>2)]*1000);
       HEAP32[((tmPtr)>>2)]=date.getSeconds();
@@ -5987,7 +5987,7 @@ function copyTempDouble(ptr) {
       return ret;
     }
 
-  var ___dso_handle=921248;
+  var ___dso_handle=921600;
 FS.staticInit();;
 if (ENVIRONMENT_HAS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); };
 if (ENVIRONMENT_IS_NODE) {
