@@ -143,7 +143,7 @@ BOSS = boss
 AUTOWAX = autowax
 
 ifneq (,$(USING_EMSCRIPTEN))
-WRAP = node wasm/wrap.js
+WRAP = node wasm/cmdwrap.js
 BOSSTARGET = wasm/boss.js
 WRAPBOSS = $(WRAP) $(BOSSTARGET)
 TESTSUFFIX = .js
