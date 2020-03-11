@@ -9,7 +9,7 @@ const wrapBoss = (args) => {
     .then (() => {
       args = args || [];
 
-      var nFiles = 0, filePrefix = 'FILE'
+      let nFiles = 0, filePrefix = 'FILE'
       const wrappedArgs = args.map ((opt) => {
 	if (typeof(opt) !== 'string') {
 	  const fileBuffer = JSON.stringify (opt)
