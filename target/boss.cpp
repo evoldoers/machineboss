@@ -247,7 +247,7 @@ int main (int argc, char** argv) {
     // parse args
     if (vm.count("help")) {
       cout << helpOpts << endl;
-      return 1;
+      return EXIT_SUCCESS;
     }
     logger.parseLogArgs (vm);
 

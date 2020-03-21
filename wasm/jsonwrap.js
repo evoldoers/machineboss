@@ -12,7 +12,7 @@ const wrapBoss = (args) => {
       let nFiles = 0, filePrefix = 'FILE'
       const wrappedArgs = args.map ((opt) => {
 	if (typeof(opt) !== 'string') {
-	  const fileBuffer = JSON.stringify (opt)
+	  const fileBuffer = Buffer.from (JSON.stringify (opt), 'utf-8')
 	  const filename = filePrefix + (++nFiles)
 	  boss.FS.writeFile (filename, new Uint8Array(fileBuffer))
 	  return filename
@@ -22,7 +22,12 @@ const wrapBoss = (args) => {
 
       boss.stdout = []
       boss.callMain (wrappedArgs)
-      const result = JSON.parse (boss.stdout.join(''))
+      let result, output = boss.stdout.join('')
+      try {
+        result = JSON.parse (output)
+      } catch (e) {
+        result = output
+      }
       delete boss.stdout
       return result
     })
