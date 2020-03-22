@@ -1,5 +1,7 @@
 # Installation
 
+## Compiling from C++
+
 On Mac:
 
 ~~~~
@@ -16,3 +18,11 @@ make
 ~~~~
 npm install
 make test
+
+## Installing via npm
+
+The software is compiled to WebAssembly as [machineboss](https://www.npmjs.com/package/machineboss) on npm
+
+~~~~
+npm install machineboss
+~~~~
