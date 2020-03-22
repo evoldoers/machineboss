@@ -1,8 +1,13 @@
 {
   "name": "machineboss",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Manipulation of state machines for bioinformatics and other applications",
-  "main": "jsonwrap.js",
+  "main": "boss.js",
+  "files": [
+    "README.md",
+    "boss.wasm",
+    "boss.js"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
