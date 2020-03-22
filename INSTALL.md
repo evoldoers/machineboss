@@ -13,11 +13,12 @@ brew install pkgconfig
 make
 ~~~~
 
-## Testing
+### Testing
 
 ~~~~
 npm install
 make test
+~~~~
 
 ## Installing via npm
 

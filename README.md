@@ -28,6 +28,7 @@ JSON representation of a [weighted finite-state transducer](https://en.wikipedia
 
 # Installation
 
+Machine Boss can be compiled from C++ source, or installed via [npm](https://www.npmjs.com/package/machineboss).
 For installation instructions see [INSTALL.md](INSTALL.md).
 
 # Command-line interface
