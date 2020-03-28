@@ -807,7 +807,7 @@ int main (int argc, char** argv) {
 	cout << (n++ ? ",\n " : "")
 	     << "[\"" << escaped_str(seqPair.input.name)
 	     << "\",\"" << escaped_str(seqPair.output.name)
-	     << "\"," << forward.logLike() << "]";
+	     << "\"," << toInfinitySafeString (forward.logLike()) << "]";
       }
       cout << "]\n";
     }

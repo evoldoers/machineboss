@@ -6,6 +6,16 @@
 #include <iostream>
 #include "util.h"
 
+// infinity-safe toString method for JSON output
+inline string toInfinitySafeString (double x) {
+  return (x == numeric_limits<double>::infinity()
+	  ? string("\"Infinity\"")
+	  : (x == -numeric_limits<double>::infinity()
+	     ? string("\"-Infinity\"")
+	     : to_string(x)));
+}
+
+// wrappers for readJson & writeJson methods
 template<class Base>
 struct JsonWriter {
 
