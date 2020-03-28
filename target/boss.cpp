@@ -466,10 +466,7 @@ int main (int argc, char** argv) {
 	else if (command == "--repeat") {
 	  const int nReps = stoi (getArg());
 	  Require (nReps > 0, "--repeat requires minimum one repetition");
-	  const Machine unit = popMachine();
-	  m = unit;
-	  for (int n = 1; n < nReps; ++n)
-	    m = Machine::concatenate (m, unit);
+	  m = Machine::repeat (popMachine(), nReps);
 	} else if (command == "--loop")
 	  m = Machine::kleeneLoop (popMachine(), nextMachine()).advanceSort();
 	else if (command == "--eliminate")

@@ -1647,6 +1647,13 @@ Machine Machine::kleeneCount (const Machine& m, const string& countParam) {
   return result;
 }
 
+Machine Machine::repeat (const Machine& m, int copies) {
+  Machine result = m;
+  for (int n = 1; n < copies; ++n)
+    result = Machine::concatenate (result, m);
+  return result;
+}
+
 Machine Machine::reverse() const {
   Machine m;
   m.import (*this);

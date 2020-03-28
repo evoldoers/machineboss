@@ -128,6 +128,8 @@ struct Machine {
   static Machine kleeneLoop (const Machine&, const Machine&);
   static Machine kleeneCount (const Machine&, const string& countParam);
 
+  static Machine repeat (const Machine&, int copies);
+  
   Machine reverse() const;
   Machine transpose() const;
 
