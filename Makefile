@@ -149,7 +149,6 @@ SH = /bin/sh
 # Targets
 
 BOSS = boss
-AUTOWAX = autowax
 
 ifneq (,$(USING_EMSCRIPTEN))
 WRAP = node wasm/cmdwrap.js
@@ -202,12 +201,10 @@ obj/%.o: t/src/%.cpp
 
 $(BOSS): bin/$(BOSS)
 
-$(AUTOWAX): bin/$(AUTOWAX)
-
 emscripten: $(BOSSTARGET)
 
 clean:
-	rm -rf bin/$(BOSS) bin/$(AUTOWAX) wasm/$(BOSS).js t/bin/* obj/*
+	rm -rf bin/$(BOSS) wasm/$(BOSS).js t/bin/* obj/*
 
 # Fake pseudotargets
 debug unoptimized 32bit no-ssl:
