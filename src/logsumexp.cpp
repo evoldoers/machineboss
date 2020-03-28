@@ -3,7 +3,9 @@
 #include "logsumexp.h"
 #include "util.h"
 
-LogSumExpLookupTable logSumExpLookupTable = LogSumExpLookupTable();
+using namespace MachineBoss;
+
+LogSumExpLookupTable MachineBoss::logSumExpLookupTable = LogSumExpLookupTable();
 
 LogSumExpLookupTable::LogSumExpLookupTable() {
   lookup = new double [LOG_SUM_EXP_LOOKUP_ENTRIES];
@@ -19,7 +21,7 @@ LogSumExpLookupTable::~LogSumExpLookupTable() {
   delete[] lookup;
 }
 
-double log_sum_exp_slow (double a, double b) {
+double MachineBoss::log_sum_exp_slow (double a, double b) {
   double min, max, diff, ret;
   if (a < b) { min = a; max = b; }
   else { min = b; max = a; }
@@ -36,28 +38,28 @@ double log_sum_exp_slow (double a, double b) {
   return ret;
 }
 
-double log_sum_exp_slow (double a, double b, double c) {
+double MachineBoss::log_sum_exp_slow (double a, double b, double c) {
   return log_sum_exp_slow (log_sum_exp_slow (a, b), c);
 }
 
-double log_sum_exp_slow (double a, double b, double c, double d) {
+double MachineBoss::log_sum_exp_slow (double a, double b, double c, double d) {
   return log_sum_exp_slow (log_sum_exp_slow (log_sum_exp_slow (a, b), c), d);
 }
 
-double log_sum_exp_unary_slow (double x) {
+double MachineBoss::log_sum_exp_unary_slow (double x) {
   return log (1. + exp(-x));
 }
 
-double log_accum_exp_slow (double& a, double b) {
+double MachineBoss::log_accum_exp_slow (double& a, double b) {
   a = log_sum_exp_slow (a, b);
   return a;
 }
 
-vguard<LogProb> log_vector (const vguard<double>& v) {
+vguard<LogProb> MachineBoss::log_vector (const vguard<double>& v) {
   return transform_container<double,vguard<double> > (v, log);
 }
 
-vguard<vguard<LogProb> > log_matrix (const vguard<vguard<double> >& m) {
+vguard<vguard<LogProb> > MachineBoss::log_matrix (const vguard<vguard<double> >& m) {
   vguard<vguard<LogProb> > result;
   result.reserve (m.size());
   for (const auto& v: m)
@@ -65,28 +67,28 @@ vguard<vguard<LogProb> > log_matrix (const vguard<vguard<double> >& m) {
   return result;
 }
 
-vguard<LogProb> log_gsl_vector (const gsl_vector* v) {
+vguard<LogProb> MachineBoss::log_gsl_vector (const gsl_vector* v) {
   vguard<LogProb> l (v->size);
   for (size_t i = 0; i < v->size; ++i)
     l[i] = log (gsl_vector_get (v, i));
   return l;
 }
 
-vguard<double> gsl_vector_to_stl (const gsl_vector* v) {
+vguard<double> MachineBoss::gsl_vector_to_stl (const gsl_vector* v) {
   vguard<double> stlv (v->size);
   for (size_t i = 0; i < v->size; ++i)
     stlv[i] = gsl_vector_get (v, i);
   return stlv;
 }
 
-vguard<vguard<LogProb> > log_vector_gsl_vector (const vguard<const gsl_vector*>& v) {
+vguard<vguard<LogProb> > MachineBoss::log_vector_gsl_vector (const vguard<const gsl_vector*>& v) {
   vguard<vguard<LogProb> > result (v.size());
   for (size_t i = 0; i < v.size(); ++i)
     result[i] = log_gsl_vector (v[i]);
   return result;
 }
 
-vguard<vguard<double> > gsl_matrix_to_stl (const gsl_matrix* m) {
+vguard<vguard<double> > MachineBoss::gsl_matrix_to_stl (const gsl_matrix* m) {
   vguard<vguard<double> > vv (m->size1, vguard<double> (m->size2));
   for (size_t i = 0; i < m->size1; ++i)
     for (size_t j = 0; j < m->size2; ++j)
@@ -94,7 +96,7 @@ vguard<vguard<double> > gsl_matrix_to_stl (const gsl_matrix* m) {
   return vv;
 }
 
-gsl_matrix* stl_to_gsl_matrix (const vguard<vguard<double> >& vv) {
+gsl_matrix* MachineBoss::stl_to_gsl_matrix (const vguard<vguard<double> >& vv) {
   Assert (vv.size() > 0, "Matrix has no rows");
   Assert (vv.front().size() > 0, "Matrix has no columns");
   const size_t rows = vv.size(), cols = vv.front().size();
@@ -107,15 +109,15 @@ gsl_matrix* stl_to_gsl_matrix (const vguard<vguard<double> >& vv) {
   return m;
 }
 
-double logBetaPdf (double prob, double yesCount, double noCount) {
+double MachineBoss::logBetaPdf (double prob, double yesCount, double noCount) {
   return log (gsl_ran_beta_pdf (prob, yesCount + 1, noCount + 1));
 }
 
-double logGammaPdf (double rate, double eventCount, double waitTime) {
+double MachineBoss::logGammaPdf (double rate, double eventCount, double waitTime) {
   return log (gsl_ran_gamma_pdf (rate, eventCount + 1, 1. / waitTime));
 }
 
-double logDirichletPdf (const vguard<double>& prob, const vguard<double>& count) {
+double MachineBoss::logDirichletPdf (const vguard<double>& prob, const vguard<double>& count) {
   Assert (prob.size() == count.size(), "Dimensionality of Dirichlet counts vguard does not match that of probability parameter vguard");
   vguard<double> countPlusOne (count);
   for (auto& c : countPlusOne)
@@ -123,6 +125,6 @@ double logDirichletPdf (const vguard<double>& prob, const vguard<double>& count)
   return log (gsl_ran_dirichlet_pdf (prob.size(), countPlusOne.data(), prob.data()));
 }
 
-double logGaussianPdf (double x, double mu, double sigma) {
+double MachineBoss::logGaussianPdf (double x, double mu, double sigma) {
   return log (gsl_ran_gaussian_pdf (x - mu, sigma));
 }

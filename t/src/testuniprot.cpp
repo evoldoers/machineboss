@@ -8,6 +8,7 @@
 #include "../../ext/cpp-httplib/httplib.h"
 
 using namespace std;
+using namespace MachineBoss;
 
 const char* host = "www.uniprot.org";
 const int port = 443;

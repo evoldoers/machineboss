@@ -6,6 +6,8 @@
 #include "constraints.h"
 #include "seqpair.h"
 
+namespace MachineBoss {
+
 struct MachineFitter {
   Machine machine;
   Constraints constraints;
@@ -16,6 +18,8 @@ struct MachineFitter {
   Params fit (const SeqPairList&, size_t) const;
   Params fit (const SeqPairList&, const list<Envelope>&) const;
 };
+
+}  // end namespace
 
 #endif /* FITTER_INCLUDED */
 

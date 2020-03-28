@@ -1,6 +1,8 @@
 #include "preset.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 struct PresetCache {
   map<string,string> namedPreset;
   vguard<string> names;

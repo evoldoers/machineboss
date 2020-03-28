@@ -7,6 +7,8 @@
 #include "params.h"
 #include "vguard.h"
 
+namespace MachineBoss {
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -26,5 +28,7 @@ struct Constraints {
   map<string,string> byParam() const;
   Constraints combine (const Constraints& cons) const;
 };
+
+}  // end namespace
 
 #endif /* CONSTRAINTS_INCLUDED */

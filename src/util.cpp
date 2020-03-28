@@ -24,8 +24,10 @@
 // buffer size for getcwd
 #define DIR_BUF_SIZE 4096
 
+using namespace MachineBoss;
+
 // function defs
-void Warn(const char* warning, ...) {
+void MachineBoss::Warn(const char* warning, ...) {
   va_list argptr;
   fprintf(stderr,"Warning: ");
   va_start (argptr, warning);
@@ -34,7 +36,7 @@ void Warn(const char* warning, ...) {
   va_end (argptr);
 }
 
-void Abort(const char* error, ...) {
+void MachineBoss::Abort(const char* error, ...) {
   va_list argptr;
   va_start (argptr, error);
   fprintf(stderr,"Abort: ");
@@ -45,7 +47,7 @@ void Abort(const char* error, ...) {
   throw runtime_error("Abort");
 }
 
-void Fail(const char* error, ...) {
+void MachineBoss::Fail(const char* error, ...) {
   va_list argptr;
   va_start (argptr, error);
   vfprintf(stderr,error,argptr);
@@ -54,19 +56,19 @@ void Fail(const char* error, ...) {
   exit (EXIT_FAILURE);
 }
 
-std::string plural (long n, const char* singular) {
+std::string MachineBoss::plural (long n, const char* singular) {
   std::string s = std::to_string(n) + " " + singular;
   if (n != 1)
     s += "s";
   return s;
 }
 
-std::string plural (long n, const char* singular, const char* plural) {
+std::string MachineBoss::plural (long n, const char* singular, const char* plural) {
   std::string s = std::to_string(n) + " " + (n == 1 ? singular : plural);
   return s;
 }
 
-std::vector<std::string> split (const std::string& s, const char* splitChars) {
+std::vector<std::string> MachineBoss::split (const std::string& s, const char* splitChars) {
   std::vector<std::string> result;
   auto b = s.begin();
   while (true) {
@@ -83,7 +85,7 @@ std::vector<std::string> split (const std::string& s, const char* splitChars) {
   return result;
 }
 
-std::vector<std::string> splitToChars (const std::string& s) {
+std::vector<std::string> MachineBoss::splitToChars (const std::string& s) {
   std::vector<std::string> result;
   result.reserve (s.size());
   for (const char c: s)
@@ -91,15 +93,15 @@ std::vector<std::string> splitToChars (const std::string& s) {
   return result;
 }
 
-std::string toupper (const std::string& s) {
+std::string MachineBoss::toupper (const std::string& s) {
   std::string r (s);
   for (size_t n = 0; n < r.size(); ++n)
-    r[n] = toupper (r[n]);
+    r[n] = std::toupper (r[n]);
   return r;
 }
 
 char const* const hexdig = "0123456789ABCDEF";
-void write_escaped (std::string const& s, std::ostream& out) {
+void MachineBoss::write_escaped (std::string const& s, std::ostream& out) {
   for (std::string::const_iterator i = s.begin(), end = s.end(); i != end; ++i) {
     unsigned char c = *i;
     if (' ' <= c and c <= '~' and c != '\\' and c != '"') {
@@ -122,7 +124,7 @@ void write_escaped (std::string const& s, std::ostream& out) {
   }
 }
 
-std::string escaped_str (std::string const& s) {
+std::string MachineBoss::escaped_str (std::string const& s) {
   std::ostringstream outs;
   write_escaped (s, outs);
   return outs.str();

@@ -1,5 +1,3 @@
-#include "logger.h"
-
 template<class IndexMapper>
 MappedForwardMatrix<IndexMapper>::MappedForwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix<IndexMapper> (machine, seqPair)

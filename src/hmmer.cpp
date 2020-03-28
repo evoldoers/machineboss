@@ -3,6 +3,8 @@
 #include "regexmacros.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 double HmmerModel::strToProb (const string& s) {
   return s == "*" ? 0 : exp(-stof(s));
 }

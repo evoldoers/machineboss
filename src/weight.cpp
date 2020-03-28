@@ -6,6 +6,8 @@
 #include "util.h"
 #include "logger.h"
 
+using namespace MachineBoss;
+
 // singleton for storing ExprStruct's
 class ExprStructFactory {
 private:

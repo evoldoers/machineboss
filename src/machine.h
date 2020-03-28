@@ -13,6 +13,8 @@
 #include "params.h"
 #include "constraints.h"
 
+namespace MachineBoss {
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -213,5 +215,7 @@ struct MachineBoundPath : MachinePath {
   MachineBoundPath (const MachinePath&, const Machine&);
   void writeJson (ostream&) const;
 };
+  
+}  // end namespace
 
 #endif /* MACHINE_INCLUDED */

@@ -3,6 +3,8 @@
 #define InternalHeaderSuffix  "_internal"
 #define EvalTransWeightSuffix "_eval"
 
+using namespace MachineBoss;
+
 Compiler::Compiler()
   : showCells (false)
 { }
@@ -136,6 +138,7 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
     + "#include <iostream>\n"
     + "#include \"softplus.h\"\n"
     + "using namespace std;\n"
+    + "using namespace MachineBoss;\n"
     + "#define " + boundmacro + "(X) sp.bound_intlog(X)\n"
     + "#define " + reducemacro + "(X,Y) sp.int_logsumexp(X,Y)\n"
     + "#define " + boundreducedmacro + "(X) (X)\n"
@@ -166,6 +169,8 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   resultType = "const double";
   nullValue = "NULL";
   infinity = "SOFTPLUS_INTLOG_INFINITY";
+using namespace MachineBoss;
+
   realInfinity = "numeric_limits<double>::infinity()";
   boolType = "bool";
   abort = "throw runtime_error(\"Abort\")";
@@ -173,6 +178,8 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   headerSuffix = ".h";
   includeGetParams = "#include \"getparams.h\"";
 }
+
+using namespace MachineBoss;
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   : compiler (c),
@@ -432,6 +439,8 @@ string CPlusPlusCompiler::postamble (const vguard<string>& funcs) const {
 string CPlusPlusCompiler::include (const string& filename) const {
   return string("#include \"") + filename + "\"\n";
 }
+
+using namespace MachineBoss;
 
 string CPlusPlusCompiler::declareFunction (const string& proto) const {
   return proto + ";\n";

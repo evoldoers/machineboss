@@ -8,6 +8,8 @@
 // if exit "probabilities" sum to more than this when trying to eliminate states using matrix algebra, issue a warning
 #define SuspiciouslyLargeProbabilityWarningThreshold 1.01
 
+using namespace MachineBoss;
+
 InputToken EvaluatedMachineState::bestOutgoingToken (StateIndex dest, OutputToken out) const {
   InputToken tok = 0;
   LogWeight lw = -numeric_limits<double>::infinity();

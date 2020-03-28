@@ -3,6 +3,8 @@
 #include "schema.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 void SeqPair::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpair", pj);
   input.name = "input";

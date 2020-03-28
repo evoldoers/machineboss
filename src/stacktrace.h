@@ -6,6 +6,8 @@
 #include <execinfo.h>
 #endif /* __EMSCRIPTEN__ */
 
+namespace MachineBoss {
+
 // http://oroboro.com/stack-trace-on-crash/
 static inline void printStackTrace( FILE *out = stderr, unsigned int max_frames = 63 ) {
 #ifndef __EMSCRIPTEN__
@@ -33,5 +35,7 @@ static inline void printStackTrace( FILE *out = stderr, unsigned int max_frames 
   free(symbollist);
 #endif /* __EMSCRIPTEN__ */
 }
+
+}  // end namespace
 
 #endif /* STACKTRACE_INCLUDED */

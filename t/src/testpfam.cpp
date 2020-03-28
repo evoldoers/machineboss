@@ -5,6 +5,7 @@
 #include "../../ext/cpp-httplib/httplib.h"
 
 using namespace std;
+using namespace MachineBoss;
 
 const char* host = "pfam.xfam.org";
 const int port = 80;

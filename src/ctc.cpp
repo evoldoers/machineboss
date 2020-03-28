@@ -2,6 +2,8 @@
 #include "ctc.h"
 #include "logger.h"
 
+using namespace MachineBoss;
+
 PrefixTree::Node::Node() :
   inTok (0),
   parent (NULL),

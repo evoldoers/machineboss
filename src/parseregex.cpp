@@ -3,6 +3,8 @@
 
 using namespace peg;
 
+using namespace MachineBoss;
+
 RegexParser::RegexParser()
   : white (" \t\n")
 {
@@ -40,6 +42,8 @@ Machine RegexParser::parse (const string& str) const {
 
   const string w = white, nw = nonwhite, alph = alphabet();
   const auto alphVec = stringToSymbols (alph);
+using namespace MachineBoss;
+
   const Machine dotStar = Machine::wildRecognizer (alphVec);
 
   auto quantify = [] (const Machine& m, const SemanticValues& sv) {

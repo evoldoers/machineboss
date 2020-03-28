@@ -7,8 +7,6 @@
 #include <cmath>
 #include "vguard.h"
 
-using namespace std;
-
 /* uncomment to disable lookup table */
 /*
 #define LOG_SUM_EXP_SLOW
@@ -26,6 +24,10 @@ using namespace std;
 
 /* comment to disable interpolation */
 #define LOG_SUM_EXP_INTERPOLATE
+
+namespace MachineBoss {
+
+using namespace std;
 
 typedef double LogProb;
 
@@ -164,5 +166,7 @@ double logBetaPdf (double prob, double yesCount, double noCount);  // alpha = ye
 double logGammaPdf (double rate, double eventCount, double waitTime);  // alpha = shape = eventCount+1, beta = rate = 1/scale = 1/theta = waitTime
 double logDirichletPdf (const vguard<double>& prob, const vguard<double>& count);  // alpha[n] = count[n] + 1
 double logGaussianPdf (double x, double mu, double sigma);
+
+}  // end namespace
 
 #endif /* LOGSUMEXP_INCLUDED */

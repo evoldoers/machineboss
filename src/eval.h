@@ -5,6 +5,8 @@
 #include "machine.h"
 #include "params.h"
 
+namespace MachineBoss {
+
 template<typename Symbol,typename Token>
 struct Tokenizer {
   vguard<Symbol> tok2sym;
@@ -80,5 +82,7 @@ struct EvaluatedMachine {
   Machine explicitMachine() const;  // returns the Machine without parameters, i.e. all transitions have numeric weights
   static vguard<InputSymbol> decode (const MachinePath&, const Machine&, const Params&);  // returns the input symbols for the most likely transition path consistent with the state path & output sequence specified by the MachinePath
 };
+
+}  // end namespace
 
 #endif /* EVAL_INCLUDED */

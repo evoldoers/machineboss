@@ -1,17 +1,19 @@
 #include "net.h"
 
+using namespace MachineBoss;
+
 #ifdef NO_SSL
-FastSeq getUniprot (const string& id) {
+FastSeq MachineBoss::getUniprot (const string& id) {
   Abort ("MachineBoss compiled without network functionality; getUniprot will not work");
   return FastSeq();
 }
 
-HmmerModel getPfam (const string& id) {
+HmmerModel MachineBoss::getPfam (const string& id) {
   Abort ("MachineBoss compiled without network functionality; getPfam will not work");
   return HmmerModel();
 }
 
-HmmerModel getDfam (const string& id) {
+HmmerModel MachineBoss::getDfam (const string& id) {
   Abort ("MachineBoss compiled without network functionality; getDfam will not work");
   return HmmerModel();
 }
@@ -19,7 +21,7 @@ HmmerModel getDfam (const string& id) {
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "../../ext/cpp-httplib/httplib.h"
 
-FastSeq getUniprot (const string& id) {
+FastSeq MachineBoss::getUniprot (const string& id) {
   const char* host = "www.uniprot.org";
   const int port = 443;
   const char* prefix = "/uniprot/";
@@ -33,7 +35,7 @@ FastSeq getUniprot (const string& id) {
   return FastSeq::fromFasta (string (res->body));
 }
 
-HmmerModel getPfam (const string& id) {
+HmmerModel MachineBoss::getPfam (const string& id) {
   HmmerModel hmm;
 
   const char* host = "pfam.xfam.org";
@@ -50,7 +52,7 @@ HmmerModel getPfam (const string& id) {
   return hmm;
 }
 
-HmmerModel getDfam (const string& id) {
+HmmerModel MachineBoss::getDfam (const string& id) {
   HmmerModel hmm;
 
   const char* host = "dfam.org";
@@ -68,7 +70,7 @@ HmmerModel getDfam (const string& id) {
 }
 #endif
 
-string inflateString (const string& compressed) {
+string MachineBoss::inflateString (const string& compressed) {
   size_t bufSize = compressed.size() * 2;
   char* buf = new char[bufSize];
   string decompressed;

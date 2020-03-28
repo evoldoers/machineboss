@@ -3,6 +3,8 @@
 
 #include "dpmatrix.h"
 
+namespace MachineBoss {
+
 class ViterbiMatrix : public DPMatrix<IdentityIndexMapper> {
 private:
   void fill();
@@ -13,5 +15,7 @@ public:
   double logLike() const;
   MachinePath path (const Machine&) const;
 };
+
+}  // end namespace
 
 #endif /* VITERBI_INCLUDED */

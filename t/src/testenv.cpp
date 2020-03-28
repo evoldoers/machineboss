@@ -1,5 +1,7 @@
 #include "../../src/seqpair.h"
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
   if (argc != 3) {
     cerr << "Usage: " << argv[0] << " seqpair.json [full|path|<width>]" << endl;

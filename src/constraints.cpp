@@ -3,6 +3,8 @@
 #include "schema.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 void Constraints::readJson (const json& pj) {
   MachineSchema::validateOrDie ("constraints", pj);
   if (pj.count("norm"))

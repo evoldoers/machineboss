@@ -34,6 +34,8 @@
 using namespace std;
 namespace po = boost::program_options;
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
 
   try {

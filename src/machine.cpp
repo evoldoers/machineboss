@@ -13,6 +13,8 @@
 
 #include "backward.h"
 
+using namespace MachineBoss;
+
 using json = nlohmann::json;
 using placeholders::_1;
 

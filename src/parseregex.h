@@ -3,6 +3,8 @@
 
 #include "machine.h"
 
+namespace MachineBoss {
+
 struct RegexParser {
   string nonwhite, white;
   RegexParser();
@@ -12,5 +14,7 @@ struct RegexParser {
 
   static vguard<InputSymbol> stringToSymbols (const string&);
 };
+
+}  // end namespace
 
 #endif /* PARSEREGEX_INCLUDED */

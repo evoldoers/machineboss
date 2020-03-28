@@ -6,6 +6,8 @@
 #include "machine.h"
 
 // HMMER3 model
+namespace MachineBoss {
+
 struct HmmerModel {
   struct Node {
     vguard<double> matchEmit, insEmit;
@@ -32,5 +34,7 @@ struct HmmerModel {
 
   Machine machine() const;
 };
+
+}  // end namespace
 
 #endif /* HMMER_INCLUDED */

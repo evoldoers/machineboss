@@ -6,6 +6,8 @@
 #define MaxEMIterations 1000
 #define MinEMImprovement .001
 
+using namespace MachineBoss;
+
 Constraints MachineFitter::allConstraints() const {
   return machine.cons.combine (constraints);
 }

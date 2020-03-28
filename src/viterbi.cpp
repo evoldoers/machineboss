@@ -1,6 +1,8 @@
 #include "viterbi.h"
 #include "logger.h"
 
+using namespace MachineBoss;
+
 ViterbiMatrix::ViterbiMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
 {

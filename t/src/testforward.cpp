@@ -1,6 +1,8 @@
 #include <fstream>
 #include "../../src/forward.h"
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
   if (argc != 4) {
     cerr << "Usage: " << argv[0] << " machine.json params.json seqs.json" << endl;

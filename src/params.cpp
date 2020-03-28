@@ -3,6 +3,8 @@
 #include "schema.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 void Params::writeJson (ostream& out) const {
   out << WeightAlgebra::toJsonString (defs);
 }

@@ -1,6 +1,8 @@
 #include <fstream>
 #include "../../src/counts.h"
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
   if (argc != 5) {
     cerr << "Usage: " << argv[0] << " machine.json params.json seqs.json constraints.json" << endl;

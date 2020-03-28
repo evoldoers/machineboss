@@ -1,7 +1,3 @@
-#include <iomanip>
-#include <algorithm>
-#include "logger.h"
-
 template<class IndexMapper>
 DPMatrix<IndexMapper>::DPMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   IndexMapper (seqPair),

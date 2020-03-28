@@ -98,6 +98,8 @@ endif
 # install dir
 PREFIX = /usr/local
 INSTALL_BIN = $(PREFIX)/bin
+INSTALL_LIB = $(PREFIX)/lib
+INSTALL_INCLUDE = $(PREFIX)/include/machineboss
 
 # other flags
 ifneq (,$(IS_32BIT))
@@ -149,23 +151,33 @@ SH = /bin/sh
 # Targets
 
 BOSS = boss
+LIBTARGET = libboss.a
 
 ifneq (,$(USING_EMSCRIPTEN))
 WRAP = node wasm/cmdwrap.js
 BOSSTARGET = wasm/boss.js
 WRAPBOSS = $(WRAP) $(BOSSTARGET)
 TESTSUFFIX = .js
+LIBTARGETS =
 else
 WRAP =
 BOSSTARGET = bin/$(BOSS)
 WRAPBOSS = $(BOSSTARGET)
 TESTSUFFIX =
+LIBTARGETS = $(LIBTARGET)
 endif
 
 all: $(BOSS)
 
 install: $(BOSS)
 	cp bin/$(BOSS) $(INSTALL_BIN)/$(BOSS)
+
+lib: $(LIBTARGET)
+
+install-lib: $(LIBTARGET)
+	@test -e $(INSTALL_INCLUDE) || mkdir -p $(INSTALL_INCLUDE)
+	cp -r src/*.h $(INSTALL_INCLUDE)
+	cp $(LIBTARGET) $(INSTALL_LIB)
 
 # Main build rules
 bin/% wasm/%.js: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_DEPS) $(BOOST_OBJ_FILES)
@@ -199,10 +211,21 @@ obj/%.o: t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
+# Top-level target
 $(BOSS): bin/$(BOSS)
 
+# Top-level target (emscripten)
 emscripten: $(BOSSTARGET)
 
+# Library target
+$(LIBTARGET):
+	ar rc $@ obj/*.o
+
+# test: build boss using library
+boss-with-lib: $(LIBTARGET) obj/boss.o
+	$(CPP) $(LD_FLAGS) -L. -lboss -o $@ obj/boss.o
+
+# Clean
 clean:
 	rm -rf bin/$(BOSS) wasm/$(BOSS).js t/bin/* obj/*
 

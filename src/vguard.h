@@ -5,6 +5,8 @@
 #include <iostream>
 #include "stacktrace.h"
 
+namespace MachineBoss {
+
 /* vector with accessor guards */
 template<typename T>
 class vguard : public std::vector<T> {
@@ -48,5 +50,7 @@ public:
     return _vgbase::operator[] (__n);
   }
 };
+
+}  // end namespace
 
 #endif /* VGUARD_INCLUDED */

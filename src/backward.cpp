@@ -1,6 +1,8 @@
 #include "backward.h"
 #include "logger.h"
 
+using namespace MachineBoss;
+
 BackwardMatrix::BackwardMatrix (const EvaluatedMachine& machine, const SeqPair& seqPair) :
   DPMatrix (machine, seqPair)
 {

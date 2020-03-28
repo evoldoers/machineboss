@@ -15,6 +15,8 @@
 
 using namespace std;
 
+using namespace MachineBoss;
+
 using json = nlohmann::json;
 
 using valijson::Schema;
@@ -40,6 +42,8 @@ struct SchemaCache {
 #include "schema/seqpairlist.h"
 
 #define addSchema(NAME) namedSchema[string(SchemaUrlPrefix #NAME SchemaUrlSuffix)] = string (schema_##NAME##_json, schema_##NAME##_json + schema_##NAME##_json_len);
+
+using namespace MachineBoss;
 
 SchemaCache::SchemaCache() {
   addSchema(constraints);

@@ -9,6 +9,8 @@
 #define DirectorySeparator         "/"
 
 // dual-purpose C++/JavaScript compiler
+namespace MachineBoss {
+
 struct Compiler {
   typedef size_t TransIndex;
   typedef size_t FuncIndex;
@@ -160,5 +162,7 @@ struct CPlusPlusCompiler : Compiler {
   string declareFunction (const string& proto) const;
   string initStringArray (const string& arrayName, const vguard<string>& values) const;
 };
+
+}  // end namespace
 
 #endif /* COMPILER_INCLUDED */

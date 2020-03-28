@@ -7,11 +7,13 @@
 #include "schema.h"
 #include "vguard.h"
 
-using namespace std;
-using json = nlohmann::json;
-
 #define DefaultInputSequenceName "input"
 #define DefaultOutputSequenceName "output"
+
+namespace MachineBoss {
+
+using namespace std;
+using json = nlohmann::json;
 
 template<typename Symbol>
 struct NamedSeq {
@@ -115,5 +117,7 @@ struct SeqPairList {
   void readJson (const json&);
   void writeJson (ostream&) const;
 };
+
+}  // end namespace
 
 #endif /* SEQPAIR_INCLUDED */

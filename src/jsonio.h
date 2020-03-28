@@ -6,13 +6,19 @@
 #include <iostream>
 #include "util.h"
 
+namespace MachineBoss {
+
+using namespace std;
+  
 // infinity-safe toString method for JSON output
 inline string toInfinitySafeString (double x) {
-  return (x == numeric_limits<double>::infinity()
-	  ? string("\"Infinity\"")
-	  : (x == -numeric_limits<double>::infinity()
-	     ? string("\"-Infinity\"")
-	     : to_string(x)));
+  if (x == numeric_limits<double>::infinity())
+    return string("\"Infinity\"");
+  if (x == -numeric_limits<double>::infinity())
+    return string("\"-Infinity\"");
+  ostringstream out;
+  out << x;
+  return out.str();
 }
 
 // wrappers for readJson & writeJson methods
@@ -102,5 +108,7 @@ struct JsonReader : Base {
 template<class Base>
 struct JsonLoader : JsonReader<Base>, JsonWriter<Base>
 { };
+
+}  // end namespace
 
 #endif /* JSONIO_INCLUDED */

@@ -5,13 +5,15 @@
 #include <set>
 #include <json.hpp>
 
-using namespace std;
-using json = nlohmann::json;
-
 #define WeightMacroSymbolPlaceholder       "$"
 #define WeightMacroAlphabetSizePlaceholder "#"
 #define WeightMacroDefaultMacro            "\"p" WeightMacroSymbolPlaceholder "\""
 #define WeightMacroUniformPriorMacro       "{\"/\":[1," WeightMacroAlphabetSizePlaceholder "]}"
+
+namespace MachineBoss {
+
+using namespace std;
+using json = nlohmann::json;
 
 typedef struct ExprStruct const* ExprPtr;
 typedef size_t ExprIndex;
@@ -110,5 +112,7 @@ struct WeightAlgebra {
   static void countRefs (const WeightExpr w, ExprRefCounts& counts, set<string>& params, const ParamDefs& defs, const WeightExpr parent = NULL);
   static ExprIter exprBegin();
 };
+
+}  // end namespace
 
 #endif /* WEIGHT_INCLUDED */

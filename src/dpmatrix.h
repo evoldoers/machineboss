@@ -2,9 +2,15 @@
 #define DPMATRIX_INCLUDED
 
 #include <random>
+#include <iomanip>
+#include <algorithm>
+
 #include "eval.h"
 #include "seqpair.h"
 #include "logsumexp.h"
+#include "logger.h"
+
+namespace MachineBoss {
 
 struct IndexMapperBase {
   typedef typename Envelope::InputIndex InputIndex;
@@ -148,5 +154,7 @@ public:
 };
 
 #include "dpmatrix.defs.h"
+
+}  // end namespace
 
 #endif /* DPMATRIX_INCLUDED */
