@@ -218,8 +218,8 @@ $(BOSS): bin/$(BOSS)
 emscripten: $(BOSSTARGET)
 
 # Library target
-$(LIBTARGET):
-	ar rc $@ obj/*.o
+$(LIBTARGET): $(OBJ_FILES)
+	ar rc $@ $(OBJ_FILES)
 
 # test: build boss using library
 boss-with-lib: $(LIBTARGET) obj/boss.o
