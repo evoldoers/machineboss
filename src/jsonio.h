@@ -1,10 +1,10 @@
 #ifndef JSONIO_INCLUDED
 #define JSONIO_INCLUDED
 
-#include <json.hpp>
 #include <fstream>
 #include <iostream>
 #include "util.h"
+#include "json.hpp"
 
 namespace MachineBoss {
 

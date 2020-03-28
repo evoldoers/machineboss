@@ -177,6 +177,8 @@ lib: $(LIBTARGET)
 install-lib: $(LIBTARGET)
 	@test -e $(INSTALL_INCLUDE) || mkdir -p $(INSTALL_INCLUDE)
 	cp -r src/*.h $(INSTALL_INCLUDE)
+	cp -r ext/* $(INSTALL_INCLUDE)
+	cp -r ext/nlohmann_json/* $(INSTALL_INCLUDE)
 	cp $(LIBTARGET) $(INSTALL_LIB)
 
 # Main build rules

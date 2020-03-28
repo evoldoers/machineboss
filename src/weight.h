@@ -3,7 +3,7 @@
 
 #include <list>
 #include <set>
-#include <json.hpp>
+#include "json.hpp"
 
 #define WeightMacroSymbolPlaceholder       "$"
 #define WeightMacroAlphabetSizePlaceholder "#"

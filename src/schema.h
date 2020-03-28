@@ -1,7 +1,7 @@
 #ifndef SCHEMA_INCLUDED
 #define SCHEMA_INCLUDED
 
-#include <json.hpp>
+#include "json.hpp"
 
 namespace MachineBoss {
 
