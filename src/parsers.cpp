@@ -321,9 +321,6 @@ ExprParser::ExprParser() {
   auto ok = parser.load_grammar(grammar);
   assert(ok);
 
-  //      if (sv.choice() == 0)
-  //      s.append (any_cast<string> (sv[1]));
-
   parser["Term"] = [&](const SemanticValues& sv) {
 //    cerr << "Term " << sv.str() << endl;
     WeightExpr w = any_cast<WeightExpr> (sv[0]);

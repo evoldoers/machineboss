@@ -374,12 +374,12 @@ test-transpose:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq001.json -t t/expect/recognizer001.json
 
 test-weight:
-	@$(TEST) $(WRAPBOSS) -w p t/expect/null-p.json
+	@$(TEST) $(WRAPBOSS) -w '$$p' t/expect/null-p.json
 	@$(TEST) $(WRAPBOSS) -w 2 t/expect/null-2.json
 	@$(TEST) $(WRAPBOSS) -w .5 t/expect/null-0.5.json
-	@$(TEST) $(WRAPBOSS) -w '{"*":["p","q"]}' t/expect/null-pq.json
-	@$(TEST) $(WRAPBOSS) -w '{"*":[1,2]}' t/expect/null-2.json
-	@$(TEST) $(WRAPBOSS) -w '{"/":[1,2]}' t/expect/null-1div2.json
+	@$(TEST) $(WRAPBOSS) -w '$$p*$$q' t/expect/null-pq.json
+	@$(TEST) $(WRAPBOSS) -w '1*2' t/expect/null-2.json
+	@$(TEST) $(WRAPBOSS) -w '1/2' t/expect/null-1div2.json
 	@$(TEST) $(WRAPBOSS) --recognize-wild ACGT --weight-input '"p$$"' --reciprocal t/expect/null-weight-recip.json
 
 test-shorthand:

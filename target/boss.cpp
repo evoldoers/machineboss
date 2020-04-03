@@ -517,28 +517,7 @@ int main (int argc, char** argv) {
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
 	} else if (command == "--weight") {
 	  const string wArg = getArg();
-	  WeightExpr w;
-	  json wj = json::parse (wArg, nullptr, false);
-          if (!wj.is_discarded()) {
-	    if (MachineSchema::validate ("expr", wj))
-	      w = WeightAlgebra::fromJson (wj);
-	  } else {  // not valid json
-	    const char* wc = wArg.c_str();
-	    char* p;
-	    const long intValue = strtol (wc, &p, 10);
-	    if (*p) {
-	      // integer conversion failed
-	      const double doubleValue = strtod (wc, &p);
-	      if (*p) {
-		// double conversion failed
-		w = WeightAlgebra::param (wArg);
-	      } else
-		w = WeightAlgebra::doubleConstant (doubleValue);
-	    }
-	    else
-	      w = WeightAlgebra::intConstant (intValue);
-	  }
-	  m = Machine::singleTransition (w);
+	  m = Machine::singleTransition (parseWeightExpr (wArg));
 	} else if (command == "--weight-input") {
 	  m = popMachine().weightInputs (getArg());
 	} else if (command == "--weight-output") {
