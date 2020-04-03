@@ -2,6 +2,7 @@
 #include <list>
 #include <iomanip>
 #include "weight.h"
+#include "parsers.h"
 #include "logsumexp.h"
 #include "util.h"
 #include "logger.h"
@@ -578,6 +579,8 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
      result = add (fromJson (args[0], defs), fromJson (args[1], defs));
    else if (opcode == "-")
      result = subtract (fromJson (args[0], defs), fromJson (args[1], defs));
+   else if (opcode == "expr")
+     result = parseWeightExpr (args.get<string>());
    else
      Abort ("Unknown opcode %s in JSON", opcode.c_str());
  }

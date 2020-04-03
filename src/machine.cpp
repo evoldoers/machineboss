@@ -10,6 +10,7 @@
 #include "schema.h"
 #include "params.h"
 #include "preset.h"
+#include "parsers.h"
 
 #include "backward.h"
 
@@ -345,7 +346,7 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
-  // This JSON notation for machine manipulation is untested, unused, and should probably go.... IH, 2/22/2019
+  // This JSON notation for machine manipulation (first part of this method) is untested, unused, and should probably go.... IH, 2/22/2019
   
   // Check for composite, concatenated, tranposed, reversed, etc etc transducers
   if (pj.count("compose")) {
@@ -430,6 +431,8 @@ void Machine::readJson (const json& pj) {
 
   } else {
 
+    // This is the part of the JSON format parser that is (mostly) tested... IH 4/3/2020
+    
     // Basic transducer with the following properties:
     // (mandatory) state: list of states with transitions
     //  (optional)  defs: function definitions
@@ -484,7 +487,11 @@ void Machine::readJson (const json& pj) {
 	    t.in = jt.at("in").get<string>();
 	  if (jt.count("out"))
 	    t.out = jt.at("out").get<string>();
-	  t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight")) : WeightAlgebra::one());
+	  t.weight = (jt.count("weight")
+		      ? WeightAlgebra::fromJson (jt.at("weight"))
+		      : (jt.count("expr")
+			 ? parseWeightExpr (jt.at("expr").get<string>())
+			 : WeightAlgebra::one()));
 	  ms.trans.push_back (t);
 	}
       }

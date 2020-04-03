@@ -23,7 +23,7 @@
 #include "../src/counts.h"
 #include "../src/util.h"
 #include "../src/schema.h"
-#include "../src/parseregex.h"
+#include "../src/parsers.h"
 #include "../src/hmmer.h"
 #include "../src/csv.h"
 #include "../src/compiler.h"

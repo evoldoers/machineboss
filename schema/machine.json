@@ -50,14 +50,36 @@
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "required": ["to"],
-                      "properties": {
-                        "to": {},
-                        "in": { "type": "string" },
-                        "out": { "type": "string" },
-                        "weight": { "$ref": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/expr.json" }
-                      },
-                      "additionalProperties": false
+                      "oneOf": [
+                        {
+                          "required": ["to","weight"],
+                          "properties": {
+                            "to": {},
+                            "in": { "type": "string" },
+                            "out": { "type": "string" },
+                            "weight": { "$ref": "https://raw.githubusercontent.com/evoldoers/machineboss/master/schema/expr.json" }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "required": ["to","expr"],
+                          "properties": {
+                            "to": {},
+                            "in": { "type": "string" },
+                            "out": { "type": "string" },
+                            "expr": { "type": "string" }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "required": ["to"],
+                          "properties": {
+                            "to": {},
+                            "in": { "type": "string" },
+                            "out": { "type": "string" }
+                          },
+                          "additionalProperties": false
+                        }]
                     }
                   }
                 },

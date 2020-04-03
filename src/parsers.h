@@ -1,5 +1,5 @@
-#ifndef PARSEREGEX_INCLUDED
-#define PARSEREGEX_INCLUDED
+#ifndef PARSERS_INCLUDED
+#define PARSERS_INCLUDED
 
 #include "machine.h"
 
@@ -14,6 +14,8 @@ struct RegexParser {
 
   static vguard<InputSymbol> stringToSymbols (const string&);
 };
+
+WeightExpr parseWeightExpr (const string&);
 
 }  // end namespace
 
