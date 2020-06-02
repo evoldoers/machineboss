@@ -383,7 +383,7 @@ test-weight:
 	@$(TEST) $(WRAPBOSS) --recognize-wild ACGT --weight-input '"p$$"' --reciprocal t/expect/null-weight-recip.json
 
 test-shorthand:
-	@$(TEST) $(WRAPBOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' x t/expect/shorthand.json
+	@$(TEST) $(WRAPBOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' '$$x' t/expect/shorthand.json
 
 test-hmmer:
 	@$(TEST) t/roundfloats.pl 3 $(WRAPBOSS) --hmmer t/hmmer/fn3.hmm t/expect/fn3.json
@@ -557,7 +557,7 @@ test-count-motif:
 	@$(TEST) t/roundfloats.pl 1 $(WRAPBOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count4.json
 
 # Code generation tests
-CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
+CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitstutternoise-0011 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitstutternoise-0011-compiled-seq-forward test-101-bitstutternoise-0011-compiled-seq-viterbi test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
 
 # C++
 t/src/%/prof/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src/getparams.h t/src/testcompiledprof.cpp
@@ -568,6 +568,11 @@ t/src/%/prof/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src/getpara
 t/src/%/seq/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src/getparams.h t/src/testcompiledseq.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	@$(WRAPBOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@)
+	@cp t/src/testcompiledseq.cpp $@
+
+t/src/%/seqvit/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src/getparams.h t/src/testcompiledseq.cpp
+	@test -e $(dir $@) || mkdir -p $(dir $@)
+	@$(WRAPBOSS) t/machine/$*.json --cpp64 --inseq string --outseq string --codegen $(dir $@) --compileviterbi
 	@cp t/src/testcompiledseq.cpp $@
 
 t/src/%/seq2prof/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src/getparams.h t/src/testcompiledseq2prof.cpp
@@ -588,6 +593,10 @@ t/src/%/fasta2strand/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src
 test-101-bitnoise-001:
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitnoise.json --recognize-json t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
+test-101-bitstutternoise-0011:
+	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitstutternoise-fwd-0011.json
+	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -V t/expect/101-bitstutternoise-vit-0011.json
+
 test-101-bitnoise-001-compiled: t/codegen/bitnoise/prof/test
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
@@ -596,6 +605,12 @@ test-101-bitnoise-001-compiled-seq: t/codegen/bitnoise/seq/test
 
 test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+
+test-101-bitstutternoise-0011-compiled-seq-forward: t/codegen/bitstutter-noise/seq/test
+	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-fwd-0011.json
+
+test-101-bitstutternoise-0011-compiled-seq-viterbi: t/codegen/bitstutter-noise/seqvit/test
+	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-vit-0011.json
 
 # JavaScript
 js/lib/%/prof/test.js: t/machine/%.json $(BOSSTARGET) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js

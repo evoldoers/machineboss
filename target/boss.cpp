@@ -178,6 +178,7 @@ int main (int argc, char** argv) {
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
       ("align,A", "Viterbi sequence alignment")
+      ("viterbi,V", "Viterbi log-likelihood calculation")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ("beam-decode,Z", "find most likely input by beam search")
@@ -202,6 +203,7 @@ int main (int argc, char** argv) {
       ("cpp32", "generate C++ dynamic programming code (32-bit)")
       ("js", "generate JavaScript dynamic programming code")
       ("showcells", "include debugging output in generated code")
+      ("compileviterbi", "compile Viterbi instead of Forward")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -638,7 +640,7 @@ int main (int argc, char** argv) {
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
     const bool encodingRequested = vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("viterbi-encode") || vm.count("random-encode");
     const bool decodingRequested = vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("viterbi-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
-    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts");
+    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("viterbi") || vm.count("align") || vm.count("counts");
     const bool inferenceRequested = dpRequested || encodingRequested || decodingRequested;
     const bool evalRequested = vm.count("evaluate");
     if (paramsSpecified	&& (evalRequested || !inferenceRequested)) {
@@ -692,6 +694,7 @@ int main (int argc, char** argv) {
       const Compiler::SeqType ySeqType = getSeqType ("outseq", machine.outputAlphabet());
       const string filenamePrefix = vm.at("codegen").as<string>();
       compiler.showCells = vm.count("showcells");
+      compiler.useMaxReduce = vm.count("compileviterbi");
       compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
     Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") < 2, "Options --cpp32, --cpp64 and --js are mutually incompatible; choose a target language");
@@ -799,17 +802,29 @@ int main (int argc, char** argv) {
     }
 
     // align sequences
-    if (vm.count("align")) {
+    if (vm.count("align") || vm.count("viterbi")) {
       Require (gotData, "To align sequences, please specify a data file");
       const EvaluatedMachine eval (machine, params);
+      if (vm.count("viterbi"))
+	cout << "[";
+      size_t n = 0;
       SeqPairList alignResults;
       for (const auto& seqPair: data.seqPairs) {
 	const ViterbiMatrix viterbi (eval, seqPair);
+	if (vm.count("viterbi"))
+	  cout << (n++ ? ",\n " : "")
+	       << "[\"" << escaped_str(seqPair.input.name)
+	       << "\",\"" << escaped_str(seqPair.output.name)
+	       << "\"," << toInfinitySafeString (viterbi.logLike()) << "]";
 	const MachineBoundPath path (viterbi.path (machine), machine);
 	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
       }
-      alignResults.writeJson (cout);
-      cout << endl;
+      if (vm.count("viterbi"))
+	cout << "]\n";
+      if (vm.count("align")) {
+	alignResults.writeJson (cout);
+	cout << endl;
+      }
     }
 
     // encode
