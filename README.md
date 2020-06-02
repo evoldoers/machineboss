@@ -550,6 +550,7 @@ Transducer application:
   -R [ --wiggle-room ] arg      wiggle room (allowed departure from training 
                                 alignment)
   -A [ --align ]                Viterbi sequence alignment
+  -V [ --viterbi ]              Viterbi log-likelihood calculation
   -L [ --loglike ]              Forward log-likelihood calculation
   -C [ --counts ]               Forward-Backward counts (derivatives of 
                                 log-likelihood with respect to logs of 
@@ -578,6 +579,7 @@ Parser-generator:
   --cpp32                       generate C++ dynamic programming code (32-bit)
   --js                          generate JavaScript dynamic programming code
   --showcells                   include debugging output in generated code
+  --compileviterbi              compile Viterbi instead of Forward
   --inseq arg                   input sequence type (String, Intvec, Profile)
   --outseq arg                  output sequence type (String, Intvec, Profile)
 
