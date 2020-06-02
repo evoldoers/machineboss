@@ -5,10 +5,10 @@
 #include <set>
 #include "json.hpp"
 
-#define WeightMacroSymbolPlaceholder       "$"
+#define WeightMacroSymbolPlaceholder       "%"
 #define WeightMacroAlphabetSizePlaceholder "#"
-#define WeightMacroDefaultMacro            "\"p" WeightMacroSymbolPlaceholder "\""
-#define WeightMacroUniformPriorMacro       "{\"/\":[1," WeightMacroAlphabetSizePlaceholder "]}"
+#define WeightMacroDefaultMacro            "$p" WeightMacroSymbolPlaceholder ""
+#define WeightMacroUniformPriorMacro       "1/" WeightMacroAlphabetSizePlaceholder ""
 
 namespace MachineBoss {
 

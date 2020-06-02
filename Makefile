@@ -380,7 +380,8 @@ test-weight:
 	@$(TEST) $(WRAPBOSS) -w '$$p*$$q' t/expect/null-pq.json
 	@$(TEST) $(WRAPBOSS) -w '1*2' t/expect/null-2.json
 	@$(TEST) $(WRAPBOSS) -w '1/2' t/expect/null-1div2.json
-	@$(TEST) $(WRAPBOSS) --recognize-wild ACGT --weight-input '"p$$"' --reciprocal t/expect/null-weight-recip.json
+	@$(TEST) $(WRAPBOSS) --recognize-wild ACGT --weight-input '$$p%' --reciprocal t/expect/null-weight-recip.json
+	@$(TEST) $(WRAPBOSS) --recognize-wild ACGT --weight-input '1/$$p%' t/expect/null-weight-recip.json
 
 test-shorthand:
 	@$(TEST) $(WRAPBOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' '$$x' t/expect/shorthand.json

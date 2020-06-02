@@ -388,7 +388,7 @@ Transducer construction:
   --generate-wild arg           generator for Kleene closure over specified 
                                 characters
   --generate-iid arg            as --generate-wild, but followed by 
-                                --weight-output "p$"
+                                --weight-output '$p%'
   --generate-uniform arg        as --generate-iid, but weights outputs by 
                                 1/(output alphabet size)
   --generate-fasta arg          generator for FASTA-format sequence
@@ -400,7 +400,7 @@ Transducer construction:
   --recognize-wild arg          recognizer for Kleene closure over specified 
                                 characters
   --recognize-iid arg           as --recognize-wild, but followed by 
-                                --weight-input "p$"
+                                --weight-input '$p%'
   --recognize-uniform arg       as --recognize-iid, but weights outputs by 
                                 1/(input alphabet size)
   --recognize-fasta arg         recognizer for FASTA-format sequence
@@ -481,10 +481,10 @@ Postfix operators:
   --reciprocal                  element-wise reciprocal: invert all weight 
                                 expressions
   --weight-input arg            multiply input weights by specified JSON 
-                                expression ($ expands to input symbol, # to 
+                                expression (% expands to input symbol, # to 
                                 input alphabet size)
   --weight-output arg           multiply output weights by specified JSON 
-                                expression ($ expands to output symbol, # to 
+                                expression (% expands to output symbol, # to 
                                 output alphabet size)
   --weight-input-geom arg       place geometric distribution with specified 
                                 parameter over input length

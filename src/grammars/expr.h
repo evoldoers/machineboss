@@ -19,6 +19,6 @@
 "Float      <- Integer '.' Integer / '.' Integer\n"
 "Scientific <- IntOrFloat ('e'/'E') Sign Integer\n"
 "Variable   <- '$' identifier\n"
-"identifier <- < [a-z] [a-z0-9]* >\n"
+"identifier <- < [a-zA-Z] [a-zA-Z0-9]* >\n"
 "~_          <- [ \t\r\n]*\n"
 "\n"
