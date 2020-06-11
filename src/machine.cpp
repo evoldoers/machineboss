@@ -761,7 +761,10 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
 	toVisit.push_back(d);
       }
   }
-  Assert (keep[iStates*jStates-1], "End state of composed machine is not accessible");
+  if (!keep[iStates*jStates-1]) {
+    Warn ("End state of composed machine is not accessible");
+    return zero();
+  }
 
   LogThisAt(7,"Sorting & indexing " << keptState.size() << " states" << endl);
   sort (keptState.begin(), keptState.end());
@@ -929,7 +932,11 @@ Machine Machine::ergodicMachine() const {
     vguard<bool> keep (nStates(), false);
     for (StateIndex s : accessibleStates())
       keep[s] = true;
-    Assert (keep[nStates()-1], "End state is not accessible");
+
+    if (!keep[nStates()-1]) {
+      Warn ("End state is not accessible");
+      return zero();
+    }
     
     map<StateIndex,StateIndex> nullEquiv;
     for (StateIndex s = 0; s < nStates(); ++s)
@@ -949,7 +956,10 @@ Machine Machine::ergodicMachine() const {
       if (keep[oldIdx] && nullEquiv.count(oldIdx))
 	old2new[oldIdx] = old2new[nullEquiv.at(oldIdx)];
 
-    Assert (ns > 0, "Machine has no accessible states");
+    if (!ns) {
+      Warn ("Machine has no accessible states");
+      return zero();
+    }
 
     em.state.reserve (ns);
     for (StateIndex oldIdx = 0; oldIdx < nStates(); ++oldIdx)
@@ -1687,6 +1697,13 @@ Machine Machine::null() {
   Machine n;
   n.state.push_back (MachineState());
   return n;
+}
+
+Machine Machine::zero() {
+  Machine z;
+  z.state.push_back (MachineState());
+  z.state.push_back (MachineState());
+  return z;
 }
 
 Machine Machine::singleTransition (const WeightExpr& weight) {

@@ -70,13 +70,14 @@ construct recognizers rather than generators, by convention.
 (A recognizer is an input machine; a generator is an output machine.)
 You can convert a recognizer to a generator (and vice versa) by swapping the input and output labels, using `--tranpose`.
 
-### Search the N-glycosylation regex against the MinION read
+### Search the N-glycosylation regex against a MinION read
 
 This command takes the `PS00001.json` regex from the previous example,
 runs it through a reverse-translation machine (`--preset translate`),
 adds a self-loop with a dummy parameter (`--count-copies n`),
 flanks it with a null model (`--generate-uniform-dna`),
 and then uses the Forward-Backward algorithm to find the expected usage of the dummy parameter (`--counts`)
+when run against the output of a nanopore basecaller stored in a CSV file (see below for more info on the CSV file format)
 
 ~~~~
 boss --counts -v6 \

@@ -1,0 +1,12 @@
+all: gp120-positive gp120-negative
+
+# Download PFam model for the GP120 domain, run it against an HIV GP120 sequence
+# The "--weight-output 20" line multiplies every emission probability by 20, constituting a crude null model
+# The log-likelihood reported for this should be positive
+gp120-positive:
+	boss --pfam GP120 --output-fasta gp120.fa --weight-output 20 --viterbi
+
+# Download PFam model for the GP120 domain, run it against a dummy sequence
+# The log-likelihood reported for this should be negative
+gp120-negative:
+	boss --pfam GP120 --output-fasta trp-cage.fa --weight-output 20 --viterbi

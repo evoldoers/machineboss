@@ -214,3 +214,7 @@ vguard<InputSymbol> EvaluatedMachine::decode (const MachinePath& path, const Mac
   }
   return inSeq;
 }
+
+bool EvaluatedMachine::canTokenize (const SeqPair& sp) const {
+  return inputTokenizer.canTokenize (sp.input.seq) && outputTokenizer.canTokenize (sp.output.seq);
+}

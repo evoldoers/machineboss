@@ -99,7 +99,8 @@ struct Machine {
   // For example:
   //   wildGenerator.X.wildGenerator  where "." represents concatenation
   // always yields a single left-flanking state, then X's states, then a single right-flanking state
-  static Machine null();
+  static Machine null();  // single state, no transitions: weight is one for empty string, zero for all other strings
+  static Machine zero();  // two states, no transitions: weight is zero for all strings
   static Machine singleTransition (const WeightExpr& weight);
 
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, SilentCycleStrategy cycleStrategy = SumSilentCycles);

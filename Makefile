@@ -402,7 +402,7 @@ test-csv-tiny:
 	@$(TEST) js/stripnames.js $(WRAPBOSS) -L --generate-json t/io/tiny_uc.json --recognize-csv t/csv/tiny_uc.csv t/expect/tiny_uc.json
 
 test-csv-tiny-fail:
-	@$(TEST) js/stripnames.js $(WRAPBOSS) -L --generate-json t/io/tiny_lc.json --recognize-csv t/csv/tiny_uc.csv -fail
+	@$(TEST) js/stripnames.js $(WRAPBOSS) -L --generate-json t/io/tiny_lc.json --recognize-csv t/csv/tiny_uc.csv t/expect/tiny_uc_fail.json
 
 test-csv-tiny-empty:
 	@$(TEST) js/stripnames.js $(WRAPBOSS) -L --generate-json t/io/empty.json --recognize-csv t/csv/tiny_uc.csv t/expect/tiny_empty.json
@@ -431,7 +431,7 @@ test-missing-machine:
 	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json -m -m t/machine/bitnoise.json t/machine/bitnoise.json -fail
 
 test-impossible-intersect:
-	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --begin --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json --end -fail
+	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --begin --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json --end t/expect/zero.json
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid

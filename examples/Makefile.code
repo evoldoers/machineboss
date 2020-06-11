@@ -1,0 +1,29 @@
+
+all: encode decode
+
+# Encode binary data as non-repeating DNA
+
+# This example implements a DNA storage code very similar to that of Goldman et al (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/)
+
+# To encode we use beam search (`--beam-encode`).
+# We could also use prefix search, but beam search is generally much faster:
+
+encode:
+	boss --preset bintern --preset terndna --input-chars 1010101 --beam-encode
+
+# Note that the encoder is a composite two-stage machine.
+# First it converts base-2 binary to base-3 ternary, using the preset machine `bintern`;
+# then it converts ternary to nonrepeating DNA, using the preset `terndna`.
+# We could have done this in two steps:
+
+encode2:
+	boss --preset bintern --input-chars 1010101 --beam-encode
+	boss --preset terndna --input-chars 12022212 --beam-encode
+
+# The first step yields the output sequence `12022212`; this is the input to the second step, which yields the output sequence `CGATATGC`.
+# That is the same output we get when we use the composite two-stage machine (`--preset bintern --preset terndna`).
+
+# To decode we can use beam search too:
+
+decode:
+	boss --preset bintern --preset terndna --output-chars CGATATGC --beam-decode

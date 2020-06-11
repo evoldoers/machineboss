@@ -784,11 +784,15 @@ int main (int argc, char** argv) {
       cout << "[";
       size_t n = 0;
       for (const auto& seqPair: data.seqPairs) {
-	const RollingOutputForwardMatrix forward (eval, seqPair);
+	double fwdLogLike = -numeric_limits<double>::infinity();
+	if (eval.canTokenize (seqPair)) {
+	  const RollingOutputForwardMatrix forward (eval, seqPair);
+	  fwdLogLike = forward.logLike();
+	}
 	cout << (n++ ? ",\n " : "")
 	     << "[\"" << escaped_str(seqPair.input.name)
 	     << "\",\"" << escaped_str(seqPair.output.name)
-	     << "\"," << toInfinitySafeString (forward.logLike()) << "]";
+	     << "\"," << toInfinitySafeString (fwdLogLike) << "]";
       }
       cout << "]\n";
     }
@@ -810,14 +814,20 @@ int main (int argc, char** argv) {
       size_t n = 0;
       SeqPairList alignResults;
       for (const auto& seqPair: data.seqPairs) {
-	const ViterbiMatrix viterbi (eval, seqPair);
+	double vitLogLike = -numeric_limits<double>::infinity();
+	if (eval.canTokenize (seqPair)) {
+	  const ViterbiMatrix viterbi (eval, seqPair);
+	  vitLogLike = viterbi.logLike();
+	  if (vitLogLike > -numeric_limits<double>::infinity()) {
+	    const MachineBoundPath path (viterbi.path (machine), machine);
+	    alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
+	  }
+	}
 	if (vm.count("viterbi"))
 	  cout << (n++ ? ",\n " : "")
 	       << "[\"" << escaped_str(seqPair.input.name)
 	       << "\",\"" << escaped_str(seqPair.output.name)
-	       << "\"," << toInfinitySafeString (viterbi.logLike()) << "]";
-	const MachineBoundPath path (viterbi.path (machine), machine);
-	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
+	       << "\"," << toInfinitySafeString (vitLogLike) << "]";
       }
       if (vm.count("viterbi"))
 	cout << "]\n";
