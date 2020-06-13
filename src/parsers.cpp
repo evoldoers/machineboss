@@ -32,8 +32,8 @@ Machine RegexParser::parse (const string& str) const {
   
   parser parser;
 
-  parser.log = [](size_t line, size_t col, const string& msg) {
-    cerr << line << ":" << col << ": " << msg << "\n";
+  parser.log = [&](size_t line, size_t col, const string& msg) {
+    cerr << "In regular expression " << '"' << str << '"' << " position " << col << ": " << msg << "\n";
   };
 
   auto ok = parser.load_grammar(grammar);
@@ -307,6 +307,7 @@ Machine RegexParser::parse (const string& str) const {
 struct ExprParser {
   parser parser;
   ExprParser();
+  string current;
 };
 ExprParser exprParser;
 ExprParser::ExprParser() {
@@ -314,8 +315,8 @@ ExprParser::ExprParser() {
 #include "grammars/expr.h"
     ;
 
-  parser.log = [](size_t line, size_t col, const string& msg) {
-    cerr << line << ":" << col << ": " << msg << "\n";
+  parser.log = [&](size_t line, size_t col, const string& msg) {
+    cerr << "In weight expression " << '"' << current << '"' << " position " << col << ": " << msg << "\n";
   };
 
   auto ok = parser.load_grammar(grammar);
@@ -448,6 +449,7 @@ ExprParser::ExprParser() {
   
 WeightExpr MachineBoss::parseWeightExpr (const string& str) {
   WeightExpr w = WeightAlgebra::one();
+  exprParser.current = str;
   exprParser.parser.parse (str.c_str(), w);
   return w;
 }

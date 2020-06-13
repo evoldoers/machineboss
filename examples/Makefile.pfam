@@ -1,12 +1,22 @@
 all: gp120-positive gp120-negative
 
-# Download PFam model for the GP120 domain, run it against an HIV GP120 sequence
+# Download PFam model for the GP120 domain, make it a log-odds ratio by dividing each output weight by SwissProt amino acid frequency,
+# make it a local model by adding unit-weight flanking states, and save to file
+gp120.json:
+	boss --pfam GP120 --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --flank-output-wild >$@
+
+# The model constructed above still has the amino acid frequencies embedded as parameters
+# Let's make a version of the model where all transition weights are explicitly evaluated as numbers
+gp120-evaluated.json: gp120.json
+	boss $< --evaluate >$@
+
+# Run GP120 profile HMM against an HIV GP120 sequence
 # The "--weight-output 20" line multiplies every emission probability by 20, constituting a crude null model
 # The log-likelihood reported for this should be positive
-gp120-positive:
-	boss --pfam GP120 --output-fasta gp120.fa --weight-output 20 --viterbi
+gp120-positive: gp120.json
+	boss $< --output-fasta gp120.fa --viterbi
 
-# Download PFam model for the GP120 domain, run it against a dummy sequence
+# Run GP120 profile HMM against a dummy sequence
 # The log-likelihood reported for this should be negative
-gp120-negative:
-	boss --pfam GP120 --output-fasta trp-cage.fa --weight-output 20 --viterbi
+gp120-negative: gp120.json
+	boss $< --output-fasta trp-cage.fa --viterbi
