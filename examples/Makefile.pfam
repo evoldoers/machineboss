@@ -5,11 +5,6 @@ all: gp120-positive gp120-negative
 gp120.json:
 	boss --pfam GP120 --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --flank-output-wild >$@
 
-# The model constructed above still has the amino acid frequencies embedded as parameters
-# Let's make a version of the model where all transition weights are explicitly evaluated as numbers
-gp120-evaluated.json: gp120.json
-	boss $< --evaluate >$@
-
 # Run GP120 profile HMM against an HIV GP120 sequence
 # The "--weight-output 20" line multiplies every emission probability by 20, constituting a crude null model
 # The log-likelihood reported for this should be positive
@@ -21,3 +16,15 @@ gp120-positive: gp120.json
 gp120-negative: gp120.json
 	boss $< --output-fasta trp-cage.fa --viterbi
 
+# A few variations...
+
+# The model constructed above still has the amino acid frequencies embedded as parameters
+# Let's make a version of the model where all transition weights are explicitly evaluated as numbers
+gp120-evaluated.json: gp120.json
+	boss $< --evaluate >$@
+
+# Here's what you do if you want a machine that allows zero, one, or more matches to the motif, instead of forcing exactly one match
+# Note that this requires there is at least one amino acid between instances of the motif
+# (this can be gotten around, but topologically sorting the model then becomes more complicated)
+gp120-multihit.json:
+	boss --pfam GP120 --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --loop --begin --generate-one-aa --kleene-plus --end --flank-output-wild >$@
