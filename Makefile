@@ -260,7 +260,10 @@ generate-$(CATEGORY)s: $(patsubst $(CATEGORY)/%.json,src/$(CATEGORY)/%.h,$(wildc
 src/preset/$(FILE).h: preset/$(FILE).json
 	xxd -i $< >$@
 
-preset/iupac.json: js/iupac.js
+preset/iupacdna.json: js/iupacdna.js
+	node $< >$@
+
+preset/iupacaa.json: js/iupacaa.js
 	node $< >$@
 
 preset/protpsw.json constraints/protpsw.json: js/makepsw.js
