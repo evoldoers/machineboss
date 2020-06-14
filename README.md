@@ -346,6 +346,7 @@ There are several ways to specify input and output sequences.
 |---|---|
 | `--loglike` | [Forward](https://en.wikipedia.org/wiki/Forward_algorithm) algorithm |
 | `--train` | [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) training, using generic optimizers from [GSL](https://www.gnu.org/software/gsl/) |
+| `--viterbi` | [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) score only |
 | `--align` | [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) alignment |
 | `--counts` | Calculates derivatives of the log-weight with respect to the logs of the parameters, a.k.a. the posterior expectations of the number of time each parameter is used |
 | `--beam-decode` | Uses [beam search](https://en.wikipedia.org/wiki/Beam_search) to find the most likely input for a given output. Beam width can be specified using `--beam-width` |
@@ -380,10 +381,10 @@ General options:
 Transducer construction:
   -l [ --load ] arg             load machine from file
   -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
-                                protpsw, translate, prot2dna, psw2dna, dna2rna,
-                                rna2dna, bintern, terndna, jukescantor, 
-                                dnapswnbr, tkf91root, tkf91branch, tolower, 
-                                toupper, hamming31, hamming74)
+                                protpsw, translate, prot2dna, psw2dna, iupac, 
+                                dna2rna, rna2dna, bintern, terndna, 
+                                jukescantor, dnapswnbr, tkf91root, tkf91branch,
+                                tolower, toupper, hamming31, hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
@@ -418,7 +419,10 @@ Transducer construction:
   --echo-json arg               identity for JSON-format sequence
   -w [ --weight ] arg           weighted null transition '#'
   -X [ --regex ] arg            create text recognizer from regular expression
-  -H [ --hmmer ] arg            create generator from HMMER3 model file
+  -H [ --hmmer ] arg            create generator from HMMER3 model file in 
+                                local alignment mode
+  --hmmer-global arg            create generator from HMMER3 model file in 
+                                global alignment mode
   --pfam arg                    create generator from PFAM ID (e.g. Piwi)
   --dfam arg                    create generator from DFAM ID (e.g. DF0004136)
 
