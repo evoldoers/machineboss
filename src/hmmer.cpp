@@ -74,16 +74,26 @@ void HmmerModel::read (istream& in) {
     }
 }
 
-Machine HmmerModel::machine() const {
+Machine HmmerModel::machine (bool local) const {
   Assert (node.size() > 0, "Attempt to create a transducer from an empty HMMER model");
 
   Machine m;
   m.state = vguard<MachineState> (nStates());
 
   m.state[b_idx()].name = "B";
-  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
   m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
-  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
+  if (local) {
+    // local mode entry probabilities from p7_ProfileConfig() in HMMER3 source code
+    const auto occ = calcMatchOccupancy();
+    double Z = 0;
+    for (int k = 1; k < node.size(); ++k)
+      Z += occ[k] * (node.size() - k + 1);
+    for (int k = 1; k < node.size(); ++k)
+      m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(k), occ[k] / Z));
+  } else {
+    m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
+    m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
+  }
 
   m.state[ix_idx(0)].trans.push_back (MachineTransition (string(), string(), m_idx(1), i0_to_m1));
   m.state[ix_idx(0)].trans.push_back (MachineTransition (string(), string(), i_idx(0), i0_to_i0));
@@ -124,3 +134,15 @@ Machine HmmerModel::machine() const {
   return m;
 }
 
+vguard<double> HmmerModel::calcMatchOccupancy() const {
+  // Taken from p7_hmm_CalculateOccupancy() in HMMER3 source code:
+  //   Calculates a vector <mocc[1..M]> containing probability
+  //   that each match state is used in a sampled path through
+  //   the model.
+  vguard<double> mocc (node.size());
+  mocc[0] = 0.;			               /* no M_0 state */
+  mocc[1] = node[0].m_to_i + node[0].m_to_m;   /* initialize w/ 1 - B->D_1 */
+  for (int k = 2; k < node.size(); k++)
+    mocc[k] = mocc[k-1] * (node[k].m_to_m + node[k].m_to_i) + (1.0 - mocc[k-1]) * node[k].d_to_m;
+  return mocc;
+}

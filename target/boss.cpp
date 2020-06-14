@@ -80,7 +80,8 @@ int main (int argc, char** argv) {
       ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("regex,X", po::value<string>(), "create text recognizer from regular expression")
-      ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
+      ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file in local alignment mode")
+      ("hmmer-global", po::value<string>(), "create generator from HMMER3 model file in global alignment mode")
 #ifndef NO_SSL
       ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
       ("dfam", po::value<string>(), "create generator from DFAM ID (e.g. DF0004136)")
@@ -581,11 +582,17 @@ int main (int argc, char** argv) {
 	  ifstream infile (getArg());
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
-	  m = hmmer.machine();
+	  m = hmmer.machine(true);
+	} else if (command == "--hmmer-global") {
+	  HmmerModel hmmer;
+	  ifstream infile (getArg());
+	  Require (infile, "HMMer model file not found");
+	  hmmer.read (infile);
+	  m = hmmer.machine(false);
 	} else if (command == "--pfam")
-	  m = getPfam(getArg()).machine();
+	  m = getPfam(getArg()).machine(true);
 	else if (command == "--dfam")
-	  m = getDfam(getArg()).machine();
+	  m = getDfam(getArg()).machine(true);
 	else if (command == "--generate-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());

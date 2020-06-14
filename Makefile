@@ -390,7 +390,7 @@ test-shorthand:
 	@$(TEST) $(WRAPBOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' '$$x' t/expect/shorthand.json
 
 test-hmmer:
-	@$(TEST) t/roundfloats.pl 3 $(WRAPBOSS) --hmmer t/hmmer/fn3.hmm t/expect/fn3.json
+	@$(TEST) t/roundfloats.pl 3 $(WRAPBOSS) --hmmer-global t/hmmer/fn3.hmm t/expect/fn3.json
 
 test-csv:
 	@$(TEST) $(WRAPBOSS) --generate-csv t/csv/test.csv t/expect/csvtest.json
