@@ -313,7 +313,7 @@ string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir
 	flushTransitions (code, lvalue, rvalue, tab);
 	while (exprs.size()) {
 	  const size_t nShortExprs = min (compiler.maxNestDepth, exprs.size());
-	  vguard<string> shortExprs (exprs.end(), exprs.begin() + nShortExprs);
+	  vguard<string> shortExprs (exprs.begin(), exprs.begin() + nShortExprs);
 	  exprs.erase (exprs.begin(), exprs.begin() + nShortExprs);
 	  if (!exprs.empty())
 	    exprs.insert (exprs.begin(), new_lvalue);
