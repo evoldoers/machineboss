@@ -137,7 +137,7 @@ Machine HmmerModel::machine (bool local) const {
       }
 
       if (local) {
-	// HMMER3 allows unit-weight transitions from Match and Delete states to End state when in local mode
+	// HMMER3 allows unit-weight transitions from Match and Delete states to End state when in local mode, per p7_profile_GetT()
 	m.state[m_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), WeightAlgebra::one()));
 	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), WeightAlgebra::one()));
       }
