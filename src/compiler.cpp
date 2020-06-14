@@ -6,7 +6,7 @@
 using namespace MachineBoss;
 
 Compiler::Compiler()
-  : showCells (false), useMaxReduce (false)
+  : showCells (false), useMaxReduce (false), maxNestDepth (DefaultMaxNestDepth)
 { }
 
 static const string xvar ("x"), yvar ("y"), paramvar ("params"), paramnamesvar ("names"), paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result");
@@ -300,13 +300,27 @@ string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir
       if (withNull)
 	addTransitions (exprs, false, false, s, inTok, outTok, outType, outputWaiting);
       const string new_lvalue = currentcell + "[" + to_string(mul*s + inc*outputWaiting) + "]";
-      const string new_rvalue = compiler.reduce (exprs, tab2, true, outputWaiting);
-      if (new_rvalue == rvalue)
-	lvalue = lvalue + " =\n" + tab + new_lvalue;
-      else {
+      if (exprs.size() <= compiler.maxNestDepth) {
+	const string new_rvalue = compiler.reduce (exprs, tab2, true, outputWaiting);
+	if (new_rvalue == rvalue)
+	  lvalue = lvalue + " =\n" + tab + new_lvalue;
+	else {
+	  flushTransitions (code, lvalue, rvalue, tab);
+	  lvalue = new_lvalue;
+	  rvalue = new_rvalue;
+	}
+      } else {
 	flushTransitions (code, lvalue, rvalue, tab);
-	lvalue = new_lvalue;
-	rvalue = new_rvalue;
+	while (exprs.size()) {
+	  const size_t nShortExprs = min (compiler.maxNestDepth, exprs.size());
+	  vguard<string> shortExprs (exprs.end(), exprs.begin() + nShortExprs);
+	  exprs.erase (exprs.begin(), exprs.begin() + nShortExprs);
+	  if (!exprs.empty())
+	    exprs.insert (exprs.begin(), new_lvalue);
+	  lvalue = new_lvalue;
+	  rvalue = compiler.reduce (shortExprs, tab2, exprs.empty(), outputWaiting);
+	  flushTransitions (code, lvalue, rvalue, tab);
+	}
       }
     }
   }

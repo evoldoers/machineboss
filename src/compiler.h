@@ -8,6 +8,8 @@
 #define DefaultCodeGenDir          "."
 #define DirectorySeparator         "/"
 
+#define DefaultMaxNestDepth 128
+
 // dual-purpose C++/JavaScript compiler
 namespace MachineBoss {
 
@@ -38,6 +40,7 @@ struct Compiler {
   // general config
   bool showCells;  // add code that displays DP matrix
   bool useMaxReduce;  // use max() instead of logSumExp() for reduce, i.e. Viterbi instead of Forward
+  size_t maxNestDepth;  // defaults to DefaultMaxNestDepth
   
   // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.
