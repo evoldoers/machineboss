@@ -20,3 +20,4 @@ gp120-positive: gp120.json
 # The log-likelihood reported for this should be negative
 gp120-negative: gp120.json
 	boss $< --output-fasta trp-cage.fa --viterbi
+
