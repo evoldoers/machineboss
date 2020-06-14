@@ -81,7 +81,6 @@ Machine HmmerModel::machine (bool local) const {
   m.state = vguard<MachineState> (nStates());
 
   m.state[b_idx()].name = "B";
-  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
   if (local) {
     // local mode entry probabilities from p7_ProfileConfig() in HMMER3 source code
     const auto occ = calcMatchOccupancy();
@@ -92,6 +91,7 @@ Machine HmmerModel::machine (bool local) const {
       m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(k), occ[k] / Z));
   } else {
     m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
+    m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
     m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
   }
 

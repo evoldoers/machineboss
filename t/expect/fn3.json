@@ -1,8 +1,8 @@
 {"state":
  [{"n":0,
    "id":"B",
-   "trans":[{"to":2,"weight":0.00227},
-            {"to":4,"weight":0.997},
+   "trans":[{"to":4,"weight":0.997},
+            {"to":2,"weight":0.00227},
             {"to":5,"weight":0.0011}]},
   {"n":1,
    "id":"Ix0",
