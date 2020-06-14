@@ -111,7 +111,11 @@ Machine HmmerModel::machine (bool local) const {
       m.state[d_idx(n)].name = string("D") + ns;
 
       const bool end = (n == node.size());
-      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].m_to_m));
+      if (end) {
+	if (!local)
+	  m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), node[n-1].m_to_m));
+      } else
+	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), m_idx(n+1), node[n-1].m_to_m));
       m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n-1].m_to_i));
       if (!end)
 	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n-1].m_to_d));
@@ -119,13 +123,23 @@ Machine HmmerModel::machine (bool local) const {
       m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].i_to_m));
       m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n-1].i_to_i));
 
-      m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].d_to_m));
-      if (!end)
+      if (end) {
+	if (!local)
+	  m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), node[n-1].d_to_m));
+      } else {
+	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), m_idx(n+1), node[n-1].d_to_m));
 	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n-1].d_to_d));
+      }
 
       for (size_t sym = 0; sym < alph.size(); ++sym) {
 	m.state[m_idx(n)].trans.push_back (MachineTransition (string(), alph[sym], mx_idx(n), node[n-1].matchEmit[sym]));
 	m.state[i_idx(n)].trans.push_back (MachineTransition (string(), alph[sym], ix_idx(n), node[n-1].insEmit[sym]));
+      }
+
+      if (local) {
+	// HMMER3 allows unit-weight transitions from Match and Delete states to End state when in local mode
+	m.state[m_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), WeightAlgebra::one()));
+	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), WeightAlgebra::one()));
       }
     }
   }
