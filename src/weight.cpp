@@ -170,6 +170,8 @@ WeightExpr WeightAlgebra::add (const WeightExpr& l, const WeightExpr& r) {
     w = r;
   else if (isZero(r))
     w = l;
+  else if (r->type == Sub && isZero(r->args.binary.l))
+    w = subtract (l, r->args.binary.r);
   else if (l->type == Int && r->type == Int)
     w = factory.newInt (l->args.intValue + r->args.intValue);
   else if (isNumber(l) && isNumber(r))
