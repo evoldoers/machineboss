@@ -68,6 +68,8 @@ struct SeqPair {
   static vguard<OutputSymbol> getOutput (const AlignPath&);
 
   static SeqPair seqPairFromPath (const MachineBoundPath&, const char* inputName = DefaultInputSequenceName, const char* outputName = DefaultOutputSequenceName);
+
+  SeqPair transpose() const;
 };
 
 struct Envelope {

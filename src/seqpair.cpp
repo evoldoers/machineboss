@@ -88,6 +88,15 @@ SeqPair SeqPair::seqPairFromPath (const MachineBoundPath& mp, const char* inputN
 	json::object ({ { "path", JsonWriter<MachineBoundPath>::toJson (mp) } }) });
 }
 
+SeqPair SeqPair::transpose() const {
+  SeqPair tsp;
+  tsp.input = output;
+  tsp.output = input;
+  tsp.alignment = MachinePath::transpose (alignment);
+  tsp.metadata = metadata;
+  return tsp;
+}
+
 Envelope::Envelope() {
   clear();
 }

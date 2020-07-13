@@ -864,7 +864,8 @@ int main (int argc, char** argv) {
 	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);
 	  encoded = beam.bestSeq();
 	} else if (vm.count("viterbi-encode")) {
-	  const ViterbiMatrix viterbi (eval, seqPair);
+	  const auto tsp = seqPair.transpose();
+	  const ViterbiMatrix viterbi (eval, tsp);
 	  const MachinePath path = viterbi.path (silentTrans);
 	  encoded = EvaluatedMachine::decode (path, decodeTrans, params);
 	} else {

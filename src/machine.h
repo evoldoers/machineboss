@@ -211,6 +211,7 @@ struct MachinePath {
   vguard<InputSymbol> inputSequence() const;
   vguard<OutputSymbol> outputSequence() const;
   AlignPath alignment() const;
+  static AlignPath transpose (const AlignPath&);
 };
 
 struct MachineBoundPath : MachinePath {

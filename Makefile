@@ -650,8 +650,8 @@ test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise/seq/test.js
 test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
 	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
-# Decoding
-DECODE_TESTS = test-decode-bitecho-101 test-bintern
+# Encoding/decoding
+DECODE_TESTS = test-decode-bitecho-101 test-bintern test-hamming
 
 test-decode-bitecho-101:
 	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json --recognize-chars 101 --prefix-decode t/expect/decode-bitecho-101.json
@@ -663,6 +663,11 @@ test-bintern:
 	@$(TEST) $(WRAPBOSS) t/machine/bintern.json --output-chars 12222 --prefix-decode t/expect/decode-o12222-bintern.json
 	@$(TEST) $(WRAPBOSS) t/machine/bintern.json --recognize-chars 12222 --beam-decode t/expect/decode-a12222-bintern.json
 	@$(TEST) $(WRAPBOSS) t/machine/bintern.json --output-chars 12222 --beam-decode t/expect/decode-o12222-bintern.json
+
+test-hamming:
+	@$(TEST) $(WRAPBOSS) --preset hamming74 --viterbi-encode --input-chars 0000000100100011010001010110011110001001101010111100110111101111 t/expect/hamming74.json
+	@$(TEST) $(WRAPBOSS) --preset hamming74 --prefix-encode --input-chars 0000000100100011010001010110011110001001101010111100110111101111 t/expect/hamming74.json
+	@$(TEST) $(WRAPBOSS) --preset hamming74 --beam-encode --input-chars 0000000100100011010001010110011110001001101010111100110111101111 t/expect/hamming74.json
 
 # Top-level test target
 TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS)

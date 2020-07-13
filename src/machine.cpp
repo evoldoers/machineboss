@@ -1768,6 +1768,13 @@ MachinePath::AlignPath MachinePath::alignment() const {
   return SeqPair::getAlignment (*this);
 }
 
+MachinePath::AlignPath MachinePath::transpose (const AlignPath& path) {
+  AlignPath tap;
+  for (const auto& col: path)
+    tap.push_back (AlignCol (col.second, col.first));
+  return tap;
+}
+
 void MachinePath::writeJson (ostream& out, const Machine& m) const {
   out << "{\"start\":" << m.startState();
   if (!m.state[m.startState()].name.is_null())
@@ -1938,3 +1945,4 @@ Machine Machine::stripNames() const {
     ms.name = nullptr;
   return m;
 }
+
