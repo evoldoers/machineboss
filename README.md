@@ -26,6 +26,16 @@ and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
+
+## Citation
+
+Please cite the following paper if you use Machine Boss:
+
+Silvestre-Ryan, Wang, Sharma, Lin, Shen, Dider, and Holmes. Bioinformatics (2020).
+[Machine Boss: Rapid Prototyping of Bioinformatic Automata.](https://pubmed.ncbi.nlm.nih.gov/32683444/)
+
+
+
 # Installation
 
 Machine Boss can be compiled from C++ source, or installed via [npm](https://www.npmjs.com/package/machineboss).
@@ -33,7 +43,7 @@ For installation instructions see [INSTALL.md](INSTALL.md).
 
 # Command-line interface
 
-Machine Boss has an associated command-line tool, `boss`, that makes many machine-building operations available through its command-line options -
+Machine Boss is most easily accessed through a command-line utility, `boss`, that makes many machine-building operations available through its command-line options -
 thereby defining a small expression language for building up automata.
 
 A brief usage guide for this tool follows below.
