@@ -73,7 +73,10 @@ BOOST_PREFIX = /usr
 ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
 BOOST_PREFIX = /usr/local
 ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
+BOOST_PREFIX = $(shell ls -lrt -d -1 /usr/local/homebrew/Cellar/boost/*)
+ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
 BOOST_PREFIX =
+endif
 endif
 endif
 
@@ -88,11 +91,22 @@ endif
 # SSL
 # Compile with "no-ssl" as a target to skip SSL (use with emscripten)
 ifneq (,$(USING_EMSCRIPTEN))
+SSL_PREFIX =
+else
+SSL_PREFIX = /usr/local/opt/openssl
+ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
+SSL_PREFIX = $(shell ls -lrt -d -1 /usr/local/homebrew/Cellar/openssl*/*)
+ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
+SSL_PREFIX =
+endif
+endif
+endif
+ifeq (,$(SSL_PREFIX))
 SSL_FLAGS = -DNO_SSL
 SSL_LIBS =
 else
-SSL_FLAGS = -I/usr/local/opt/openssl/include
-SSL_LIBS = -lssl -lcrypto -L/usr/local/opt/openssl/lib
+SSL_FLAGS = -I$(SSL_PREFIX)/include
+SSL_LIBS = -lssl -lcrypto -L$(SSL_PREFIX)/lib
 endif
 
 # install dir
@@ -329,7 +343,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -394,6 +408,9 @@ test-shorthand:
 
 test-hmmer:
 	@$(TEST) t/roundfloats.pl 3 $(WRAPBOSS) --hmmer-global t/hmmer/fn3.hmm t/expect/fn3.json
+
+test-jphmm:
+	@$(TEST) $(WRAPBOSS) --jphmm t/seq/jphmmtest.fa t/expect/jphmmtest.json
 
 test-csv:
 	@$(TEST) $(WRAPBOSS) --generate-csv t/csv/test.csv t/expect/csvtest.json

@@ -25,6 +25,7 @@
 #include "../src/schema.h"
 #include "../src/parsers.h"
 #include "../src/hmmer.h"
+#include "../src/jphmm.h"
 #include "../src/csv.h"
 #include "../src/compiler.h"
 #include "../src/ctc.h"
@@ -86,6 +87,7 @@ int main (int argc, char** argv) {
       ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
       ("dfam", po::value<string>(), "create generator from DFAM ID (e.g. DF0004136)")
 #endif /* NO_SSL */
+      ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -593,6 +595,8 @@ int main (int argc, char** argv) {
 	  m = getPfam(getArg()).machine(true);
 	else if (command == "--dfam")
 	  m = getDfam(getArg()).machine(true);
+	else if (command == "--jphmm")
+	  m = JPHMM (readFastSeqs (getArg().c_str()));
 	else if (command == "--generate-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());

@@ -437,6 +437,8 @@ Transducer construction:
                                 global alignment mode
   --pfam arg                    create generator from PFAM ID (e.g. Piwi)
   --dfam arg                    create generator from DFAM ID (e.g. DF0004136)
+  -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
+                                multiple alignment
 
 Postfix operators:
   -z [ --zero-or-one ]          union with null '?'

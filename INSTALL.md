@@ -13,6 +13,8 @@ brew install pkgconfig
 make
 ~~~~
 
+Use `make no-ssl` to build without SSL support (only needed to retrieve models from PFam/DFam).
+
 ### Testing
 
 ~~~~

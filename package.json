@@ -6,7 +6,6 @@
     "bionode-fasta": "*",
     "colors": "*",
     "extend": "*",
-    "hdf5.node": "evoldoers/hdf5.node#int64_as_string",
     "jStat": "*",
     "mersennetwister": "*",
     "node-getopt": "^0.3.2"
