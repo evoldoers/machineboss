@@ -2,11 +2,12 @@
 
 using namespace MachineBoss;
 
-#define jumpParamName "jump"
+#define jpHMMjumpParamName "jump"
+  
+const string JPHMM::jumpParam (jpHMMjumpParamName);
 
 JPHMM::JPHMM (const vguard<FastSeq>& seqs)
-  : jumpParam (jumpParamName),
-    rows (seqs.size()),
+  : rows (seqs.size()),
     cols (rows > 0 ? seqs[0].length() : 0) {
   
   Assert (rows > 0, "No sequences supplied - can't construct a jpHMM from an empty alignment");

@@ -58,7 +58,7 @@ struct WeightAlgebra {
   static WeightExpr intConstant (int value);
   static WeightExpr doubleConstant (double value);
 
-  static WeightExpr param (const string& name);
+  static WeightExpr param (const string& name);   // careful - this string& reference is NOT owned by WeightAlgebra
 
   static WeightExpr multiply (const WeightExpr& l, const WeightExpr& r);  // l*r
   static WeightExpr add (const WeightExpr& l, const WeightExpr& r);  // l+r

@@ -9,7 +9,7 @@ namespace MachineBoss {
 struct JPHMM : Machine {
   JPHMM (const vguard<FastSeq>&);
   const size_t rows, cols;
-  const string jumpParam;
+  static const string jumpParam;
 
   inline StateIndex emitState (int row, int col) const { return rows*col + row + 1; }
 };
