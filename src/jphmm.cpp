@@ -3,11 +3,9 @@
 using namespace MachineBoss;
 
 #define jumpParamName "jump"
-#define stayParamName "stay"
 
 JPHMM::JPHMM (const vguard<FastSeq>& seqs)
   : jumpParam (jumpParamName),
-    stayParam (stayParamName),
     rows (seqs.size()),
     cols (rows > 0 ? seqs[0].length() : 0) {
   
@@ -19,8 +17,8 @@ JPHMM::JPHMM (const vguard<FastSeq>& seqs)
 
   state = vguard<MachineState> (rows*cols + 2);
   const auto nRows = WeightAlgebra::intConstant (rows), nOtherRows = WeightAlgebra::intConstant (rows - 1);
-  const auto startProb = WeightAlgebra::reciprocal (nRows);
-  const auto stayProb = WeightAlgebra::param (stayParam), jumpProb = WeightAlgebra::divide (WeightAlgebra::param (jumpParam), nOtherRows);
+  const auto startProb = WeightAlgebra::reciprocal (nRows), pJump = WeightAlgebra::param (jumpParam);
+  const auto stayProb = rows == 1 ? WeightAlgebra::one() : WeightAlgebra::negate (pJump), jumpProb = WeightAlgebra::divide (pJump, nOtherRows);
   for (int row = 0; row < rows; ++row)
     state[startState()].trans.push_back (MachineTransition (string(), string (1, seqs[row].seq[0]), emitState(row,0), startProb));
   for (int srcCol = 0; srcCol < cols; ++srcCol) {
@@ -35,6 +33,6 @@ JPHMM::JPHMM (const vguard<FastSeq>& seqs)
     }
   }
 
-  cons.norm.push_back (vguard<string> ({ jumpParam, stayParam }));
+  cons.prob.push_back (jumpParam);
 }
 
