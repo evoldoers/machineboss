@@ -3,7 +3,11 @@
 using namespace MachineBoss;
 
 #define jpHMMjumpParamName "jump"
-  
+#define jpHMMrowTag "row"
+#define jpHMMcolTag "col"
+#define jpHMMstartTag "start"
+#define jpHMMendTag "end"
+
 const string JPHMM::jumpParam (jpHMMjumpParamName);
 
 JPHMM::JPHMM (const vguard<FastSeq>& seqs)
@@ -17,6 +21,8 @@ JPHMM::JPHMM (const vguard<FastSeq>& seqs)
       Abort ("Alignment is not flush - all sequences must be same length to build a jpHMM from an alignment");
 
   state = vguard<MachineState> (rows*cols + 2);
+  state.front().name = jpHMMstartTag;
+  state.back().name = jpHMMendTag;
   const auto nRows = WeightAlgebra::intConstant (rows), nOtherRows = WeightAlgebra::intConstant (rows - 1);
   const auto startProb = WeightAlgebra::reciprocal (nRows), pJump = WeightAlgebra::param (jumpParam);
   const auto stayProb = rows == 1 ? WeightAlgebra::one() : WeightAlgebra::negate (pJump), jumpProb = WeightAlgebra::divide (pJump, nOtherRows);
@@ -25,7 +31,10 @@ JPHMM::JPHMM (const vguard<FastSeq>& seqs)
   for (int srcCol = 0; srcCol < cols; ++srcCol) {
     const int destCol = srcCol + 1;
     for (int srcRow = 0; srcRow < rows; ++srcRow) {
-      TransList& srcTrans = state[emitState(srcRow,srcCol)].trans;
+      MachineState& srcState = state[emitState(srcRow,srcCol)];
+      TransList& srcTrans = srcState.trans;
+      srcState.name[jpHMMrowTag] = srcRow + 1;
+      srcState.name[jpHMMcolTag] = srcCol + 1;
       if (destCol < cols)
 	for (int destRow = 0; destRow < rows; ++destRow)
 	  srcTrans.push_back (MachineTransition (string(), string (1, seqs[destRow].seq[destCol]), emitState(destRow,destCol), srcRow == destRow ? stayProb : jumpProb));
