@@ -120,7 +120,7 @@ int main (int argc, char** argv) {
       ("encode-sort", "topologically sort non-inputting transition graph")
       ("full-sort", "topologically sort entire transition graph, not just silent transitions")
       ("eliminate,n", "eliminate all silent transitions")
-      ("eliminate-states", "eliminate all states whose only outgoing transition is silent")
+      ("eliminate-states", "eliminate all states whose only outgoing (or incoming) transition is silent")
       ("strip-names", "remove all state names. Some algorithms (e.g. composition of large transducers) are faster if states are unnamed")
       ("pad", "pad with \"dummy\" start & end states")
       ("reciprocal", "element-wise reciprocal: invert all weight expressions")

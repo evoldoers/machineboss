@@ -383,6 +383,8 @@ test-eliminate:
 	@$(TEST) $(WRAPBOSS) t/machine/silent.json -n t/expect/silent-elim.json
 	@$(TEST) $(WRAPBOSS) t/machine/silent2.json -n t/expect/silent2-elim.json
 	@$(TEST) $(WRAPBOSS) t/machine/silent3.json -n t/expect/silent3-elim.json
+	@$(TEST) $(WRAPBOSS) t/machine/single-silent-incoming.json --eliminate-states t/expect/single-silent-incoming.json
+	@$(TEST) $(WRAPBOSS) t/machine/single-silent-outgoing.json --eliminate-states t/expect/single-silent-outgoing.json
 
 test-reverse:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq001.json -e t/expect/generator001-reversed.json

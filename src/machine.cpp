@@ -1377,7 +1377,7 @@ Machine Machine::eliminateSingleSilentIncomingStates() const {
 	++nLoudIncoming[t.dest];
 
   vguard<bool> elimState (rm.nStates());
-  for (StateIndex s = 0; s < rm.nStates(); ++s)
+  for (StateIndex s = 1; s + 1 < rm.nStates(); ++s)  // don't eliminate start or end state
     elimState[s] = (nSilentIncoming[s] == 1 && nLoudIncoming[s] == 0);
   
   vguard<StateIndex> newStateIndex (rm.nStates()), oldStateIndex;
@@ -1400,11 +1400,17 @@ Machine Machine::eliminateSingleSilentIncomingStates() const {
   for (StateIndex s = 0; s < rm.nStates(); ++s) {
     if (!elimState[s])
       em.state[newStateIndex[s]].name = rm.state[s].name;
-    MachineState& source = em.state[elimState[s] ? actualSource[s] : s];
-    const WeightExpr mul = elimState[s] ? entryWeight[s] : WeightAlgebra::one();
+    StateIndex a = s;
+    WeightExpr mul = WeightAlgebra::one();
+    while (elimState[a]) {
+      mul = WeightAlgebra::multiply (entryWeight[a], mul);
+      a = actualSource[a];
+    }
+    MachineState& source = em.state[newStateIndex[a]];
     for (const auto& t: rm.state[s].trans)
-      source.trans.insert (source.trans.end(),
-			   MachineTransition (t.in, t.out, newStateIndex[t.dest], WeightAlgebra::multiply (t.weight, mul)));
+      if (!elimState[t.dest])
+	source.trans.insert (source.trans.end(),
+			     MachineTransition (t.in, t.out, newStateIndex[t.dest], WeightAlgebra::multiply (t.weight, mul)));
   }
   LogThisAt(5,"Eliminating silent incoming states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
   return em;
@@ -1454,7 +1460,7 @@ Machine Machine::eliminateSingleSilentOutgoingStates() const {
       mt.dest = newStateIndex[mt.dest];
     }
   }
-  LogThisAt(5,"Eliminating redundant states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
+  LogThisAt(5,"Eliminating silent outgoing states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
   return em;
 }
 
