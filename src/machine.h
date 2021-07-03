@@ -184,7 +184,10 @@ struct Machine {
   Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // returns either advancingMachine(), dropSilentBackTransitions(), or clone of self, depending on strategy
   Machine dropSilentBackTransitions() const;
   Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // eliminates silent transitions, first processing cycles using the selected strategy
-  Machine eliminateRedundantStates() const;  // eliminates states which have only one outgoing transition that is silent
+
+  Machine eliminateSingleSilentIncomingStates() const;  // eliminates states which have only one incoming silent transition
+  Machine eliminateSingleSilentOutgoingStates() const;  // eliminates states which have only one outgoing silent transition
+  Machine eliminateRedundantStates() const;  // eliminates states which have only one incoming and/or outgoing silent transition
 
   Machine subgraph (const vguard<vguard<bool> >&) const;
   Machine downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions = 0.) const;

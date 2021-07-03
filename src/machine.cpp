@@ -1357,8 +1357,62 @@ bool Machine::isAligningMachine() const {
 }
 
 Machine Machine::eliminateRedundantStates() const {
+  LogThisAt(3,"Eliminating redundant states from " << nStates() << "-state transducer" << endl);
+  return eliminateSingleSilentIncomingStates().eliminateSingleSilentOutgoingStates();
+}
+
+Machine Machine::eliminateSingleSilentIncomingStates() const {
   const Machine rm = isAdvancingMachine() ? *this : advanceSort();
-  LogThisAt(3,"Eliminating redundant states from " << rm.nStates() << "-state transducer" << endl);
+  LogThisAt(4,"Eliminating states with single silent incoming transition from " << rm.nStates() << "-state transducer" << endl);
+  vguard<int> nSilentIncoming (rm.nStates()), nLoudIncoming (rm.nStates());
+  vguard<StateIndex> actualSource (rm.nStates());
+  vguard<WeightExpr> entryWeight (rm.nStates(), WeightAlgebra::one());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    for (const auto& t: rm.state[s].trans)
+      if (t.isSilent()) {
+	++nSilentIncoming[t.dest];
+	actualSource[t.dest] = s;
+	entryWeight[s] = t.weight;
+      } else
+	++nLoudIncoming[t.dest];
+
+  vguard<bool> elimState (rm.nStates());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    elimState[s] = (nSilentIncoming[s] == 1 && nLoudIncoming[s] == 0);
+  
+  vguard<StateIndex> newStateIndex (rm.nStates()), oldStateIndex;
+  oldStateIndex.reserve (rm.nStates());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    if (!elimState[s]) {
+      newStateIndex[s] = oldStateIndex.size();
+      oldStateIndex.push_back (s);
+    }
+  const StateIndex newStates = oldStateIndex.size();
+  if (newStates == rm.nStates()) {
+    LogThisAt(5,"No silent incoming states to eliminate" << endl);
+    return rm;
+  }
+  
+  Machine em;
+  em.import (rm);
+  em.state = vguard<MachineState> (newStates);
+
+  for (StateIndex s = 0; s < rm.nStates(); ++s) {
+    if (!elimState[s])
+      em.state[newStateIndex[s]].name = rm.state[s].name;
+    MachineState& source = em.state[elimState[s] ? actualSource[s] : s];
+    const WeightExpr mul = elimState[s] ? entryWeight[s] : WeightAlgebra::one();
+    for (const auto& t: rm.state[s].trans)
+      source.trans.insert (source.trans.end(),
+			   MachineTransition (t.in, t.out, newStateIndex[t.dest], WeightAlgebra::multiply (t.weight, mul)));
+  }
+  LogThisAt(5,"Eliminating silent incoming states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
+  return em;
+}
+
+Machine Machine::eliminateSingleSilentOutgoingStates() const {
+  const Machine rm = isAdvancingMachine() ? *this : advanceSort();
+  LogThisAt(4,"Eliminating states with single silent outgoing transition from " << rm.nStates() << "-state transducer" << endl);
   vguard<StateIndex> eventualDest (rm.nStates());
   vguard<WeightExpr> exitMultiplier (rm.nStates(), WeightAlgebra::one());
   for (StateIndex s = rm.nStates(); s > 0; ) {
