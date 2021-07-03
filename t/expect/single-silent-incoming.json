@@ -1,7 +1,7 @@
 {"state":
  [{"n":0,
-   "trans":[{"to":1,"out":"Y"},
-            {"to":0}]},
+   "trans":[{"to":1,"out":"Y","weight":2},
+            {"to":0,"weight":2}]},
   {"n":1,
    "trans":[{"to":2,"in":"X"}]},
   {"n":2}

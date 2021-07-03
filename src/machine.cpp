@@ -1372,7 +1372,7 @@ Machine Machine::eliminateSingleSilentIncomingStates() const {
       if (t.isSilent()) {
 	++nSilentIncoming[t.dest];
 	actualSource[t.dest] = s;
-	entryWeight[s] = t.weight;
+	entryWeight[t.dest] = t.weight;
       } else
 	++nLoudIncoming[t.dest];
 
