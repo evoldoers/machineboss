@@ -11,10 +11,12 @@
 #include "vguard.h"
 #include "../ext/htslib/kseq.h"
 
-using namespace std;
-
 #define DefaultFastaCharsPerLine 50
 #define DefaultSeqName "Sequence"
+
+namespace MachineBoss {
+
+using namespace std;
 
 typedef unsigned int SeqIdx;
 typedef unsigned int AlphTok;
@@ -72,5 +74,7 @@ struct KmerIndex {
   map <Kmer, vector<SeqIdx> > kmerLocations;
   KmerIndex (const FastSeq& seq, const string& alphabet, SeqIdx kmerLen);
 };
+
+}  // end namespace
 
 #endif /* KSEQCONTAINER_INCLUDED */

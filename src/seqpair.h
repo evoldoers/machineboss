@@ -7,11 +7,13 @@
 #include "schema.h"
 #include "vguard.h"
 
-using namespace std;
-using json = nlohmann::json;
-
 #define DefaultInputSequenceName "input"
 #define DefaultOutputSequenceName "output"
+
+namespace MachineBoss {
+
+using namespace std;
+using json = nlohmann::json;
 
 template<typename Symbol>
 struct NamedSeq {
@@ -66,6 +68,8 @@ struct SeqPair {
   static vguard<OutputSymbol> getOutput (const AlignPath&);
 
   static SeqPair seqPairFromPath (const MachineBoundPath&, const char* inputName = DefaultInputSequenceName, const char* outputName = DefaultOutputSequenceName);
+
+  SeqPair transpose() const;
 };
 
 struct Envelope {
@@ -115,5 +119,7 @@ struct SeqPairList {
   void readJson (const json&);
   void writeJson (ostream&) const;
 };
+
+}  // end namespace
 
 #endif /* SEQPAIR_INCLUDED */

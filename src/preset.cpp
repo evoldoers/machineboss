@@ -1,6 +1,8 @@
 #include "preset.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 struct PresetCache {
   map<string,string> namedPreset;
   vguard<string> names;
@@ -23,6 +25,9 @@ struct PresetCache {
 
 #include "preset/dna2rna.h"
 #include "preset/rna2dna.h"
+
+#include "preset/iupacdna.h"
+#include "preset/iupacaa.h"
 
 #include "preset/bintern.h"
 #include "preset/terndna.h"
@@ -51,6 +56,9 @@ PresetCache::PresetCache() {
   addPreset(translate);
   addPreset(prot2dna);
   addPreset(psw2dna);
+
+  addPreset(iupacdna);
+  addPreset(iupacaa);
 
   addPreset(dna2rna);
   addPreset(rna2dna);

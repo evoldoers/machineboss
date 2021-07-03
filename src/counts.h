@@ -6,6 +6,8 @@
 #include "constraints.h"
 
 // E-step
+namespace MachineBoss {
+
 struct MachineCounts {
   vguard<vguard<double> > count;  // indexed: count[state][nTrans]
   double loglike;
@@ -34,6 +36,8 @@ struct MachineObjective {
   Params optimize (const Params& seed) const;
   string toString() const;
 };
+
+}  // end namespace
 
 #endif /* COUNTS_INCLUDED */
 

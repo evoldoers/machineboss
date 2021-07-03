@@ -5,6 +5,8 @@
 #include "fastseq.h"
 #include "computeForward.h"
 
+using namespace MachineBoss;
+
 string revcomp (const string& fwd) {
   string rev (fwd);
   for (size_t pos = 0; pos < fwd.size(); ++pos) {

@@ -3,6 +3,8 @@
 #include "schema.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 void SeqPair::readJson (const json& pj) {
   MachineSchema::validateOrDie ("seqpair", pj);
   input.name = "input";
@@ -84,6 +86,15 @@ SeqPair SeqPair::seqPairFromPath (const MachineBoundPath& mp, const char* inputN
 	NamedOutputSeq ({ outputName, getOutput (alignment) }),
 	alignment,
 	json::object ({ { "path", JsonWriter<MachineBoundPath>::toJson (mp) } }) });
+}
+
+SeqPair SeqPair::transpose() const {
+  SeqPair tsp;
+  tsp.input = output;
+  tsp.output = input;
+  tsp.alignment = MachinePath::transpose (alignment);
+  tsp.metadata = metadata;
+  return tsp;
 }
 
 Envelope::Envelope() {

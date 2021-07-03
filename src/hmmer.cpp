@@ -3,6 +3,8 @@
 #include "regexmacros.h"
 #include "util.h"
 
+using namespace MachineBoss;
+
 double HmmerModel::strToProb (const string& s) {
   return s == "*" ? 0 : exp(-stof(s));
 }
@@ -72,16 +74,26 @@ void HmmerModel::read (istream& in) {
     }
 }
 
-Machine HmmerModel::machine() const {
+Machine HmmerModel::machine (bool local) const {
   Assert (node.size() > 0, "Attempt to create a transducer from an empty HMMER model");
 
   Machine m;
   m.state = vguard<MachineState> (nStates());
 
   m.state[b_idx()].name = "B";
-  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
-  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
-  m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
+  if (local) {
+    // local mode entry probabilities from p7_ProfileConfig() in HMMER3 source code
+    const auto occ = calcMatchOccupancy();
+    double Z = 0;
+    for (int k = 1; k < node.size(); ++k)
+      Z += occ[k] * (node.size() - k + 1);
+    for (int k = 1; k < node.size(); ++k)
+      m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(k), occ[k] / Z));
+  } else {
+    m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), m_idx(1), b_to_m1));
+    m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), i_idx(0), b_to_i0));
+    m.state[b_idx()].trans.push_back (MachineTransition (string(), string(), d_idx(1), b_to_d1));
+  }
 
   m.state[ix_idx(0)].trans.push_back (MachineTransition (string(), string(), m_idx(1), i0_to_m1));
   m.state[ix_idx(0)].trans.push_back (MachineTransition (string(), string(), i_idx(0), i0_to_i0));
@@ -99,7 +111,11 @@ Machine HmmerModel::machine() const {
       m.state[d_idx(n)].name = string("D") + ns;
 
       const bool end = (n == node.size());
-      m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].m_to_m));
+      if (end) {
+	if (!local)
+	  m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), node[n-1].m_to_m));
+      } else
+	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), m_idx(n+1), node[n-1].m_to_m));
       m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n-1].m_to_i));
       if (!end)
 	m.state[mx_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n-1].m_to_d));
@@ -107,13 +123,23 @@ Machine HmmerModel::machine() const {
       m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].i_to_m));
       m.state[ix_idx(n)].trans.push_back (MachineTransition (string(), string(), i_idx(n), node[n-1].i_to_i));
 
-      m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end ? end_idx() : m_idx(n+1), node[n-1].d_to_m));
-      if (!end)
+      if (end) {
+	if (!local)
+	  m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), node[n-1].d_to_m));
+      } else {
+	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), m_idx(n+1), node[n-1].d_to_m));
 	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), d_idx(n+1), node[n-1].d_to_d));
+      }
 
       for (size_t sym = 0; sym < alph.size(); ++sym) {
 	m.state[m_idx(n)].trans.push_back (MachineTransition (string(), alph[sym], mx_idx(n), node[n-1].matchEmit[sym]));
 	m.state[i_idx(n)].trans.push_back (MachineTransition (string(), alph[sym], ix_idx(n), node[n-1].insEmit[sym]));
+      }
+
+      if (local) {
+	// HMMER3 allows unit-weight transitions from Match and Delete states to End state when in local mode, per p7_profile_GetT()
+	m.state[m_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), WeightAlgebra::one()));
+	m.state[d_idx(n)].trans.push_back (MachineTransition (string(), string(), end_idx(), WeightAlgebra::one()));
       }
     }
   }
@@ -122,3 +148,15 @@ Machine HmmerModel::machine() const {
   return m;
 }
 
+vguard<double> HmmerModel::calcMatchOccupancy() const {
+  // Taken from p7_hmm_CalculateOccupancy() in HMMER3 source code:
+  //   Calculates a vector <mocc[1..M]> containing probability
+  //   that each match state is used in a sampled path through
+  //   the model.
+  vguard<double> mocc (node.size());
+  mocc[0] = 0.;			               /* no M_0 state */
+  mocc[1] = node[0].m_to_i + node[0].m_to_m;   /* initialize w/ 1 - B->D_1 */
+  for (int k = 2; k < node.size(); k++)
+    mocc[k] = mocc[k-1] * (node[k].m_to_m + node[k].m_to_i) + (1.0 - mocc[k-1]) * node[k].d_to_m;
+  return mocc;
+}

@@ -8,6 +8,8 @@
 #define DefaultCSVSplitChars ","
 
 // CSV profile
+namespace MachineBoss {
+
 struct CSVProfile {
   vector<string> header;
   vector<vector<double> > row;
@@ -19,5 +21,7 @@ struct CSVProfile {
   Machine machine() const;
   Machine mergingMachine() const;  // merges consecutive repeated characters, as in Graves (2006) "Connectionist Temporal Classification"
 };
+
+}  // end namespace
 
 #endif /* HMMER_INCLUDED */

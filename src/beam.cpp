@@ -1,5 +1,7 @@
 #include "beam.h"
 
+using namespace MachineBoss;
+
 BeamSearchMatrix::SeqNode::SeqNode() :
   inTok (0),
   parent (NULL)

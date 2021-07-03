@@ -7,6 +7,8 @@
 KSEQ_INIT(gzFile, gzread)
 
 const regex fasta_re (">([^ ]+)(.*)");
+using namespace MachineBoss;
+
 FastSeq FastSeq::fromFasta (const string& fasta) {
   FastSeq fs;  
   smatch match;
@@ -33,15 +35,15 @@ FastSeq FastSeq::fromSeq (const string& seq, const string& name) {
   return fs;
 }
 
-UnvalidatedAlphTok tokenize (char c, const string& alphabet) {
+UnvalidatedAlphTok MachineBoss::tokenize (char c, const string& alphabet) {
   const char* alphStr = alphabet.c_str();
   const char* ptok = strchr (alphStr, c);
   if (ptok == NULL)
-    ptok = strchr (alphStr, isupper(c) ? tolower(c) : toupper(c));
+    ptok = strchr (alphStr, std::isupper(c) ? std::tolower(c) : std::toupper(c));
   return ptok ? (UnvalidatedAlphTok) (ptok - alphStr) : -1;
 }
 
-bool isValidToken (char c, const string& alphabet) {
+bool MachineBoss::isValidToken (char c, const string& alphabet) {
   return tokenize(c,alphabet) >= 0;
 }
 
@@ -49,7 +51,7 @@ const char FastSeq::minQualityChar = '!';
 const char FastSeq::maxQualityChar = '~';
 const QualScore FastSeq::qualScoreRange = 94;
 
-TokSeq validTokenize (const string& s, const string& alphabet, const char* seqname) {
+TokSeq MachineBoss::validTokenize (const string& s, const string& alphabet, const char* seqname) {
   TokSeq tok;
   tok.reserve (s.size());
   for (auto c: s) {
@@ -65,7 +67,7 @@ TokSeq validTokenize (const string& s, const string& alphabet, const char* seqna
   return tok;
 }
 
-string detokenize (const TokSeq& toks, const string& alphabet) {
+string MachineBoss::detokenize (const TokSeq& toks, const string& alphabet) {
   string seq;
   seq.reserve (toks.size());
   for (auto tok : toks) {
@@ -82,7 +84,7 @@ TokSeq FastSeq::tokens (const string& alphabet) const {
   return validTokenize (seq, alphabet, name.c_str());
 }
 
-Kmer makeKmer (SeqIdx k, vector<unsigned int>::const_iterator tok, AlphTok alphabetSize) {
+Kmer MachineBoss::makeKmer (SeqIdx k, vector<unsigned int>::const_iterator tok, AlphTok alphabetSize) {
   Kmer kmer = 0, mul = 1;
   for (SeqIdx j = 0; j < k; ++j) {
     const unsigned int token = tok[k - j - 1];
@@ -92,21 +94,21 @@ Kmer makeKmer (SeqIdx k, vector<unsigned int>::const_iterator tok, AlphTok alpha
   return kmer;
 }
 
-Kmer numberOfKmers (SeqIdx k, AlphTok alphabetSize) {
+Kmer MachineBoss::numberOfKmers (SeqIdx k, AlphTok alphabetSize) {
   Kmer n;
   for (n = 1; k > 0; --k)
     n *= alphabetSize;
   return n;
 }
 
-string kmerToString (Kmer kmer, SeqIdx k, const string& alphabet) {
+string MachineBoss::kmerToString (Kmer kmer, SeqIdx k, const string& alphabet) {
   string rev;
   for (SeqIdx j = 0; j < k; ++j, kmer = kmer / alphabet.size())
     rev += alphabet[kmer % alphabet.size()];
   return string (rev.rbegin(), rev.rend());
 }
 
-Kmer stringToKmer (const string& s, const string& alphabet) {
+Kmer MachineBoss::stringToKmer (const string& s, const string& alphabet) {
   const TokSeq tok = validTokenize (s, alphabet);
   return makeKmer (tok.size(), tok.begin(), alphabet.size());
 }
@@ -131,12 +133,12 @@ void FastSeq::writeFastq (ostream& out) const {
     out << '+' << endl << qual << endl;
 }
 
-void writeFastaSeqs (ostream& out, const vguard<FastSeq>& fastSeqs) {
+void MachineBoss::writeFastaSeqs (ostream& out, const vguard<FastSeq>& fastSeqs) {
   for (const auto& s : fastSeqs)
     s.writeFasta (out);
 }
 
-void writeFastqSeqs (ostream& out, const vguard<FastSeq>& fastSeqs) {
+void MachineBoss::writeFastqSeqs (ostream& out, const vguard<FastSeq>& fastSeqs) {
   for (const auto& s : fastSeqs)
     s.writeFastq (out);
 }
@@ -152,12 +154,12 @@ void initFastSeq (FastSeq& seq, kseq_t* ks) {
     seq.qual = string(ks->qual.s);
 }
 
-void readFastSeqs (const char* filename, vguard<FastSeq>& seqs) {
+void MachineBoss::readFastSeqs (const char* filename, vguard<FastSeq>& seqs) {
   gzFile fp = gzopen(filename, "r");
   Require (fp != Z_NULL, "Couldn't open %s", filename);
 
   kseq_t *ks = kseq_init(fp);
-  while (!gzeof(fp)) {
+  while (true) {
     if (kseq_read(ks) == -1)
       break;
 
@@ -175,13 +177,13 @@ void readFastSeqs (const char* filename, vguard<FastSeq>& seqs) {
     Warn ("Couldn't read any sequences from %s", filename);
 }
 
-vguard<FastSeq> readFastSeqs (const char* filename) {
+vguard<FastSeq> MachineBoss::readFastSeqs (const char* filename) {
   vguard<FastSeq> seqs;
   readFastSeqs (filename, seqs);
   return seqs;
 }
 
-set<string> fastSeqDuplicateNames (const vguard<FastSeq>& seqs) {
+set<string> MachineBoss::fastSeqDuplicateNames (const vguard<FastSeq>& seqs) {
   set<string> name, dups;
   for (const auto& s : seqs) {
     if (name.find(s.name) != name.end())

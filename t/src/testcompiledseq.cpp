@@ -4,6 +4,8 @@
 #include "params.h"
 #include "computeForward.h"
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
   if (argc != 3 && argc != 4) {
     cerr << "Usage: " << argv[0] << " inputSequence outputSequence [params.json]" << endl;

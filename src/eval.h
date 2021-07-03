@@ -4,6 +4,9 @@
 #include <algorithm>
 #include "machine.h"
 #include "params.h"
+#include "seqpair.h"
+
+namespace MachineBoss {
 
 template<typename Symbol,typename Token>
 struct Tokenizer {
@@ -17,11 +20,23 @@ struct Tokenizer {
       sym2tok[tok2sym[tok]] = tok;
   }
   static inline Token emptyToken() { return 0; }
+  bool canTokenize (const vguard<Symbol>& symSeq) const {
+    for (const auto& sym: symSeq)
+      if (!sym2tok.count(sym))
+	return false;
+    return true;
+  }
   vguard<Token> tokenize (const vguard<Symbol>& symSeq) const {
     vguard<Token> tokSeq;
     tokSeq.reserve (symSeq.size());
-    for (const auto& sym: symSeq)
+    for (const auto& sym: symSeq) {
+      if (!sym2tok.count(sym)) {
+	ostringstream err;
+	err << "Can't tokenize symbol " << sym << " using this alphabet: " << to_string_join(tok2sym);
+	throw runtime_error (err.str());
+      }
       tokSeq.push_back (sym2tok.at(sym));
+    }
     return tokSeq;
   }
   vguard<Symbol> detokenize (const vguard<Token>& tokSeq) const {
@@ -68,6 +83,7 @@ struct EvaluatedMachine {
   EvaluatedMachine() { }
   EvaluatedMachine (const Machine&, const Params&);  // use machine.getParamDefs(true) to set missing parameters automatically
   EvaluatedMachine (const Machine&);  // WARNING: if this constructor is used, and no Params are supplied, all logWeight's will be zero
+  bool canTokenize (const SeqPair&) const;
   void init (const Machine&, const Params*);
   void writeJson (ostream&) const;
   string toJsonString() const;
@@ -80,5 +96,7 @@ struct EvaluatedMachine {
   Machine explicitMachine() const;  // returns the Machine without parameters, i.e. all transitions have numeric weights
   static vguard<InputSymbol> decode (const MachinePath&, const Machine&, const Params&);  // returns the input symbols for the most likely transition path consistent with the state path & output sequence specified by the MachinePath
 };
+
+}  // end namespace
 
 #endif /* EVAL_INCLUDED */

@@ -3,8 +3,10 @@
 #define InternalHeaderSuffix  "_internal"
 #define EvalTransWeightSuffix "_eval"
 
+using namespace MachineBoss;
+
 Compiler::Compiler()
-  : showCells (false)
+  : showCells (false), useMaxReduce (false), maxNestDepth (DefaultMaxNestDepth)
 { }
 
 static const string xvar ("x"), yvar ("y"), paramvar ("params"), paramnamesvar ("names"), paramcachevar ("p"), transcachevar ("t"), buf0var ("buf0"), buf1var ("buf1"), currentvar ("current"), prevvar ("prev"), resultvar ("result");
@@ -56,6 +58,10 @@ string JavaScriptCompiler::arrayRowAccessor (const string& arrayName, const stri
 
 string JavaScriptCompiler::binarySoftplus (const string& a, const string& b) const {
   return softplusvar + ".int_logsumexp (" + a + ", " + b + ")";
+}
+
+string JavaScriptCompiler::binaryMax (const string& a, const string& b) const {
+  return "Math.max (" + a + ", " + b + ")";
 }
 
 string JavaScriptCompiler::unaryLog (const string& x) const {
@@ -136,6 +142,7 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
     + "#include <iostream>\n"
     + "#include \"softplus.h\"\n"
     + "using namespace std;\n"
+    + "using namespace MachineBoss;\n"
     + "#define " + boundmacro + "(X) sp.bound_intlog(X)\n"
     + "#define " + reducemacro + "(X,Y) sp.int_logsumexp(X,Y)\n"
     + "#define " + boundreducedmacro + "(X) (X)\n"
@@ -166,6 +173,8 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   resultType = "const double";
   nullValue = "NULL";
   infinity = "SOFTPLUS_INTLOG_INFINITY";
+using namespace MachineBoss;
+
   realInfinity = "numeric_limits<double>::infinity()";
   boolType = "bool";
   abort = "throw runtime_error(\"Abort\")";
@@ -173,6 +182,8 @@ CPlusPlusCompiler::CPlusPlusCompiler (bool is64bit) {
   headerSuffix = ".h";
   includeGetParams = "#include \"getparams.h\"";
 }
+
+using namespace MachineBoss;
 
 Compiler::MachineInfo::MachineInfo (const Compiler& c, const Machine& m)
   : compiler (c),
@@ -289,13 +300,27 @@ string Compiler::MachineInfo::storeTransitions (ostream* header, const char* dir
       if (withNull)
 	addTransitions (exprs, false, false, s, inTok, outTok, outType, outputWaiting);
       const string new_lvalue = currentcell + "[" + to_string(mul*s + inc*outputWaiting) + "]";
-      const string new_rvalue = compiler.logSumExpReduce (exprs, tab2, true, outputWaiting);
-      if (new_rvalue == rvalue)
-	lvalue = lvalue + " =\n" + tab + new_lvalue;
-      else {
+      if (exprs.size() <= compiler.maxNestDepth) {
+	const string new_rvalue = compiler.reduce (exprs, tab2, true, outputWaiting);
+	if (new_rvalue == rvalue)
+	  lvalue = lvalue + " =\n" + tab + new_lvalue;
+	else {
+	  flushTransitions (code, lvalue, rvalue, tab);
+	  lvalue = new_lvalue;
+	  rvalue = new_rvalue;
+	}
+      } else {
 	flushTransitions (code, lvalue, rvalue, tab);
-	lvalue = new_lvalue;
-	rvalue = new_rvalue;
+	while (exprs.size()) {
+	  const size_t nShortExprs = min (compiler.maxNestDepth, exprs.size());
+	  vguard<string> shortExprs (exprs.begin(), exprs.begin() + nShortExprs);
+	  exprs.erase (exprs.begin(), exprs.begin() + nShortExprs);
+	  if (!exprs.empty())
+	    exprs.insert (exprs.begin(), new_lvalue);
+	  lvalue = new_lvalue;
+	  rvalue = compiler.reduce (shortExprs, tab2, exprs.empty(), outputWaiting);
+	  flushTransitions (code, lvalue, rvalue, tab);
+	}
       }
     }
   }
@@ -361,7 +386,7 @@ string Compiler::valOrInf (const string& arg) const {
     + toString(arg) + "))";
 }
 
-string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const {
+string Compiler::reduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const {
   const string newLine = string("\n") + lineIndent;
   if (exprs.size() == 0)
     return string("-") + infinity;
@@ -369,7 +394,11 @@ string Compiler::logSumExpReduce (vguard<string>& exprs, const string& lineInden
     return topLevel ? (alreadyBounded ? exprs[0] : boundLog (exprs[0])) : (newLine + exprs[0]);
   const string lastExpr = exprs.back();
   exprs.pop_back();
-  const string result = binarySoftplus (logSumExpReduce (exprs, lineIndent, false, false), newLine + lastExpr);
+  const string nextReduce = reduce (exprs, lineIndent, false, false);
+  const string nextIndent = newLine + lastExpr;
+  const string result = (useMaxReduce
+			 ? binaryMax (nextReduce, nextIndent)
+			 : binarySoftplus (nextReduce, nextIndent));
   return topLevel ? (alreadyBounded ? result : boundSoftplussed (result)) : result;
 }
 
@@ -391,6 +420,10 @@ string CPlusPlusCompiler::arrayRowAccessor (const string& arrayName, const strin
 
 string CPlusPlusCompiler::binarySoftplus (const string& a, const string& b) const {
   return reducemacro + " (" + a + ", " + b + ")";
+}
+
+string CPlusPlusCompiler::binaryMax (const string& a, const string& b) const {
+  return "max (" + a + ", " + b + ")";
 }
 
 string CPlusPlusCompiler::boundLog (const string& x) const {
@@ -432,6 +465,8 @@ string CPlusPlusCompiler::postamble (const vguard<string>& funcs) const {
 string CPlusPlusCompiler::include (const string& filename) const {
   return string("#include \"") + filename + "\"\n";
 }
+
+using namespace MachineBoss;
 
 string CPlusPlusCompiler::declareFunction (const string& proto) const {
   return proto + ";\n";

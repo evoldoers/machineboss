@@ -3,6 +3,8 @@
 
 #include "dpmatrix.h"
 
+namespace MachineBoss {
+
 template<class IndexMapper>
 class MappedForwardMatrix : public DPMatrix<IndexMapper> {
 private:
@@ -26,5 +28,7 @@ public:
 typedef MappedForwardMatrix<RollingOutputIndexMapper> RollingOutputForwardMatrix;
 
 #include "forward.defs.h"
+
+}  // end namespace
 
 #endif /* FORWARD_INCLUDED */

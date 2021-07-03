@@ -4,7 +4,9 @@
 #include <math.h>
 #include "logger.h"
 
-Logger logger;
+using namespace MachineBoss;
+
+Logger MachineBoss::logger;
 
 // functions
 string ansiEscape (int code) {

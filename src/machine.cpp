@@ -10,8 +10,11 @@
 #include "schema.h"
 #include "params.h"
 #include "preset.h"
+#include "parsers.h"
 
 #include "backward.h"
+
+using namespace MachineBoss;
 
 using json = nlohmann::json;
 using placeholders::_1;
@@ -343,7 +346,7 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
-  // This JSON notation for machine manipulation is untested, unused, and should probably go.... IH, 2/22/2019
+  // This JSON notation for machine manipulation (first part of this method) is untested, unused, and should probably go.... IH, 2/22/2019
   
   // Check for composite, concatenated, tranposed, reversed, etc etc transducers
   if (pj.count("compose")) {
@@ -428,6 +431,8 @@ void Machine::readJson (const json& pj) {
 
   } else {
 
+    // This is the part of the JSON format parser that is (mostly) tested... IH 4/3/2020
+    
     // Basic transducer with the following properties:
     // (mandatory) state: list of states with transitions
     //  (optional)  defs: function definitions
@@ -482,7 +487,11 @@ void Machine::readJson (const json& pj) {
 	    t.in = jt.at("in").get<string>();
 	  if (jt.count("out"))
 	    t.out = jt.at("out").get<string>();
-	  t.weight = (jt.count("weight") ? WeightAlgebra::fromJson (jt.at("weight")) : WeightAlgebra::one());
+	  t.weight = (jt.count("weight")
+		      ? WeightAlgebra::fromJson (jt.at("weight"))
+		      : (jt.count("expr")
+			 ? parseWeightExpr (jt.at("expr").get<string>())
+			 : WeightAlgebra::one()));
 	  ms.trans.push_back (t);
 	}
       }
@@ -752,7 +761,10 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
 	toVisit.push_back(d);
       }
   }
-  Assert (keep[iStates*jStates-1], "End state of composed machine is not accessible");
+  if (!keep[iStates*jStates-1]) {
+    Warn ("End state of composed machine is not accessible");
+    return zero();
+  }
 
   LogThisAt(7,"Sorting & indexing " << keptState.size() << " states" << endl);
   sort (keptState.begin(), keptState.end());
@@ -920,7 +932,11 @@ Machine Machine::ergodicMachine() const {
     vguard<bool> keep (nStates(), false);
     for (StateIndex s : accessibleStates())
       keep[s] = true;
-    Assert (keep[nStates()-1], "End state is not accessible");
+
+    if (!keep[nStates()-1]) {
+      Warn ("End state is not accessible");
+      return zero();
+    }
     
     map<StateIndex,StateIndex> nullEquiv;
     for (StateIndex s = 0; s < nStates(); ++s)
@@ -940,7 +956,10 @@ Machine Machine::ergodicMachine() const {
       if (keep[oldIdx] && nullEquiv.count(oldIdx))
 	old2new[oldIdx] = old2new[nullEquiv.at(oldIdx)];
 
-    Assert (ns > 0, "Machine has no accessible states");
+    if (!ns) {
+      Warn ("Machine has no accessible states");
+      return zero();
+    }
 
     em.state.reserve (ns);
     for (StateIndex oldIdx = 0; oldIdx < nStates(); ++oldIdx)
@@ -1338,8 +1357,62 @@ bool Machine::isAligningMachine() const {
 }
 
 Machine Machine::eliminateRedundantStates() const {
+  LogThisAt(3,"Eliminating redundant states from " << nStates() << "-state transducer" << endl);
+  return eliminateSingleSilentIncomingStates().eliminateSingleSilentOutgoingStates();
+}
+
+Machine Machine::eliminateSingleSilentIncomingStates() const {
   const Machine rm = isAdvancingMachine() ? *this : advanceSort();
-  LogThisAt(3,"Eliminating redundant states from " << rm.nStates() << "-state transducer" << endl);
+  LogThisAt(4,"Eliminating states with single silent incoming transition from " << rm.nStates() << "-state transducer" << endl);
+  vguard<int> nSilentIncoming (rm.nStates()), nLoudIncoming (rm.nStates());
+  vguard<StateIndex> actualSource (rm.nStates());
+  vguard<WeightExpr> entryWeight (rm.nStates(), WeightAlgebra::one());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    for (const auto& t: rm.state[s].trans)
+      if (t.isSilent()) {
+	++nSilentIncoming[t.dest];
+	actualSource[t.dest] = s;
+	entryWeight[s] = t.weight;
+      } else
+	++nLoudIncoming[t.dest];
+
+  vguard<bool> elimState (rm.nStates());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    elimState[s] = (nSilentIncoming[s] == 1 && nLoudIncoming[s] == 0);
+  
+  vguard<StateIndex> newStateIndex (rm.nStates()), oldStateIndex;
+  oldStateIndex.reserve (rm.nStates());
+  for (StateIndex s = 0; s < rm.nStates(); ++s)
+    if (!elimState[s]) {
+      newStateIndex[s] = oldStateIndex.size();
+      oldStateIndex.push_back (s);
+    }
+  const StateIndex newStates = oldStateIndex.size();
+  if (newStates == rm.nStates()) {
+    LogThisAt(5,"No silent incoming states to eliminate" << endl);
+    return rm;
+  }
+  
+  Machine em;
+  em.import (rm);
+  em.state = vguard<MachineState> (newStates);
+
+  for (StateIndex s = 0; s < rm.nStates(); ++s) {
+    if (!elimState[s])
+      em.state[newStateIndex[s]].name = rm.state[s].name;
+    MachineState& source = em.state[elimState[s] ? actualSource[s] : s];
+    const WeightExpr mul = elimState[s] ? entryWeight[s] : WeightAlgebra::one();
+    for (const auto& t: rm.state[s].trans)
+      source.trans.insert (source.trans.end(),
+			   MachineTransition (t.in, t.out, newStateIndex[t.dest], WeightAlgebra::multiply (t.weight, mul)));
+  }
+  LogThisAt(5,"Eliminating silent incoming states turned a " << rm.nStates() << "-state machine into a " << em.nStates() << "-state machine" << endl);
+  return em;
+}
+
+Machine Machine::eliminateSingleSilentOutgoingStates() const {
+  const Machine rm = isAdvancingMachine() ? *this : advanceSort();
+  LogThisAt(4,"Eliminating states with single silent outgoing transition from " << rm.nStates() << "-state transducer" << endl);
   vguard<StateIndex> eventualDest (rm.nStates());
   vguard<WeightExpr> exitMultiplier (rm.nStates(), WeightAlgebra::one());
   for (StateIndex s = rm.nStates(); s > 0; ) {
@@ -1645,6 +1718,13 @@ Machine Machine::kleeneCount (const Machine& m, const string& countParam) {
   return result;
 }
 
+Machine Machine::repeat (const Machine& m, int copies) {
+  Machine result = m;
+  for (int n = 1; n < copies; ++n)
+    result = Machine::concatenate (result, m);
+  return result;
+}
+
 Machine Machine::reverse() const {
   Machine m;
   m.import (*this);
@@ -1671,6 +1751,13 @@ Machine Machine::null() {
   Machine n;
   n.state.push_back (MachineState());
   return n;
+}
+
+Machine Machine::zero() {
+  Machine z;
+  z.state.push_back (MachineState());
+  z.state.push_back (MachineState());
+  return z;
 }
 
 Machine Machine::singleTransition (const WeightExpr& weight) {
@@ -1733,6 +1820,13 @@ vguard<OutputSymbol> MachinePath::outputSequence() const {
 
 MachinePath::AlignPath MachinePath::alignment() const {
   return SeqPair::getAlignment (*this);
+}
+
+MachinePath::AlignPath MachinePath::transpose (const AlignPath& path) {
+  AlignPath tap;
+  for (const auto& col: path)
+    tap.push_back (AlignCol (col.second, col.first));
+  return tap;
 }
 
 void MachinePath::writeJson (ostream& out, const Machine& m) const {
@@ -1905,3 +1999,4 @@ Machine Machine::stripNames() const {
     ms.name = nullptr;
   return m;
 }
+

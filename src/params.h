@@ -6,10 +6,12 @@
 #include "weight.h"
 #include "jsonio.h"
 
+// Params class extends ParamDefs with some helpers
+namespace MachineBoss {
+
 using namespace std;
 using json = nlohmann::json;
 
-// Params class extends ParamDefs with some helpers
 class Params {
 public:
   ParamDefs defs;
@@ -33,5 +35,7 @@ struct ParamFuncs : Params {
   ParamFuncs (const Params& p) : Params(p) { }
   void readJson (const json& json);
 };
+
+}  // end namespace
 
 #endif /* PARAMS_INCLUDED */

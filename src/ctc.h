@@ -13,6 +13,8 @@
 // (Here + is concatenation, * is composition, echo(A) copies A-symbols from input to output, and wild(A) emits A-symbols.)
 // The PrefixTree uses this construction implicitly:
 // seqCell(outPos,state) and prefixCell(outPos,state) track states in, respectively, echo(A)*G and wild(A)*G.
+namespace MachineBoss {
+
 struct PrefixTree {
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
@@ -118,5 +120,7 @@ struct PrefixTree {
   vguard<InputSymbol> bestPrefix() const { return seqTraceback (bestPrefixNode()); }
   vguard<InputSymbol> seqTraceback (const Node* node) const;
 };
+
+}  // end namespace
 
 #endif /* CTC_INCLUDED */

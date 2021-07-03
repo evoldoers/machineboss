@@ -2,6 +2,8 @@
 #include "../../src/params.h"
 #include "../../src/schema.h"
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
   if (argc != 3) {
     cerr << "Usage: " << argv[0] << " expr.json params.json" << endl;

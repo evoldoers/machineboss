@@ -4,8 +4,6 @@
 #include <limits>
 #include <cmath>
 
-using namespace std;
-
 // Global definitions relating to the cache
 // Note that, at this precision, round(log(1+exp(-x))/precision) falls to zero at 9.9035
 #define SOFTPLUS_CACHE_MAX_LOG    10
@@ -24,6 +22,10 @@ using namespace std;
 
 // This can be used as a singleton object
 // Creating a new one takes ~100,000 logs, which is not all that time-consuming really
+namespace MachineBoss {
+
+using namespace std;
+
 class SoftPlus {
 
 public:
@@ -122,5 +124,7 @@ public:
 	    : slow_logsumexp_canonical (b, a));
   }
 };
+
+}  // end namespace
 
 #endif /* SOFTPLUS_INCLUDED */

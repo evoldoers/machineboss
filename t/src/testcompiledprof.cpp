@@ -4,6 +4,8 @@
 #include "params.h"
 #include "computeForward.h"
 
+using namespace MachineBoss;
+
 int main (int argc, char** argv) {
   CSVProfile inProf, outProf;
   if (argc != 3 && argc != 4) {

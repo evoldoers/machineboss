@@ -1,0 +1,30 @@
+
+all: gp120 trp-cage
+
+# GP120 protein from HIV contains N-glycosylation sites, so Viterbi log-likelihood is zero
+gp120: gp120.test.json
+	cat $<
+
+# trp-cage miniprotein contains no N-glycosylation sites, so Viterbi log-likelihood is -infinity
+trp-cage: trp-cage.test.json
+	cat $<
+
+# Create the ProSite motif as an amino acid regular expression
+PS00001.json:
+	boss --aa-regex 'N[^P][ST][^P]' >$@
+
+# Run the Viterbi algorithm
+%.test.json: %.fa PS00001.json
+	boss --input-fasta $*.fa PS00001.json --viterbi >$@
+
+# An alternate way to do it is to use --generate-fasta instead of --input-fasta
+# Instead of doing DP to align the sequence to the machine, this creates a generator for the sequence & then composes it with the machine,
+# effectively "hard-coding" the sequence into the machine.
+%.alt.test.json: %.fa PS00001.json
+	boss --generate-fasta $*.fa PS00001.json --viterbi >$@
+
+# Here is an example that creates the corresponding DNA version of the motif
+# This version is a generator rather than a recognizer (i.e. the sequence is treated as an output, rather than an input)
+# The --transpose operator converts a generator into a recognizer and vice versa (it flips inputs & outputs)
+PS00001-dna.json: PS00001.json
+	boss $< --transpose --preset translate >$@

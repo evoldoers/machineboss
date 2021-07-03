@@ -4,6 +4,7 @@
 #include "../../src/schema.h"
 
 using namespace std;
+using namespace MachineBoss;
 
 int main (int argc, char** argv) {
   if (argc != 3) {

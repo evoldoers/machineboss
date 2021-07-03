@@ -3,13 +3,12 @@
   "description": "Bioinformatics automata",
   "version": "0.0.1",
   "dependencies": {
-    "hdf5.node": "evoldoers/hdf5.node#int64_as_string",
     "bionode-fasta": "*",
-    "mersennetwister": "*",
-    "jStat": "*",
-    "extend": "*",
     "colors": "*",
-    "node-getopt": "*"
+    "extend": "*",
+    "jStat": "*",
+    "mersennetwister": "*",
+    "node-getopt": "^0.3.2"
   },
   "repository": {
     "type": "git",

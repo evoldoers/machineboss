@@ -1,6 +1,6 @@
 ![](img/machineboss.gif)
 
-Many C++ HMM libraries for bioinformatics
+Many HMM libraries for bioinformatics
 focus on inference tasks, such as likelihood calculation, parameter-fitting, and alignment.
 Machine Boss can do these things too, but it also introduces a set of operations for **manipulation** of the state machines themselves. The aim is to make it as easy to quick and easy to prototype automata-based experiments in bioinformatics as it is to prototype regular expressions.
 In fact, Machine Boss supports regular expression syntax---along with many other file formats and patterns.
@@ -26,13 +26,24 @@ and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
+
+## Citation
+
+Please cite the following paper if you use Machine Boss:
+
+Silvestre-Ryan, Wang, Sharma, Lin, Shen, Dider, and Holmes. Bioinformatics (2020).
+[Machine Boss: Rapid Prototyping of Bioinformatic Automata.](https://pubmed.ncbi.nlm.nih.gov/32683444/)
+
+
+
 # Installation
 
+Machine Boss can be compiled from C++ source, or installed via [npm](https://www.npmjs.com/package/machineboss).
 For installation instructions see [INSTALL.md](INSTALL.md).
 
 # Command-line interface
 
-Machine Boss has an associated command-line tool, `boss`, that makes many machine-building operations available through its command-line options -
+Machine Boss is most easily accessed through a command-line utility, `boss`, that makes many machine-building operations available through its command-line options -
 thereby defining a small expression language for building up automata.
 
 A brief usage guide for this tool follows below.
@@ -69,13 +80,14 @@ construct recognizers rather than generators, by convention.
 (A recognizer is an input machine; a generator is an output machine.)
 You can convert a recognizer to a generator (and vice versa) by swapping the input and output labels, using `--tranpose`.
 
-### Search the N-glycosylation regex against the MinION read
+### Search the N-glycosylation regex against a MinION read
 
 This command takes the `PS00001.json` regex from the previous example,
 runs it through a reverse-translation machine (`--preset translate`),
 adds a self-loop with a dummy parameter (`--count-copies n`),
 flanks it with a null model (`--generate-uniform-dna`),
 and then uses the Forward-Backward algorithm to find the expected usage of the dummy parameter (`--counts`)
+when run against the output of a nanopore basecaller stored in a CSV file (see below for more info on the CSV file format)
 
 ~~~~
 boss --counts -v6 \
@@ -239,7 +251,8 @@ so e.g. the first example may be run by typing `boss --generate-one ACGT`
 | `--generate-json FILENAME.json` | A generator for a sequence of symbols read from a Machine Boss JSON file |
 | `--regex REGEX` | A recognizer state machine for the corresponding [regular expression](https://en.wikipedia.org/wiki/Regular_expression). By default this will be a local regular expression; use the `^` and `$` anchors to make it global. |
 | `--dna-regex REGEX`, `--rna-regex REGEX`, `--aa-regex REGEX` | A DNA, RNA, or protein regular expression. Practically, the only difference between this and `--regex` is that the wildcard character (`.`) is defined for the appropriate (upper-case) molecular residue alphabet, instead of ASCII text. |
-| `--hmmer HMMERFILE.hmm` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM |
+| `--hmmer HMMERFILE.hmm` | A generator corresponding to a [HMMer](http://hmmer.org/)-format profile HMM; or rather, to the version of this state machine used by hmmsearch for local alignment, which is quite different from the HMM described in the model file (it introduces local entry and exit probabilities calculated using an _ad hoc_ formula). Note this still does not include HMMER's odds-ratio weighting (for which you need e.g. `--weight-output 1/$pSwissProt% --params data/SwissProtComposition.json`) or free flanking states (`--flank-output-wild`) |
+| `--hmmer-global HMMERFILE.hmm` | This constructs the global alignment version of the profile HMM, which is what is actually described in the HMMER model file |
 
 For each of the `--generate-XXX` options, the `--generate` can be replaced with `--recognize` to construct the corresponding recognizer, or (in most cases) with `--echo` for the identity.
 
@@ -344,6 +357,7 @@ There are several ways to specify input and output sequences.
 |---|---|
 | `--loglike` | [Forward](https://en.wikipedia.org/wiki/Forward_algorithm) algorithm |
 | `--train` | [Baum-Welch](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm) training, using generic optimizers from [GSL](https://www.gnu.org/software/gsl/) |
+| `--viterbi` | [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) score only |
 | `--align` | [Viterbi](https://en.wikipedia.org/wiki/Viterbi_algorithm) alignment |
 | `--counts` | Calculates derivatives of the log-weight with respect to the logs of the parameters, a.k.a. the posterior expectations of the number of time each parameter is used |
 | `--beam-decode` | Uses [beam search](https://en.wikipedia.org/wiki/Beam_search) to find the most likely input for a given output. Beam width can be specified using `--beam-width` |
@@ -378,16 +392,17 @@ General options:
 Transducer construction:
   -l [ --load ] arg             load machine from file
   -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
-                                protpsw, translate, prot2dna, psw2dna, dna2rna,
-                                rna2dna, bintern, terndna, jukescantor, 
-                                dnapswnbr, tkf91root, tkf91branch, tolower, 
-                                toupper, hamming31, hamming74)
+                                protpsw, translate, prot2dna, psw2dna, 
+                                iupacdna, iupacaa, dna2rna, rna2dna, bintern, 
+                                terndna, jukescantor, dnapswnbr, tkf91root, 
+                                tkf91branch, tolower, toupper, hamming31, 
+                                hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
                                 characters
   --generate-iid arg            as --generate-wild, but followed by 
-                                --weight-output "p$"
+                                --weight-output '$p%'
   --generate-uniform arg        as --generate-iid, but weights outputs by 
                                 1/(output alphabet size)
   --generate-fasta arg          generator for FASTA-format sequence
@@ -399,7 +414,7 @@ Transducer construction:
   --recognize-wild arg          recognizer for Kleene closure over specified 
                                 characters
   --recognize-iid arg           as --recognize-wild, but followed by 
-                                --weight-input "p$"
+                                --weight-input '$p%'
   --recognize-uniform arg       as --recognize-iid, but weights outputs by 
                                 1/(input alphabet size)
   --recognize-fasta arg         recognizer for FASTA-format sequence
@@ -416,9 +431,14 @@ Transducer construction:
   --echo-json arg               identity for JSON-format sequence
   -w [ --weight ] arg           weighted null transition '#'
   -X [ --regex ] arg            create text recognizer from regular expression
-  -H [ --hmmer ] arg            create generator from HMMER3 model file
+  -H [ --hmmer ] arg            create generator from HMMER3 model file in 
+                                local alignment mode
+  --hmmer-global arg            create generator from HMMER3 model file in 
+                                global alignment mode
   --pfam arg                    create generator from PFAM ID (e.g. Piwi)
   --dfam arg                    create generator from DFAM ID (e.g. DF0004136)
+  -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
+                                multiple alignment
 
 Postfix operators:
   -z [ --zero-or-one ]          union with null '?'
@@ -480,10 +500,10 @@ Postfix operators:
   --reciprocal                  element-wise reciprocal: invert all weight 
                                 expressions
   --weight-input arg            multiply input weights by specified JSON 
-                                expression ($ expands to input symbol, # to 
+                                expression (% expands to input symbol, # to 
                                 input alphabet size)
   --weight-output arg           multiply output weights by specified JSON 
-                                expression ($ expands to output symbol, # to 
+                                expression (% expands to output symbol, # to 
                                 output alphabet size)
   --weight-input-geom arg       place geometric distribution with specified 
                                 parameter over input length
@@ -549,6 +569,7 @@ Transducer application:
   -R [ --wiggle-room ] arg      wiggle room (allowed departure from training 
                                 alignment)
   -A [ --align ]                Viterbi sequence alignment
+  -V [ --viterbi ]              Viterbi log-likelihood calculation
   -L [ --loglike ]              Forward log-likelihood calculation
   -C [ --counts ]               Forward-Backward counts (derivatives of 
                                 log-likelihood with respect to logs of 
@@ -577,6 +598,7 @@ Parser-generator:
   --cpp32                       generate C++ dynamic programming code (32-bit)
   --js                          generate JavaScript dynamic programming code
   --showcells                   include debugging output in generated code
+  --compileviterbi              compile Viterbi instead of Forward
   --inseq arg                   input sequence type (String, Intvec, Profile)
   --outseq arg                  output sequence type (String, Intvec, Profile)
 

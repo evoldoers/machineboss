@@ -1,5 +1,7 @@
 # Installation
 
+## Compiling from C++
+
 On Mac:
 
 ~~~~
@@ -11,8 +13,19 @@ brew install pkgconfig
 make
 ~~~~
 
-## Testing
+Use `make no-ssl` to build without SSL support (only needed to retrieve models from PFam/DFam).
+
+### Testing
 
 ~~~~
 npm install
 make test
+~~~~
+
+## Installing via npm
+
+The software is compiled to WebAssembly as [machineboss](https://www.npmjs.com/package/machineboss) on npm
+
+~~~~
+npm install machineboss
+~~~~

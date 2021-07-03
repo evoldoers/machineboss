@@ -13,6 +13,8 @@
 #include "params.h"
 #include "constraints.h"
 
+namespace MachineBoss {
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -97,7 +99,8 @@ struct Machine {
   // For example:
   //   wildGenerator.X.wildGenerator  where "." represents concatenation
   // always yields a single left-flanking state, then X's states, then a single right-flanking state
-  static Machine null();
+  static Machine null();  // single state, no transitions: weight is one for empty string, zero for all other strings
+  static Machine zero();  // two states, no transitions: weight is zero for all strings
   static Machine singleTransition (const WeightExpr& weight);
 
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, SilentCycleStrategy cycleStrategy = SumSilentCycles);
@@ -126,6 +129,8 @@ struct Machine {
   static Machine kleeneLoop (const Machine&, const Machine&);
   static Machine kleeneCount (const Machine&, const string& countParam);
 
+  static Machine repeat (const Machine&, int copies);
+  
   Machine reverse() const;
   Machine transpose() const;
 
@@ -179,7 +184,10 @@ struct Machine {
   Machine processCycles (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // returns either advancingMachine(), dropSilentBackTransitions(), or clone of self, depending on strategy
   Machine dropSilentBackTransitions() const;
   Machine eliminateSilentTransitions (SilentCycleStrategy cycleStrategy = SumSilentCycles) const;  // eliminates silent transitions, first processing cycles using the selected strategy
-  Machine eliminateRedundantStates() const;  // eliminates states which have only one outgoing transition that is silent
+
+  Machine eliminateSingleSilentIncomingStates() const;  // eliminates states which have only one incoming silent transition
+  Machine eliminateSingleSilentOutgoingStates() const;  // eliminates states which have only one outgoing silent transition
+  Machine eliminateRedundantStates() const;  // eliminates states which have only one incoming and/or outgoing silent transition
 
   Machine subgraph (const vguard<vguard<bool> >&) const;
   Machine downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions = 0.) const;
@@ -206,6 +214,7 @@ struct MachinePath {
   vguard<InputSymbol> inputSequence() const;
   vguard<OutputSymbol> outputSequence() const;
   AlignPath alignment() const;
+  static AlignPath transpose (const AlignPath&);
 };
 
 struct MachineBoundPath : MachinePath {
@@ -213,5 +222,7 @@ struct MachineBoundPath : MachinePath {
   MachineBoundPath (const MachinePath&, const Machine&);
   void writeJson (ostream&) const;
 };
+  
+}  // end namespace
 
 #endif /* MACHINE_INCLUDED */

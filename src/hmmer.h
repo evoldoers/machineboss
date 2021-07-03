@@ -6,6 +6,8 @@
 #include "machine.h"
 
 // HMMER3 model
+namespace MachineBoss {
+
 struct HmmerModel {
   struct Node {
     vguard<double> matchEmit, insEmit;
@@ -30,7 +32,11 @@ struct HmmerModel {
   inline StateIndex end_idx() const { return 5 * node.size() + 3; }
   inline StateIndex nStates() const { return 5 * node.size() + 4; }
 
-  Machine machine() const;
+  vguard<double> calcMatchOccupancy() const;
+  
+  Machine machine (bool local = true) const;
 };
+
+}  // end namespace
 
 #endif /* HMMER_INCLUDED */

@@ -1,7 +1,10 @@
-#include "parseregex.h"
+#include "parsers.h"
 #include "../ext/cpp-peglib/peglib.h"
 
 using namespace peg;
+using namespace MachineBoss;
+
+// Regular expression parser
 
 RegexParser::RegexParser()
   : white (" \t\n")
@@ -23,16 +26,14 @@ vguard<InputSymbol> RegexParser::stringToSymbols (const string& s) {
 }
 
 Machine RegexParser::parse (const string& str) const {
-  // TODO: WRITE ME
-
   auto grammar =
 #include "grammars/regex.h"
     ;
   
   parser parser;
 
-  parser.log = [](size_t line, size_t col, const string& msg) {
-    cerr << line << ":" << col << ": " << msg << "\n";
+  parser.log = [&](size_t line, size_t col, const string& msg) {
+    cerr << "In regular expression " << '"' << str << '"' << " position " << col << ": " << msg << "\n";
   };
 
   auto ok = parser.load_grammar(grammar);
@@ -299,4 +300,156 @@ Machine RegexParser::parse (const string& str) const {
   Machine m;
   parser.parse (str.c_str(), m);
   return m;
+}
+
+
+// Weight expression parser
+struct ExprParser {
+  parser parser;
+  ExprParser();
+  string current;
+};
+ExprParser exprParser;
+ExprParser::ExprParser() {
+  auto grammar =
+#include "grammars/expr.h"
+    ;
+
+  parser.log = [&](size_t line, size_t col, const string& msg) {
+    cerr << "In weight expression " << '"' << current << '"' << " position " << col << ": " << msg << "\n";
+  };
+
+  auto ok = parser.load_grammar(grammar);
+  assert(ok);
+
+  parser["Term"] = [&](const SemanticValues& sv) {
+//    cerr << "Term " << sv.str() << endl;
+    WeightExpr w = any_cast<WeightExpr> (sv[0]);
+    for (int i = 1; i < sv.size(); ++i)
+      w = WeightAlgebra::add (w, any_cast<WeightExpr> (sv[i]));
+    return w;
+  };
+
+  parser["Add"] = [&](const SemanticValues& sv) {
+//    cerr << "Add " << sv.str() << endl;
+    return any_cast<WeightExpr> (sv[0]);
+  };
+
+  parser["Sub"] = [&](const SemanticValues& sv) {
+//    cerr << "Sub " << sv.str() << endl;
+    return WeightAlgebra::minus (any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["Factor"] = [&](const SemanticValues& sv) {
+//    cerr << "Factor " << sv.str() << endl;
+    WeightExpr w = any_cast<WeightExpr> (sv[0]);
+    for (int i = 1; i < sv.size(); ++i)
+      w = WeightAlgebra::multiply (w, any_cast<WeightExpr> (sv[i]));
+    return w;
+  };
+
+  parser["Mul"] = [&](const SemanticValues& sv) {
+//    cerr << "Mul " << sv.str() << endl;
+    return any_cast<WeightExpr> (sv[0]);
+  };
+
+  parser["Div"] = [&](const SemanticValues& sv) {
+//    cerr << "Div " << sv.str() << endl;
+    return WeightAlgebra::reciprocal (any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["Power"] = [&](const SemanticValues& sv) {
+//    cerr << "Power " << sv.str() << endl;
+    return (sv.choice() == 0
+	    ? WeightAlgebra::power (any_cast<WeightExpr> (sv[0]),
+				    any_cast<WeightExpr> (sv[1]))
+	    : any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["Primary"] = [&](const SemanticValues& sv) {
+//    cerr << "Primary " << sv.str() << endl;
+    return any_cast<WeightExpr> (sv[0]);
+  };
+
+  parser["Parens"] = [&](const SemanticValues& sv) {
+//    cerr << "Parens " << sv.str() << endl;
+    return any_cast<WeightExpr> (sv[0]);
+  };
+
+  parser["Function"] = [&](const SemanticValues& sv) {
+//    cerr << "Function " << sv.str() << endl;
+    return any_cast<WeightExpr> (sv[0]);
+  };
+
+  parser["Exp"] = [&](const SemanticValues& sv) {
+//    cerr << "Exp " << sv.str() << endl;
+    return WeightAlgebra::expOf (any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["Log"] = [&](const SemanticValues& sv) {
+//    cerr << "Log " << sv.str() << endl;
+    return WeightAlgebra::logOf (any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["NegateProb"] = [&](const SemanticValues& sv) {
+//    cerr << "NegateProb " << sv.str() << endl;
+    return WeightAlgebra::negate (any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["Negative"] = [&](const SemanticValues& sv) {
+//    cerr << "Negative " << sv.str() << endl;
+    return WeightAlgebra::minus (any_cast<WeightExpr> (sv[0]));
+  };
+
+  parser["Sign"] = [&](const SemanticValues& sv) {
+//    cerr << "Sign " << sv.str() << endl;
+    return WeightAlgebra::one();
+  };
+
+  parser["Number"] = [&](const SemanticValues& sv) {
+//    cerr << "Number " << sv.str() << endl;
+    return WeightAlgebra::doubleConstant (stof (sv.str()));
+  };
+
+  parser["IntOrFloat"] = [&](const SemanticValues& sv) {
+//    cerr << "IntOrFloat " << sv.str() << endl;
+    return WeightAlgebra::one();
+  };
+
+  parser["Integer"] = [&](const SemanticValues& sv) {
+//    cerr << "Integer " << sv.str() << endl;
+    return WeightAlgebra::one();
+  };
+
+  parser["Float"] = [&](const SemanticValues& sv) {
+//    cerr << "Float " << sv.str() << endl;
+    return WeightAlgebra::one();
+  };
+
+  parser["Scientific"] = [&](const SemanticValues& sv) {
+//    cerr << "Scientific " << sv.str() << endl;
+    return WeightAlgebra::one();
+  };
+
+  parser["Variable"] = [&](const SemanticValues& sv) {
+//    cerr << "Variable " << sv.str() << endl;
+    return any_cast<WeightExpr> (sv[0]);
+  };
+
+  parser["identifier"] = [&](const SemanticValues& sv) {
+//    cerr << "identifier " << sv.str() << endl;
+    return WeightAlgebra::param (sv.str());
+  };
+
+  parser["~_"] = [&](const SemanticValues& sv) {
+//    cerr << "~_ " << sv.str() << endl;
+    return WeightAlgebra::one();
+  };
+}
+  
+WeightExpr MachineBoss::parseWeightExpr (const string& str) {
+  WeightExpr w = WeightAlgebra::one();
+  exprParser.current = str;
+  exprParser.parser.parse (str.c_str(), w);
+  return w;
 }

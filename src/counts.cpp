@@ -19,6 +19,8 @@
 #define ObjectiveFunctionLogLevel 8
 #define OptimizationParamsLogLevel 7
 
+using namespace MachineBoss;
+
 MachineCounts::MachineCounts()
 { }
 

@@ -15,6 +15,8 @@
 /* uncomment to enable NaN checks */
 #define NAN_DEBUG
 
+namespace MachineBoss {
+
 /* Errors, warnings, assertions.
    Fail(...) and Require(...) are quieter versions of Abort(...) and Assert(...)
    that do not print a stack trace or throw an exception,
@@ -210,5 +212,7 @@ std::vector<size_t> orderedIndices (std::vector<T> const& values) {
     sortIndices (indices, values);
     return indices;
 }
+
+}  // end namespace
 
 #endif /* UTIL_INCLUDED */

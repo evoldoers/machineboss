@@ -2,9 +2,12 @@
 #include <list>
 #include <iomanip>
 #include "weight.h"
+#include "parsers.h"
 #include "logsumexp.h"
 #include "util.h"
 #include "logger.h"
+
+using namespace MachineBoss;
 
 // singleton for storing ExprStruct's
 class ExprStructFactory {
@@ -167,6 +170,8 @@ WeightExpr WeightAlgebra::add (const WeightExpr& l, const WeightExpr& r) {
     w = r;
   else if (isZero(r))
     w = l;
+  else if (r->type == Sub && isZero(r->args.binary.l))
+    w = subtract (l, r->args.binary.r);
   else if (l->type == Int && r->type == Int)
     w = factory.newInt (l->args.intValue + r->args.intValue);
   else if (isNumber(l) && isNumber(r))
@@ -576,6 +581,8 @@ WeightExpr WeightAlgebra::fromJson (const json& w, const ParamDefs* defs) {
      result = add (fromJson (args[0], defs), fromJson (args[1], defs));
    else if (opcode == "-")
      result = subtract (fromJson (args[0], defs), fromJson (args[1], defs));
+   else if (opcode == "expr")
+     result = parseWeightExpr (args.get<string>());
    else
      Abort ("Unknown opcode %s in JSON", opcode.c_str());
  }
@@ -647,11 +654,11 @@ vector<string> WeightAlgebra::toposortParams (const ParamDefs& defs) {
 }
 
 map<string,WeightExpr> WeightAlgebra::makeSymbolExprs (const vector<string>& alphabet, const string& macro) {
-  const string m1 = join (split (macro, WeightMacroAlphabetSizePlaceholder), to_string (alphabet.size()).c_str());
+  const string m1 = join (split (" " + macro + " ", WeightMacroAlphabetSizePlaceholder), to_string (alphabet.size()).c_str());
   map<string,WeightExpr> result;
   for (const auto& sym: alphabet) {
-    const string s = join (split (m1, WeightMacroSymbolPlaceholder), sym.c_str());
-    result[sym] = fromJson (json::parse (s));
+    const string s = join (split (" " + m1 + " ", WeightMacroSymbolPlaceholder), sym.c_str());
+    result[sym] = parseWeightExpr (s);
   }
   return result;
 }

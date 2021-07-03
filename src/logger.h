@@ -16,6 +16,8 @@
 #include "util.h"
 #include "vguard.h"
 
+namespace MachineBoss {
+
 using namespace std;
 
 class Logger {
@@ -106,6 +108,8 @@ private:
 };
 
 #define ProgressLog(PLOG,V) ProgressLogger PLOG (V, __func__, __FILE__, __LINE__)
+
+}  // end namespace
 
 #endif /* LOGGER_INCLUDED */
 

@@ -23,8 +23,9 @@
 #include "../src/counts.h"
 #include "../src/util.h"
 #include "../src/schema.h"
-#include "../src/parseregex.h"
+#include "../src/parsers.h"
 #include "../src/hmmer.h"
+#include "../src/jphmm.h"
 #include "../src/csv.h"
 #include "../src/compiler.h"
 #include "../src/ctc.h"
@@ -33,6 +34,8 @@
 
 using namespace std;
 namespace po = boost::program_options;
+
+using namespace MachineBoss;
 
 int main (int argc, char** argv) {
 
@@ -54,7 +57,7 @@ int main (int argc, char** argv) {
       ("generate-chars,g", po::value<string>(), "generator for explicit character sequence '<<'")
       ("generate-one", po::value<string>(), "generator for any one of specified characters")
       ("generate-wild", po::value<string>(), "generator for Kleene closure over specified characters")
-      ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output " WeightMacroDefaultMacro)
+      ("generate-iid", po::value<string>(), "as --generate-wild, but followed by --weight-output '" WeightMacroDefaultMacro "'")
       ("generate-uniform", po::value<string>(), "as --generate-iid, but weights outputs by 1/(output alphabet size)")
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
@@ -65,7 +68,7 @@ int main (int argc, char** argv) {
       ("recognize-chars,a", po::value<string>(), "recognizer for explicit character sequence '>>'")
       ("recognize-one", po::value<string>(), "recognizer for any one of specified characters")
       ("recognize-wild", po::value<string>(), "recognizer for Kleene closure over specified characters")
-      ("recognize-iid", po::value<string>(), "as --recognize-wild, but followed by --weight-input " WeightMacroDefaultMacro)
+      ("recognize-iid", po::value<string>(), "as --recognize-wild, but followed by --weight-input '" WeightMacroDefaultMacro "'")
       ("recognize-uniform", po::value<string>(), "as --recognize-iid, but weights outputs by 1/(input alphabet size)")
       ("recognize-fasta", po::value<string>(), "recognizer for FASTA-format sequence")
       ("recognize-csv", po::value<string>(), "create recognizer from CSV file")
@@ -78,11 +81,13 @@ int main (int argc, char** argv) {
       ("echo-json", po::value<string>(), "identity for JSON-format sequence")
       ("weight,w", po::value<string>(), "weighted null transition '#'")
       ("regex,X", po::value<string>(), "create text recognizer from regular expression")
-      ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file")
+      ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file in local alignment mode")
+      ("hmmer-global", po::value<string>(), "create generator from HMMER3 model file in global alignment mode")
 #ifndef NO_SSL
       ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
       ("dfam", po::value<string>(), "create generator from DFAM ID (e.g. DF0004136)")
 #endif /* NO_SSL */
+      ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -176,6 +181,7 @@ int main (int argc, char** argv) {
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
       ("align,A", "Viterbi sequence alignment")
+      ("viterbi,V", "Viterbi log-likelihood calculation")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
       ("beam-decode,Z", "find most likely input by beam search")
@@ -200,6 +206,7 @@ int main (int argc, char** argv) {
       ("cpp32", "generate C++ dynamic programming code (32-bit)")
       ("js", "generate JavaScript dynamic programming code")
       ("showcells", "include debugging output in generated code")
+      ("compileviterbi", "compile Viterbi instead of Forward")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -247,7 +254,7 @@ int main (int argc, char** argv) {
     // parse args
     if (vm.count("help")) {
       cout << helpOpts << endl;
-      return 1;
+      return EXIT_SUCCESS;
     }
     logger.parseLogArgs (vm);
 
@@ -464,10 +471,7 @@ int main (int argc, char** argv) {
 	else if (command == "--repeat") {
 	  const int nReps = stoi (getArg());
 	  Require (nReps > 0, "--repeat requires minimum one repetition");
-	  const Machine unit = popMachine();
-	  m = unit;
-	  for (int n = 1; n < nReps; ++n)
-	    m = Machine::concatenate (m, unit);
+	  m = Machine::repeat (popMachine(), nReps);
 	} else if (command == "--loop")
 	  m = Machine::kleeneLoop (popMachine(), nextMachine()).advanceSort();
 	else if (command == "--eliminate")
@@ -518,28 +522,7 @@ int main (int argc, char** argv) {
 	  return Machine::concatenate (flank, Machine::concatenate (core, flank));
 	} else if (command == "--weight") {
 	  const string wArg = getArg();
-	  WeightExpr w;
-	  json wj = json::parse (wArg, nullptr, false);
-          if (!wj.is_discarded()) {
-	    if (MachineSchema::validate ("expr", wj))
-	      w = WeightAlgebra::fromJson (wj);
-	  } else {  // not valid json
-	    const char* wc = wArg.c_str();
-	    char* p;
-	    const long intValue = strtol (wc, &p, 10);
-	    if (*p) {
-	      // integer conversion failed
-	      const double doubleValue = strtod (wc, &p);
-	      if (*p) {
-		// double conversion failed
-		w = WeightAlgebra::param (wArg);
-	      } else
-		w = WeightAlgebra::doubleConstant (doubleValue);
-	    }
-	    else
-	      w = WeightAlgebra::intConstant (intValue);
-	  }
-	  m = Machine::singleTransition (w);
+	  m = Machine::singleTransition (parseWeightExpr (wArg));
 	} else if (command == "--weight-input") {
 	  m = popMachine().weightInputs (getArg());
 	} else if (command == "--weight-output") {
@@ -601,11 +584,19 @@ int main (int argc, char** argv) {
 	  ifstream infile (getArg());
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
-	  m = hmmer.machine();
+	  m = hmmer.machine(true);
+	} else if (command == "--hmmer-global") {
+	  HmmerModel hmmer;
+	  ifstream infile (getArg());
+	  Require (infile, "HMMer model file not found");
+	  hmmer.read (infile);
+	  m = hmmer.machine(false);
 	} else if (command == "--pfam")
-	  m = getPfam(getArg()).machine();
+	  m = getPfam(getArg()).machine(true);
 	else if (command == "--dfam")
-	  m = getDfam(getArg()).machine();
+	  m = getDfam(getArg()).machine(true);
+	else if (command == "--jphmm")
+	  m = JPHMM (readFastSeqs (getArg().c_str()));
 	else if (command == "--generate-csv") {
 	  CSVProfile csv;
 	  ifstream infile (getArg());
@@ -660,7 +651,7 @@ int main (int argc, char** argv) {
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
     const bool encodingRequested = vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("viterbi-encode") || vm.count("random-encode");
     const bool decodingRequested = vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("viterbi-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
-    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("align") || vm.count("counts");
+    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("viterbi") || vm.count("align") || vm.count("counts");
     const bool inferenceRequested = dpRequested || encodingRequested || decodingRequested;
     const bool evalRequested = vm.count("evaluate");
     if (paramsSpecified	&& (evalRequested || !inferenceRequested)) {
@@ -714,6 +705,7 @@ int main (int argc, char** argv) {
       const Compiler::SeqType ySeqType = getSeqType ("outseq", machine.outputAlphabet());
       const string filenamePrefix = vm.at("codegen").as<string>();
       compiler.showCells = vm.count("showcells");
+      compiler.useMaxReduce = vm.count("compileviterbi");
       compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
     Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") < 2, "Options --cpp32, --cpp64 and --js are mutually incompatible; choose a target language");
@@ -803,11 +795,15 @@ int main (int argc, char** argv) {
       cout << "[";
       size_t n = 0;
       for (const auto& seqPair: data.seqPairs) {
-	const RollingOutputForwardMatrix forward (eval, seqPair);
+	double fwdLogLike = -numeric_limits<double>::infinity();
+	if (eval.canTokenize (seqPair)) {
+	  const RollingOutputForwardMatrix forward (eval, seqPair);
+	  fwdLogLike = forward.logLike();
+	}
 	cout << (n++ ? ",\n " : "")
 	     << "[\"" << escaped_str(seqPair.input.name)
 	     << "\",\"" << escaped_str(seqPair.output.name)
-	     << "\"," << forward.logLike() << "]";
+	     << "\"," << toInfinitySafeString (fwdLogLike) << "]";
       }
       cout << "]\n";
     }
@@ -821,17 +817,35 @@ int main (int argc, char** argv) {
     }
 
     // align sequences
-    if (vm.count("align")) {
+    if (vm.count("align") || vm.count("viterbi")) {
       Require (gotData, "To align sequences, please specify a data file");
       const EvaluatedMachine eval (machine, params);
+      if (vm.count("viterbi"))
+	cout << "[";
+      size_t n = 0;
       SeqPairList alignResults;
       for (const auto& seqPair: data.seqPairs) {
-	const ViterbiMatrix viterbi (eval, seqPair);
-	const MachineBoundPath path (viterbi.path (machine), machine);
-	alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
+	double vitLogLike = -numeric_limits<double>::infinity();
+	if (eval.canTokenize (seqPair)) {
+	  const ViterbiMatrix viterbi (eval, seqPair);
+	  vitLogLike = viterbi.logLike();
+	  if (vitLogLike > -numeric_limits<double>::infinity()) {
+	    const MachineBoundPath path (viterbi.path (machine), machine);
+	    alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (path, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
+	  }
+	}
+	if (vm.count("viterbi"))
+	  cout << (n++ ? ",\n " : "")
+	       << "[\"" << escaped_str(seqPair.input.name)
+	       << "\",\"" << escaped_str(seqPair.output.name)
+	       << "\"," << toInfinitySafeString (vitLogLike) << "]";
       }
-      alignResults.writeJson (cout);
-      cout << endl;
+      if (vm.count("viterbi"))
+	cout << "]\n";
+      if (vm.count("align")) {
+	alignResults.writeJson (cout);
+	cout << endl;
+      }
     }
 
     // encode
@@ -854,7 +868,8 @@ int main (int argc, char** argv) {
 	  BeamSearchMatrix beam (eval, seqPair.input.seq, beamWidth);
 	  encoded = beam.bestSeq();
 	} else if (vm.count("viterbi-encode")) {
-	  const ViterbiMatrix viterbi (eval, seqPair);
+	  const auto tsp = seqPair.transpose();
+	  const ViterbiMatrix viterbi (eval, tsp);
 	  const MachinePath path = viterbi.path (silentTrans);
 	  encoded = EvaluatedMachine::decode (path, decodeTrans, params);
 	} else {

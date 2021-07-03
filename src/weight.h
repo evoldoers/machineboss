@@ -3,15 +3,17 @@
 
 #include <list>
 #include <set>
-#include <json.hpp>
+#include "json.hpp"
+
+#define WeightMacroSymbolPlaceholder       "%"
+#define WeightMacroAlphabetSizePlaceholder "#"
+#define WeightMacroDefaultMacro            "$p" WeightMacroSymbolPlaceholder ""
+#define WeightMacroUniformPriorMacro       "1/" WeightMacroAlphabetSizePlaceholder ""
+
+namespace MachineBoss {
 
 using namespace std;
 using json = nlohmann::json;
-
-#define WeightMacroSymbolPlaceholder       "$"
-#define WeightMacroAlphabetSizePlaceholder "#"
-#define WeightMacroDefaultMacro            "\"p" WeightMacroSymbolPlaceholder "\""
-#define WeightMacroUniformPriorMacro       "{\"/\":[1," WeightMacroAlphabetSizePlaceholder "]}"
 
 typedef struct ExprStruct const* ExprPtr;
 typedef size_t ExprIndex;
@@ -56,7 +58,7 @@ struct WeightAlgebra {
   static WeightExpr intConstant (int value);
   static WeightExpr doubleConstant (double value);
 
-  static WeightExpr param (const string& name);
+  static WeightExpr param (const string& name);   // careful - this string& reference is NOT owned by WeightAlgebra
 
   static WeightExpr multiply (const WeightExpr& l, const WeightExpr& r);  // l*r
   static WeightExpr add (const WeightExpr& l, const WeightExpr& r);  // l+r
@@ -110,5 +112,7 @@ struct WeightAlgebra {
   static void countRefs (const WeightExpr w, ExprRefCounts& counts, set<string>& params, const ParamDefs& defs, const WeightExpr parent = NULL);
   static ExprIter exprBegin();
 };
+
+}  // end namespace
 
 #endif /* WEIGHT_INCLUDED */

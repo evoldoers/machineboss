@@ -8,7 +8,11 @@
 #define DefaultCodeGenDir          "."
 #define DirectorySeparator         "/"
 
+#define DefaultMaxNestDepth 128
+
 // dual-purpose C++/JavaScript compiler
+namespace MachineBoss {
+
 struct Compiler {
   typedef size_t TransIndex;
   typedef size_t FuncIndex;
@@ -35,6 +39,8 @@ struct Compiler {
 
   // general config
   bool showCells;  // add code that displays DP matrix
+  bool useMaxReduce;  // use max() instead of logSumExp() for reduce, i.e. Viterbi instead of Forward
+  size_t maxNestDepth;  // defaults to DefaultMaxNestDepth
   
   // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.
@@ -93,6 +99,7 @@ struct Compiler {
   virtual string initStringArray (const string& arrayName, const vguard<string>& values) const = 0;
 
   virtual string binarySoftplus (const string&, const string&) const = 0; // library function that implements log(exp(a)+exp(b))
+  virtual string binaryMax (const string&, const string&) const = 0; // library function that implements max(a,b)
   virtual string boundLog (const string&) const = 0; // library function that constraints argument to infinity bounds
   virtual string boundSoftplussed (const string&) const = 0; // library function that constraints result of binarySoftplus() to infinity bounds
   virtual string unaryLog (const string&) const = 0;
@@ -103,7 +110,7 @@ struct Compiler {
   
   static bool isCharAlphabet (const vguard<string>&);
 
-  string logSumExpReduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
+  string reduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
   
@@ -123,6 +130,7 @@ struct JavaScriptCompiler : Compiler {
   string mapContains (const string& obj, const string& key) const;
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
+  string binaryMax (const string&, const string&) const;
   string boundLog (const string&) const;
   string boundSoftplussed (const string&) const;
   string unaryLog (const string&) const;
@@ -147,6 +155,7 @@ struct CPlusPlusCompiler : Compiler {
   string mapContains (const string& obj, const string& key) const;
   string constArrayAccessor (const string& obj, const string& key) const;
   string binarySoftplus (const string&, const string&) const;
+  string binaryMax (const string&, const string&) const;
   string boundLog (const string&) const;
   string boundSoftplussed (const string&) const;
   string unaryLog (const string&) const;
@@ -160,5 +169,7 @@ struct CPlusPlusCompiler : Compiler {
   string declareFunction (const string& proto) const;
   string initStringArray (const string& arrayName, const vguard<string>& values) const;
 };
+
+}  // end namespace
 
 #endif /* COMPILER_INCLUDED */

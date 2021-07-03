@@ -1,11 +1,27 @@
 #ifndef JSONIO_INCLUDED
 #define JSONIO_INCLUDED
 
-#include <json.hpp>
 #include <fstream>
 #include <iostream>
 #include "util.h"
+#include "json.hpp"
 
+namespace MachineBoss {
+
+using namespace std;
+  
+// infinity-safe toString method for JSON output
+inline string toInfinitySafeString (double x) {
+  if (x == numeric_limits<double>::infinity())
+    return string("\"Infinity\"");
+  if (x == -numeric_limits<double>::infinity())
+    return string("\"-Infinity\"");
+  ostringstream out;
+  out << x;
+  return out.str();
+}
+
+// wrappers for readJson & writeJson methods
 template<class Base>
 struct JsonWriter {
 
@@ -92,5 +108,7 @@ struct JsonReader : Base {
 template<class Base>
 struct JsonLoader : JsonReader<Base>, JsonWriter<Base>
 { };
+
+}  // end namespace
 
 #endif /* JSONIO_INCLUDED */

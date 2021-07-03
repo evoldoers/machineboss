@@ -5,6 +5,8 @@
 #include "forward.h"
 #include "counts.h"
 
+namespace MachineBoss {
+
 class BackwardMatrix : public DPMatrix<IdentityIndexMapper> {
 public:
   typedef function<void(StateIndex,EvaluatedMachineState::TransIndex,InputIndex,OutputIndex,double)> BackTransVisitor;
@@ -52,5 +54,7 @@ public:
   MachinePath traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex, EvaluatedMachineState::TransIndex) const;
   void traceFrom (const Machine&, const ForwardMatrix&, InputIndex, OutputIndex, StateIndex, EvaluatedMachineState::TransIndex, TraceTerminator) const;
 };
+
+}  // end namespace
 
 #endif /* BACKWARD_INCLUDED */

@@ -10,6 +10,8 @@
 
 #define DefaultBeamWidth 100
 
+namespace MachineBoss {
+
 struct BeamSearchMatrix {
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
@@ -88,5 +90,7 @@ struct BeamSearchMatrix {
   vguard<InputSymbol> bestSeq();
   vguard<InputSymbol> getSeq (SeqNodePtr) const;
 };
+
+}  // end namespace
 
 #endif /* BEAM_INCLUDED */

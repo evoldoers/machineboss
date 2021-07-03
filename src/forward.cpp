@@ -1,5 +1,7 @@
 #include "forward.h"
 
+using namespace MachineBoss;
+
 ForwardMatrix::ForwardMatrix (const EvaluatedMachine& m, const SeqPair& s)
   : MappedForwardMatrix (m, s)
 { }

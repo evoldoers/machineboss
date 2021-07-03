@@ -5,6 +5,8 @@
 #include <map>
 #include "softplus.h"
 
+namespace MachineBoss {
+
 inline bool getParams (const map<string,double>& params, const vector<string>& names, double* const p) {
   bool ok = true;
   for (size_t n = 0; n < names.size(); ++n) {
@@ -17,5 +19,7 @@ inline bool getParams (const map<string,double>& params, const vector<string>& n
   }
   return ok;
 }
+
+}  // end namespace
 
 #endif /* GETPARAMS_INCLUDED */

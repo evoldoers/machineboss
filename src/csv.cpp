@@ -3,6 +3,8 @@
 #include "fastseq.h"
 #include "eval.h"
 
+using namespace MachineBoss;
+
 Machine CSVProfile::machine() const {
   Machine m;
   m.state.resize (row.size() + 1);
