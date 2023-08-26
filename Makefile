@@ -75,7 +75,10 @@ BOOST_PREFIX = /usr/local
 ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
 BOOST_PREFIX = $(shell ls -lrt -d -1 /usr/local/homebrew/Cellar/boost/*)
 ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
+BOOST_PREFIX = $(shell ls -lrt -d -1 /opt/homebrew/Cellar/boost/*)
+ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
 BOOST_PREFIX =
+endif
 endif
 endif
 endif
