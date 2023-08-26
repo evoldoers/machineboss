@@ -7,13 +7,10 @@ On Mac:
 ~~~~
 brew install gsl
 brew install boost
-brew install openssl
 brew install htslib
 brew install pkgconfig
 make
 ~~~~
-
-Use `make no-ssl` to build without SSL support (only needed to retrieve models from PFam/DFam).
 
 ### Testing
 
