@@ -30,7 +30,6 @@
 #include "../src/compiler.h"
 #include "../src/ctc.h"
 #include "../src/beam.h"
-#include "../src/net.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -62,9 +61,6 @@ int main (int argc, char** argv) {
       ("generate-fasta", po::value<string>(), "generator for FASTA-format sequence")
       ("generate-csv", po::value<string>(), "create generator from CSV file")
       ("generate-json", po::value<string>(), "sequence generator for JSON-format sequence")
-#ifndef NO_SSL
-      ("generate-uniprot", po::value<string>(), "create generator from UniProt ID (e.g. P12345)")
-#endif /* NO_SSL */
       ("recognize-chars,a", po::value<string>(), "recognizer for explicit character sequence '>>'")
       ("recognize-one", po::value<string>(), "recognizer for any one of specified characters")
       ("recognize-wild", po::value<string>(), "recognizer for Kleene closure over specified characters")
@@ -83,10 +79,6 @@ int main (int argc, char** argv) {
       ("regex,X", po::value<string>(), "create text recognizer from regular expression")
       ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file in local alignment mode")
       ("hmmer-global", po::value<string>(), "create generator from HMMER3 model file in global alignment mode")
-#ifndef NO_SSL
-      ("pfam", po::value<string>(), "create generator from PFAM ID (e.g. Piwi)")
-      ("dfam", po::value<string>(), "create generator from DFAM ID (e.g. DF0004136)")
-#endif /* NO_SSL */
       ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
       ;
 
@@ -363,9 +355,6 @@ int main (int argc, char** argv) {
 	  const vguard<FastSeq> inSeqs = readFastSeqs (getArg().c_str());
 	  Require (inSeqs.size() == 1, "--generate-fasta file must contain exactly one FASTA-format sequence");
 	  m = Machine::generator (splitToChars (inSeqs[0].seq), inSeqs[0].name);
-	} else if (command == "--generate-uniprot") {
-	  const FastSeq fs = getUniprot (getArg());
-	  m = Machine::generator (splitToChars (fs.seq), fs.name);
 	} else if (command == "--generate-chars") {
 	  const string seq = getArg();
 	  m = Machine::generator (splitToChars (seq), seq);
@@ -388,9 +377,6 @@ int main (int argc, char** argv) {
 	  const vguard<FastSeq> outSeqs = readFastSeqs (getArg().c_str());
 	  Require (outSeqs.size() == 1, "--recognize-fasta file must contain exactly one FASTA-format sequence");
 	  m = Machine::recognizer (splitToChars (outSeqs[0].seq), outSeqs[0].name);
-	} else if (command == "--recognize-uniprot") {
-	  const FastSeq fs = getUniprot (getArg());
-	  m = Machine::recognizer (splitToChars (fs.seq), fs.name);
 	} else if (command == "--recognize-chars") {
 	  const string seq = getArg();
 	  m = Machine::recognizer (splitToChars (seq), seq);
@@ -591,11 +577,7 @@ int main (int argc, char** argv) {
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine(false);
-	} else if (command == "--pfam")
-	  m = getPfam(getArg()).machine(true);
-	else if (command == "--dfam")
-	  m = getDfam(getArg()).machine(true);
-	else if (command == "--jphmm")
+	} else if (command == "--jphmm")
 	  m = JPHMM (readFastSeqs (getArg().c_str()));
 	else if (command == "--generate-csv") {
 	  CSVProfile csv;
@@ -739,10 +721,6 @@ int main (int argc, char** argv) {
       const string seq = vm.at("output-chars").as<string>();
       outFastSeqs.push_back (FastSeq::fromSeq (seq, seq));
     }
-    if (vm.count ("input-uniprot"))
-      inFastSeqs.push_back (getUniprot (vm.at("input-uniprot").as<string>()));
-    if (vm.count ("output-uniprot"))
-      outFastSeqs.push_back (getUniprot (vm.at("output-uniprot").as<string>()));
 
     vguard<NamedInputSeq> inSeqs;
     vguard<NamedOutputSeq> outSeqs;

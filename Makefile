@@ -4,7 +4,6 @@ MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
 
 # Pseudotargets that control compilation
-NO_SSL = $(findstring no-ssl,$(MAKECMDGOALS))
 USING_EMSCRIPTEN = $(findstring emscripten,$(MAKECMDGOALS))
 IS_32BIT = $(findstring 32bit,$(MAKECMDGOALS))
 IS_DEBUG = $(findstring debug,$(MAKECMDGOALS))
@@ -91,30 +90,6 @@ BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_$(BOOST_PROGRAM_OPTION
 endif
 endif
 
-# SSL
-# Compile with "no-ssl" as a target to skip SSL (use with emscripten)
-ifneq (,$(USING_EMSCRIPTEN))
-SSL_PREFIX =
-else
-SSL_PREFIX = /usr/local/opt/openssl
-ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
-SSL_PREFIX = $(shell ls -lrt -d -1 /usr/local/homebrew/Cellar/openssl*/*)
-ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
-SSL_PREFIX = $(shell ls -lrt -d -1 /opt/homebrew/Cellar/openssl*/*)
-ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
-SSL_PREFIX =
-endif
-endif
-endif
-endif
-ifeq (,$(SSL_PREFIX))
-SSL_FLAGS = -DNO_SSL
-SSL_LIBS =
-else
-SSL_FLAGS = -I$(SSL_PREFIX)/include
-SSL_LIBS = -lssl -lcrypto -L$(SSL_PREFIX)/lib
-endif
-
 # install dir
 PREFIX = /usr/local
 INSTALL_BIN = $(PREFIX)/bin
@@ -128,8 +103,8 @@ else
 BUILD_FLAGS =
 endif
 
-ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS) $(SSL_FLAGS)
-ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS) $(SSL_LIBS)
+ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
+ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS)
 
 ifneq (,$(IS_DEBUG))
 CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG
@@ -252,7 +227,7 @@ clean:
 	rm -rf bin/$(BOSS) wasm/$(BOSS).js t/bin/* obj/*
 
 # Fake pseudotargets
-debug unoptimized 32bit no-ssl:
+debug unoptimized 32bit:
 
 # emscripten source files
 # gsl-js

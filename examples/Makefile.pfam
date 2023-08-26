@@ -1,9 +1,9 @@
 all: gp120-positive gp120-negative
 
-# Download PFam model for the GP120 domain, make it a log-odds ratio by dividing each output weight by SwissProt amino acid frequency,
+# Starting from a HMMer-format PFam model for the GP120 domain, make it a log-odds ratio by dividing each output weight by SwissProt amino acid frequency,
 # make it a local model by adding unit-weight flanking states, and save to file
 gp120.json:
-	boss --pfam GP120 --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --flank-output-wild >$@
+	boss --hmmer PF00516.hmm --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --flank-output-wild >$@
 
 # Run GP120 profile HMM against an HIV GP120 sequence
 # The "--weight-output 20" line multiplies every emission probability by 20, constituting a crude null model
@@ -27,4 +27,4 @@ gp120-evaluated.json: gp120.json
 # Note that this requires there is at least one amino acid between instances of the motif
 # (this can be gotten around, but topologically sorting the model then becomes more complicated)
 gp120-multihit.json:
-	boss --pfam GP120 --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --loop --begin --generate-one-aa --kleene-plus --end --flank-output-wild >$@
+	boss --hmmer PF00516.hmm --weight-output '1/$$pSwissProt%' --params SwissProtComposition.json --loop --begin --generate-one-aa --kleene-plus --end --flank-output-wild >$@

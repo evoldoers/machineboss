@@ -408,7 +408,6 @@ Transducer construction:
   --generate-fasta arg          generator for FASTA-format sequence
   --generate-csv arg            create generator from CSV file
   --generate-json arg           sequence generator for JSON-format sequence
-  --generate-uniprot arg        create generator from UniProt ID (e.g. P12345)
   -a [ --recognize-chars ] arg  recognizer for explicit character sequence '&gt;&gt;'
   --recognize-one arg           recognizer for any one of specified characters
   --recognize-wild arg          recognizer for Kleene closure over specified 
@@ -435,8 +434,6 @@ Transducer construction:
                                 local alignment mode
   --hmmer-global arg            create generator from HMMER3 model file in 
                                 global alignment mode
-  --pfam arg                    create generator from PFAM ID (e.g. Piwi)
-  --dfam arg                    create generator from DFAM ID (e.g. DF0004136)
   -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
                                 multiple alignment
 
