@@ -100,7 +100,10 @@ SSL_PREFIX = /usr/local/opt/openssl
 ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
 SSL_PREFIX = $(shell ls -lrt -d -1 /usr/local/homebrew/Cellar/openssl*/*)
 ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
+BOOST_PREFIX = $(shell ls -lrt -d -1 /opt/homebrew/Cellar/boost/*)
+ifeq (,$(wildcard $(SSL_PREFIX)/include/openssl/ssl.h))
 SSL_PREFIX =
+endif
 endif
 endif
 endif
