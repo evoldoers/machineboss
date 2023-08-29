@@ -555,13 +555,9 @@ Transducer application:
   -I [ --input-fasta ] arg      load input sequence(s) from FASTA file
   --input-json arg              load input sequence from JSON file
   --input-chars arg             specify input character sequence explicitly
-  --input-uniprot arg           specify input sequence by UniProt ID (e.g. 
-                                P12345)
   -O [ --output-fasta ] arg     load output sequence(s) from FASTA file
   --output-json arg             load output sequence from JSON file
   --output-chars arg            specify output character sequence explicitly
-  --output-uniprot arg          specify output sequence by UniProt ID (e.g. 
-                                P12345)
   -T [ --train ]                Baum-Welch parameter fit
   -R [ --wiggle-room ] arg      wiggle room (allowed departure from training 
                                 alignment)

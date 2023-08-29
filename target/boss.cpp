@@ -164,11 +164,9 @@ int main (int argc, char** argv) {
       ("input-fasta,I", po::value<string>(), "load input sequence(s) from FASTA file")
       ("input-json", po::value<string>(), "load input sequence from JSON file")
       ("input-chars", po::value<string>(), "specify input character sequence explicitly")
-      ("input-uniprot", po::value<string>(), "specify input sequence by UniProt ID (e.g. P12345)")
       ("output-fasta,O", po::value<string>(), "load output sequence(s) from FASTA file")
       ("output-json", po::value<string>(), "load output sequence from JSON file")
       ("output-chars", po::value<string>(), "specify output character sequence explicitly")
-      ("output-uniprot", po::value<string>(), "specify output sequence by UniProt ID (e.g. P12345)")
 
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
