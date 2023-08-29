@@ -161,6 +161,8 @@ Using the [Forward algorithm](https://en.wikipedia.org/wiki/Forward_algorithm), 
 
 Machine Boss uses a JSON format for transducers that also allows _&omega;_ to be constructed using algebraic functions of parameters (addition, multiplication, exponentiation, etc.) It further allows the specification of _constraints_ on the parameters, which are used during model-fitting.
 
+In Machine Boss, the start state is always the first state and the end state is always the last (single-state machines where the state is both start and end are allowed).
+
 ### Special types of machine
 
 | Term | Implication for _W(X,Y)_ |
