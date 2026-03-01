@@ -69,7 +69,7 @@
 </head>
 <body>
 
-<nav class="top"><a href="machineboss.html">Program Reference</a> | <strong>JSON Format Reference</strong></nav>
+<nav class="top"><a href="machineboss.html">Program Reference</a> | <strong>JSON Format Reference</strong> | <a href="expressions.html">Expression Language</a></nav>
 
 <h1>Machine Boss JSON Format Reference</h1>
 
@@ -147,7 +147,7 @@ A single-state machine where the sole state is both start and end is allowed.</p
 <tr><td><code>in</code></td><td>string</td><td>no</td><td>Input symbol consumed. Omitted for silent (epsilon) transitions on the input tape.</td></tr>
 <tr><td><code>out</code></td><td>string</td><td>no</td><td>Output symbol emitted. Omitted for silent transitions on the output tape.</td></tr>
 <tr><td><code>weight</code></td><td><a href="#expr">expr</a></td><td>no*</td><td>Weight expression. See below. If omitted, weight is&nbsp;1.</td></tr>
-<tr><td><code>expr</code></td><td>string</td><td>no*</td><td>Inline weight expression string (alternative to <code>weight</code>).</td></tr>
+<tr><td><code>expr</code></td><td>string</td><td>no*</td><td>Inline <a href="expressions.html">weight expression string</a> (alternative to <code>weight</code>).</td></tr>
 </table>
 
 <p>*A transition must have <code>weight</code>, <code>expr</code>, or neither (implicit weight&nbsp;1). These are mutually exclusive.</p>

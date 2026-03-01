@@ -61,3 +61,9 @@ Tests are defined in the Makefile and use `t/testexpect.pl` as a harness. Test c
 ## JSON Format
 
 The native machine format is a restricted JSON representation of a WFST. Schemas are in `schema/`. The start state is always first; the end state is always last. Transitions can use algebraic weight expressions with named parameters.
+
+## Documentation
+
+- [doc/machineboss.html](doc/machineboss.html) — program reference
+- [doc/json-format.html](doc/json-format.html) — JSON format reference
+- [doc/expressions.html](doc/expressions.html) — weight expression mini-language (grammar in `src/grammars/expr.h`, parser in `src/parsers.cpp`)

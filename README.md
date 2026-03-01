@@ -30,6 +30,7 @@ JSON representation of a [weighted finite-state transducer](https://en.wikipedia
 
 - **[Program Reference](doc/machineboss.html)** &mdash; full command-line reference for the `boss` tool
 - **[JSON Format Reference](doc/json-format.html)** &mdash; documentation for the Machine Boss JSON transducer format and related schemas
+- **[Expression Language](doc/expressions.html)** &mdash; the weight expression mini-language used in `--weight`, `--weight-input`, `--weight-output`, and the `"expr"` field in JSON transitions
 
 ## Citation
 
