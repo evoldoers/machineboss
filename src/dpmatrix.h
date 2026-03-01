@@ -132,7 +132,7 @@ public:
     return cellStorage[cellIndex(inPos,outPos,state)];
   }
 
-  inline const double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
+  inline double cell (InputIndex inPos, OutputIndex outPos, StateIndex state) const {
     return IndexMapper::env.contains(inPos,outPos) ? cellStorage[cellIndex(inPos,outPos,state)] : -numeric_limits<double>::infinity();
   }
 

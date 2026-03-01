@@ -223,7 +223,6 @@ void gsl_machine_objective_with_deriv (const gsl_vector *x, void *voidML, double
 }
 
 Params MachineObjective::optimize (const Params& seed) const {
-  gsl_vector *v;
   gsl_multimin_function_fdf func;
   func.n = transformedParam.size();
   func.f = gsl_machine_objective;

@@ -7,18 +7,18 @@ using namespace MachineBoss;
 PrefixTree::Node::Node() :
   inTok (0),
   parent (NULL),
-  length (0),
   nStates (0),
   outLen (0),
+  length (0),
   extended (false)
 { }
 
 PrefixTree::Node::Node (const PrefixTree& tree, const Node* parent, InputToken inTok) :
   inTok (inTok),
   parent (parent),
-  length (parent ? (parent->length + 1) : 0),
   nStates (tree.nStates),
   outLen (tree.outLen),
+  length (parent ? (parent->length + 1) : 0),
   extended (false)
 { }
 
@@ -214,7 +214,7 @@ vguard<InputSymbol> PrefixTree::doAnnealedSearch (mt19937& mt, int stepsPerTok, 
     for (int n = 0; n < pos; ++n)
       ++iter;
     InputToken oldTok;
-    double revFwdProposalRatio;
+    double revFwdProposalRatio = 1;
     switch (type) {
     case 0: // substitution
       {

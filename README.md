@@ -26,6 +26,10 @@ and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
 
+## Documentation
+
+- **[Program Reference](doc/machineboss.html)** &mdash; full command-line reference for the `boss` tool
+- **[JSON Format Reference](doc/json-format.html)** &mdash; documentation for the Machine Boss JSON transducer format and related schemas
 
 ## Citation
 

@@ -253,6 +253,7 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
       gotAllIDs = false;
       break;
     }
+  (void)gotAllIDs;
 
   vguard<json> uniqueName;
   if (useStateIDs) {
@@ -785,8 +786,6 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
     for (StateIndex k = 0; k < keptState.size(); ++k) {
       const StateIndex c = keptState[k];
       const StateIndex i = compState2i(c,jStates), j = compState2j(c,jStates);
-      const MachineState& msi = first.state[i];
-      const MachineState& msj = second.state[j];
       plogName.logProgress (k / (double) keptState.size(), "state %ld/%ld", k, keptState.size());
       MachineState& ms = comp[k];
       ms.name = StateName ({first.state[i].name, second.state[j].name});
@@ -1166,7 +1165,7 @@ Machine Machine::encodeSort() const {
   return transpose().decodeSort().transpose();
 }
 
-bool isMachineTransition (const MachineTransition* mt) { return true; }
+bool isMachineTransition (const MachineTransition*) { return true; }
 Machine Machine::toposort() const {
   return advanceSort (&Machine::nBackTransitions, &isMachineTransition, "general");
 }

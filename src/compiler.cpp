@@ -823,7 +823,7 @@ string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& 
     // a never needs () [parent rank 0]
     // b never needs () [parent rank 0]
 
-    int p, l, r;
+    int p = 0, l = 0, r = 0;
     string opcode;
     if (op == Mul) { p = l = r = 2; opcode = "*"; }
     else if (op == Div) { p = l = 2; r = 3; opcode = "/"; }

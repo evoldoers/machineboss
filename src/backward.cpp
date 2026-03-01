@@ -72,7 +72,6 @@ void BackwardMatrix::getCounts (const ForwardMatrix& forward, const BackTransVis
       const InputToken inTok = endOfInput ? InputTokenizer::emptyToken() : input[inPos];
       for (int s = nStates - 1; s >= 0; --s) {
 	plogDP.logProgress (nCellsDone / (double) nCellsComputed(), "counted %lu cells", nCellsDone);
-	const bool endState = (s == nStates - 1);
 	const EvaluatedMachineState& state = machine.state[(StateIndex) s];
 	const double logOddsRatio = forward.cell(inPos,outPos,(StateIndex) s) - ll;
 	if (!endOfInput && !endOfOutput)

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Machine Boss JSON Format Reference</title>
+<style>
+  :root {
+    --bg: #fdfdfd;
+    --fg: #222;
+    --accent: #2563eb;
+    --code-bg: #f3f4f6;
+    --border: #d1d5db;
+    --table-stripe: #f9fafb;
+    --heading: #111827;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 54rem;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 2rem; color: var(--heading); border-bottom: 2px solid var(--accent); padding-bottom: .4rem; }
+  h2 { font-size: 1.5rem; color: var(--heading); margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  h3 { font-size: 1.2rem; color: var(--heading); margin-top: 2rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--code-bg); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  .schema-ref { font-style: italic; color: #6b7280; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 1rem 1.5rem; margin: 1.5rem 0; }
+  .toc ul { margin: 0; padding-left: 1.2rem; }
+  .toc li { margin: 0.2rem 0; }
+  .toc li a { font-size: 0.95em; }
+  nav.top { font-size: 0.9em; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<nav class="top"><a href="machineboss.html">Program Reference</a> | <strong>JSON Format Reference</strong></nav>
+
+<h1>Machine Boss JSON Format Reference</h1>
+
+<p>
+  Machine Boss uses a JSON representation of
+  <a href="https://en.wikipedia.org/wiki/Finite-state_transducer">weighted finite-state transducers</a> (WFSTs).
+  This page documents every schema the program defines, with examples.
+  The authoritative schemas live in the <code>schema/</code> directory of the repository.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#machine">Transducer (machine)</a></li>
+    <li><a href="#expr">Weight expressions</a></li>
+    <li><a href="#params">Parameter assignments</a></li>
+    <li><a href="#defs">Parameter / function definitions</a></li>
+    <li><a href="#constraints">Normalization constraints</a></li>
+    <li><a href="#namedsequence">Named sequences</a></li>
+    <li><a href="#seqpair">Sequence pairs</a></li>
+    <li><a href="#seqpairlist">Sequence-pair lists</a></li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="machine">Transducer (<code>machine.json</code>)</h2>
+
+<p>A transducer is defined as a tuple <em>(&Phi;, &Sigma;, &Gamma;, &omega;)</em> where
+<em>&Phi;</em> is the state space (including start and end states),
+<em>&Sigma;</em> is the input alphabet,
+<em>&Gamma;</em> is the output alphabet, and
+<em>&omega;(&alpha;, &beta;, &sigma;, &gamma;)</em> is the transition weight.</p>
+
+<p>In the JSON format the <strong>start state is always the first</strong> element of the <code>state</code> array and the <strong>end state is always the last</strong>.
+A single-state machine where the sole state is both start and end is allowed.</p>
+
+<h3>Concrete transducer</h3>
+
+<p>The most common form is a concrete state array:</p>
+
+<pre><code>{
+  "state": [
+    {
+      "id": "S",
+      "trans": [
+        { "in": "0", "out": "0", "to": "S", "weight": "p" },
+        { "in": "0", "out": "1", "to": "S", "weight": "q" },
+        { "in": "1", "out": "1", "to": "S", "weight": "p" },
+        { "in": "1", "out": "0", "to": "S", "weight": "q" }
+      ]
+    }
+  ]
+}</code></pre>
+
+<p>This is the <a href="https://en.wikipedia.org/wiki/Binary_symmetric_channel">binary symmetric channel</a>: a single-state transducer that copies each bit with probability <code>p</code> and flips it with probability <code>q</code>.</p>
+
+<h3>State object</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>id</code></td><td>any (not number)</td><td>id or n</td><td>State identifier (string, object, array, boolean, or null). Used in <code>"to"</code> references.</td></tr>
+<tr><td><code>n</code></td><td>number</td><td>id or n</td><td>Numeric state index (alternative to <code>id</code>).</td></tr>
+<tr><td><code>trans</code></td><td>array of transitions</td><td>no</td><td>Outgoing transitions. Omitted for the end state (or any absorbing state).</td></tr>
+</table>
+
+<p>At least one of <code>id</code> or <code>n</code> must be present. The <code>id</code> field must not be a number (use <code>n</code> for numeric state indices).</p>
+
+<h3>Transition object</h3>
+
+<p>Each transition can take one of three forms:</p>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>to</code></td><td>any</td><td>yes</td><td>Destination state (matches a state's <code>id</code> or <code>n</code>).</td></tr>
+<tr><td><code>in</code></td><td>string</td><td>no</td><td>Input symbol consumed. Omitted for silent (epsilon) transitions on the input tape.</td></tr>
+<tr><td><code>out</code></td><td>string</td><td>no</td><td>Output symbol emitted. Omitted for silent transitions on the output tape.</td></tr>
+<tr><td><code>weight</code></td><td><a href="#expr">expr</a></td><td>no*</td><td>Weight expression. See below. If omitted, weight is&nbsp;1.</td></tr>
+<tr><td><code>expr</code></td><td>string</td><td>no*</td><td>Inline weight expression string (alternative to <code>weight</code>).</td></tr>
+</table>
+
+<p>*A transition must have <code>weight</code>, <code>expr</code>, or neither (implicit weight&nbsp;1). These are mutually exclusive.</p>
+
+<h3>Top-level optional fields</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>state</code></td><td>array</td><td>The state array (required for concrete machines).</td></tr>
+<tr><td><code>defs</code></td><td><a href="#defs">defs</a></td><td>Named function/parameter definitions, referenced in weight expressions.</td></tr>
+<tr><td><code>cons</code></td><td><a href="#constraints">constraints</a></td><td>Normalization constraints for model fitting.</td></tr>
+<tr><td><code>params</code></td><td>array of strings</td><td>Explicit list of parameter names used in the machine.</td></tr>
+</table>
+
+<h3>Machine expressions (algebraic constructors)</h3>
+
+<p>Instead of a concrete <code>state</code> array, a machine JSON object can be one of the following algebraic operators applied to sub-machines:</p>
+
+<table>
+<tr><th>Operator</th><th>Arity</th><th>Description</th></tr>
+<tr><td><code>compose</code></td><td>2</td><td>Transducer composition (matrix multiplication). Sum out silent cycles.</td></tr>
+<tr><td><code>compose-sum</code></td><td>2</td><td>Composition with silent-cycle summation.</td></tr>
+<tr><td><code>compose-unsort</code></td><td>2</td><td>Composition without sorting.</td></tr>
+<tr><td><code>concat</code></td><td>2</td><td>Concatenation of two machines.</td></tr>
+<tr><td><code>intersect</code></td><td>2</td><td>Intersection (pointwise product). Sum out silent cycles.</td></tr>
+<tr><td><code>intersect-sum</code></td><td>2</td><td>Intersection with silent-cycle summation.</td></tr>
+<tr><td><code>intersect-unsort</code></td><td>2</td><td>Intersection without sorting.</td></tr>
+<tr><td><code>or</code></td><td>2</td><td>Union (pointwise sum).</td></tr>
+<tr><td><code>loop</code></td><td>2</td><td>Loop: <code>x(yx)*</code>.</td></tr>
+<tr><td><code>opt</code></td><td>1</td><td>Zero or one (union with null).</td></tr>
+<tr><td><code>star</code></td><td>1</td><td>Kleene star (zero or more).</td></tr>
+<tr><td><code>plus</code></td><td>1</td><td>Kleene plus (one or more).</td></tr>
+<tr><td><code>eliminate</code></td><td>1</td><td>Eliminate silent transitions.</td></tr>
+<tr><td><code>reverse</code></td><td>1</td><td>Reverse the machine.</td></tr>
+<tr><td><code>revcomp</code></td><td>1</td><td>Reverse complement.</td></tr>
+<tr><td><code>transpose</code></td><td>1</td><td>Swap input and output labels.</td></tr>
+</table>
+
+<p>Binary operators take a 2-element array; unary operators take a single machine object.</p>
+
+<pre><code>{
+  "compose": [
+    { "state": [ {"id":"S", "trans":[{"in":"A","out":"a","to":"S"}]} ] },
+    { "state": [ {"id":"S", "trans":[{"in":"a","out":"1","to":"S"}]} ] }
+  ]
+}</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="expr">Weight Expressions (<code>expr.json</code>)</h2>
+
+<p>Transition weights can be constants, parameter references, or algebraic combinations thereof.
+A weight expression is one of:</p>
+
+<table>
+<tr><th>Form</th><th>JSON type / key</th><th>Example</th><th>Description</th></tr>
+<tr><td>Boolean constant</td><td><code>boolean</code></td><td><code>true</code></td><td>true = 1, false = 0</td></tr>
+<tr><td>Numeric constant</td><td><code>number</code></td><td><code>0.99</code></td><td>Literal numeric weight.</td></tr>
+<tr><td>Parameter reference</td><td><code>string</code></td><td><code>"p"</code></td><td>Named parameter, resolved at evaluation time.</td></tr>
+<tr><td>Inline expression</td><td><code>{"expr": "..."}</code></td><td><code>{"expr":"p*q"}</code></td><td>Parsed expression string.</td></tr>
+<tr><td>Logarithm</td><td><code>{"log": &lt;expr&gt;}</code></td><td><code>{"log":"p"}</code></td><td>Natural log of the argument.</td></tr>
+<tr><td>Exponential</td><td><code>{"exp": &lt;expr&gt;}</code></td><td><code>{"exp":2}</code></td><td>Exponential of the argument.</td></tr>
+<tr><td>Geometric sum</td><td><code>{"geomsum": &lt;expr&gt;}</code></td><td><code>{"geomsum":"r"}</code></td><td>Geometric series sum: 1/(1&minus;x).</td></tr>
+<tr><td>Logical NOT</td><td><code>{"not": &lt;expr&gt;}</code></td><td><code>{"not":"p"}</code></td><td>Boolean negation (1&minus;x).</td></tr>
+<tr><td>Multiply</td><td><code>{"*": [a, b]}</code></td><td><code>{"*":["p",0.5]}</code></td><td>Product of two expressions.</td></tr>
+<tr><td>Add</td><td><code>{"+": [a, b]}</code></td><td><code>{"+":["p","q"]}</code></td><td>Sum of two expressions.</td></tr>
+<tr><td>Divide</td><td><code>{"/": [a, b]}</code></td><td><code>{"/": [1, "n"]}</code></td><td>Division.</td></tr>
+<tr><td>Subtract</td><td><code>{"-": [a, b]}</code></td><td><code>{"-": [1, "p"]}</code></td><td>Subtraction.</td></tr>
+<tr><td>Power</td><td><code>{"pow": [a, b]}</code></td><td><code>{"pow":["x",2]}</code></td><td>Exponentiation: a<sup>b</sup>.</td></tr>
+</table>
+
+<p>All binary operators (<code>*</code>, <code>+</code>, <code>/</code>, <code>-</code>, <code>pow</code>) take exactly two arguments in an array.
+Expressions are recursive: arguments can be any expression form.</p>
+
+<h3>Example: compound weight</h3>
+<pre><code>{
+  "weight": {"*": ["p", {"-": [1, "q"]}]}
+}</code></pre>
+<p>This represents the weight <code>p &times; (1 &minus; q)</code>.</p>
+
+<!-- ============================================================ -->
+<h2 id="params">Parameter Assignments (<code>params.json</code>)</h2>
+
+<p>A parameter assignment file maps parameter names to numeric values:</p>
+
+<pre><code>{"p": 0.99, "q": 0.01}</code></pre>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><em>(any key)</em></td><td>number</td><td>Value assigned to the named parameter.</td></tr>
+</table>
+
+<p>Used with the <code>-P/--params</code> CLI option to supply parameter values for evaluation, inference, and training.</p>
+
+<!-- ============================================================ -->
+<h2 id="defs">Parameter / Function Definitions (<code>defs.json</code>)</h2>
+
+<p>A definitions file maps parameter names to <a href="#expr">weight expressions</a>, allowing parameters to be defined in terms of other parameters:</p>
+
+<pre><code>{"e": {"*": ["p", "q"]}}</code></pre>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><em>(any key)</em></td><td><a href="#expr">expr</a></td><td>Expression defining the named parameter.</td></tr>
+</table>
+
+<p>Used with <code>-F/--functions</code> or in the <code>defs</code> field of a machine file.</p>
+
+<!-- ============================================================ -->
+<h2 id="constraints">Normalization Constraints (<code>constraints.json</code>)</h2>
+
+<p>Constraints specify normalization conditions used during Baum-Welch training.</p>
+
+<pre><code>{
+  "norm": [["p", "q"], ["a", "b", "c"]],
+  "prob": ["x"],
+  "rate": ["r"]
+}</code></pre>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>norm</code></td><td>array of string arrays</td><td>Each inner array is a group of parameters that must sum to&nbsp;1.</td></tr>
+<tr><td><code>prob</code></td><td>array of strings</td><td>Parameters constrained to [0,&nbsp;1].</td></tr>
+<tr><td><code>rate</code></td><td>array of strings</td><td>Parameters constrained to be non-negative rates.</td></tr>
+</table>
+
+<p>In the example above, the constraints are <code>p + q = 1</code> and <code>a + b + c = 1</code>.</p>
+
+<!-- ============================================================ -->
+<h2 id="namedsequence">Named Sequences (<code>namedsequence.json</code>)</h2>
+
+<p>A named sequence pairs an optional name with an array of single-character symbols:</p>
+
+<pre><code>{"name": "AGC", "sequence": ["A", "G", "C"]}</code></pre>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>sequence</code></td><td>array of strings</td><td>yes</td><td>The symbol sequence (each element is typically a single character).</td></tr>
+<tr><td><code>name</code></td><td>string</td><td>no</td><td>Optional descriptive name.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="seqpair">Sequence Pairs (<code>seqpair.json</code>)</h2>
+
+<p>A sequence pair specifies input and output data for inference algorithms. Two forms are supported.</p>
+
+<h3>Sequence form</h3>
+<pre><code>{
+  "input":  {"name": "001", "sequence": ["0","0","1"]},
+  "output": {"name": "101", "sequence": ["1","0","1"]}
+}</code></pre>
+
+<h3>Alignment form</h3>
+<pre><code>{
+  "input":  {"name": "seq1"},
+  "output": {"name": "seq2"},
+  "alignment": [["A","A"], ["G",""], ["","T"], ["C","C"]]
+}</code></pre>
+
+<p>In the alignment form, each element is a 2-element array <code>[input_symbol, output_symbol]</code>.
+Empty strings represent gaps (insertions or deletions).</p>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+<tr><td><code>input</code></td><td><a href="#namedsequence">named sequence</a></td><td>yes</td><td>The input sequence.</td></tr>
+<tr><td><code>output</code></td><td><a href="#namedsequence">named sequence</a></td><td>yes</td><td>The output sequence.</td></tr>
+<tr><td><code>alignment</code></td><td>array of [string,string]</td><td>alt.</td><td>Explicit alignment path (alternative to full sequences).</td></tr>
+<tr><td><code>meta</code></td><td>any</td><td>no</td><td>Optional metadata.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="seqpairlist">Sequence-Pair Lists (<code>seqpairlist.json</code>)</h2>
+
+<p>A sequence-pair list is simply a JSON array of <a href="#seqpair">sequence pair</a> objects, used for batch training and alignment:</p>
+
+<pre><code>[
+  {"input":{"name":"001","sequence":["0","0","1"]},
+   "output":{"name":"101","sequence":["1","0","1"]}},
+  {"input":{"name":"01","sequence":["0","1"]},
+   "output":{"name":"10","sequence":["1","0"]}}
+]</code></pre>
+
+<p>Used with the <code>-D/--data</code> CLI option.</p>
+
+<!-- ============================================================ -->
+<h2>Schema Files</h2>
+
+<p>The JSON Schema source files are located in the <code>schema/</code> directory of the repository:</p>
+
+<ul>
+  <li><a href="../schema/machine.json"><code>schema/machine.json</code></a> &mdash; Transducer schema</li>
+  <li><a href="../schema/expr.json"><code>schema/expr.json</code></a> &mdash; Weight expression schema</li>
+  <li><a href="../schema/params.json"><code>schema/params.json</code></a> &mdash; Parameter assignments schema</li>
+  <li><a href="../schema/defs.json"><code>schema/defs.json</code></a> &mdash; Function definitions schema</li>
+  <li><a href="../schema/constraints.json"><code>schema/constraints.json</code></a> &mdash; Normalization constraints schema</li>
+  <li><a href="../schema/namedsequence.json"><code>schema/namedsequence.json</code></a> &mdash; Named sequence schema</li>
+  <li><a href="../schema/seqpair.json"><code>schema/seqpair.json</code></a> &mdash; Sequence-pair schema</li>
+  <li><a href="../schema/seqpairlist.json"><code>schema/seqpairlist.json</code></a> &mdash; Sequence-pair list schema</li>
+</ul>
+
+</body>
+</html>
