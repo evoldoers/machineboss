@@ -31,6 +31,18 @@ bin/*
 
 # Temporary files
 schema/*.nourl
+t/expect/preset-*.tmp.json
 
 # Emacs save files
 *~
+
+# Node
+node_modules/
+package-lock.json
+
+# Test build artifacts
+t/bin/
+t/codegen/
+t/src/bitnoise/
+t/src/bitstutter-noise/
+js/lib/bitnoise/
