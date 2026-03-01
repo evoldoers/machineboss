@@ -347,9 +347,8 @@ void Machine::writeJson (ostream& out, bool memoizeRepeatedExpressions, bool sho
 void Machine::readJson (const json& pj) {
   MachineSchema::validateOrDie ("machine", pj);
 
-  // This JSON notation for machine manipulation (first part of this method) is untested, unused, and should probably go.... IH, 2/22/2019
-  
-  // Check for composite, concatenated, tranposed, reversed, etc etc transducers
+  // JSON notation for machine manipulation: compose, concat, intersect, union, loop, star, plus, eliminate, reverse, revcomp, transpose
+  // Check for composite, concatenated, transposed, reversed, etc transducers
   if (pj.count("compose")) {
     const auto arg = pj["compose"];
     *this = Machine::compose (JsonReader<Machine>::fromJson (arg[0]),
@@ -415,7 +414,7 @@ void Machine::readJson (const json& pj) {
     *this = JsonReader<Machine>::fromJson (pj["eliminate"]).eliminateSilentTransitions();
 
   } else if (pj.count("reverse")) {
-    *this = JsonReader<Machine>::fromJson (pj["eliminate"]).reverse();
+    *this = JsonReader<Machine>::fromJson (pj["reverse"]).reverse();
 
   } else if (pj.count("revcomp")) {
     // convoluted... a simpler built-in revcomp would be preferable, oh well
@@ -428,12 +427,10 @@ void Machine::readJson (const json& pj) {
 							  : "compdna"));
 
   } else if (pj.count("transpose")) {
-    *this = JsonReader<Machine>::fromJson (pj["eliminate"]).transpose();
+    *this = JsonReader<Machine>::fromJson (pj["transpose"]).transpose();
 
   } else {
 
-    // This is the part of the JSON format parser that is (mostly) tested... IH 4/3/2020
-    
     // Basic transducer with the following properties:
     // (mandatory) state: list of states with transitions
     //  (optional)  defs: function definitions

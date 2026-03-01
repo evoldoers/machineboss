@@ -199,9 +199,9 @@ t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp $(GSL_DEPS) $(BOOST_OBJ_FILES)
 	mv $@$(TESTSUFFIX) $@
 
 t/codegen/%: $(OBJ_FILES) obj/%.o
-	$(MAKE) $(USING_EMSCRIPTEN) `ls $(dir t/src/$*)computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
+	$(MAKE) $(USING_EMSCRIPTEN) `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@$(TESTSUFFIX) $^ `ls $(dir t/src/$*)computeForward*.cpp | perl -pe 's/t\/src/obj/;s/\.cpp/.o/'`
+	$(CPP) $(LD_FLAGS) -o $@$(TESTSUFFIX) $^ `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`
 	mv $@$(TESTSUFFIX) $@
 
 obj/%.o: t/src/%.cpp
@@ -247,7 +247,7 @@ $(BOOST_PROGRAM_OPTIONS):
 generate-grammars: $(patsubst %.abnf,%.h,$(wildcard src/grammars/*.abnf))
 
 src/grammars/%.h: src/grammars/%.abnf
-	perl -ne 'chomp;s#\\#\\\\#g;print chr(34),$$_,"\\n",chr(34),"\n"' $< >$@
+	python3 -c "import sys; [print(chr(34)+line.rstrip().replace(chr(92),chr(92)+chr(92))+'\\\\n'+chr(34)) for line in open(sys.argv[1])]" $< >$@
 
 generate-$(CATEGORY)s: $(patsubst $(CATEGORY)/%.json,src/$(CATEGORY)/%.h,$(wildcard $(CATEGORY)/*.json))
 	touch src/$(CATEGORY).cpp
@@ -390,7 +390,7 @@ test-shorthand:
 	@$(TEST) $(WRAPBOSS) '(' t/machine/bitnoise.json '>>' 101 ')' '&&' '>>' 001 '.' '>>' AGC '#' '$$x' t/expect/shorthand.json
 
 test-hmmer:
-	@$(TEST) t/roundfloats.pl 3 $(WRAPBOSS) --hmmer-global t/hmmer/fn3.hmm t/expect/fn3.json
+	@$(TEST) python3 t/roundfloats.py 3 $(WRAPBOSS) --hmmer-global t/hmmer/fn3.hmm t/expect/fn3.json
 
 test-jphmm:
 	@$(TEST) $(WRAPBOSS) --jphmm t/seq/jphmmtest.fa t/expect/jphmmtest.json
@@ -445,7 +445,7 @@ test-unitindel2-valid:
 	@$(TEST) $(WRAPBOSS) --show-params t/expect/unitindel-unitindel.json -idem
 
 # Schema validation failure tests
-INVALID_SCHEMA_TESTS = test-not-json test-no-state test-bad-state test-bad-trans test-bad-weight
+INVALID_SCHEMA_TESTS = test-not-json test-no-state test-bad-state test-bad-trans test-bad-weight test-cyclic
 test-not-json:
 	@$(TEST) $(WRAPBOSS) t/invalid/not_json.txt -fail
 
@@ -533,17 +533,17 @@ test-fb-bitnoise-params-tiny: t/bin/testcounts
 	@$(WRAPTEST) t/bin/testcounts t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwdback-bitnoise-params-tiny.json
 
 test-max-bitnoise-params-tiny: t/bin/testmaximize
-	@$(TEST) t/roundfloats.pl 4 $(WRAP) t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAP) t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
-	@$(TEST) t/roundfloats.pl 4 $(WRAPBOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
-	@$(TEST) t/roundfloats.pl 4 $(WRAPBOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/pathlist.json -T t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/pathlist.json -T t/expect/fit-bitnoise-seqpairlist.json
 
 test-funcs:
-	@$(TEST) t/roundfloats.pl 4 $(WRAPBOSS) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) -F t/io/e=0.json t/machine/bitnoise.json t/machine/bsc.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/test-funcs.json
 
 test-single-param:
-	@$(TEST) t/roundfloats.pl 4 $(WRAPBOSS) t/machine/bitnoise.json t/machine/bsc.json -N t/io/econs.json -D t/io/seqpairlist.json -T -F t/io/params.json t/expect/single-param.json
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) t/machine/bitnoise.json t/machine/bsc.json -N t/io/econs.json -D t/io/seqpairlist.json -T -F t/io/params.json t/expect/single-param.json
 
 test-align-stutter-noise:
 	@$(TEST) $(WRAPBOSS) t/machine/bitstutter.json t/machine/bitnoise.json -P t/io/params.json -D t/io/difflen.json -A t/expect/align-stutter-noise-difflen.json
@@ -560,8 +560,8 @@ test-counts3:
 
 test-count-motif:
 	@$(TEST) $(WRAPBOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --recognize-json t/io/nanopore_test_seq.json -C t/expect/count11.json
-	@$(TEST) t/roundfloats.pl 1 $(WRAPBOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count9.json
-	@$(TEST) t/roundfloats.pl 1 $(WRAPBOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count4.json
+	@$(TEST) python3 t/roundfloats.py 1 $(WRAPBOSS) --generate-uniform ACGT --concat --generate-chars CATCAG --concat --begin --generate-one A --count-copies n --end --concat --generate-chars TATA --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count9.json
+	@$(TEST) python3 t/roundfloats.py 1 $(WRAPBOSS) --generate-uniform ACGT --concat --generate-chars CAT --concat --begin --generate-one T --count-copies n --end --concat --generate-chars GG --concat --generate-uniform ACGT --recognize-csv t/csv/nanopore_test.csv -C t/expect/count4.json
 
 # Code generation tests
 CODEGEN_TESTS = test-101-bitnoise-001 test-101-bitstutternoise-0011 test-101-bitnoise-001-compiled test-101-bitnoise-001-compiled-seq test-101-bitstutternoise-0011-compiled-seq-forward test-101-bitstutternoise-0011-compiled-seq-viterbi test-101-bitnoise-001-compiled-seq2prof test-101-bitnoise-001-compiled-js test-101-bitnoise-001-compiled-js-seq test-101-bitnoise-001-compiled-js-seq2prof
@@ -598,26 +598,26 @@ t/src/%/fasta2strand/test.cpp: t/machine/%.json $(BOSSTARGET) src/softplus.h src
 	@cp t/src/testcompiledfasta2strand.cpp $@
 
 test-101-bitnoise-001:
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitnoise.json --recognize-json t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitnoise.json --recognize-json t/io/seq001.json -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitnoise-001.json
 
 test-101-bitstutternoise-0011:
-	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitstutternoise-fwd-0011.json
-	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -V t/expect/101-bitstutternoise-vit-0011.json
+	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -L t/expect/101-bitstutternoise-fwd-0011.json
+	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -V t/expect/101-bitstutternoise-vit-0011.json
 
 test-101-bitnoise-001-compiled: t/codegen/bitnoise/prof/test
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq: t/codegen/bitnoise/seq/test
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitstutternoise-0011-compiled-seq-forward: t/codegen/bitstutter-noise/seq/test
-	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-fwd-0011.json
+	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-fwd-0011.json
 
 test-101-bitstutternoise-0011-compiled-seq-viterbi: t/codegen/bitstutter-noise/seqvit/test
-	@$(TEST) t/roundfloats.pl 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-vit-0011.json
+	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-vit-0011.json
 
 # JavaScript
 js/lib/%/prof/test.js: t/machine/%.json $(BOSSTARGET) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
@@ -642,13 +642,13 @@ js/lib/%/seq2prof/test.js: t/machine/%.json $(BOSSTARGET) js/lib/softplus.js js/
 	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 test-101-bitnoise-001-compiled-js: js/lib/bitnoise/prof/test.js
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise/seq/test.js
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
-	@$(TEST) t/roundfloats.pl 4 js/stripnames.js $(WRAP) $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 # Encoding/decoding
 DECODE_TESTS = test-decode-bitecho-101 test-bintern test-hamming
@@ -669,11 +669,105 @@ test-hamming:
 	@$(TEST) $(WRAPBOSS) --preset hamming74 --prefix-encode --input-chars 0000000100100011010001010110011110001001101010111100110111101111 t/expect/hamming74.json
 	@$(TEST) $(WRAPBOSS) --preset hamming74 --beam-encode --input-chars 0000000100100011010001010110011110001001101010111100110111101111 t/expect/hamming74.json
 
-# Top-level test target
-TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS)
-TESTLEN = $(shell perl -e 'use List::Util qw(max);print max(map(length,qw($(TESTS))))')
+# Expression parser tests
+EXPR_TESTS = test-expr-exp test-expr-log test-expr-power test-expr-unary-neg test-expr-parens test-expr-scinotation
+test-expr-exp:
+	@$(TEST) $(WRAPBOSS) -w 'exp(0)' t/expect/null-1.json
 
-TEST = t/testexpect.pl $@ $(TESTLEN)
+test-expr-log:
+	@$(TEST) $(WRAPBOSS) -w 'exp(log(2))' t/expect/null-2.json
+
+test-expr-power:
+	@$(TEST) $(WRAPBOSS) -w '2^3' t/expect/null-8.json
+
+test-expr-unary-neg:
+	@$(TEST) $(WRAPBOSS) -w '-(-(2))' t/expect/null-neg-neg-2.json
+
+test-expr-parens:
+	@$(TEST) $(WRAPBOSS) -w '(1+1)' t/expect/null-2.json
+
+test-expr-scinotation:
+	@$(TEST) $(WRAPBOSS) -w '2e0' t/expect/null-2.json
+
+# Additional CLI tests
+CLI_TESTS = test-viterbi-decode-bitecho test-cool-decode-bitecho test-mcmc-decode-bitecho test-random-encode-bitecho test-evaluate test-regex
+test-viterbi-decode-bitecho:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json --recognize-chars 101 --viterbi-decode t/expect/decode-bitecho-101.json
+
+test-cool-decode-bitecho:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json --recognize-chars 101 --cool-decode --seed 42 t/expect/decode-bitecho-101.json
+
+test-mcmc-decode-bitecho:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json --recognize-chars 101 --mcmc-decode --seed 42 t/expect/decode-bitecho-101.json
+
+test-random-encode-bitecho:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json --input-chars 101 --random-encode --seed 42 t/expect/random-encode-bitecho-101.json
+
+test-evaluate:
+	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json -P t/io/params.json --evaluate t/expect/evaluate-bitnoise.json
+
+test-regex:
+	@$(TEST) $(WRAPBOSS) --regex '[01]+' t/expect/regex-01plus.json
+
+# Preset load tests
+PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91root tkf91branch tolower toupper hamming31 hamming74
+PRESET_TESTS = $(addprefix test-preset-,$(PRESETS))
+$(PRESET_TESTS): test-preset-%:
+	@$(WRAPBOSS) --preset $* >t/expect/preset-$*.tmp.json 2>/dev/null
+	@$(TEST) $(WRAPBOSS) t/expect/preset-$*.tmp.json -idem
+
+# JSON API operation tests
+JSON_API_TESTS = test-json-concat test-json-union test-json-intersect test-json-intersect-sum test-json-intersect-unsort test-json-compose-sum test-json-compose-unsort test-json-loop test-json-opt test-json-star test-json-plus test-json-eliminate test-json-reverse test-json-revcomp test-json-transpose
+test-json-concat:
+	@$(TEST) $(WRAPBOSS) t/machine/concat-001-101.json t/expect/json-concat.json
+
+test-json-union:
+	@$(TEST) $(WRAPBOSS) t/machine/union-001-101.json t/expect/json-union.json
+
+test-json-intersect:
+	@$(TEST) $(WRAPBOSS) t/machine/intersect-r001-r101.json t/expect/json-intersect.json
+
+test-json-intersect-sum:
+	@$(TEST) $(WRAPBOSS) t/machine/intersect-sum-r001-r101.json t/expect/json-intersect-sum.json
+
+test-json-intersect-unsort:
+	@$(TEST) $(WRAPBOSS) t/machine/intersect-unsort-r001-r101.json t/expect/json-intersect-unsort.json
+
+test-json-compose-sum:
+	@$(TEST) $(WRAPBOSS) t/machine/compose-sum-bitecho.json t/expect/json-compose-sum.json
+
+test-json-compose-unsort:
+	@$(TEST) $(WRAPBOSS) t/machine/compose-unsort-bitecho.json t/expect/json-compose-unsort.json
+
+test-json-loop:
+	@$(TEST) $(WRAPBOSS) t/machine/loop-gen1.json t/expect/json-loop.json
+
+test-json-opt:
+	@$(TEST) $(WRAPBOSS) t/machine/opt-gen1.json t/expect/json-opt.json
+
+test-json-star:
+	@$(TEST) $(WRAPBOSS) t/machine/star-gen1.json t/expect/json-star.json
+
+test-json-plus:
+	@$(TEST) $(WRAPBOSS) t/machine/plus-gen1.json t/expect/json-plus.json
+
+test-json-eliminate:
+	@$(TEST) $(WRAPBOSS) t/machine/eliminate-silent.json t/expect/json-eliminate.json
+
+test-json-reverse:
+	@$(TEST) $(WRAPBOSS) t/machine/reverse-gen001.json t/expect/json-reverse.json
+
+test-json-revcomp:
+	@$(TEST) $(WRAPBOSS) t/machine/revcomp-genAGC.json t/expect/json-revcomp.json
+
+test-json-transpose:
+	@$(TEST) $(WRAPBOSS) t/machine/transpose-gen001.json t/expect/json-transpose.json
+
+# Top-level test target
+TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRUCT_TESTS) $(INVALID_CONSTRUCT_TESTS) $(IO_TESTS) $(ALGEBRA_TESTS) $(DP_TESTS) $(CODEGEN_TESTS) $(DECODE_TESTS) $(EXPR_TESTS) $(CLI_TESTS) $(PRESET_TESTS) $(JSON_API_TESTS)
+TESTLEN = $(shell python3 -c "print(max(len(s) for s in '$(TESTS)'.split()))")
+
+TEST = python3 t/testexpect.py $@ $(TESTLEN)
 WRAPTEST = $(TEST) $(WRAP)
 
 test: $(BOSSTARGET) $(TESTS)
@@ -687,5 +781,5 @@ validate-$D-$F:
 
 # README
 README.md: $(BOSSTARGET)
-	$(WRAPBOSS) -h | perl -pe 's/</&lt;/g;s/>/&gt;/g;' | perl -e 'open FILE,"<README.md";while(<FILE>){last if/<pre>/;print}close FILE;print"<pre><code>\n";while(<>){print};print"</code></pre>\n"' >temp.md
+	$(WRAPBOSS) -h | python3 -c "import sys,html; helptext=html.escape(sys.stdin.read()); lines=open('README.md').readlines(); idx=next((i for i,l in enumerate(lines) if '<pre>' in l),len(lines)); sys.stdout.write(''.join(lines[:idx+1])+'<code>\n'+helptext+'</code></pre>\n')" >temp.md
 	mv temp.md $@

@@ -1,0 +1,18 @@
+{"state":
+ [{"n":0,
+   "id":["loop-main","s0"],
+   "trans":[{"to":1,"out":"1"}]},
+  {"n":1,
+   "id":["loop-main","s1"],
+   "trans":[{"to":2},
+            {"to":4}]},
+  {"n":2,
+   "id":["loop-continue","s0"],
+   "trans":[{"to":3,"out":"0"}]},
+  {"n":3,
+   "id":["loop-continue","s1"],
+   "trans":[{"to":0}]},
+  {"n":4,
+   "id":["loop-end"]}
+ ]
+}

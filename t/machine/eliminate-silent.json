@@ -1,0 +1,6 @@
+{ "eliminate":
+  {"state":
+    [{"id":"s0","trans":[{"to":"s1"}]},
+     {"id":"s1","trans":[{"to":"s2","out":"1"}]},
+     {"id":"s2"}]}
+}

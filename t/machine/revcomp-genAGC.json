@@ -1,0 +1,7 @@
+{ "revcomp":
+  {"state":
+    [{"id":"s0","trans":[{"to":"s1","out":"A"}]},
+     {"id":"s1","trans":[{"to":"s2","out":"G"}]},
+     {"id":"s2","trans":[{"to":"s3","out":"C"}]},
+     {"id":"s3"}]}
+}

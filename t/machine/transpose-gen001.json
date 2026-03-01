@@ -1,0 +1,7 @@
+{ "transpose":
+  {"state":
+    [{"id":"s0","trans":[{"to":"s1","out":"0"}]},
+     {"id":"s1","trans":[{"to":"s2","out":"0"}]},
+     {"id":"s2","trans":[{"to":"s3","out":"1"}]},
+     {"id":"s3"}]}
+}

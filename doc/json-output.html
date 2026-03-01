@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Machine Boss JSON Output Formats</title>
+<style>
+  :root {
+    --bg: #fdfdfd;
+    --fg: #222;
+    --accent: #2563eb;
+    --code-bg: #f3f4f6;
+    --border: #d1d5db;
+    --table-stripe: #f9fafb;
+    --heading: #111827;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 54rem;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 2rem; color: var(--heading); border-bottom: 2px solid var(--accent); padding-bottom: .4rem; }
+  h2 { font-size: 1.5rem; color: var(--heading); margin-top: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  h3 { font-size: 1.2rem; color: var(--heading); margin-top: 2rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--code-bg); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--table-stripe); }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 1rem 1.5rem; margin: 1.5rem 0; }
+  .toc ul { margin: 0; padding-left: 1.2rem; }
+  .toc li { margin: 0.2rem 0; }
+  .toc li a { font-size: 0.95em; }
+  nav.top { font-size: 0.9em; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<nav class="top"><a href="machineboss.html">Program Reference</a> | <a href="json-format.html">JSON Format</a> | <a href="expressions.html">Expressions</a> | <strong>JSON Output Formats</strong> | <a href="composition.html">Composition Algorithm</a></nav>
+
+<h1>Machine Boss JSON Output Formats</h1>
+
+<p>
+Machine Boss produces several different JSON output formats depending on the operation.
+This document describes the structure of each output format.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#machine">Machine JSON (default / <code>--save</code>)</a></li>
+    <li><a href="#evaluated">Evaluated Machine (<code>--evaluate</code>)</a></li>
+    <li><a href="#params">Parameters (<code>--train</code>)</a></li>
+    <li><a href="#loglike">Log-likelihood (<code>--loglike</code>)</a></li>
+    <li><a href="#viterbi">Viterbi (<code>--viterbi</code>)</a></li>
+    <li><a href="#align">Alignment (<code>--align</code>)</a></li>
+    <li><a href="#counts">Counts (<code>--counts</code>)</a></li>
+    <li><a href="#encoding">Encoding (<code>--beam-encode</code>, etc.)</a></li>
+    <li><a href="#decoding">Decoding (<code>--beam-decode</code>, etc.)</a></li>
+    <li><a href="#seqpairlist">SeqPairList format</a></li>
+    <li><a href="#constraints">Constraints</a></li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="machine">Machine JSON (default / <code>--save</code>)</h2>
+
+<p>The default output is the transducer itself in JSON format.
+This is the same format used for input; see the <a href="json-format.html">JSON Format Reference</a> for full details.</p>
+
+<pre><code>{"state":
+ [{"n":0,
+   "id":"S",
+   "trans":[{"to":0,"in":"0","out":"0","weight":"p"},
+            {"to":0,"in":"0","out":"1","weight":"q"},
+            {"to":0,"in":"1","out":"0","weight":"q"},
+            {"to":0,"in":"1","out":"1","weight":"p"}]},
+  {"n":1,
+   "id":"E"}
+ ]
+}</code></pre>
+
+<p>The start state is always the first element (index 0) and the end state is always last.
+Transitions reference destination states by index (<code>"to"</code>).
+Weights may be numbers, parameter names (strings), or structured expressions.</p>
+
+<!-- ============================================================ -->
+<h2 id="evaluated">Evaluated Machine (<code>--evaluate</code>)</h2>
+
+<p>The <code>--evaluate</code> option outputs the machine with all symbolic weight expressions
+replaced by their numeric values (as log-weights). Requires parameters to be supplied
+via <code>--params</code> or <code>--use-defaults</code>.</p>
+
+<pre><code>boss bitnoise.json -P params.json --evaluate</code></pre>
+<pre><code>{"state":
+ [{"n":0,
+   "id":"S",
+   "trans":[{"to":0,"in":"0","out":"0","weight":0.99},
+            {"to":0,"in":"0","out":"1","weight":0.01},
+            {"to":0,"in":"1","out":"0","weight":0.01},
+            {"to":0,"in":"1","out":"1","weight":0.99}]},
+  {"n":1,
+   "id":"E"}
+ ]
+}</code></pre>
+
+<p>All <code>"weight"</code> fields become numeric values.
+This is useful for inspecting the concrete transition probabilities of a parameterized model.</p>
+
+<!-- ============================================================ -->
+<h2 id="params">Parameters (<code>--train</code>)</h2>
+
+<p>The <code>--train</code> (or <code>-T</code>) option runs Baum-Welch EM training and outputs the fitted parameters
+as a JSON object mapping parameter names to numeric values:</p>
+
+<pre><code>{"p": 0.985, "q": 0.015}</code></pre>
+
+<p>This output can be fed back as input via <code>--params</code> for subsequent operations.</p>
+
+<!-- ============================================================ -->
+<h2 id="loglike">Log-likelihood (<code>--loglike</code>)</h2>
+
+<p>The <code>--loglike</code> (or <code>-L</code>) option computes the Forward log-likelihood for each
+input/output sequence pair. Output is a JSON array of triples:</p>
+
+<pre><code>[["input_name", "output_name", -1.234],
+ ["input2", "output2", -5.678]]</code></pre>
+
+<p>Each element is <code>[input_sequence_name, output_sequence_name, log_likelihood]</code>.
+The log-likelihood is the natural logarithm of the total probability summed over all paths.</p>
+
+<!-- ============================================================ -->
+<h2 id="viterbi">Viterbi (<code>--viterbi</code>)</h2>
+
+<p>The <code>--viterbi</code> (or <code>-V</code>) option computes the Viterbi (maximum-likelihood path) log-probability.
+The output format is the same as <a href="#loglike">log-likelihood</a>:</p>
+
+<pre><code>[["input_name", "output_name", -0.987]]</code></pre>
+
+<p>The value is the log-probability of the single most-probable path, rather than
+the sum over all paths.</p>
+
+<!-- ============================================================ -->
+<h2 id="align">Alignment (<code>--align</code>)</h2>
+
+<p>The <code>--align</code> (or <code>-A</code>) option computes the Viterbi alignment.
+Output is a <a href="#seqpairlist">SeqPairList</a> with alignment path information:</p>
+
+<pre><code>[{"input":{"name":"101","sequence":["1","0","1"]},
+  "output":{"name":"001","sequence":["0","0","1"]},
+  "path":{"start":0,
+          "trans":[{"to":0,"in":"1","out":"0"},
+                   {"to":0,"in":"0","out":"0"},
+                   {"to":0,"in":"1","out":"1"}]}}]</code></pre>
+
+<p>The <code>"path"</code> field contains the Viterbi traceback: a start state and an array
+of transitions taken. Each transition includes the destination state and any
+input/output symbols consumed/emitted.</p>
+
+<!-- ============================================================ -->
+<h2 id="counts">Counts (<code>--counts</code>)</h2>
+
+<p>The <code>--counts</code> (or <code>-C</code>) option computes expected transition counts via the
+Forward-Backward algorithm. Output is a JSON object mapping parameter names to
+their expected counts (partial derivatives of the log-likelihood with respect to
+log-parameters):</p>
+
+<pre><code>{"p": 2.95, "q": 0.05}</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="encoding">Encoding</h2>
+
+<p>Encoding operations find the most likely output sequence given an input sequence.
+All encoding options output a <a href="#seqpairlist">SeqPairList</a>:</p>
+
+<table>
+<tr><th>Option</th><th>Algorithm</th></tr>
+<tr><td><code>--beam-encode</code> / <code>-Y</code></td><td>Beam search</td></tr>
+<tr><td><code>--prefix-encode</code></td><td>CTC prefix search</td></tr>
+<tr><td><code>--viterbi-encode</code></td><td>Viterbi traceback</td></tr>
+<tr><td><code>--random-encode</code></td><td>Stochastic prefix search (use <code>--seed</code> for reproducibility)</td></tr>
+</table>
+
+<pre><code>[{"input":{"name":"101","sequence":["1","0","1"]},
+  "output":{"name":"output","sequence":["1","0","1"]}}]</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="decoding">Decoding</h2>
+
+<p>Decoding operations find the most likely input sequence given an output sequence.
+All decoding options output a <a href="#seqpairlist">SeqPairList</a>:</p>
+
+<table>
+<tr><th>Option</th><th>Algorithm</th></tr>
+<tr><td><code>--beam-decode</code> / <code>-Z</code></td><td>Beam search</td></tr>
+<tr><td><code>--prefix-decode</code></td><td>CTC prefix search</td></tr>
+<tr><td><code>--viterbi-decode</code></td><td>Viterbi traceback</td></tr>
+<tr><td><code>--cool-decode</code></td><td>Simulated annealing (use <code>--seed</code> for reproducibility)</td></tr>
+<tr><td><code>--mcmc-decode</code></td><td>MCMC search (use <code>--seed</code> for reproducibility)</td></tr>
+</table>
+
+<pre><code>[{"input":{"name":"input","sequence":["1","0","1"]},
+  "output":{"name":"101","sequence":["1","0","1"]}}]</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="seqpairlist">SeqPairList Format</h2>
+
+<p>Many operations produce output in <em>SeqPairList</em> format: a JSON array of sequence-pair objects.
+Each element has <code>"input"</code> and <code>"output"</code> fields, each containing a named sequence:</p>
+
+<pre><code>[
+  {
+    "input":  {"name": "seq1", "sequence": ["A", "C", "G"]},
+    "output": {"name": "seq2", "sequence": ["A", "G", "G"]}
+  }
+]</code></pre>
+
+<p>Alignment results additionally include a <code>"path"</code> field with the Viterbi traceback
+(see <a href="#align">Alignment</a>).</p>
+
+<p>The sequence <code>"name"</code> field typically comes from the input data (e.g. FASTA header
+or JSON sequence name). When sequences are specified on the command line
+(e.g. <code>--input-chars</code>), the name is the character string itself.</p>
+
+<!-- ============================================================ -->
+<h2 id="constraints">Constraints</h2>
+
+<p>Constraint files (loaded via <code>--constraints</code>) define normalization constraints
+for parameter fitting. The format is a JSON object with constraint groups:</p>
+
+<pre><code>{
+  "norm": [["p", "q"]],
+  "prob": ["p", "q"],
+  "rate": ["r"]
+}</code></pre>
+
+<table>
+<tr><th>Key</th><th>Constraint</th></tr>
+<tr><td><code>"norm"</code></td><td>Groups of parameters that must sum to 1</td></tr>
+<tr><td><code>"prob"</code></td><td>Individual parameters constrained to [0, 1]</td></tr>
+<tr><td><code>"rate"</code></td><td>Parameters constrained to be non-negative</td></tr>
+</table>
+
+</body>
+</html>

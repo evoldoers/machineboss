@@ -1,0 +1,16 @@
+{"state":
+ [{"n":0,
+   "id":["quant-main","kleene-plus"],
+   "trans":[{"to":1},
+            {"to":3}]},
+  {"n":1,
+   "id":["quant-main","s0"],
+   "trans":[{"to":2,"out":"1"}]},
+  {"n":2,
+   "id":["quant-main","s1"],
+   "trans":[{"to":1},
+            {"to":3}]},
+  {"n":3,
+   "id":["quant-end"]}
+ ]
+}

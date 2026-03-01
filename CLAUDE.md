@@ -30,7 +30,7 @@ Compiler: clang++ (preferred) or g++, C++11. Links against GSL, Boost (regex, pr
 - `obj/` — compiled object files (generated)
 - `wasm/` — WebAssembly build artifacts
 - `emcc/` — Emscripten support files
-- `perl/` — Perl utilities
+- `python/` — Python utilities (hamming74.py, mixradar.py)
 - `img/` — images for documentation
 - `examples/` — example scripts
 
@@ -56,7 +56,7 @@ Key modules:
 
 ## Testing
 
-Tests are defined in the Makefile and use `t/testexpect.pl` as a harness. Test categories: schema validation, composition, construction, I/O, algebra, dynamic programming, code generation, encoding/decoding. Some tests require `node` (JS tests) and `perl` (rounding, stripping).
+Tests are defined in the Makefile and use `t/testexpect.py` as a harness. Test categories: schema validation, composition, construction, I/O, algebra, dynamic programming, code generation, encoding/decoding, expression parsing, JSON API operations, preset loading. Some tests require `node` (JS tests).
 
 ## JSON Format
 
@@ -67,3 +67,5 @@ The native machine format is a restricted JSON representation of a WFST. Schemas
 - [doc/machineboss.html](doc/machineboss.html) — program reference
 - [doc/json-format.html](doc/json-format.html) — JSON format reference
 - [doc/expressions.html](doc/expressions.html) — weight expression mini-language (grammar in `src/grammars/expr.h`, parser in `src/parsers.cpp`)
+- [doc/json-output.html](doc/json-output.html) — JSON output format reference (machine, parameters, loglike, alignment, counts, encode, decode)
+- [doc/composition.html](doc/composition.html) — transducer composition algorithm documentation
