@@ -115,6 +115,65 @@ console.log('Testing 1D vs 2D agreement...');
 }
 
 // ============================================================
+// PSWM Profile consistency tests
+// ============================================================
+console.log('Testing PSWM profile consistency...');
+
+{
+  // Delta profile should match tokenized for bitnoise
+  const mb = await MachineBoss.create(loadJSON('t/machine/bitnoise.json'), { p: 0.9, q: 0.1 }, { backend: 'cpu' });
+  const outTok = mb.tokenize('101', 'output');
+  const nAlpha = mb.nAlpha('output');
+  const L = outTok.length;
+
+  const logProfile = new Float64Array(L * nAlpha).fill(-Infinity);
+  for (let p = 0; p < L; p++) {
+    logProfile[p * nAlpha + (outTok[p] - 1)] = 0.0;
+  }
+
+  const llTokenized = await mb.forward(null, outTok);
+  const llProfile = await mb.forwardProfile(logProfile, 'output');
+  assertClose(llProfile, llTokenized, 1e-10, 'bitnoise: PSWM delta = tokenized Forward');
+
+  const { score: vitTok } = await mb.viterbi(null, outTok);
+  const { score: vitProf } = await mb.viterbiProfile(logProfile, 'output');
+  assertClose(vitProf, vitTok, 1e-10, 'bitnoise: PSWM delta = tokenized Viterbi');
+
+  // PSWM Viterbi <= Forward
+  if (vitProf > llProfile + 1e-10) {
+    console.error(`  FAIL: PSWM Viterbi (${vitProf}) > Forward (${llProfile})`);
+    failed++;
+  } else { passed++; }
+
+  // PSWM posteriors LL = Forward LL
+  const { logLikelihood: postLL } = await mb.posteriorsProfile(logProfile, 'output');
+  assertClose(postLL, llProfile, 1e-6, 'bitnoise: PSWM posteriors LL = Forward LL');
+
+  mb.destroy();
+}
+
+{
+  // Smooth profile (uniform) should still satisfy Viterbi <= Forward
+  const mb = await MachineBoss.create(loadJSON('t/machine/bitnoise.json'), { p: 0.9, q: 0.1 }, { backend: 'cpu' });
+  const nAlpha = mb.nAlpha('output');
+  const L = 4;
+
+  const logProfile = new Float64Array(L * nAlpha).fill(Math.log(1 / nAlpha));
+  const llFwd = await mb.forwardProfile(logProfile, 'output');
+  const { score: vitScore } = await mb.viterbiProfile(logProfile, 'output');
+  const { logLikelihood: postLL } = await mb.posteriorsProfile(logProfile, 'output');
+
+  if (vitScore > llFwd + 1e-10) {
+    console.error(`  FAIL: uniform PSWM Viterbi (${vitScore}) > Forward (${llFwd})`);
+    failed++;
+  } else { passed++; }
+
+  assertClose(postLL, llFwd, 1e-6, 'bitnoise uniform PSWM: posteriors LL = Forward LL');
+
+  mb.destroy();
+}
+
+// ============================================================
 // Summary
 // ============================================================
 console.log(`\nResults: ${passed} passed, ${failed} failed`);

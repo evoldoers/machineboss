@@ -78,6 +78,54 @@ mb.destroy();
 <h3><code>mb.destroy()</code></h3>
 <p>Releases GPU resources.</p>
 
+<h2>PSWM (Position-Specific Weight Matrix) API</h2>
+
+<p>In addition to tokenized sequences, the 1D algorithms support PSWM input:
+a profile where each position has a probability distribution over the alphabet,
+rather than a single token. This is useful for probabilistic inputs such as
+CSV profiles, neural network outputs, or uncertainty-weighted observations.</p>
+
+<h3><code>mb.nAlpha(direction)</code></h3>
+<p>Returns the number of emitting symbols (excluding epsilon) for the given direction.
+This is the number of columns in a PSWM profile row.</p>
+
+<h3><code>MachineBoss.logProfile(probs)</code></h3>
+<p>Static utility. Converts a flat array of probabilities to log-space (<code>Float64Array</code>).
+Zero probabilities become <code>-Infinity</code>.</p>
+
+<h3><code>mb.forwardProfile(logProfile, direction)</code></h3>
+<p>Forward log-likelihood with a PSWM. <code>logProfile</code> is a <code>Float64Array</code>
+of shape <code>(L * nAlpha)</code> containing log-probabilities, where
+<code>logProfile[p * nAlpha + k]</code> is log P(symbol k at position p).
+<code>direction</code> is <code>'input'</code> or <code>'output'</code>.
+Returns <code>Promise&lt;number&gt;</code>.</p>
+
+<h3><code>mb.viterbiProfile(logProfile, direction)</code></h3>
+<p>Viterbi best path with a PSWM. Same profile format as <code>forwardProfile</code>.
+Returns <code>Promise&lt;{score, path}&gt;</code>.</p>
+
+<h3><code>mb.posteriorsProfile(logProfile, direction)</code></h3>
+<p>Forward-Backward posteriors with a PSWM. Returns
+<code>Promise&lt;{logLikelihood, posteriors}&gt;</code> where
+<code>posteriors</code> is a <code>Float32Array</code> of shape <code>(L+1)*S</code>.</p>
+
+<h3>Example: PSWM usage</h3>
+<pre><code>const mb = await MachineBoss.create(machineJSON, params);
+const nAlpha = mb.nAlpha('output');
+
+// Build a PSWM from probabilities (3 positions, nAlpha symbols each)
+const probs = [
+  0.8, 0.1, 0.05, 0.05,  // position 0
+  0.1, 0.7, 0.1, 0.1,    // position 1
+  0.05, 0.05, 0.1, 0.8,  // position 2
+];
+const logProfile = MachineBoss.logProfile(probs);
+
+const ll = await mb.forwardProfile(logProfile, 'output');
+const { score, path } = await mb.viterbiProfile(logProfile, 'output');
+const { logLikelihood, posteriors } = await mb.posteriorsProfile(logProfile, 'output');
+</code></pre>
+
 <h2>Architecture</h2>
 
 <h3>1D: Transfer-Matrix Parallel Prefix Scan</h3>
@@ -86,7 +134,8 @@ a prefix product of S&times;S transfer matrices under the log-semiring.
 This gives O(log L) parallel depth on GPU via a Hillis-Steele scan.</p>
 <ol>
 <li>Compute silent closure S* on CPU</li>
-<li>Build per-position transfer matrix M[p] = S* &sdot; Emit[token_p] &sdot; S* on GPU</li>
+<li>Build per-position transfer matrix M[p] = S* &sdot; Emit[token_p] &sdot; S* on GPU
+(for PSWM: Emit[p] = &Sigma;<sub>k</sub> profile[p,k] &sdot; Trans[k])</li>
 <li>Parallel prefix scan of M matrices on GPU</li>
 <li>Extract forward/backward vectors from prefix/suffix products</li>
 </ol>

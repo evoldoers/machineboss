@@ -26,19 +26,27 @@ import { viterbi1D } from './cpu/viterbi-1d.mjs';
 import { viterbi2D } from './cpu/viterbi-2d.mjs';
 import { posteriors1D, posteriors2D } from './cpu/posteriors.mjs';
 
+// PSWM profile imports (CPU)
+import { forward1DProfile, forward1DProfileFull } from './cpu/forward-1d-profile.mjs';
+import { backward1DProfile } from './cpu/backward-1d-profile.mjs';
+import { viterbi1DProfile } from './cpu/viterbi-1d-profile.mjs';
+
 // GPU imports (lazy — only loaded when WebGPU is available)
 let gpuModules = null;
 async function loadGPUModules() {
   if (gpuModules) return gpuModules;
-  const [fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d] = await Promise.all([
+  const [fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d, fwdProf1d, bwdProf1d, vitProf1d] = await Promise.all([
     import('./gpu/forward-1d.mjs'),
     import('./gpu/backward-1d.mjs'),
     import('./gpu/viterbi-1d.mjs'),
     import('./gpu/forward-2d.mjs'),
     import('./gpu/backward-2d.mjs'),
     import('./gpu/viterbi-2d.mjs'),
+    import('./gpu/forward-1d-profile.mjs'),
+    import('./gpu/backward-1d-profile.mjs'),
+    import('./gpu/viterbi-1d-profile.mjs'),
   ]);
-  gpuModules = { fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d };
+  gpuModules = { fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d, fwdProf1d, bwdProf1d, vitProf1d };
   return gpuModules;
 }
 
@@ -208,6 +216,119 @@ export class MachineBoss {
   tokenize(seq, direction) {
     const alphabet = direction === 'input' ? this.inputAlphabet : this.outputAlphabet;
     return tokenize(seq, alphabet);
+  }
+
+  /**
+   * Get the number of emitting symbols for a direction.
+   * This is the alphabet size excluding the epsilon token.
+   *
+   * @param {'input'|'output'} direction
+   * @returns {number}
+   */
+  nAlpha(direction) {
+    const nTok = direction === 'input' ? this._machine.nInputTokens : this._machine.nOutputTokens;
+    return nTok - 1;  // exclude epsilon
+  }
+
+  /**
+   * Create a log-profile from probability values.
+   * Utility to convert a flat probability array to log-space.
+   *
+   * @param {Float64Array|Float32Array|number[]} probs - (L * nAlpha) probabilities
+   * @returns {Float64Array} log-probabilities
+   */
+  static logProfile(probs) {
+    const result = new Float64Array(probs.length);
+    for (let i = 0; i < probs.length; i++) {
+      result[i] = probs[i] > 0 ? Math.log(probs[i]) : -Infinity;
+    }
+    return result;
+  }
+
+  /**
+   * Compute Forward log-likelihood with a PSWM profile.
+   *
+   * The profile is a flat array of log-weights, shape (L * nAlpha),
+   * where nAlpha = mb.nAlpha(direction) is the number of emitting symbols.
+   * profile[p * nAlpha + k] = log P(symbol k at position p).
+   *
+   * @param {Float64Array} logProfile - (L * nAlpha) log-probability profile
+   * @param {'input'|'output'} direction - which alphabet the profile uses
+   * @returns {Promise<number>} log P(profile | machine)
+   */
+  async forwardProfile(logProfile, direction) {
+    const nAlpha = this.nAlpha(direction);
+    const L = logProfile.length / nAlpha;
+
+    if (this.backend === 'webgpu') {
+      try {
+        const gpu = await loadGPUModules();
+        const logProfile32 = new Float32Array(logProfile);
+        return gpu.fwdProf1d.forward1DProfileGPU(this._device, this._machine, logProfile32, direction, L);
+      } catch (e) {
+        // Fall back to CPU
+      }
+    }
+
+    return forward1DProfile(this._machine, logProfile, direction, L);
+  }
+
+  /**
+   * Compute Viterbi best path with a PSWM profile.
+   *
+   * @param {Float64Array} logProfile - (L * nAlpha) log-probability profile
+   * @param {'input'|'output'} direction
+   * @returns {Promise<{score: number, path: Array<{state: number, inputToken: number, outputToken: number}>}>}
+   */
+  async viterbiProfile(logProfile, direction) {
+    const nAlpha = this.nAlpha(direction);
+    const L = logProfile.length / nAlpha;
+
+    if (this.backend === 'webgpu') {
+      try {
+        const gpu = await loadGPUModules();
+        return gpu.vitProf1d.viterbi1DProfileGPU(this._device, this._machine, logProfile, direction, L);
+      } catch (e) {
+        // Fall back to CPU
+      }
+    }
+
+    return viterbi1DProfile(this._machine, logProfile, direction, L);
+  }
+
+  /**
+   * Compute Forward-Backward posteriors with a PSWM profile.
+   *
+   * @param {Float64Array} logProfile - (L * nAlpha) log-probability profile
+   * @param {'input'|'output'} direction
+   * @returns {Promise<{logLikelihood: number, posteriors: Float32Array}>}
+   *   posteriors shape: (L+1) * S
+   */
+  async posteriorsProfile(logProfile, direction) {
+    const nAlpha = this.nAlpha(direction);
+    const L = logProfile.length / nAlpha;
+    const S = this._machine.nStates;
+
+    const [fwdResult, bwdResult] = await Promise.all([
+      forward1DProfileFull(this._machine, logProfile, direction, L),
+      backward1DProfile(this._machine, logProfile, direction, L),
+    ]);
+
+    const { logLikelihood, dp: fwd } = fwdResult;
+    const { bp: bwd } = bwdResult;
+
+    const size = (L + 1) * S;
+    const posteriors = new Float32Array(size);
+
+    for (let p = 0; p <= L; p++) {
+      for (let s = 0; s < S; s++) {
+        const idx = p * S + s;
+        const logPost = fwd[idx] + bwd[idx] - logLikelihood;
+        posteriors[idx] = logPost === -Infinity ? 0 : Math.exp(logPost);
+      }
+    }
+
+    return { logLikelihood, posteriors };
   }
 
   /**

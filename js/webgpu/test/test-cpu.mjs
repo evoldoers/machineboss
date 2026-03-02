@@ -328,6 +328,153 @@ console.log('Testing MachineBoss API...');
 }
 
 // ============================================================
+// Test: PSWM Profile algorithms
+// ============================================================
+console.log('Testing PSWM profile algorithms...');
+
+import { forward1DProfile, forward1DProfileFull } from '../cpu/forward-1d-profile.mjs';
+import { backward1DProfile } from '../cpu/backward-1d-profile.mjs';
+import { viterbi1DProfile } from '../cpu/viterbi-1d-profile.mjs';
+
+// Test: A delta-function profile (all mass on one token) should match tokenized 1D
+{
+  const gen101 = loadJSON('t/expect/generator101.json');
+  const machine = prepareMachine(gen101, {});
+  const outTok = tokenize('101', machine.outputAlphabet);
+  const nAlpha = machine.nOutputTokens - 1;  // exclude epsilon
+
+  // Build a delta-function log-profile that puts all mass on the same tokens
+  const L = outTok.length;
+  const logProfile = new Float64Array(L * nAlpha).fill(NEG_INF);
+  for (let p = 0; p < L; p++) {
+    const tok = outTok[p];  // 1-based
+    logProfile[p * nAlpha + (tok - 1)] = 0.0;  // log(1) = 0
+  }
+
+  const llProfile = await forward1DProfile(machine, logProfile, 'output', L);
+  const llTokenized = await forward1D(machine, null, outTok);
+  assertClose(llProfile, llTokenized, 1e-10, 'PSWM delta profile = tokenized Forward (generator 101)');
+}
+
+// Test: PSWM on unitindel as generator (1D output)
+// unitindel has insert transitions (output-only), so 1D output mode works
+{
+  const unitindel = loadJSON('t/machine/unitindel.json');
+  const machine = prepareMachine(unitindel, { ins: 0.1, no_ins: 0.9, del: 0.1, no_del: 0.9 });
+  const outTok = tokenize('xxx', machine.outputAlphabet);
+  const nAlpha = machine.nOutputTokens - 1;
+  const L = outTok.length;
+
+  // Uniform profile: each position has equal prob for all symbols
+  const logProfileUniform = new Float64Array(L * nAlpha).fill(Math.log(1 / nAlpha));
+  const llUniform = await forward1DProfile(machine, logProfileUniform, 'output', L);
+
+  // Delta profile
+  const logProfileDelta = new Float64Array(L * nAlpha).fill(NEG_INF);
+  for (let p = 0; p < L; p++) {
+    logProfileDelta[p * nAlpha + (outTok[p] - 1)] = 0.0;
+  }
+  const llDelta = await forward1DProfile(machine, logProfileDelta, 'output', L);
+
+  // Uniform should have higher LL than delta (more paths contribute)
+  assert(llUniform >= llDelta - 1e-10,
+    `PSWM uniform LL (${llUniform}) >= delta LL (${llDelta})`);
+}
+
+// Test: PSWM Backward[0] = Forward LL (using unitindel output profile)
+{
+  const unitindel = loadJSON('t/machine/unitindel.json');
+  const machine = prepareMachine(unitindel, { ins: 0.1, no_ins: 0.9, del: 0.1, no_del: 0.9 });
+  const nAlpha = machine.nOutputTokens - 1;
+  const L = 3;
+  const logProfile = new Float64Array(L * nAlpha).fill(Math.log(0.5));
+
+  const llFwd = await forward1DProfile(machine, logProfile, 'output', L);
+  const { logLikelihood: llBwd } = await backward1DProfile(machine, logProfile, 'output', L);
+  assertClose(llBwd, llFwd, 1e-8, 'PSWM Backward[0] = Forward LL (unitindel)');
+}
+
+// Test: PSWM Viterbi <= Forward (using generator101)
+{
+  const gen101 = loadJSON('t/expect/generator101.json');
+  const machine = prepareMachine(gen101, {});
+  const nAlpha = machine.nOutputTokens - 1;
+  const L = 3;
+  const logProfile = new Float64Array(L * nAlpha);
+  // Asymmetric profile
+  for (let p = 0; p < L; p++) {
+    for (let k = 0; k < nAlpha; k++) {
+      logProfile[p * nAlpha + k] = Math.log(1 / nAlpha);
+    }
+  }
+
+  const llFwd = await forward1DProfile(machine, logProfile, 'output', L);
+  const { score: vitScore } = await viterbi1DProfile(machine, logProfile, 'output', L);
+  assert(vitScore <= llFwd + 1e-10,
+    `PSWM Viterbi (${vitScore}) <= Forward (${llFwd})`);
+}
+
+// Test: PSWM posteriors (using unitindel)
+{
+  const unitindel = loadJSON('t/machine/unitindel.json');
+  const machine = prepareMachine(unitindel, { ins: 0.1, no_ins: 0.9, del: 0.1, no_del: 0.9 });
+  const nAlpha = machine.nOutputTokens - 1;
+  const L = 3;
+  const logProfile = new Float64Array(L * nAlpha).fill(Math.log(0.5));
+
+  const { logLikelihood: llFwd } = await forward1DProfileFull(machine, logProfile, 'output', L);
+  const { logLikelihood: llBwd } = await backward1DProfile(machine, logProfile, 'output', L);
+  assertClose(llBwd, llFwd, 1e-8, 'PSWM posteriors: fwd LL = bwd LL (unitindel)');
+}
+
+// Test: PSWM via MachineBoss API (using unitindel as generator)
+{
+  const unitindel = loadJSON('t/machine/unitindel.json');
+  const mb = await MachineBoss.create(unitindel, { ins: 0.1, no_ins: 0.9, del: 0.1, no_del: 0.9 }, { backend: 'cpu' });
+  const nAlpha = mb.nAlpha('output');
+  assert(nAlpha >= 1, `nAlpha(output) >= 1 for unitindel (got ${nAlpha})`);
+
+  const L = 3;
+  const probs = new Array(L * nAlpha).fill(1 / nAlpha);
+  const logProfile = MachineBoss.logProfile(probs);
+  assert(logProfile.length === L * nAlpha, 'logProfile length correct');
+
+  const ll = await mb.forwardProfile(logProfile, 'output');
+  assert(isFinite(ll), `API forwardProfile returns finite LL: ${ll}`);
+
+  const { score } = await mb.viterbiProfile(logProfile, 'output');
+  assert(score <= ll + 1e-10, `API viterbiProfile score <= forwardProfile LL`);
+
+  const { logLikelihood, posteriors: post } = await mb.posteriorsProfile(logProfile, 'output');
+  assertClose(logLikelihood, ll, 1e-8, 'API posteriorsProfile LL = forwardProfile LL');
+  assert(post.length === (L + 1) * mb.nStates, 'posteriors array has correct length');
+
+  mb.destroy();
+}
+
+// Test: PSWM unitindel (multi-state machine with silent transitions)
+{
+  const unitindel = loadJSON('t/machine/unitindel.json');
+  const machine = prepareMachine(unitindel, { ins: 0.1, no_ins: 0.9, del: 0.1, no_del: 0.9 });
+  const outTok = tokenize('xxx', machine.outputAlphabet);
+  const nAlpha = machine.nOutputTokens - 1;
+  const L = outTok.length;
+
+  // Delta profile matching the tokenized sequence
+  const logProfile = new Float64Array(L * nAlpha).fill(NEG_INF);
+  for (let p = 0; p < L; p++) {
+    logProfile[p * nAlpha + (outTok[p] - 1)] = 0.0;
+  }
+
+  // 1D with output profile should give same result as 1D tokenized
+  // (unitindel as output-only = generator mode)
+  const llProfile = await forward1DProfile(machine, logProfile, 'output', L);
+  const llTokenized = await forward1D(machine, null, outTok);
+  assertClose(llProfile, llTokenized, 1e-10,
+    `PSWM delta unitindel output = tokenized (${llProfile} vs ${llTokenized})`);
+}
+
+// ============================================================
 // Summary
 // ============================================================
 console.log(`\nResults: ${passed} passed, ${failed} failed`);

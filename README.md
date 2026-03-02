@@ -33,6 +33,7 @@ The [Python/JAX package](python/) provides differentiable inference and training
 supporting HMM decoding heads and neural transducers for integration with deep learning frameworks.
 The [WebGPU/JavaScript library](js/webgpu/doc/webgpu.html) enables GPU-accelerated inference directly in the browser,
 with a pure JavaScript CPU fallback for environments without WebGPU support.
+Both tokenized sequences and position-specific weight matrices (PSWMs/profiles) are supported.
 
 ## Documentation
 
