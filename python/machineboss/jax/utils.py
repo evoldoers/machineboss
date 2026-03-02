@@ -22,10 +22,25 @@ def scatter_logsumexp(values: jnp.ndarray, indices: jnp.ndarray, size: int) -> j
     """Scatter values into an array of given size using logsumexp aggregation.
 
     For each index i, result[i] = logsumexp(values[indices == i]).
+
+    Uses max-shift-exp-sum-log pattern for numerical stability and
+    correct handling of duplicate indices.
     """
-    result = jnp.full(size, NEG_INF)
-    # Use segment_logsumexp approach: scatter then reduce
-    result = result.at[indices].set(
-        jnp.logaddexp(result[indices], values)
-    )
+    # Step 1: find max per destination
+    max_per_dst = jnp.full(size, NEG_INF).at[indices].max(values)
+    # Step 2: shift values by max, exponentiate, sum
+    shifted = values - max_per_dst[indices]
+    sum_exp = jnp.zeros(size).at[indices].add(jnp.exp(shifted))
+    # Step 3: log and unshift
+    result = max_per_dst + jnp.log(sum_exp)
+    # Where no values were scattered, keep NEG_INF
+    result = jnp.where(max_per_dst > NEG_INF + 1, result, NEG_INF)
     return result
+
+
+def scatter_max(values: jnp.ndarray, indices: jnp.ndarray, size: int) -> jnp.ndarray:
+    """Scatter values into an array of given size using max aggregation.
+
+    For each index i, result[i] = max(values[indices == i]).
+    """
+    return jnp.full(size, NEG_INF).at[indices].max(values)

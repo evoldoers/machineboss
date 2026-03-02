@@ -1,6 +1,7 @@
 """Log-space Viterbi algorithm using JAX.
 
 Same structure as Forward but uses max instead of logsumexp.
+Dispatches to the appropriate engine based on strategy and kernel params.
 """
 
 from __future__ import annotations
@@ -9,25 +10,14 @@ import jax
 import jax.numpy as jnp
 
 from .types import JAXMachine, NEG_INF
+from .semiring import MAXPLUS
+from .kernel_dense import propagate_silent
 
 
 def _propagate_silent_max(cell: jnp.ndarray, silent_trans: jnp.ndarray,
                           max_iter: int = 100) -> jnp.ndarray:
-    """Propagate silent transitions using max (Viterbi) within a DP cell."""
-    def body_fn(carry):
-        prev, _ = carry
-        incoming = prev[:, None] + silent_trans
-        update = jnp.max(incoming, axis=0)
-        new = jnp.maximum(cell, update)
-        return new, prev
-
-    def cond_fn(carry):
-        new, prev = carry
-        return jnp.any(jnp.abs(new - prev) > 1e-10)
-
-    init = (cell, jnp.full_like(cell, NEG_INF))
-    result, _ = jax.lax.while_loop(cond_fn, body_fn, init)
-    return result
+    """Legacy interface — delegates to kernel_dense.propagate_silent with MAXPLUS."""
+    return propagate_silent(cell, silent_trans, MAXPLUS)
 
 
 def log_viterbi_dense(machine: JAXMachine,
@@ -35,67 +25,70 @@ def log_viterbi_dense(machine: JAXMachine,
                       output_seq: jnp.ndarray) -> float:
     """Viterbi algorithm using dense transition tensor.
 
-    Args:
-        machine: JAXMachine with dense log_trans tensor
-        input_seq: (Li,) input token indices
-        output_seq: (Lo,) output token indices
-
-    Returns:
-        Log-probability of most likely path (scalar).
+    Legacy interface — delegates to dp_2d_simple.forward_2d_dense with MAXPLUS.
     """
-    assert machine.log_trans is not None
-    S = machine.n_states
-    Li = len(input_seq)
-    Lo = len(output_seq)
-
-    dp = jnp.full((Li + 1, Lo + 1, S), NEG_INF)
-    dp = dp.at[0, 0, 0].set(0.0)
-
-    silent = machine.log_trans[0, 0]
-
-    dp = dp.at[0, 0].set(_propagate_silent_max(dp[0, 0], silent))
-
-    for i in range(Li + 1):
-        for o in range(Lo + 1):
-            if i == 0 and o == 0:
-                continue
-            cell = dp[i, o]
-
-            if i > 0 and o > 0:
-                in_tok = input_seq[i - 1]
-                out_tok = output_seq[o - 1]
-                trans = machine.log_trans[in_tok, out_tok]
-                prev = dp[i - 1, o - 1]
-                incoming = prev[:, None] + trans
-                update = jnp.max(incoming, axis=0)
-                cell = jnp.maximum(cell, update)
-
-            if i > 0:
-                in_tok = input_seq[i - 1]
-                trans = machine.log_trans[in_tok, 0]
-                prev = dp[i - 1, o]
-                incoming = prev[:, None] + trans
-                update = jnp.max(incoming, axis=0)
-                cell = jnp.maximum(cell, update)
-
-            if o > 0:
-                out_tok = output_seq[o - 1]
-                trans = machine.log_trans[0, out_tok]
-                prev = dp[i, o - 1]
-                incoming = prev[:, None] + trans
-                update = jnp.max(incoming, axis=0)
-                cell = jnp.maximum(cell, update)
-
-            cell = _propagate_silent_max(cell, silent)
-            dp = dp.at[i, o].set(cell)
-
-    return dp[Li, Lo, S - 1]
+    from .dp_2d_simple import forward_2d_dense
+    return forward_2d_dense(machine, input_seq, output_seq, MAXPLUS)
 
 
 def log_viterbi(machine: JAXMachine,
-                input_seq: jnp.ndarray,
-                output_seq: jnp.ndarray) -> float:
-    """Viterbi algorithm — dispatches to dense implementation."""
-    if machine.log_trans is not None:
-        return log_viterbi_dense(machine, input_seq, output_seq)
-    raise NotImplementedError("Sparse viterbi not yet implemented")
+                input_seq: jnp.ndarray | None = None,
+                output_seq: jnp.ndarray | None = None,
+                *,
+                strategy: str = 'auto',
+                kernel: str = 'auto',
+                length: int | None = None) -> float:
+    """Viterbi algorithm — dispatches to appropriate engine.
+
+    Args:
+        machine: JAXMachine
+        input_seq: (Li,) input token indices, TokenSeq, PSWMSeq, or None
+        output_seq: (Lo,) output token indices, TokenSeq, PSWMSeq, or None
+        strategy: 'simple', 'optimal', or 'auto'
+        kernel: 'dense', 'sparse', or 'auto'
+        length: real sequence length for padded 1D sequences. If None, uses len(seq).
+
+    Returns:
+        Log-probability of most likely path (scalar).
+
+    Raises:
+        ValueError: if sequences don't match the machine type
+    """
+    from .forward import _validate_seqs, _auto_pad_1d
+
+    _validate_seqs(machine, input_seq, output_seq)
+
+    is_1d = (input_seq is None) or (output_seq is None)
+
+    if kernel == 'auto':
+        kernel = 'dense' if machine.log_trans is not None else 'sparse'
+
+    if strategy == 'auto':
+        if is_1d and kernel == 'dense':
+            strategy = 'optimal'
+        else:
+            strategy = 'simple'
+
+    if is_1d:
+        # Auto-pad for JIT compilation cache efficiency
+        input_seq, output_seq, length = _auto_pad_1d(
+            input_seq, output_seq, machine, length)
+
+        if strategy == 'optimal' and kernel == 'dense':
+            from .dp_1d_optimal import forward_1d_optimal
+            return forward_1d_optimal(machine, input_seq, output_seq, MAXPLUS,
+                                      length=length)
+        else:
+            from .dp_1d_simple import forward_1d_simple
+            return forward_1d_simple(machine, input_seq, output_seq, MAXPLUS,
+                                     kernel=kernel, length=length)
+    else:
+        if strategy == 'optimal' and kernel == 'dense':
+            from .dp_2d_optimal import forward_2d_optimal
+            return forward_2d_optimal(machine, input_seq, output_seq, MAXPLUS)
+        elif kernel == 'sparse':
+            from .dp_2d_simple import forward_2d_sparse
+            return forward_2d_sparse(machine, input_seq, output_seq, MAXPLUS)
+        else:
+            from .dp_2d_simple import forward_2d_dense
+            return forward_2d_dense(machine, input_seq, output_seq, MAXPLUS)

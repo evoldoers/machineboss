@@ -7,6 +7,9 @@ transducer, which produces the final output (e.g. DNA).
 
 Like GeneWise, this fused approach avoids materializing the huge
 composite state space.
+
+JIT-compilable: all loops use jax.lax.scan / jax.lax.while_loop.
+Semiring-parameterized: same code for Forward (LOGSUMEXP) and Viterbi (MAXPLUS).
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ import numpy as np
 
 from ..eval import EvaluatedMachine, EvaluatedTransition
 from .types import NEG_INF
+from .semiring import LogSemiring, LOGSUMEXP, MAXPLUS
 
 
 @dataclass
@@ -93,52 +97,48 @@ class FusedMachine:
         )
 
 
-def fused_log_forward(fused: FusedMachine,
-                      output_seq: jnp.ndarray) -> float:
-    """Fused Plan7+transducer Forward algorithm.
+def _fused_dp(fused: FusedMachine, output_seq: jnp.ndarray,
+              semiring: LogSemiring) -> float:
+    """Fused Plan7+transducer DP (Forward or Viterbi via semiring).
 
-    The composite machine is a generator (no explicit input).
-    Plan7 generates intermediate symbols, transducer converts to output.
+    Uses jax.lax.scan over the output sequence. All inner loops are
+    vectorized with JAX operations. JIT-compilable.
 
     Args:
         fused: FusedMachine
-        output_seq: (Lo,) output token indices (in transducer's output alphabet)
-
+        output_seq: (Lo,) output token indices
+        semiring: LOGSUMEXP for Forward, MAXPLUS for Viterbi
     Returns:
-        Log-likelihood (scalar).
+        Log-likelihood or Viterbi score (scalar).
     """
     S_p7 = fused.p7_n_states
     S_td = fused.td_n_states
     Lo = len(output_seq)
+    n_p7_out = fused.p7_log_trans.shape[0]
 
     p7_log_trans = jnp.array(fused.p7_log_trans)
     p7_silent = jnp.array(fused.p7_silent)
     td_log_trans = jnp.array(fused.td_log_trans)
     p7_out_to_td_in = jnp.array(fused.p7_out_to_td_in)
 
-    # DP matrix: dp[outPos, p7_state, td_state] in log-space
-    dp = jnp.full((Lo + 1, S_p7, S_td), NEG_INF)
-
-    # Start: Plan7 state 0, transducer state 0, output position 0
-    dp = dp.at[0, 0, 0].set(0.0)
+    # Token mask: which Plan7 output tokens are emitting (> 0) and map to valid TD input
+    emit_mask = (jnp.arange(n_p7_out) > 0) & (p7_out_to_td_in > 0)  # (n_p7_out,)
 
     def propagate_silent_composite(cell):
         """Propagate silent transitions in both Plan7 and transducer."""
-        # Iterate until convergence
         def body_fn(carry):
             prev, _ = carry
 
-            # Plan7 silent transitions (no emission)
-            # For each (p7_src, td_s): sum over p7_dst of prev[p7_src, td_s] + p7_silent[p7_src, p7_dst]
-            p7_incoming = prev[:, None, :] + p7_silent[:, :, None]  # (S_p7, S_p7, S_td)
-            p7_update = jax.nn.logsumexp(p7_incoming, axis=0)  # (S_p7, S_td)
+            # Plan7 silent: sum over p7_src
+            p7_update = semiring.reduce(
+                prev[:, None, :] + p7_silent[:, :, None], axis=0)  # (S_p7, S_td)
 
-            # Transducer silent transitions (no input, no output)
+            # Transducer silent: sum over td_src
             td_silent = td_log_trans[0, 0]  # (S_td, S_td)
-            td_incoming = prev[:, :, None] + td_silent[None, :, :]  # (S_p7, S_td, S_td)
-            td_update = jax.nn.logsumexp(td_incoming, axis=1)  # (S_p7, S_td)
+            td_update = semiring.reduce(
+                prev[:, :, None] + td_silent[None, :, :], axis=1)  # (S_p7, S_td)
 
-            new = jnp.logaddexp(cell, jnp.logaddexp(p7_update, td_update))
+            new = semiring.plus(cell, semiring.plus(p7_update, td_update))
             return new, prev
 
         def cond_fn(carry):
@@ -149,186 +149,105 @@ def fused_log_forward(fused: FusedMachine,
         result, _ = jax.lax.while_loop(cond_fn, body_fn, init)
         return result
 
-    # Propagate silent at position 0
-    dp = dp.at[0].set(propagate_silent_composite(dp[0]))
+    def emit_produce(prev, out_tok):
+        """Plan7 emits intermediate symbol, transducer produces output.
 
-    # Also propagate Plan7 emissions that feed into transducer
-    # (Plan7 emits intermediate symbol, transducer consumes it silently or with output)
-    def propagate_p7_emission(cell, prev_cell):
-        """Plan7 emits intermediate symbol, transducer consumes it.
-
-        This handles the case where Plan7 emits (advancing the Plan7 state)
-        and the transducer consumes that emission as input (advancing the transducer state).
-        No output is produced yet.
+        Vectorized over all Plan7 output tokens.
         """
-        update = jnp.full_like(cell, NEG_INF)
+        # Gather transducer transitions for each P7 output token
+        td_trans_emit = td_log_trans[p7_out_to_td_in, out_tok]  # (n_p7_out, S_td, S_td)
 
-        # For each Plan7 output token (intermediate symbol):
-        n_p7_out = fused.p7_log_trans.shape[0]
-        for p7_out_tok in range(1, n_p7_out):  # skip 0 (silent)
-            td_in_tok = int(fused.p7_out_to_td_in[p7_out_tok])
-            if td_in_tok == 0:
-                continue
+        # Plan7 propagation: prev[p7_src, td_src] + p7_trans[tok, p7_src, p7_dst]
+        # → intermediate[tok, p7_dst, td_src]
+        intermediate = semiring.reduce(
+            prev[None, :, None, :] + p7_log_trans[:, :, :, None],
+            axis=1)  # (n_p7_out, S_p7, S_td)
 
-            # Plan7 transition with this emission: p7_log_trans[p7_out_tok, p7_src, p7_dst]
-            p7_trans = p7_log_trans[p7_out_tok]  # (S_p7, S_p7)
+        # Transducer propagation: intermediate[tok, p7_dst, td_src] + td_trans[tok, td_src, td_dst]
+        # → result[tok, p7_dst, td_dst]
+        result = semiring.reduce(
+            intermediate[:, :, :, None] + td_trans_emit[:, None, :, :],
+            axis=2)  # (n_p7_out, S_p7, S_td)
 
-            # Transducer transition consuming this input without output:
-            td_trans = td_log_trans[td_in_tok, 0]  # (S_td, S_td): input=td_in_tok, output=0
+        # Mask non-emitting tokens
+        result = jnp.where(emit_mask[:, None, None], result, NEG_INF)
 
-            # Combine: for each (p7_src, td_src) -> (p7_dst, td_dst)
-            # log_weight = prev[p7_src, td_src] + p7_trans[p7_src, p7_dst] + td_trans[td_src, td_dst]
-            # Sum over p7_src and td_src
-            # Result shape: (S_p7_dst, S_td_dst)
-            combined = (prev_cell[:, None, :, None]  # (S_p7, 1, S_td, 1)
-                        + p7_trans[:, :, None, None]  # (S_p7, S_p7, 1, 1)
-                        + td_trans[None, None, :, :])  # (1, 1, S_td, S_td)
-            # Sum over p7_src (axis 0) and td_src (axis 2)
-            result = jax.nn.logsumexp(combined, axis=(0, 2))  # (S_p7, S_td)
-            update = jnp.logaddexp(update, result)
+        # Reduce over tokens
+        return semiring.reduce(result, axis=0)  # (S_p7, S_td)
 
-        return jnp.logaddexp(cell, update)
+    def td_delete(prev, out_tok):
+        """Transducer produces output without Plan7 emission."""
+        td_trans = td_log_trans[0, out_tok]  # (S_td, S_td)
+        return semiring.reduce(
+            prev[:, :, None] + td_trans[None, :, :], axis=1)  # (S_p7, S_td)
 
-    # Fill DP matrix
-    for o in range(Lo + 1):
-        if o == 0:
-            # Also propagate P7 emissions at position 0 (they don't produce output)
-            dp = dp.at[0].set(propagate_p7_emission(dp[0], dp[0]))
-            dp = dp.at[0].set(propagate_silent_composite(dp[0]))
-            continue
+    def p7_emit_no_output(cell):
+        """Plan7 emits, transducer consumes silently (no output produced)."""
+        # Gather transducer silent-input transitions for each P7 output token
+        td_trans_silent = td_log_trans[p7_out_to_td_in, 0]  # (n_p7_out, S_td, S_td)
 
-        cell = dp[o]
-        out_tok = output_seq[o - 1]
+        intermediate = semiring.reduce(
+            cell[None, :, None, :] + p7_log_trans[:, :, :, None],
+            axis=1)  # (n_p7_out, S_p7, S_td)
 
-        # Transitions that produce output[o-1]:
-        # Case 1: Plan7 emits intermediate, transducer produces output
-        n_p7_out = fused.p7_log_trans.shape[0]
-        for p7_out_tok in range(1, n_p7_out):
-            td_in_tok = int(fused.p7_out_to_td_in[p7_out_tok])
-            if td_in_tok == 0:
-                continue
+        result = semiring.reduce(
+            intermediate[:, :, :, None] + td_trans_silent[:, None, :, :],
+            axis=2)  # (n_p7_out, S_p7, S_td)
 
-            p7_trans = p7_log_trans[p7_out_tok]
-            td_trans = td_log_trans[td_in_tok, out_tok]
+        result = jnp.where(emit_mask[:, None, None], result, NEG_INF)
+        update = semiring.reduce(result, axis=0)  # (S_p7, S_td)
+        return semiring.plus(cell, update)
 
-            combined = (dp[o - 1, :, None, :, None]
-                        + p7_trans[:, :, None, None]
-                        + td_trans[None, None, :, :])
-            result = jax.nn.logsumexp(combined, axis=(0, 2))
-            cell = jnp.logaddexp(cell, result)
+    # Initialize: start state (0, 0)
+    init_cell = jnp.full((S_p7, S_td), NEG_INF)
+    init_cell = init_cell.at[0, 0].set(0.0)
 
-        # Case 2: Transducer produces output without consuming Plan7 emission
-        # (transducer delete: input=0, output=out_tok)
-        td_trans_delete = td_log_trans[0, out_tok]  # (S_td, S_td)
-        td_incoming = dp[o - 1, :, :, None] + td_trans_delete[None, :, :]
-        td_update = jax.nn.logsumexp(td_incoming, axis=1)
-        cell = jnp.logaddexp(cell, td_update)
+    # Propagate silent → P7 emit (no output) → silent at position 0
+    init_cell = propagate_silent_composite(init_cell)
+    init_cell = p7_emit_no_output(init_cell)
+    init_cell = propagate_silent_composite(init_cell)
 
-        # Propagate silent and internal Plan7 emissions
+    if Lo == 0:
+        return init_cell[S_p7 - 1, S_td - 1]
+
+    # Scan over output positions
+    def scan_fn(prev, out_tok):
+        # Transitions that produce output
+        cell = emit_produce(prev, out_tok)
+        cell = semiring.plus(cell, td_delete(prev, out_tok))
+
+        # Silent and internal P7 emissions
         cell = propagate_silent_composite(cell)
-        cell = propagate_p7_emission(cell, cell)
+        cell = p7_emit_no_output(cell)
         cell = propagate_silent_composite(cell)
-        dp = dp.at[o].set(cell)
 
-    # Result: end states of both Plan7 and transducer
-    return dp[Lo, S_p7 - 1, S_td - 1]
+        return cell, None
+
+    final_cell, _ = jax.lax.scan(scan_fn, init_cell, output_seq)
+    return final_cell[S_p7 - 1, S_td - 1]
+
+
+def fused_log_forward(fused: FusedMachine,
+                      output_seq: jnp.ndarray) -> float:
+    """Fused Plan7+transducer Forward algorithm.
+
+    Args:
+        fused: FusedMachine
+        output_seq: (Lo,) output token indices (in transducer's output alphabet)
+    Returns:
+        Log-likelihood (scalar).
+    """
+    return _fused_dp(fused, output_seq, LOGSUMEXP)
 
 
 def fused_log_viterbi(fused: FusedMachine,
                       output_seq: jnp.ndarray) -> float:
     """Fused Plan7+transducer Viterbi algorithm.
 
-    Same structure as fused Forward but uses max instead of logsumexp.
-
     Args:
         fused: FusedMachine
         output_seq: (Lo,) output token indices (in transducer's output alphabet)
-
     Returns:
         Log-probability of most likely path (scalar).
     """
-    S_p7 = fused.p7_n_states
-    S_td = fused.td_n_states
-    Lo = len(output_seq)
-
-    p7_log_trans = jnp.array(fused.p7_log_trans)
-    p7_silent = jnp.array(fused.p7_silent)
-    td_log_trans = jnp.array(fused.td_log_trans)
-
-    dp = jnp.full((Lo + 1, S_p7, S_td), NEG_INF)
-    dp = dp.at[0, 0, 0].set(0.0)
-
-    def propagate_silent_max(cell):
-        """Propagate silent transitions using max (Viterbi)."""
-        def body_fn(carry):
-            prev, _ = carry
-            p7_incoming = prev[:, None, :] + p7_silent[:, :, None]
-            p7_update = jnp.max(p7_incoming, axis=0)
-
-            td_silent = td_log_trans[0, 0]
-            td_incoming = prev[:, :, None] + td_silent[None, :, :]
-            td_update = jnp.max(td_incoming, axis=1)
-
-            new = jnp.maximum(cell, jnp.maximum(p7_update, td_update))
-            return new, prev
-
-        def cond_fn(carry):
-            new, prev = carry
-            return jnp.any(jnp.abs(new - prev) > 1e-10)
-
-        init = (cell, jnp.full_like(cell, NEG_INF))
-        result, _ = jax.lax.while_loop(cond_fn, body_fn, init)
-        return result
-
-    dp = dp.at[0].set(propagate_silent_max(dp[0]))
-
-    def propagate_p7_emission_max(cell, prev_cell):
-        """Plan7 emits, transducer consumes without output — max version."""
-        update = jnp.full_like(cell, NEG_INF)
-        n_p7_out = fused.p7_log_trans.shape[0]
-        for p7_out_tok in range(1, n_p7_out):
-            td_in_tok = int(fused.p7_out_to_td_in[p7_out_tok])
-            if td_in_tok == 0:
-                continue
-            p7_trans = p7_log_trans[p7_out_tok]
-            td_trans = td_log_trans[td_in_tok, 0]
-            combined = (prev_cell[:, None, :, None]
-                        + p7_trans[:, :, None, None]
-                        + td_trans[None, None, :, :])
-            result = jnp.max(combined, axis=(0, 2))
-            update = jnp.maximum(update, result)
-        return jnp.maximum(cell, update)
-
-    for o in range(Lo + 1):
-        if o == 0:
-            dp = dp.at[0].set(propagate_p7_emission_max(dp[0], dp[0]))
-            dp = dp.at[0].set(propagate_silent_max(dp[0]))
-            continue
-
-        cell = dp[o]
-        out_tok = output_seq[o - 1]
-
-        n_p7_out = fused.p7_log_trans.shape[0]
-        for p7_out_tok in range(1, n_p7_out):
-            td_in_tok = int(fused.p7_out_to_td_in[p7_out_tok])
-            if td_in_tok == 0:
-                continue
-            p7_trans = p7_log_trans[p7_out_tok]
-            td_trans = td_log_trans[td_in_tok, out_tok]
-            combined = (dp[o - 1, :, None, :, None]
-                        + p7_trans[:, :, None, None]
-                        + td_trans[None, None, :, :])
-            result = jnp.max(combined, axis=(0, 2))
-            cell = jnp.maximum(cell, result)
-
-        td_trans_delete = td_log_trans[0, out_tok]
-        td_incoming = dp[o - 1, :, :, None] + td_trans_delete[None, :, :]
-        td_update = jnp.max(td_incoming, axis=1)
-        cell = jnp.maximum(cell, td_update)
-
-        cell = propagate_silent_max(cell)
-        cell = propagate_p7_emission_max(cell, cell)
-        cell = propagate_silent_max(cell)
-        dp = dp.at[o].set(cell)
-
-    return dp[Lo, S_p7 - 1, S_td - 1]
+    return _fused_dp(fused, output_seq, MAXPLUS)

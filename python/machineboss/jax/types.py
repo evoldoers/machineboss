@@ -75,3 +75,34 @@ class JAXMachine:
             n_output_tokens=n_out,
             log_trans=dense,
         )
+
+    def has_input(self) -> bool:
+        """True if the machine has input transitions (n_input_tokens > 1)."""
+        return self.n_input_tokens > 1
+
+    def has_output(self) -> bool:
+        """True if the machine has output transitions (n_output_tokens > 1)."""
+        return self.n_output_tokens > 1
+
+    def is_transducer(self) -> bool:
+        """True if the machine has both input and output alphabets."""
+        return self.has_input() and self.has_output()
+
+    def is_generator(self) -> bool:
+        """True if the machine has output but no input (generator)."""
+        return (not self.has_input()) and self.has_output()
+
+    def is_recognizer(self) -> bool:
+        """True if the machine has input but no output (recognizer)."""
+        return self.has_input() and (not self.has_output())
+
+    def machine_type(self) -> str:
+        """Return machine type string: 'transducer', 'generator', 'recognizer', or 'null'."""
+        if self.is_transducer():
+            return 'transducer'
+        elif self.is_generator():
+            return 'generator'
+        elif self.is_recognizer():
+            return 'recognizer'
+        else:
+            return 'null'

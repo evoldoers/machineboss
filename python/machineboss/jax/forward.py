@@ -1,7 +1,7 @@
 """Log-space Forward algorithm using JAX.
 
 Computes log P(input, output | machine) via the Forward algorithm.
-Uses the dense representation for small machines.
+Dispatches to the appropriate engine based on strategy and kernel params.
 """
 
 from __future__ import annotations
@@ -10,35 +10,15 @@ import jax
 import jax.numpy as jnp
 
 from .types import JAXMachine, NEG_INF
+from .semiring import LOGSUMEXP
+from .kernel_dense import propagate_silent, emit_step_forward
+from .seq import wrap_seq, TokenSeq, PSWMSeq, pad_length, pad_token_seq, pad_pswm_seq
 
 
 def _propagate_silent(cell: jnp.ndarray, silent_trans: jnp.ndarray,
                       max_iter: int = 100) -> jnp.ndarray:
-    """Propagate silent transitions within a DP cell until convergence.
-
-    Args:
-        cell: (S,) log-probabilities at current cell
-        silent_trans: (S, S) log-weight matrix for silent transitions (in=0, out=0)
-        max_iter: maximum iterations for fixed-point convergence
-    Returns:
-        Updated cell with silent transitions propagated.
-    """
-    def body_fn(carry):
-        prev, _ = carry
-        # For each destination state, accumulate from all source states
-        # new[dst] = logsumexp(prev[src] + silent_trans[src, dst]) over src
-        incoming = prev[:, None] + silent_trans  # (S, S): [src, dst]
-        update = jax.nn.logsumexp(incoming, axis=0)  # (S,)
-        new = jnp.logaddexp(cell, update)
-        return new, prev
-
-    def cond_fn(carry):
-        new, prev = carry
-        return jnp.any(jnp.abs(new - prev) > 1e-10)
-
-    init = (cell, jnp.full_like(cell, NEG_INF))
-    result, _ = jax.lax.while_loop(cond_fn, body_fn, init)
-    return result
+    """Legacy interface — delegates to kernel_dense.propagate_silent with LOGSUMEXP."""
+    return propagate_silent(cell, silent_trans, LOGSUMEXP)
 
 
 def log_forward_dense(machine: JAXMachine,
@@ -46,89 +26,150 @@ def log_forward_dense(machine: JAXMachine,
                       output_seq: jnp.ndarray) -> float:
     """Forward algorithm using dense transition tensor.
 
-    Args:
-        machine: JAXMachine with dense log_trans tensor of shape (I, O, S, S)
-        input_seq: (Li,) array of input token indices (1-based; 0=empty)
-        output_seq: (Lo,) array of output token indices (1-based; 0=empty)
-
-    Returns:
-        Log-likelihood (scalar).
+    Legacy interface — delegates to dp_2d_simple.forward_2d_dense.
     """
-    assert machine.log_trans is not None, "Dense representation required"
-    S = machine.n_states
-    Li = len(input_seq)
-    Lo = len(output_seq)
+    from .dp_2d_simple import forward_2d_dense
+    return forward_2d_dense(machine, input_seq, output_seq, LOGSUMEXP)
 
-    # DP matrix: dp[inPos, outPos, state] in log-space
-    # inPos ranges 0..Li, outPos ranges 0..Lo
-    # Initialize with -inf
-    dp = jnp.full((Li + 1, Lo + 1, S), NEG_INF)
 
-    # Start state gets probability 1 (log-prob 0) at position (0, 0)
-    dp = dp.at[0, 0, 0].set(0.0)
+def _seq_is_nonempty(seq) -> bool:
+    """Check if a sequence is provided and non-empty."""
+    if seq is None:
+        return False
+    if hasattr(seq, '__len__') and len(seq) == 0:
+        return False
+    return True
 
-    # Silent transitions matrix: log_trans[0, 0, src, dst]
-    silent = machine.log_trans[0, 0]  # (S, S)
 
-    # Propagate silent transitions at (0, 0)
-    dp = dp.at[0, 0].set(_propagate_silent(dp[0, 0], silent))
+def _auto_pad_1d(input_seq, output_seq, machine, length):
+    """Auto-pad the active 1D sequence for JIT compilation cache efficiency.
 
-    # Fill DP matrix in row-major order (excluding (0,0) which is already done)
-    for i in range(Li + 1):
-        for o in range(Lo + 1):
-            if i == 0 and o == 0:
-                continue
-            cell = dp[i, o]
+    When length is not explicitly provided, pads the active sequence to a
+    geometric-series length so JAX reuses compiled kernels.
 
-            # 1. Match: consume input[i-1] + output[o-1], from (i-1, o-1)
-            if i > 0 and o > 0:
-                in_tok = input_seq[i - 1]
-                out_tok = output_seq[o - 1]
-                trans = machine.log_trans[in_tok, out_tok]
-                prev = dp[i - 1, o - 1]
-                incoming = prev[:, None] + trans
-                update = jax.nn.logsumexp(incoming, axis=0)
-                cell = jnp.logaddexp(cell, update)
+    Returns (input_seq, output_seq, length).
+    """
+    if length is not None:
+        return input_seq, output_seq, length
 
-            # 2. Insert: consume input[i-1], from (i-1, o)
-            if i > 0:
-                in_tok = input_seq[i - 1]
-                trans = machine.log_trans[in_tok, 0]
-                prev = dp[i - 1, o]
-                incoming = prev[:, None] + trans
-                update = jax.nn.logsumexp(incoming, axis=0)
-                cell = jnp.logaddexp(cell, update)
+    if input_seq is None:
+        # Generator or transducer without input: pad output_seq
+        seq = wrap_seq(output_seq, machine.n_output_tokens)
+        L = len(seq)
+        padded_L = pad_length(L)
+        if padded_L > L:
+            if isinstance(seq, PSWMSeq):
+                seq, orig_L = pad_pswm_seq(seq, padded_L)
+            else:
+                seq, orig_L = pad_token_seq(seq, padded_L)
+            return None, seq, orig_L
+        return None, seq, None
+    else:
+        # Recognizer or transducer without output: pad input_seq
+        seq = wrap_seq(input_seq, machine.n_input_tokens)
+        L = len(seq)
+        padded_L = pad_length(L)
+        if padded_L > L:
+            if isinstance(seq, PSWMSeq):
+                seq, orig_L = pad_pswm_seq(seq, padded_L)
+            else:
+                seq, orig_L = pad_token_seq(seq, padded_L)
+            return seq, None, orig_L
+        return seq, None, None
 
-            # 3. Delete: consume output[o-1], from (i, o-1)
-            if o > 0:
-                out_tok = output_seq[o - 1]
-                trans = machine.log_trans[0, out_tok]
-                prev = dp[i, o - 1]
-                incoming = prev[:, None] + trans
-                update = jax.nn.logsumexp(incoming, axis=0)
-                cell = jnp.logaddexp(cell, update)
 
-            # 4. Silent transitions within this cell
-            cell = _propagate_silent(cell, silent)
-            dp = dp.at[i, o].set(cell)
+def _validate_seqs(machine: JAXMachine, input_seq, output_seq):
+    """Validate that supplied sequences match the machine type.
 
-    # Result: log-probability at end state, position (Li, Lo)
-    return dp[Li, Lo, S - 1]
+    Empty arrays (length 0) are treated as equivalent to None.
+    """
+    has_in = _seq_is_nonempty(input_seq)
+    has_out = _seq_is_nonempty(output_seq)
+
+    if machine.is_generator():
+        if has_in:
+            raise ValueError(
+                f"Machine is a generator (no input alphabet) but a non-empty input_seq was provided")
+        if output_seq is None:
+            raise ValueError(
+                f"Machine is a generator (output-only) but output_seq is None")
+    elif machine.is_recognizer():
+        if has_out:
+            raise ValueError(
+                f"Machine is a recognizer (no output alphabet) but a non-empty output_seq was provided")
+        if input_seq is None:
+            raise ValueError(
+                f"Machine is a recognizer (input-only) but input_seq is None")
+    elif machine.is_transducer():
+        # Transducers accept both 1D and 2D usage: either seq can be None
+        pass
+    else:
+        # Null machine (no input or output)
+        if has_in:
+            raise ValueError("Machine has no input alphabet but input_seq was provided")
+        if has_out:
+            raise ValueError("Machine has no output alphabet but output_seq was provided")
 
 
 def log_forward(machine: JAXMachine,
-                input_seq: jnp.ndarray,
-                output_seq: jnp.ndarray) -> float:
-    """Forward algorithm — dispatches to dense implementation.
+                input_seq: jnp.ndarray | None = None,
+                output_seq: jnp.ndarray | None = None,
+                *,
+                strategy: str = 'auto',
+                kernel: str = 'auto',
+                length: int | None = None) -> float:
+    """Forward algorithm — dispatches to appropriate engine.
 
     Args:
         machine: JAXMachine
-        input_seq: (Li,) input token indices
-        output_seq: (Lo,) output token indices
+        input_seq: (Li,) input token indices, TokenSeq, PSWMSeq, or None
+        output_seq: (Lo,) output token indices, TokenSeq, PSWMSeq, or None
+        strategy: 'simple', 'optimal', or 'auto'
+        kernel: 'dense', 'sparse', or 'auto'
+        length: real sequence length for padded 1D sequences. If None, uses len(seq).
 
     Returns:
         Log-likelihood (scalar).
+
+    Raises:
+        ValueError: if sequences don't match the machine type
     """
-    if machine.log_trans is not None:
-        return log_forward_dense(machine, input_seq, output_seq)
-    raise NotImplementedError("Sparse forward not yet implemented; use dense_threshold > n_states")
+    _validate_seqs(machine, input_seq, output_seq)
+
+    # Determine dimensionality: 1D only if a sequence is literally None
+    is_1d = (input_seq is None) or (output_seq is None)
+
+    # Resolve kernel
+    if kernel == 'auto':
+        kernel = 'dense' if machine.log_trans is not None else 'sparse'
+
+    # Resolve strategy
+    if strategy == 'auto':
+        if is_1d and kernel == 'dense':
+            strategy = 'optimal'
+        else:
+            strategy = 'simple'
+
+    if is_1d:
+        # Auto-pad for JIT compilation cache efficiency
+        input_seq, output_seq, length = _auto_pad_1d(
+            input_seq, output_seq, machine, length)
+
+        if strategy == 'optimal' and kernel == 'dense':
+            from .dp_1d_optimal import forward_1d_optimal
+            return forward_1d_optimal(machine, input_seq, output_seq, LOGSUMEXP,
+                                      length=length)
+        else:
+            from .dp_1d_simple import forward_1d_simple
+            return forward_1d_simple(machine, input_seq, output_seq, LOGSUMEXP,
+                                     kernel=kernel, length=length)
+    else:
+        if strategy == 'optimal' and kernel == 'dense':
+            from .dp_2d_optimal import forward_2d_optimal
+            return forward_2d_optimal(machine, input_seq, output_seq, LOGSUMEXP)
+        elif kernel == 'sparse':
+            from .dp_2d_simple import forward_2d_sparse
+            return forward_2d_sparse(machine, input_seq, output_seq, LOGSUMEXP)
+        else:
+            from .dp_2d_simple import forward_2d_dense
+            return forward_2d_dense(machine, input_seq, output_seq, LOGSUMEXP)

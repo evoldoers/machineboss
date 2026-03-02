@@ -47,8 +47,8 @@ class TestFwdBack:
         ll, counts = log_likelihood_with_counts(jm, in_seq, out_seq)
         assert jnp.all(counts >= -0.01)
 
-    def test_bitnoise_counts(self, repo_root, boss_path):
-        """Expected counts for bitnoise should match C++ boss output."""
+    def test_bitnoise_counts_vs_boss(self, repo_root, boss_path):
+        """Expected per-parameter counts for bitnoise should match C++ boss -C."""
         machine_path = str(repo_root / "t" / "machine" / "bitnoise.json")
         params_path = str(repo_root / "t" / "io" / "params.json")
 
@@ -63,7 +63,7 @@ class TestFwdBack:
 
         ll, counts = log_likelihood_with_counts(jm, in_seq, out_seq)
 
-        # Just verify log-likelihood matches boss
+        # Verify log-likelihood matches boss
         result = subprocess.run(
             [boss_path, machine_path,
              "--input-chars", "101", "--output-chars", "001",
@@ -74,6 +74,38 @@ class TestFwdBack:
         boss_ll = float(data[0][-1]) if isinstance(data[0], list) else float(data[0])
         assert float(ll) == pytest.approx(boss_ll, abs=0.01)
 
-        # And counts sum should be reasonable (>0 for non-zero-probability paths)
-        total_count = float(jnp.sum(counts))
-        assert total_count > 0
+        # Get per-parameter counts from boss -C
+        import tempfile, os
+        seqpair_data = json.dumps([{
+            "input": {"name": "101", "sequence": list("101")},
+            "output": {"name": "001", "sequence": list("001")},
+        }])
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            f.write(seqpair_data)
+            seqpair_path = f.name
+        try:
+            result = subprocess.run(
+                [boss_path, "-C", machine_path, "-P", params_path, "-D", seqpair_path],
+                capture_output=True, text=True,
+            )
+            boss_counts = json.loads(result.stdout)  # {"p": 2, "q": 1}
+        finally:
+            os.unlink(seqpair_path)
+
+        # Map JAX per-transition counts to per-parameter counts.
+        # Extract weight expressions from the Machine JSON.
+        weight_exprs = []
+        for state in m.to_json()['state']:
+            for t in state.get('trans', []):
+                weight_exprs.append(t['weight'])
+
+        # For each parameter, sum the counts of transitions that use it
+        jax_param_counts = {}
+        for i, expr in enumerate(weight_exprs):
+            if isinstance(expr, str) and expr in params:
+                jax_param_counts[expr] = jax_param_counts.get(expr, 0.0) + float(counts[i])
+
+        for param, boss_val in boss_counts.items():
+            jax_val = jax_param_counts.get(param, 0.0)
+            assert jax_val == pytest.approx(boss_val, abs=0.01), \
+                f"count for '{param}': JAX={jax_val} != boss={boss_val}"
