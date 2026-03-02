@@ -208,6 +208,49 @@ linear chain structure:
 
 Complexity: O(Lo × K × S_td²) instead of O(Lo × S_p7² × S_td).
 
+## Parameterized (Neural) Transducer
+
+Position-dependent weight expressions for neural transducer constructs.
+The caller provides a Machine with weight expressions, PSWMs, and a dict
+mapping each parameter name to a `(Li+1, Lo+1)` tensor of scalar values.
+
+```python
+from machineboss.machine import Machine
+from machineboss.jax.jax_weight import ParameterizedMachine
+from machineboss.jax.dp_neural import neural_log_forward, neural_log_viterbi
+
+machine = Machine.from_file("transducer.json")  # with weight expressions
+pm = ParameterizedMachine.from_machine(machine)
+
+# Parameter tensors: each (Li+1, Lo+1), scalar at each DP position
+params = {
+    "p": jnp.full((Li + 1, Lo + 1), 0.9),    # or any position-dependent values
+    "q": jnp.full((Li + 1, Lo + 1), 0.1),
+}
+
+ll = neural_log_forward(pm, input_pswm, output_pswm, params)
+vit = neural_log_viterbi(pm, input_pswm, output_pswm, params)
+```
+
+At each cell (i, j), the transition tensor is built from `params[name][i, j]`
+by evaluating the machine's weight expressions with JAX-traced operations.
+JIT compiles the expression evaluation into the computation graph.
+
+Differentiable via `jax.grad` — enables training with neural network parameters:
+
+```python
+def loss(nn_params):
+    # Compute position-dependent transducer params from sequences via NN
+    p_tensor = neural_net(nn_params, input_seq, output_seq)
+    return -neural_log_forward(pm, input_pswm, output_pswm, {"p": p_tensor})
+
+grad = jax.grad(loss)(nn_params)
+```
+
+Uses PSWM-2D-DENSE-SIMPLE strategy (nested `jax.lax.scan`, no associative scan
+since silent closure varies by position). Fixed-iteration silent propagation
+for differentiability.
+
 ## Module structure
 
 | Module | Purpose |
@@ -227,6 +270,8 @@ Complexity: O(Lo × K × S_td²) instead of O(Lo × S_p7² × S_td).
 | `dp_2d_optimal.py` | 2D DP: anti-diagonal wavefront (scan + vmap) |
 | `fused.py` | Generic fused Plan7+transducer DP |
 | `fused_plan7.py` | Plan7-aware fused DP with nested scans |
+| `jax_weight.py` | Weight expression compiler (`ParameterizedMachine`) |
+| `dp_neural.py` | Parameterized 2D DP with position-dependent weights |
 
 ## Testing
 
@@ -243,3 +288,7 @@ Test categories:
 - **Backward[start] = Forward**: log-likelihood consistency
 - **Forward-Backward counts vs C++ `boss -C`**: per-parameter expected counts match
 - **Fused Plan7 vs generic fused**: matching log-likelihoods for HMMER profiles
+- **Neural = standard**: constant params match standard forward/viterbi
+- **Neural backward = forward**: backward[start] equals forward log-likelihood
+- **Neural grad**: JAX autodiff through position-dependent parameters
+- **Neural vs C++ boss**: constant-param neural matches `boss -L`

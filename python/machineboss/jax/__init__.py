@@ -29,3 +29,5 @@ from .forward import log_forward, log_forward_dense
 from .backward import log_backward_matrix, log_backward_dense
 from .viterbi import log_viterbi, log_viterbi_dense
 from .fused import FusedMachine, fused_log_forward, fused_log_viterbi
+from .jax_weight import ParameterizedMachine
+from .dp_neural import neural_log_forward, neural_log_viterbi, neural_log_backward_matrix
