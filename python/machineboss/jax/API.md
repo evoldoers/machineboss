@@ -1,0 +1,245 @@
+# Machine Boss JAX DP Algorithms
+
+GPU-accelerated Forward, Backward, and Viterbi algorithms for weighted
+finite-state transducers, implemented in JAX.
+
+## Algorithm Variants
+
+36 algorithm variants span 4 axes of variation:
+
+| Axis | Options | Description |
+|------|---------|-------------|
+| **Sequence** | TOK, PSWM | Observed tokens (one-hot) or position-specific weight matrix |
+| **Dimension** | 1D, 2D | Generator/recognizer (one sequence) or transducer (two sequences) |
+| **Kernel** | DENSE, SPARSE | Dense 4D tensor indexing or COO gather/scatter |
+| **Strategy** | SIMPLE, OPTIMAL | Sequential scan or parallel prefix / wavefront |
+
+SPARSE + OPTIMAL is excluded (requires sparse-sparse semiring matmul).
+Each combination supports Forward, Backward, and Viterbi = 36 total.
+
+All variants are JIT-compilable (no Python for-loops in any DP kernel).
+
+### Implementation structure
+
+| Strategy | Dimension | Implementation |
+|----------|-----------|----------------|
+| SIMPLE | 1D | `jax.lax.scan` over sequence positions |
+| SIMPLE | 2D | Outer `jax.lax.scan` over rows, inner `jax.lax.associative_scan` over columns |
+| OPTIMAL | 1D | `jax.lax.associative_scan` (parallel prefix) over transfer matrices |
+| OPTIMAL | 2D | Outer `jax.lax.scan` over anti-diagonals, inner `jax.vmap` over diagonal cells |
+
+## Main API
+
+### Forward algorithm
+
+```python
+from machineboss.jax import log_forward
+
+ll = log_forward(machine, input_seq=None, output_seq=None,
+                 strategy='auto', kernel='auto', length=None)
+```
+
+Computes log P(input, output | machine). Returns a scalar.
+
+### Viterbi algorithm
+
+```python
+from machineboss.jax import log_viterbi
+
+ll = log_viterbi(machine, input_seq=None, output_seq=None,
+                 strategy='auto', kernel='auto', length=None)
+```
+
+Computes log-probability of the most likely path. Returns a scalar.
+
+### Backward algorithm
+
+```python
+from machineboss.jax import log_backward_matrix
+
+bp = log_backward_matrix(machine, input_seq=None, output_seq=None,
+                         strategy='auto', kernel='auto', length=None)
+```
+
+Returns the full backward matrix (for Forward-Backward expected counts).
+
+### Forward-Backward expected counts
+
+```python
+from machineboss.jax.fwdback import log_likelihood_with_counts
+
+ll, counts = log_likelihood_with_counts(machine, input_seq, output_seq)
+```
+
+Returns (log-likelihood, per-transition expected counts).
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `machine` | `JAXMachine` | Machine with dense and/or sparse transition tensors |
+| `input_seq` | `jnp.ndarray`, `TokenSeq`, `PSWMSeq`, or `None` | Input sequence |
+| `output_seq` | `jnp.ndarray`, `TokenSeq`, `PSWMSeq`, or `None` | Output sequence |
+| `strategy` | `'auto'`, `'simple'`, `'optimal'` | DP strategy selection |
+| `kernel` | `'auto'`, `'dense'`, `'sparse'` | Transition kernel selection |
+| `length` | `int` or `None` | Real sequence length for padded sequences |
+
+**Auto-dispatch rules:**
+- `kernel='auto'`: uses `'dense'` if `machine.log_trans` is not None, else `'sparse'`
+- `strategy='auto'`: uses `'optimal'` for 1D dense, `'simple'` otherwise
+- 1D vs 2D: 1D if one sequence is `None`, 2D if both provided
+
+## Machine types
+
+### Building a JAXMachine
+
+```python
+from machineboss.machine import Machine
+from machineboss.eval import EvaluatedMachine
+from machineboss.jax.types import JAXMachine
+
+m = Machine.from_file("path/to/machine.json")
+em = EvaluatedMachine.from_machine(m, params={"p": 0.9})
+jm = JAXMachine.from_evaluated(em)
+```
+
+`JAXMachine` stores:
+- `log_trans`: Dense transition tensor `(n_in, n_out, n_states, n_states)`, or None
+- Sparse COO arrays: `src_states`, `dst_states`, `in_tokens`, `out_tokens`, `log_weights`
+- `n_states`, `n_input_tokens`, `n_output_tokens`
+
+Machine types are auto-detected:
+- **Generator**: no input alphabet → use `output_seq` only (1D)
+- **Recognizer**: no output alphabet → use `input_seq` only (1D)
+- **Transducer**: both alphabets → use both sequences (2D) or either (1D)
+
+## Sequence types
+
+### TokenSeq — observed tokens
+
+```python
+from machineboss.jax import TokenSeq
+
+seq = TokenSeq(jnp.array([1, 2, 1, 3]))  # token indices
+# or pass a plain jnp.ndarray — auto-wrapped by dispatch functions
+```
+
+Emission weights are one-hot in log-space: 0.0 for the observed token, -inf for others.
+
+### PSWMSeq — position-specific weight matrix
+
+```python
+from machineboss.jax import PSWMSeq
+
+log_probs = jnp.array([
+    [-0.1, -2.3, -2.3],  # position 0: mostly token 1
+    [-2.3, -0.1, -2.3],  # position 1: mostly token 2
+])
+seq = PSWMSeq(log_probs)  # shape (L, n_tokens_including_empty)
+```
+
+Column 0 is the empty (silent) token — should be -inf for observed sequences.
+Columns 1..n are log-probabilities for each alphabet symbol.
+
+One-hot PSWM is equivalent to TokenSeq (verified by tests).
+
+## Padding utilities
+
+JAX recompiles kernels for each distinct input shape. Padding sequences to
+a geometric-series bucket avoids excessive recompilation.
+
+```python
+from machineboss.jax import pad_length, pad_token_seq, pad_pswm_seq
+
+padded_len = pad_length(37)  # → 48 (next bucket)
+padded_seq, orig_len = pad_token_seq(tok_seq, padded_len)
+padded_pswm, orig_len = pad_pswm_seq(pswm_seq, padded_len)
+```
+
+**Auto-padding**: The dispatch functions (`log_forward`, etc.) auto-pad 1D sequences
+when `length` is not explicitly provided. This is invisible to the caller.
+
+## Semirings
+
+The same DP code handles Forward (sum-of-paths) and Viterbi (best-path) via semirings:
+
+```python
+from machineboss.jax import LOGSUMEXP, MAXPLUS
+
+# LOGSUMEXP: plus = logaddexp, zero = -inf  → Forward/Backward
+# MAXPLUS:   plus = maximum,   zero = -inf  → Viterbi
+```
+
+Internal engines accept a `semiring` parameter; the dispatch wrappers
+(`log_forward`, `log_viterbi`) select the appropriate one.
+
+## Fused Plan7 + Transducer
+
+### Generic fused (any generator + transducer)
+
+```python
+from machineboss.jax.fused import FusedMachine, fused_log_forward, fused_log_viterbi
+
+fused = FusedMachine.build(generator_em, transducer_em)
+ll = fused_log_forward(fused, output_seq)
+vit = fused_log_viterbi(fused, output_seq)
+```
+
+Avoids materializing the composite state space (like GeneWise).
+Uses `jax.lax.scan` over output positions with vectorized inner operations.
+
+### Plan7-aware fused (HMMER profile + transducer)
+
+```python
+from machineboss.hmmer import HmmerModel
+from machineboss.jax.fused_plan7 import FusedPlan7Machine, fused_plan7_log_forward
+
+with open("profile.hmm") as f:
+    hmmer = HmmerModel.read(f)
+fm = FusedPlan7Machine.build(hmmer, transducer_em)
+ll = fused_plan7_log_forward(fm, output_seq)
+```
+
+Takes `HmmerModel` directly (not a generic Machine) to exploit the Plan7
+linear chain structure:
+- Outer `jax.lax.scan` over output positions
+- Inner `jax.lax.scan` over core profile nodes k=1..K ({M, I, D} blocks)
+- Flanking states (N, C, E, J) handled separately
+
+Complexity: O(Lo × K × S_td²) instead of O(Lo × S_p7² × S_td).
+
+## Module structure
+
+| Module | Purpose |
+|--------|---------|
+| `forward.py` | `log_forward()` dispatch wrapper |
+| `backward.py` | `log_backward_matrix()` dispatch wrapper |
+| `viterbi.py` | `log_viterbi()` dispatch wrapper |
+| `fwdback.py` | Forward-Backward expected counts |
+| `semiring.py` | `LOGSUMEXP` and `MAXPLUS` semiring definitions |
+| `seq.py` | `TokenSeq`, `PSWMSeq`, padding utilities |
+| `types.py` | `JAXMachine` data class |
+| `kernel_dense.py` | Dense transition operations (propagate_silent, emit_step) |
+| `kernel_sparse.py` | Sparse COO transition operations |
+| `dp_1d_simple.py` | 1D DP via `jax.lax.scan` |
+| `dp_1d_optimal.py` | 1D DP via `jax.lax.associative_scan` |
+| `dp_2d_simple.py` | 2D DP: outer scan + inner associative scan |
+| `dp_2d_optimal.py` | 2D DP: anti-diagonal wavefront (scan + vmap) |
+| `fused.py` | Generic fused Plan7+transducer DP |
+| `fused_plan7.py` | Plan7-aware fused DP with nested scans |
+
+## Testing
+
+```bash
+cd python && ~/jax-env/bin/python -m pytest machineboss/ -v
+```
+
+Test categories:
+- **Ground truth**: all TOK variants compared against C++ `boss -L` / `boss -V`
+- **Cross-variant**: all variants for same (machine, sequences) agree within 0.01 nats
+- **PSWM = TOK**: one-hot PSWM matches TOK exactly
+- **1D = 2D**: 1D generator matches 2D with empty input
+- **Viterbi ≤ Forward**: invariant check
+- **Backward[start] = Forward**: log-likelihood consistency
+- **Forward-Backward counts vs C++ `boss -C`**: per-parameter expected counts match
+- **Fused Plan7 vs generic fused**: matching log-likelihoods for HMMER profiles
