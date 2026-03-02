@@ -24,8 +24,23 @@ with pure JavaScript CPU fallback.</p>
 
 <pre><code>import { MachineBoss } from './machineboss-gpu.mjs';
 
-// Load a machine (JSON format) and bind parameters
-const mb = await MachineBoss.create(machineJSON, { p: 0.9, q: 0.1 });
+// A machine is a JSON object describing a weighted finite-state transducer.
+// This is the binary symmetric channel: it transduces input bits to output
+// bits, preserving each bit with probability p and flipping with probability q.
+const bitnoise = {
+  "state": [{
+    "id": "S",
+    "trans": [
+      { "in": "0", "out": "0", "to": "S", "weight": "p" },
+      { "in": "0", "out": "1", "to": "S", "weight": "q" },
+      { "in": "1", "out": "1", "to": "S", "weight": "p" },
+      { "in": "1", "out": "0", "to": "S", "weight": "q" }
+    ]
+  }]
+};
+
+// Create instance, binding parameter values
+const mb = await MachineBoss.create(bitnoise, { p: 0.9, q: 0.1 });
 console.log('Backend:', mb.backend); // 'webgpu' or 'cpu'
 
 // Tokenize sequences
@@ -47,6 +62,66 @@ const ll1d = await mb.forward(null, output);
 // Cleanup
 mb.destroy();
 </code></pre>
+
+<h2>Machine JSON Format</h2>
+
+<p>The <code>machineJSON</code> parameter is a
+<a href="../../../doc/json-format.html">Machine Boss JSON transducer</a>&mdash;a
+JSON object with a <code>"state"</code> array describing a weighted finite-state transducer.
+The first state is the start state; the last is the end state (a single-state machine
+is both start and end). Each state has an <code>"id"</code> and a <code>"trans"</code> array
+of transitions.</p>
+
+<p>Each transition can have:</p>
+<table>
+<tr><th>Field</th><th>Description</th></tr>
+<tr><td><code>"to"</code></td><td>Destination state id (required)</td></tr>
+<tr><td><code>"in"</code></td><td>Input symbol (omit for silent/output-only transitions)</td></tr>
+<tr><td><code>"out"</code></td><td>Output symbol (omit for silent/input-only transitions)</td></tr>
+<tr><td><code>"weight"</code></td><td>Transition weight: a number, a parameter name (string), or an expression object (default: 1)</td></tr>
+</table>
+
+<p>Weight expressions support arithmetic, logarithms, and named parameters:</p>
+<table>
+<tr><th>Expression</th><th>Meaning</th></tr>
+<tr><td><code>0.9</code></td><td>Constant</td></tr>
+<tr><td><code>"p"</code></td><td>Named parameter (bound via the <code>params</code> argument)</td></tr>
+<tr><td><code>{"*": ["p", "q"]}</code></td><td>Product: p &times; q</td></tr>
+<tr><td><code>{"+": [1, "x"]}</code></td><td>Sum: 1 + x</td></tr>
+<tr><td><code>{"-": [1, "p"]}</code></td><td>Difference: 1 &minus; p</td></tr>
+<tr><td><code>{"/": ["a", "b"]}</code></td><td>Quotient: a / b</td></tr>
+<tr><td><code>{"log": "p"}</code></td><td>Natural log: ln(p)</td></tr>
+<tr><td><code>{"exp": "x"}</code></td><td>Exponential: e<sup>x</sup></td></tr>
+<tr><td><code>{"not": "p"}</code></td><td>Complement: 1 &minus; p</td></tr>
+</table>
+
+<h3>Example machines</h3>
+
+<p><b>Binary symmetric channel</b> (single-state transducer):</p>
+<pre><code>{"state": [
+  {"id":"S", "trans":[
+    {"in":"0", "out":"0", "to":"S", "weight":"p"},
+    {"in":"0", "out":"1", "to":"S", "weight":"q"},
+    {"in":"1", "out":"1", "to":"S", "weight":"p"},
+    {"in":"1", "out":"0", "to":"S", "weight":"q"}
+  ]}
+]}</code></pre>
+
+<p><b>Unit indel model</b> (two states with silent, insert, delete, and match transitions):</p>
+<pre><code>{"state": [
+  {"id":"S", "trans":[
+    {"out":"x", "to":"S", "weight":"ins"},
+    {"in":"x", "to":"S", "weight":{"*":["no_ins","del"]}},
+    {"in":"x", "out":"x", "to":"S", "weight":{"*":["no_ins","no_del"]}},
+    {"to":"E", "weight":"no_ins"}
+  ]},
+  {"id":"E"}
+]}</code></pre>
+
+<p>The <code>boss</code> CLI can generate machines from many sources (regex, HMMER profiles,
+presets, etc.) and save them as JSON. See the
+<a href="../../../doc/json-format.html">JSON Format Reference</a> and
+<a href="../../../doc/expressions.html">Expression Language</a> for full details.</p>
 
 <h2>API Reference</h2>
 
