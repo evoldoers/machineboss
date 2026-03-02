@@ -199,6 +199,7 @@ int main (int argc, char** argv) {
       ("js", "generate JavaScript dynamic programming code")
       ("showcells", "include debugging output in generated code")
       ("compileviterbi", "compile Viterbi instead of Forward")
+      ("wgsl", "generate WGSL compute shader and ES module for WebGPU")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -702,9 +703,12 @@ int main (int argc, char** argv) {
       compiler.useMaxReduce = vm.count("compileviterbi");
       compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
-    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") < 2, "Options --cpp32, --cpp64 and --js are mutually incompatible; choose a target language");
+    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") < 2, "Options --cpp32, --cpp64, --js, and --wgsl are mutually incompatible; choose a target language");
     if (vm.count("codegen")) {
-      if (vm.count("js")) {
+      if (vm.count("wgsl")) {
+	const string outputDir = vm.at("codegen").as<string>();
+	WGSLCompiler::compile (machine, outputDir.c_str());
+      } else if (vm.count("js")) {
 	JavaScriptCompiler compiler;
 	compileMachine (compiler);
       } else {

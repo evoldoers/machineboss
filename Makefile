@@ -710,6 +710,17 @@ WRAPTEST = $(TEST)
 
 test: $(BOSSTARGET) $(TESTS)
 
+# WebGPU tests (CPU fallback, Node.js)
+WEBGPU_TESTS = test-webgpu-cpu test-webgpu-agreement
+
+test-webgpu-cpu:
+	@node js/webgpu/test/test-cpu.mjs
+
+test-webgpu-agreement:
+	@node js/webgpu/test/test-gpu-cpu-agreement.mjs
+
+test-webgpu: $(WEBGPU_TESTS)
+
 # Schema validator
 ajv:
 	npm install ajv-cli

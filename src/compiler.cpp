@@ -839,3 +839,283 @@ string Compiler::expr2string (const WeightExpr& w, const map<string,FuncIndex>& 
   return expr.str();
 }
 
+// ============================================================
+// WGSL Compiler
+// ============================================================
+
+static string wgslExpr (const WeightExpr& w, const map<string,Compiler::FuncIndex>& funcIdx) {
+  ostringstream expr;
+  const ExprType op = w->type;
+  switch (op) {
+  case ExprType::Null: expr << "0.0"; break;
+  case ExprType::Int: expr << w->args.intValue << ".0"; break;
+  case ExprType::Dbl: expr << w->args.doubleValue; break;
+  case ExprType::Param:
+    {
+      const string& n (*w->args.param);
+      if (funcIdx.count(n))
+	expr << "params[" << funcIdx.at(n) << "u]";
+      else
+	expr << n;  // unresolved param
+    }
+    break;
+  case ExprType::Log:
+    expr << "log(" << wgslExpr(w->args.arg,funcIdx) << ")";
+    break;
+  case ExprType::Exp:
+    expr << "exp(" << wgslExpr(w->args.arg,funcIdx) << ")";
+    break;
+  case ExprType::Pow:
+    expr << "pow(" << wgslExpr(w->args.binary.l,funcIdx) << ", " << wgslExpr(w->args.binary.r,funcIdx) << ")";
+    break;
+  default:
+    {
+      string opcode;
+      if (op == Mul) opcode = "*";
+      else if (op == Div) opcode = "/";
+      else if (op == Sub) opcode = "-";
+      else if (op == Add) opcode = "+";
+      expr << "(" << wgslExpr(w->args.binary.l,funcIdx)
+	   << " " << opcode << " "
+	   << wgslExpr(w->args.binary.r,funcIdx) << ")";
+    }
+    break;
+  }
+  return expr.str();
+}
+
+static string mjsExpr (const WeightExpr& w, const map<string,Compiler::FuncIndex>& funcIdx) {
+  ostringstream expr;
+  const ExprType op = w->type;
+  switch (op) {
+  case ExprType::Null: expr << "0"; break;
+  case ExprType::Int: expr << w->args.intValue; break;
+  case ExprType::Dbl: expr << w->args.doubleValue; break;
+  case ExprType::Param:
+    {
+      const string& n (*w->args.param);
+      if (funcIdx.count(n))
+	expr << "params[" << funcIdx.at(n) << "]";
+      else
+	expr << n;
+    }
+    break;
+  case ExprType::Log:
+    expr << "Math.log(" << mjsExpr(w->args.arg,funcIdx) << ")";
+    break;
+  case ExprType::Exp:
+    expr << "Math.exp(" << mjsExpr(w->args.arg,funcIdx) << ")";
+    break;
+  case ExprType::Pow:
+    expr << "Math.pow(" << mjsExpr(w->args.binary.l,funcIdx) << ", " << mjsExpr(w->args.binary.r,funcIdx) << ")";
+    break;
+  default:
+    {
+      string opcode;
+      if (op == Mul) opcode = "*";
+      else if (op == Div) opcode = "/";
+      else if (op == Sub) opcode = "-";
+      else if (op == Add) opcode = "+";
+      expr << "(" << mjsExpr(w->args.binary.l,funcIdx)
+	   << " " << opcode << " "
+	   << mjsExpr(w->args.binary.r,funcIdx) << ")";
+    }
+    break;
+  }
+  return expr.str();
+}
+
+void Compiler::compileWGSL (const Machine& m, const char* dir) const {
+  WGSLCompiler::compile (m, dir);
+}
+
+void WGSLCompiler::compile (const Machine& m, const char* dir) {
+  // Process machine: convert to waiting form, get alphabet info
+  const JavaScriptCompiler jsc;  // just for MachineInfo analysis
+  const Compiler::MachineInfo info (jsc, m);
+  const Machine& wm (info.wm);
+  const size_t S = wm.nStates();
+
+  const auto& inAlph = info.eval.inputTokenizer.tok2sym;
+  const auto& outAlph = info.eval.outputTokenizer.tok2sym;
+  const size_t nIn = inAlph.size();
+  const size_t nOut = outAlph.size();
+
+  // Build funcIdx for parameter evaluation
+  const set<string> paramNames = wm.params();
+  map<string,Compiler::FuncIndex> funcIdx;
+  for (const auto& p: paramNames) {
+    const auto f = funcIdx.size();
+    funcIdx[p] = f;
+  }
+  for (const auto& f_d: wm.funcs.defs) {
+    if (!funcIdx.count(f_d.first)) {
+      const auto f = funcIdx.size();
+      funcIdx[f_d.first] = f;
+    }
+  }
+
+  // Generate machine metadata JSON
+  {
+    const string metaFilename = string(dir) + "/machine-meta.json";
+    ofstream meta (metaFilename);
+    meta << "{" << endl;
+    meta << "  \"nStates\": " << S << "," << endl;
+    meta << "  \"nInputTokens\": " << nIn << "," << endl;
+    meta << "  \"nOutputTokens\": " << nOut << "," << endl;
+    meta << "  \"nParams\": " << funcIdx.size() << "," << endl;
+
+    // Input alphabet
+    meta << "  \"inputAlphabet\": [";
+    for (size_t i = 0; i < nIn; ++i)
+      meta << (i ? ", " : "") << "\"" << escaped_str(inAlph[i]) << "\"";
+    meta << "]," << endl;
+
+    // Output alphabet
+    meta << "  \"outputAlphabet\": [";
+    for (size_t i = 0; i < nOut; ++i)
+      meta << (i ? ", " : "") << "\"" << escaped_str(outAlph[i]) << "\"";
+    meta << "]," << endl;
+
+    // Parameter names and their indices
+    meta << "  \"params\": {";
+    bool first = true;
+    for (const auto& p_f: funcIdx) {
+      if (!first) meta << ", ";
+      meta << "\"" << escaped_str(p_f.first) << "\": " << p_f.second;
+      first = false;
+    }
+    meta << "}," << endl;
+
+    // State names
+    meta << "  \"stateNames\": [";
+    for (StateIndex s = 0; s < S; ++s)
+      meta << (s ? ", " : "") << wm.state[s].name;
+    meta << "]" << endl;
+
+    meta << "}" << endl;
+  }
+
+  const auto sortedDefs = WeightAlgebra::toposortParams (wm.funcs.defs);
+
+  // Generate WGSL shader for filling the dense log_trans tensor
+  {
+    const string wgslFilename = string(dir) + "/fill-log-trans.wgsl";
+    ofstream wgsl (wgslFilename);
+    wgsl << "// Machine-specific WGSL: fills dense log_trans tensor from parameters." << endl;
+    wgsl << "// Generated by MachineBoss WGSLCompiler." << endl;
+    wgsl << "//" << endl;
+    wgsl << "// S = " << S << ", nIn = " << nIn << ", nOut = " << nOut << endl;
+    wgsl << endl;
+
+    // Constants
+    wgsl << "const S: u32 = " << S << "u;" << endl;
+    wgsl << "const N_IN: u32 = " << nIn << "u;" << endl;
+    wgsl << "const N_OUT: u32 = " << nOut << "u;" << endl;
+    wgsl << "const NEG_INF: f32 = -3.402823466e+38f;" << endl;
+    wgsl << endl;
+
+    // Bindings
+    wgsl << "@group(0) @binding(0) var<storage, read> params: array<f32>;        // (" << funcIdx.size() << ",) parameter values" << endl;
+    wgsl << "@group(0) @binding(1) var<storage, read_write> log_trans: array<f32>; // (N_IN * N_OUT * S * S)" << endl;
+    wgsl << endl;
+
+    // Main function: single invocation fills the entire tensor
+    wgsl << "@compute @workgroup_size(1)" << endl;
+    wgsl << "fn main() {" << endl;
+
+    // Evaluate function definitions (topologically sorted)
+    for (const auto& p: sortedDefs) {
+      wgsl << "  let p" << funcIdx.at(p) << " = " << wgslExpr(wm.funcs.defs.at(p), funcIdx) << ";" << endl;
+    }
+
+    // Initialize tensor to NEG_INF
+    wgsl << "  let total = N_IN * N_OUT * S * S;" << endl;
+    wgsl << "  for (var i = 0u; i < total; i++) {" << endl;
+    wgsl << "    log_trans[i] = NEG_INF;" << endl;
+    wgsl << "  }" << endl;
+
+    // Fill in transition weights
+    for (StateIndex s = 0; s < S; ++s) {
+      for (const auto& trans: wm.state[s].trans) {
+	const auto dst = trans.dest;
+	const auto inTok = trans.in.empty() ? 0 : info.eval.inputTokenizer.sym2tok.at(trans.in);
+	const auto outTok = trans.out.empty() ? 0 : info.eval.outputTokenizer.sym2tok.at(trans.out);
+
+	const string weightExpr = wgslExpr(trans.weight, funcIdx);
+	const string logWeightExpr = "log(" + weightExpr + ")";
+
+	wgsl << "  // state " << s << " -> " << dst;
+	if (!trans.in.empty()) wgsl << " in:" << trans.in;
+	if (!trans.out.empty()) wgsl << " out:" << trans.out;
+	wgsl << endl;
+	wgsl << "  log_trans[" << ((inTok * nOut + outTok) * S + s) * S + dst << "u] = " << logWeightExpr << ";" << endl;
+      }
+    }
+
+    wgsl << "}" << endl;
+  }
+
+  // Generate machine.mjs: ES module with machine constants and log_trans builder
+  {
+    const string mjsFilename = string(dir) + "/machine.mjs";
+    ofstream mjs (mjsFilename);
+    mjs << "// Machine-specific ES module generated by MachineBoss WGSLCompiler." << endl;
+    mjs << "// Provides buildLogTrans(params) for the CPU fallback path." << endl;
+    mjs << endl;
+    mjs << "export const S = " << S << ";" << endl;
+    mjs << "export const N_IN = " << nIn << ";" << endl;
+    mjs << "export const N_OUT = " << nOut << ";" << endl;
+    mjs << endl;
+
+    mjs << "export const INPUT_ALPHABET = [";
+    for (size_t i = 0; i < nIn; ++i)
+      mjs << (i ? ", " : "") << "'" << escaped_str(inAlph[i]) << "'";
+    mjs << "];" << endl;
+
+    mjs << "export const OUTPUT_ALPHABET = [";
+    for (size_t i = 0; i < nOut; ++i)
+      mjs << (i ? ", " : "") << "'" << escaped_str(outAlph[i]) << "'";
+    mjs << "];" << endl;
+    mjs << endl;
+
+    // Parameter name list
+    mjs << "export const PARAM_NAMES = [";
+    {
+      // Sort by index
+      vguard<string> sortedNames (funcIdx.size());
+      for (const auto& p_f: funcIdx)
+	sortedNames[p_f.second] = p_f.first;
+      for (size_t i = 0; i < sortedNames.size(); ++i)
+	mjs << (i ? ", " : "") << "'" << escaped_str(sortedNames[i]) << "'";
+    }
+    mjs << "];" << endl;
+    mjs << endl;
+
+    // buildLogTrans function
+    mjs << "export function buildLogTrans(params) {" << endl;
+    mjs << "  const logTrans = new Float64Array(" << nIn * nOut * S * S << ").fill(-Infinity);" << endl;
+
+    // Evaluate sorted params
+    for (const auto& p: sortedDefs) {
+      mjs << "  const p" << funcIdx.at(p) << " = ";
+      mjs << mjsExpr(wm.funcs.defs.at(p), funcIdx) << ";" << endl;
+    }
+
+    // Fill transitions
+    for (StateIndex s = 0; s < S; ++s) {
+      for (const auto& trans: wm.state[s].trans) {
+	const auto dst = trans.dest;
+	const auto inTok = trans.in.empty() ? 0 : info.eval.inputTokenizer.sym2tok.at(trans.in);
+	const auto outTok = trans.out.empty() ? 0 : info.eval.outputTokenizer.sym2tok.at(trans.out);
+	const size_t flatIdx = ((inTok * nOut + outTok) * S + s) * S + dst;
+
+	mjs << "  logTrans[" << flatIdx << "] = Math.log(" << mjsExpr(trans.weight, funcIdx) << ");" << endl;
+      }
+    }
+
+    mjs << "  return logTrans;" << endl;
+    mjs << "}" << endl;
+  }
+}
+

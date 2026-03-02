@@ -118,6 +118,8 @@ struct Compiler {
   string privateHeaderFilename (const char* dir, const char* funcName) const;
 
   void compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* dir = DefaultCodeGenDir, const char* funcName = DefaultForwardFunctionName) const;
+
+  void compileWGSL (const Machine&, const char* dir = DefaultCodeGenDir) const;
 };
 
 struct JavaScriptCompiler : Compiler {
@@ -168,6 +170,10 @@ struct CPlusPlusCompiler : Compiler {
   string include (const string& filename) const;
   string declareFunction (const string& proto) const;
   string initStringArray (const string& arrayName, const vguard<string>& values) const;
+};
+
+struct WGSLCompiler {
+  static void compile (const Machine&, const char* dir = DefaultCodeGenDir);
 };
 
 }  // end namespace

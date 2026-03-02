@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MachineBoss WebGPU API</title>
+<style>
+  body { font-family: sans-serif; max-width: 800px; margin: 2em auto; line-height: 1.5; }
+  code, pre { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+  pre { padding: 1em; overflow-x: auto; }
+  h1 { border-bottom: 2px solid #333; padding-bottom: 0.3em; }
+  h2 { border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 6px 12px; text-align: left; }
+  th { background: #f4f4f4; }
+</style>
+</head>
+<body>
+<h1>MachineBoss WebGPU API</h1>
+
+<p>GPU-accelerated dynamic programming for weighted finite-state transducers,
+with pure JavaScript CPU fallback.</p>
+
+<h2>Quick Start</h2>
+
+<pre><code>import { MachineBoss } from './machineboss-gpu.mjs';
+
+// Load a machine (JSON format) and bind parameters
+const mb = await MachineBoss.create(machineJSON, { p: 0.9, q: 0.1 });
+console.log('Backend:', mb.backend); // 'webgpu' or 'cpu'
+
+// Tokenize sequences
+const input  = mb.tokenize('001', 'input');   // Uint32Array
+const output = mb.tokenize('101', 'output');
+
+// Forward log-likelihood
+const ll = await mb.forward(input, output);
+
+// Viterbi best path
+const { score, path } = await mb.viterbi(input, output);
+
+// Forward-Backward posteriors
+const { logLikelihood, posteriors } = await mb.posteriors(input, output);
+
+// 1D: generator (input=null) or recognizer (output=null)
+const ll1d = await mb.forward(null, output);
+
+// Cleanup
+mb.destroy();
+</code></pre>
+
+<h2>API Reference</h2>
+
+<h3><code>MachineBoss.create(machineJSON, params?, options?)</code></h3>
+<p>Factory method. Returns a <code>Promise&lt;MachineBoss&gt;</code>.</p>
+<table>
+<tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>machineJSON</code></td><td>Object</td><td>Machine Boss JSON transducer</td></tr>
+<tr><td><code>params</code></td><td>Object</td><td>Parameter name &rarr; value map</td></tr>
+<tr><td><code>options.backend</code></td><td>string</td><td><code>'auto'</code> (default), <code>'webgpu'</code>, or <code>'cpu'</code></td></tr>
+</table>
+
+<h3><code>mb.forward(inputTokens, outputTokens)</code></h3>
+<p>Returns <code>Promise&lt;number&gt;</code> &mdash; log P(input, output | machine).</p>
+
+<h3><code>mb.viterbi(inputTokens, outputTokens)</code></h3>
+<p>Returns <code>Promise&lt;{score, path}&gt;</code>. <code>path</code> is an array of
+<code>{state, inputToken, outputToken}</code> objects.</p>
+
+<h3><code>mb.posteriors(inputTokens, outputTokens)</code></h3>
+<p>Returns <code>Promise&lt;{logLikelihood, posteriors}&gt;</code>.
+<code>posteriors</code> is a <code>Float32Array</code> of shape
+<code>(Li+1)*(Lo+1)*S</code> (2D) or <code>(L+1)*S</code> (1D), row-major.</p>
+
+<h3><code>mb.tokenize(seq, direction)</code></h3>
+<p>Converts a symbol sequence (string or array) to <code>Uint32Array</code> of 1-based token indices.
+<code>direction</code> is <code>'input'</code> or <code>'output'</code>.</p>
+
+<h3><code>mb.destroy()</code></h3>
+<p>Releases GPU resources.</p>
+
+<h2>Architecture</h2>
+
+<h3>1D: Transfer-Matrix Parallel Prefix Scan</h3>
+<p>For generators (input=null) or recognizers (output=null), the forward DP is
+a prefix product of S&times;S transfer matrices under the log-semiring.
+This gives O(log L) parallel depth on GPU via a Hillis-Steele scan.</p>
+<ol>
+<li>Compute silent closure S* on CPU</li>
+<li>Build per-position transfer matrix M[p] = S* &sdot; Emit[token_p] &sdot; S* on GPU</li>
+<li>Parallel prefix scan of M matrices on GPU</li>
+<li>Extract forward/backward vectors from prefix/suffix products</li>
+</ol>
+
+<h3>2D: Anti-Diagonal Wavefront</h3>
+<p>For transducers, the DP has 2D dependencies. We dispatch one compute shader
+per anti-diagonal d = i + o. Each thread computes one cell independently,
+combining match (i-1,o-1), insert (i-1,o), and delete (i,o-1) predecessors.</p>
+
+<h3>CPU Fallback</h3>
+<p>Pure JavaScript with <code>Float64Array</code> for better precision.
+Same API, wrapped in Promises. Sequential O(L&times;S&sup2;) for 1D,
+O(Li&times;Lo&times;S&sup2;) for 2D.</p>
+
+<h2>Numeric Representation</h2>
+
+<table>
+<tr><th>Backend</th><th>Type</th><th>Precision</th></tr>
+<tr><td>GPU</td><td>f32</td><td>~7 decimal digits</td></tr>
+<tr><td>CPU</td><td>Float64Array</td><td>~15 decimal digits</td></tr>
+</table>
+<p>GPU vs CPU agreement tolerance: 1e-4.</p>
+
+<h2>WGSL Code Generation</h2>
+<p>The <code>boss</code> CLI can generate machine-specific WGSL shaders:</p>
+<pre><code>bin/boss machine.json --codegen output_dir --wgsl</code></pre>
+<p>This produces:</p>
+<ul>
+<li><code>fill-log-trans.wgsl</code> &mdash; WGSL shader to fill the dense log_trans tensor from parameters</li>
+<li><code>machine.mjs</code> &mdash; ES module with machine constants and <code>buildLogTrans(params)</code> for CPU</li>
+<li><code>machine-meta.json</code> &mdash; Machine metadata (state count, alphabets, parameter names)</li>
+</ul>
+
+<h2>Testing</h2>
+<pre><code># CPU fallback tests (Node.js)
+node js/webgpu/test/test-cpu.mjs
+
+# GPU-CPU agreement (Node.js, CPU-only mode)
+node js/webgpu/test/test-gpu-cpu-agreement.mjs
+
+# WebGPU tests (requires Chromium with WebGPU)
+npx playwright test js/webgpu/test/test-webgpu.mjs
+</code></pre>
+
+<h2>Browser Compatibility</h2>
+<table>
+<tr><th>Browser</th><th>WebGPU</th><th>CPU Fallback</th></tr>
+<tr><td>Chrome 113+</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Edge 113+</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Firefox 120+</td><td>Behind flag</td><td>Yes</td></tr>
+<tr><td>Safari 17.4+</td><td>Partial</td><td>Yes</td></tr>
+<tr><td>Node.js 18+</td><td>No*</td><td>Yes</td></tr>
+</table>
+<p>* Node.js WebGPU support via <code>@aspect-build/webgpu</code> or Dawn bindings.</p>
+
+</body>
+</html>
