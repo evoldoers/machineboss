@@ -4,33 +4,16 @@ MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
 
 # Pseudotargets that control compilation
-USING_EMSCRIPTEN = $(findstring emscripten,$(MAKECMDGOALS))
 IS_32BIT = $(findstring 32bit,$(MAKECMDGOALS))
 IS_DEBUG = $(findstring debug,$(MAKECMDGOALS))
 IS_UNOPTIMIZED = $(findstring unoptimized,$(MAKECMDGOALS))
 
-# C++ compiler: Emscripten, Clang, or GCC?
-ifneq (,$(USING_EMSCRIPTEN))
-CPP = emcc
-else
-# try clang++, fall back to g++
+# C++ compiler: try clang++, fall back to g++
 CPP = clang++
 ifeq (, $(shell which $(CPP)))
 CPP = g++
 endif
-endif
 
-# If using emscripten, we need to compile gsl-js ourselves
-ifneq (,$(USING_EMSCRIPTEN))
-GSL_PREFIX = gsl-js
-GSL_SOURCE = $(GSL_PREFIX)/gsl-js
-GSL_LIB = $(GSL_PREFIX)/lib
-GSL_FLAGS = -I$(GSL_SOURCE)
-GSL_LIBS =
-GSL_SUBDIRS = vector matrix utils linalg blas cblas block err multimin permutation sys poly
-GSL_OBJ_FILES = $(foreach dir,$(GSL_SUBDIRS),$(wildcard $(GSL_SOURCE)/$(dir)/*.o))
-GSL_DEPS = $(GSL_LIB)
-else
 GSL_LIB =
 GSL_DEPS =
 GSL_OBJ_FILES =
@@ -54,16 +37,8 @@ GSL_LIBS = $(shell pkg-config --libs gsl)
 ifeq (, $(GSL_LIBS))
 GSL_LIBS = -L$(GSL_PREFIX)/lib -lgsl -lgslcblas
 endif
-endif
 
-# If using emscripten, don't link to Boost
 BOOST_PROGRAM_OPTIONS = program_options
-ifneq (,$(USING_EMSCRIPTEN))
-BOOST_FLAGS = -s USE_BOOST_HEADERS=1
-BOOST_LIBS = -s USE_BOOST_HEADERS=1
-BOOST_OBJ_FILES = $(subst $(BOOST_PROGRAM_OPTIONS)/src/,obj/boost/,$(subst .cpp,.o,$(wildcard $(BOOST_PROGRAM_OPTIONS)/src/*.cpp)))
-BOOST_DEPS = $(BOOST_PROGRAM_OPTIONS)
-else
 BOOST_OBJ_FILES =
 BOOST_DEPS =
 # Try to figure out where Boost is
@@ -87,7 +62,6 @@ BOOST_LIBS =
 ifneq (,$(BOOST_PREFIX))
 BOOST_FLAGS := -I$(BOOST_PREFIX)/include
 BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_$(BOOST_PROGRAM_OPTIONS)
-endif
 endif
 
 # install dir
@@ -116,22 +90,9 @@ CPP_FLAGS = -std=c++11 -g -O3
 endif
 endif
 
-ifneq (,$(USING_EMSCRIPTEN))
-LD_FLAGS =
-else
 LD_FLAGS = -lstdc++ -lm
-endif
-
 CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
-LD_FLAGS += $(ALL_LIBS)
-
-ifneq (,$(USING_EMSCRIPTEN))
-EMCC_FLAGS = -s USE_ZLIB=1 -s EXTRA_EXPORTED_RUNTIME_METHODS="['FS', 'callMain']" -s ALLOW_MEMORY_GROWTH=1 --pre-js emcc/pre.js
-CPP_FLAGS += $(EMCC_FLAGS)
-LD_FLAGS += $(EMCC_FLAGS)
-else
-LD_FLAGS += -lz
-endif
+LD_FLAGS += $(ALL_LIBS) -lz
 
 # files
 CPP_FILES = $(wildcard src/*.cpp)
@@ -148,19 +109,11 @@ SH = /bin/sh
 BOSS = boss
 LIBTARGET = libboss.a
 
-ifneq (,$(USING_EMSCRIPTEN))
-WRAP = node wasm/cmdwrap.js
-BOSSTARGET = wasm/boss.js
-WRAPBOSS = $(WRAP) $(BOSSTARGET)
-TESTSUFFIX = .js
-LIBTARGETS =
-else
 WRAP =
 BOSSTARGET = bin/$(BOSS)
 WRAPBOSS = $(BOSSTARGET)
 TESTSUFFIX =
 LIBTARGETS = $(LIBTARGET)
-endif
 
 all: $(BOSS)
 
@@ -177,7 +130,7 @@ install-lib: $(LIBTARGET)
 	cp $(LIBTARGET) $(INSTALL_LIB)
 
 # Main build rules
-bin/% wasm/%.js: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_DEPS) $(BOOST_OBJ_FILES)
+bin/%: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_DEPS) $(BOOST_OBJ_FILES)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
 
@@ -189,20 +142,14 @@ obj/%.o: target/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
-obj/boost/%.o: $(BOOST_PROGRAM_OPTIONS) $(BOOST_PROGRAM_OPTIONS)/src/%.cpp
-	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(CPP_FLAGS) -c -o $@ $(BOOST_PROGRAM_OPTIONS)/src/$*.cpp
-
 t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp $(GSL_DEPS) $(BOOST_OBJ_FILES)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@$(TESTSUFFIX) obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
-	mv $@$(TESTSUFFIX) $@
+	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
 
 t/codegen/%: $(OBJ_FILES) obj/%.o
-	$(MAKE) $(USING_EMSCRIPTEN) `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`
+	$(MAKE) `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@$(TESTSUFFIX) $^ `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`
-	mv $@$(TESTSUFFIX) $@
+	$(CPP) $(LD_FLAGS) -o $@ $^ `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`
 
 obj/%.o: t/src/%.cpp
 	@test -e $(dir $@) || mkdir -p $(dir $@)
@@ -210,9 +157,6 @@ obj/%.o: t/src/%.cpp
 
 # Top-level target
 $(BOSS): bin/$(BOSS)
-
-# Top-level target (emscripten)
-emscripten: $(BOSSTARGET)
 
 # Library target
 $(LIBTARGET): $(OBJ_FILES)
@@ -224,22 +168,10 @@ boss-with-lib: $(LIBTARGET) obj/boss.o
 
 # Clean
 clean:
-	rm -rf bin/$(BOSS) wasm/$(BOSS).js t/bin/* obj/*
+	rm -rf bin/$(BOSS) t/bin/* obj/*
 
 # Fake pseudotargets
 debug unoptimized 32bit:
-
-# emscripten source files
-# gsl-js
-$(GSL_LIB):
-	mkdir $(GSL_PREFIX)
-	cd $(GSL_PREFIX); git clone https://github.com/GSL-for-JS/gsl-js.git
-	cd $(GSL_SOURCE); emconfigure ./configure --prefix=$(abspath $(CURDIR)/$(GSL_PREFIX)); emmake make -k install
-
-# boost::program_options
-$(BOOST_PROGRAM_OPTIONS):
-	git clone https://github.com/boostorg/program_options.git
-	@echo Boost library ($(BOOST_PROGRAM_OPTIONS)) downloaded. Run $(MAKE) again to build
 
 # Schemas, presets, grammars, and any other autogenerated source files
 # The relevant pseudotargets are generate-schemas, generate-presets, and generate-grammars (biomake required)
@@ -539,7 +471,7 @@ test-fb-bitnoise-params-tiny: t/bin/testcounts
 	@$(WRAPTEST) t/bin/testcounts t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/expect/fwdback-bitnoise-params-tiny.json
 
 test-max-bitnoise-params-tiny: t/bin/testmaximize
-	@$(TEST) python3 t/roundfloats.py 4 $(WRAP) t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
+	@$(TEST) python3 t/roundfloats.py 4 t/bin/testmaximize t/machine/bitnoise.json t/io/params.json t/io/tiny.json t/io/pqcons.json t/expect/max-bitnoise-params-tiny.json
 
 test-fit-bitnoise-seqpairlist:
 	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) t/machine/bitnoise.json -N t/io/pqcons.json -D t/io/seqpairlist.json -T t/expect/fit-bitnoise-seqpairlist.json
@@ -611,19 +543,19 @@ test-101-bitstutternoise-0011:
 	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAPBOSS) --generate-json t/io/seq101.json -m t/machine/bitstutter-noise.json --recognize-chars 0011 -P t/io/params.json -N t/io/pqcons.json -V t/expect/101-bitstutternoise-vit-0011.json
 
 test-101-bitnoise-001-compiled: t/codegen/bitnoise/prof/test
-	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $< t/csv/prof101.csv t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq: t/codegen/bitnoise/seq/test
-	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $< 101 001 t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-seq2prof: t/codegen/bitnoise/seq2prof/test
-	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $< 101 t/csv/prof001.csv t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitstutternoise-0011-compiled-seq-forward: t/codegen/bitstutter-noise/seq/test
-	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-fwd-0011.json
+	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-fwd-0011.json
 
 test-101-bitstutternoise-0011-compiled-seq-viterbi: t/codegen/bitstutter-noise/seqvit/test
-	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $(WRAP) $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-vit-0011.json
+	@$(TEST) python3 t/roundfloats.py 3 js/stripnames.js $< 101 0011 t/io/params.json t/expect/101-bitstutternoise-vit-0011.json
 
 # JavaScript
 js/lib/%/prof/test.js: t/machine/%.json $(BOSSTARGET) js/lib/softplus.js js/lib/getparams.js js/lib/testcompiledprof.js
@@ -648,13 +580,13 @@ js/lib/%/seq2prof/test.js: t/machine/%.json $(BOSSTARGET) js/lib/softplus.js js/
 	cp js/lib/softplus.js js/lib/getparams.js $(dir $@)
 
 test-101-bitnoise-001-compiled-js: js/lib/bitnoise/prof/test.js
-	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js node $< --inprof t/csv/prof101.csv --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-js-seq: js/lib/bitnoise/seq/test.js
-	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js node $< --inseq 101 --outseq 001 --params t/io/params.json t/expect/101-bitnoise-001.json
 
 test-101-bitnoise-001-compiled-js-seq2prof: js/lib/bitnoise/seq2prof/test.js
-	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js $(WRAP) $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
+	@$(TEST) python3 t/roundfloats.py 4 js/stripnames.js node $< --inseq 101 --outprof t/csv/prof001.csv --params t/io/params.json t/expect/101-bitnoise-001.json
 
 # Encoding/decoding
 DECODE_TESTS = test-decode-bitecho-101 test-bintern test-hamming
@@ -774,7 +706,7 @@ TESTS = $(INVALID_SCHEMA_TESTS) $(VALID_SCHEMA_TESTS) $(COMPOSE_TESTS) $(CONSTRU
 TESTLEN = $(shell python3 -c "print(max(len(s) for s in '$(TESTS)'.split()))")
 
 TEST = python3 t/testexpect.py $@ $(TESTLEN)
-WRAPTEST = $(TEST) $(WRAP)
+WRAPTEST = $(TEST)
 
 test: $(BOSSTARGET) $(TESTS)
 
