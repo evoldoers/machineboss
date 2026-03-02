@@ -251,6 +251,47 @@ Uses PSWM-2D-DENSE-SIMPLE strategy (nested `jax.lax.scan`, no associative scan
 since silent closure varies by position). Fixed-iteration silent propagation
 for differentiability.
 
+### Parameter resolution and machine definitions
+
+Parameters referenced by transition weight expressions are resolved in order:
+
+1. **Caller's param dict** — position-dependent `(Li+1, Lo+1)` tensors supplied
+   at runtime.
+2. **Machine definitions** (`defs`) — numeric assignments or weight expressions
+   from the machine JSON `"defs"` section.
+3. **Error** — if a parameter is defined in neither place, a `KeyError` is raised.
+
+This means machines with `"defs"` (parameter assignments or function definitions)
+can be used directly without supplying values for every parameter. The caller only
+needs to provide **free parameters** — those not defined by the machine itself.
+
+```python
+# Jukes-Cantor model: defs provide pNoSub, pSub, pSame, pDiff from free param t
+machine = Machine.from_file("preset/jukescantor.json")
+pm = ParameterizedMachine.from_machine(machine)
+
+print(pm.param_names)   # {'t', 'pNoSub', 'pSub', 'pSame', 'pDiff'}
+print(pm.free_params)   # {'t'}  — only t must be supplied
+
+# Only supply the free parameter; defs handle the rest
+params = {"t": jnp.full((Li + 1, Lo + 1), 0.5)}
+ll = neural_log_forward(pm, input_pswm, output_pswm, params)
+```
+
+The caller can also **override** a machine-defined parameter by including it
+in the param dict. This takes precedence over the machine's definition:
+
+```python
+# Override pSame directly instead of letting defs compute it from t
+params = {
+    "t": jnp.full((Li + 1, Lo + 1), 0.5),
+    "pSame": jnp.full((Li + 1, Lo + 1), 0.95),  # overrides defs
+}
+```
+
+Definition chains are compiled recursively (e.g. `pSame → pNoSub → t`) and
+circular definitions are detected at compile time with a `ValueError`.
+
 ## Module structure
 
 | Module | Purpose |
@@ -292,3 +333,8 @@ Test categories:
 - **Neural backward = forward**: backward[start] equals forward log-likelihood
 - **Neural grad**: JAX autodiff through position-dependent parameters
 - **Neural vs C++ boss**: constant-param neural matches `boss -L`
+- **Defs fallback**: machine definitions resolve when caller omits parameters
+- **Defs override**: caller-supplied values take precedence over machine defs
+- **Defs chain**: chained definitions (e.g. Jukes-Cantor pSame → pNoSub → t)
+- **Defs circular**: circular definitions detected at compile time
+- **Jukes-Cantor vs C++ boss**: defs-based model matches `boss -L -P`
