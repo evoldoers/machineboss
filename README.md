@@ -23,10 +23,16 @@ can be thought of as the combination of four state machines accounting for the f
 With Machine Boss, each layer in this hierarchy can be separately designed, parameter-fitted, and (if necessary) refactored. Want to turn a global alignment algorithm into a local one? Just flank the model with some wildcard-emitters. Developed a model for a high-accuracy sequencing technology, and now you want to use it with a noisier sequencer? Just bolt on a different error model. Looking for a Shine-Dalgarno sequence upstream of a signal peptide? No problem, just concatenate the models. And so on.
 
 Machine Boss can read HMMER [profiles](http://hmmer.org/),
-write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html), 
+write GraphViz [dotfiles](https://www.graphviz.org/doc/info/lang.html),
 and run GeneWise-style [models](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC479130/).
 Its native format is a deliberately restricted (simple and validatable)
 JSON representation of a [weighted finite-state transducer](https://en.wikipedia.org/wiki/Finite-state_transducer).
+
+Machine Boss is multilingual: algorithms are available in C++, Python/JAX, JavaScript, and WGSL (WebGPU).
+The [Python/JAX package](python/) provides differentiable inference and training algorithms,
+supporting HMM decoding heads and neural transducers for integration with deep learning frameworks.
+The [WebGPU/JavaScript library](js/webgpu/doc/webgpu.html) enables GPU-accelerated inference directly in the browser,
+with a pure JavaScript CPU fallback for environments without WebGPU support.
 
 ## Documentation
 
@@ -35,6 +41,7 @@ JSON representation of a [weighted finite-state transducer](https://en.wikipedia
 - **[Expression Language](doc/expressions.html)** &mdash; the weight expression mini-language used in `--weight`, `--weight-input`, `--weight-output`, and the `"expr"` field in JSON transitions
 - **[JSON Output Formats](doc/json-output.html)** &mdash; documentation for all JSON output formats (machine, parameters, log-likelihood, alignment, counts, encoding, decoding)
 - **[Composition Algorithm](doc/composition.html)** &mdash; detailed description of the transducer composition algorithm
+- **[WebGPU API](js/webgpu/doc/webgpu.html)** &mdash; GPU-accelerated inference in the browser via WebGPU with JavaScript CPU fallback
 
 ## Citation
 
@@ -47,7 +54,7 @@ Silvestre-Ryan, Wang, Sharma, Lin, Shen, Dider, and Holmes. Bioinformatics (2020
 
 # Installation
 
-Machine Boss can be compiled from C++ source, or installed via [npm](https://www.npmjs.com/package/machineboss).
+Machine Boss can be compiled from C++ source.
 For installation instructions see [INSTALL.md](INSTALL.md).
 
 # Command-line interface
@@ -398,7 +405,7 @@ General options:
   -h [ --help ]                 display this help message
   -v [ --verbose ] arg (=2)     verbosity level
   -d [ --debug ] arg            log specified function
-  -b [ --monochrome ]           log in black & white
+  -b [ --monochrome ]           log in black &amp; white
 
 Transducer construction:
   -l [ --load ] arg             load machine from file
@@ -408,30 +415,30 @@ Transducer construction:
                                 terndna, jukescantor, dnapswnbr, tkf91root, 
                                 tkf91branch, tolower, toupper, hamming31, 
                                 hamming74)
-  -g [ --generate-chars ] arg   generator for explicit character sequence '&lt;&lt;'
+  -g [ --generate-chars ] arg   generator for explicit character sequence &#x27;&lt;&lt;&#x27;
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
                                 characters
   --generate-iid arg            as --generate-wild, but followed by 
-                                --weight-output '$p%'
+                                --weight-output &#x27;$p%&#x27;
   --generate-uniform arg        as --generate-iid, but weights outputs by 
                                 1/(output alphabet size)
   --generate-fasta arg          generator for FASTA-format sequence
   --generate-csv arg            create generator from CSV file
   --generate-json arg           sequence generator for JSON-format sequence
-  -a [ --recognize-chars ] arg  recognizer for explicit character sequence '&gt;&gt;'
+  -a [ --recognize-chars ] arg  recognizer for explicit character sequence &#x27;&gt;&gt;&#x27;
   --recognize-one arg           recognizer for any one of specified characters
   --recognize-wild arg          recognizer for Kleene closure over specified 
                                 characters
   --recognize-iid arg           as --recognize-wild, but followed by 
-                                --weight-input '$p%'
+                                --weight-input &#x27;$p%&#x27;
   --recognize-uniform arg       as --recognize-iid, but weights outputs by 
                                 1/(input alphabet size)
   --recognize-fasta arg         recognizer for FASTA-format sequence
   --recognize-csv arg           create recognizer from CSV file
   --recognize-merge-csv arg     create recognizer from CSV file, merging 
                                 consecutively repeated characters as in Graves 
-                                (2006) 'Connectionist Temporal Classification'
+                                (2006) &#x27;Connectionist Temporal Classification&#x27;
   --recognize-json arg          sequence recognizer for JSON-format sequence
   --echo-one arg                identity for any one of specified characters
   --echo-wild arg               identity for Kleene closure over specified 
@@ -439,30 +446,34 @@ Transducer construction:
   --echo-chars arg              identity for explicit character sequence
   --echo-fasta arg              identity for FASTA-format sequence
   --echo-json arg               identity for JSON-format sequence
-  -w [ --weight ] arg           weighted null transition '#'
+  -w [ --weight ] arg           weighted null transition &#x27;#&#x27;
   -X [ --regex ] arg            create text recognizer from regular expression
   -H [ --hmmer ] arg            create generator from HMMER3 model file in 
                                 local alignment mode
   --hmmer-global arg            create generator from HMMER3 model file in 
                                 global alignment mode
+  --hmmer-plan7 arg             create Plan7 generator from HMMER3 model file 
+                                (single-hit with N/C flanks)
+  --hmmer-multihit arg          create Plan7 generator from HMMER3 model file 
+                                (multi-hit with J loop)
   -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
                                 multiple alignment
 
 Postfix operators:
-  -z [ --zero-or-one ]          union with null '?'
-  -k [ --kleene-star ]          Kleene star '*'
-  -K [ --kleene-plus ]          Kleene plus '+'
+  -z [ --zero-or-one ]          union with null &#x27;?&#x27;
+  -k [ --kleene-star ]          Kleene star &#x27;*&#x27;
+  -K [ --kleene-plus ]          Kleene plus &#x27;+&#x27;
   --count-copies arg            Kleene star with dummy counting parameter
   --repeat arg                  repeat N times
   -e [ --reverse ]              reverse
-  -r [ --revcomp ]              reverse-complement '~'
+  -r [ --revcomp ]              reverse-complement &#x27;~&#x27;
   --flank-input-wild            add flanking delete states: partially match 
                                 input
   --flank-output-wild           add flanking insert states: partially match 
                                 output
   --flank-either-wild           add flanking insert or delete states: partially
                                 match either input or output at each end
-  --flank-both-wild             add flanking insert & delete states: partially 
+  --flank-both-wild             add flanking insert &amp; delete states: partially 
                                 match input and/or output
   --flank-input-geom arg        like --flank-input-wild, but flanking input 
                                 sequence is uniform IID with 
@@ -504,7 +515,7 @@ Postfix operators:
   --strip-names                 remove all state names. Some algorithms (e.g. 
                                 composition of large transducers) are faster if
                                 states are unnamed
-  --pad                         pad with "dummy" start & end states
+  --pad                         pad with &quot;dummy&quot; start &amp; end states
   --reciprocal                  element-wise reciprocal: invert all weight 
                                 expressions
   --weight-input arg            multiply input weights by specified JSON 
@@ -527,22 +538,22 @@ Postfix operators:
                                 into an echo machine
 
 Infix operators:
-  -m [ --compose ]              compose, summing out silent cycles '=&gt;'
+  -m [ --compose ]              compose, summing out silent cycles &#x27;=&gt;&#x27;
   --compose-fast                compose, breaking silent cycles (faster, 
                                 destructive)
   --compose-cyclic              compose, leaving silent cycles
-  -c [ --concatenate ]          concatenate '.'
-  -i [ --intersect ]            intersect, summing out silent cycles '&&'
+  -c [ --concatenate ]          concatenate &#x27;.&#x27;
+  -i [ --intersect ]            intersect, summing out silent cycles &#x27;&amp;&amp;&#x27;
   --intersect-fast              intersect, breaking silent cycles (faster, 
                                 destructive)
   --intersect-cyclic            intersect, leaving silent cycles
-  -u [ --union ]                union '||'
-  -o [ --loop ]                 loop: x '?+' y = x(y.x)*
+  -u [ --union ]                union &#x27;||&#x27;
+  -o [ --loop ]                 loop: x &#x27;?+&#x27; y = x(y.x)*
   -f [ --flank ]                flank: y . x . y
 
 Miscellaneous:
-  -B [ --begin ]                left bracket '('
-  -E [ --end ]                  right bracket ')'
+  -B [ --begin ]                left bracket &#x27;(&#x27;
+  -E [ --end ]                  right bracket &#x27;)&#x27;
 
 Transducer application:
   -S [ --save ] arg             save machine to file
@@ -560,7 +571,7 @@ Transducer application:
   --name-states                 use state id, rather than number, to identify 
                                 transition destinations
   -P [ --params ] arg           load parameters (JSON)
-  -F [ --functions ] arg        load functions & constants (JSON)
+  -F [ --functions ] arg        load functions &amp; constants (JSON)
   -N [ --constraints ] arg      load normalization constraints (JSON)
   -D [ --data ] arg             load sequence-pairs (JSON)
   -I [ --input-fasta ] arg      load input sequence(s) from FASTA file
@@ -603,6 +614,8 @@ Parser-generator:
   --js                          generate JavaScript dynamic programming code
   --showcells                   include debugging output in generated code
   --compileviterbi              compile Viterbi instead of Forward
+  --wgsl                        generate WGSL compute shader and ES module for 
+                                WebGPU
   --inseq arg                   input sequence type (String, Intvec, Profile)
   --outseq arg                  output sequence type (String, Intvec, Profile)
 

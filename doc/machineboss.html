@@ -79,6 +79,14 @@
   and a native <a href="json-format.html">JSON transducer format</a>.
 </p>
 
+<p>
+  Machine Boss is multilingual: algorithms are available in C++, Python/JAX, JavaScript, and WGSL (WebGPU).
+  The Python/JAX package provides differentiable inference and training algorithms,
+  supporting HMM decoding heads and neural transducers for integration with deep learning frameworks.
+  The <a href="../js/webgpu/doc/webgpu.html">WebGPU/JavaScript library</a> enables GPU-accelerated inference
+  directly in the browser, with a pure JavaScript CPU fallback for environments without WebGPU support.
+</p>
+
 <p><strong>Citation:</strong> Silvestre-Ryan, Wang, Sharma, Lin, Shen, Dider, and Holmes.
 <a href="https://pubmed.ncbi.nlm.nih.gov/32683444/"><em>Machine Boss: Rapid Prototyping of Bioinformatic Automata.</em></a>
 Bioinformatics (2020).</p>
@@ -99,6 +107,7 @@ Bioinformatics (2020).</p>
     <li><a href="#output">Output options</a></li>
     <li><a href="#general">General options</a></li>
     <li><a href="#examples">Examples</a></li>
+    <li><a href="../js/webgpu/doc/webgpu.html">WebGPU API Reference</a> (separate document)</li>
   </ul>
 </div>
 
@@ -112,8 +121,6 @@ make
 npm install    # needed for tests
 make test</code></pre>
 
-<h3>Via npm (WebAssembly)</h3>
-<pre><code>npm install machineboss</code></pre>
 
 <!-- ============================================================ -->
 <h2 id="overview">Overview</h2>
@@ -321,7 +328,7 @@ Parentheses must be quoted on the command line to prevent shell interpretation.<
 <!-- ============================================================ -->
 <h2 id="codegen">Code Generation</h2>
 
-<p>Machine Boss can generate standalone C++ or JavaScript code implementing the Forward algorithm for a given machine.</p>
+<p>Machine Boss can generate standalone C++, JavaScript, or WGSL (WebGPU) code implementing the Forward algorithm for a given machine.</p>
 
 <table>
 <tr><th>Option</th><th>Description</th></tr>
@@ -329,6 +336,7 @@ Parentheses must be quoted on the command line to prevent shell interpretation.<
 <tr><td><code>--cpp64</code></td><td>Generate C++ code (64-bit).</td></tr>
 <tr><td><code>--cpp32</code></td><td>Generate C++ code (32-bit).</td></tr>
 <tr><td><code>--js</code></td><td>Generate JavaScript code.</td></tr>
+<tr><td><code>--wgsl</code></td><td>Generate WGSL compute shader and ES module for WebGPU.</td></tr>
 <tr><td><code>--inseq TYPE</code></td><td>Input sequence type: <code>String</code>, <code>Intvec</code>, or <code>Profile</code>.</td></tr>
 <tr><td><code>--outseq TYPE</code></td><td>Output sequence type: <code>String</code>, <code>Intvec</code>, or <code>Profile</code>.</td></tr>
 <tr><td><code>--showcells</code></td><td>Include debugging output in generated code.</td></tr>

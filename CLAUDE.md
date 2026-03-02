@@ -54,6 +54,10 @@ Key modules:
 - `schema.cpp` — JSON schema validation (via valijson)
 - `preset.cpp` — built-in preset machines (embedded as xxd includes from `src/preset/`)
 
+## README
+
+The README help text is auto-generated from `boss -h`. Run `make README.md` to update it after changing command-line options.
+
 ## Testing
 
 Tests are defined in the Makefile and use `t/testexpect.py` as a harness. Test categories: schema validation, composition, construction, I/O, algebra, dynamic programming, code generation, encoding/decoding, expression parsing, JSON API operations, preset loading. Some tests require `node` (JS tests).
