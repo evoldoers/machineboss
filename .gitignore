@@ -44,6 +44,7 @@ package-lock.json
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
 
 # Test build artifacts
 t/bin/

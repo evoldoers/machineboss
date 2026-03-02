@@ -1,0 +1,3 @@
+pytest
+jax>=0.4.0
+jaxlib>=0.4.0

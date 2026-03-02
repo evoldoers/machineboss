@@ -1,5 +1,7 @@
 ![](img/machineboss.gif)
 
+[![CI](https://github.com/evoldoers/machineboss/actions/workflows/ci.yml/badge.svg)](https://github.com/evoldoers/machineboss/actions/workflows/ci.yml) [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE) [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](python/)
+
 Many HMM libraries for bioinformatics
 focus on inference tasks, such as likelihood calculation, parameter-fitting, and alignment.
 Machine Boss can do these things too, but it also introduces a set of operations for **manipulation** of the state machines themselves. The aim is to make it as easy to quick and easy to prototype automata-based experiments in bioinformatics as it is to prototype regular expressions.
