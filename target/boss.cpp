@@ -79,6 +79,8 @@ int main (int argc, char** argv) {
       ("regex,X", po::value<string>(), "create text recognizer from regular expression")
       ("hmmer,H", po::value<string>(), "create generator from HMMER3 model file in local alignment mode")
       ("hmmer-global", po::value<string>(), "create generator from HMMER3 model file in global alignment mode")
+      ("hmmer-plan7", po::value<string>(), "create Plan7 generator from HMMER3 model file (single-hit with N/C flanks)")
+      ("hmmer-multihit", po::value<string>(), "create Plan7 generator from HMMER3 model file (multi-hit with J loop)")
       ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
       ;
 
@@ -575,6 +577,18 @@ int main (int argc, char** argv) {
 	  Require (infile, "HMMer model file not found");
 	  hmmer.read (infile);
 	  m = hmmer.machine(false);
+	} else if (command == "--hmmer-plan7") {
+	  HmmerModel hmmer;
+	  ifstream infile (getArg());
+	  Require (infile, "HMMer model file not found");
+	  hmmer.read (infile);
+	  m = hmmer.plan7Machine(false);
+	} else if (command == "--hmmer-multihit") {
+	  HmmerModel hmmer;
+	  ifstream infile (getArg());
+	  Require (infile, "HMMer model file not found");
+	  hmmer.read (infile);
+	  m = hmmer.plan7Machine(true);
 	} else if (command == "--jphmm")
 	  m = JPHMM (readFastSeqs (getArg().c_str()));
 	else if (command == "--generate-csv") {

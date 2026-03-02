@@ -324,7 +324,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -391,6 +391,12 @@ test-shorthand:
 
 test-hmmer:
 	@$(TEST) python3 t/roundfloats.py 3 $(WRAPBOSS) --hmmer-global t/hmmer/fn3.hmm t/expect/fn3.json
+
+test-hmmer-plan7:
+	@$(TEST) python3 t/roundfloats.py 3 $(WRAPBOSS) --hmmer-plan7 t/hmmer/fn3.hmm t/expect/fn3-plan7.json
+
+test-hmmer-multihit:
+	@$(TEST) python3 t/roundfloats.py 3 $(WRAPBOSS) --hmmer-multihit t/hmmer/fn3.hmm t/expect/fn3-multihit.json
 
 test-jphmm:
 	@$(TEST) $(WRAPBOSS) --jphmm t/seq/jphmmtest.fa t/expect/jphmmtest.json
