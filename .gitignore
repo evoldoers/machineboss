@@ -40,6 +40,11 @@ t/expect/preset-*.tmp.json
 node_modules/
 package-lock.json
 
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # Test build artifacts
 t/bin/
 t/codegen/
