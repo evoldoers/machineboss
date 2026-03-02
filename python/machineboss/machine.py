@@ -64,12 +64,16 @@ class MachineState:
 class Machine:
     """A weighted finite-state transducer."""
     state: list[MachineState] = field(default_factory=list)
+    defs: dict[str, Any] = field(default_factory=dict)  # parameter/function definitions
 
     @classmethod
     def from_json(cls, j: dict | str) -> Machine:
         if isinstance(j, str):
             j = json.loads(j)
-        m = cls(state=[MachineState.from_json(s) for s in j["state"]])
+        m = cls(
+            state=[MachineState.from_json(s) for s in j["state"]],
+            defs=j.get("defs", {}),
+        )
         m._resolve_state_names()
         return m
 
@@ -101,7 +105,10 @@ class Machine:
             return cls.from_json(json.load(f))
 
     def to_json(self) -> dict:
-        return {"state": [s.to_json() for s in self.state]}
+        d: dict[str, Any] = {"state": [s.to_json() for s in self.state]}
+        if self.defs:
+            d["defs"] = self.defs
+        return d
 
     def to_json_string(self, indent: int | None = None) -> str:
         return json.dumps(self.to_json(), indent=indent)

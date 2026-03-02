@@ -74,6 +74,58 @@ class TestCompileExpr:
         result = float(fn({"p": jnp.float32(p), "q": jnp.float32(q)}))
         assert result == pytest.approx(expected, abs=1e-5)
 
+    def test_defs_numeric_fallback(self):
+        """Parameter with numeric def is used when not in caller's dict."""
+        fn = compile_expr("p", defs={"p": 0.5})
+        assert float(fn({})) == pytest.approx(0.5)
+
+    def test_defs_caller_overrides(self):
+        """Caller's value overrides the machine def."""
+        fn = compile_expr("p", defs={"p": 0.5})
+        assert float(fn({"p": jnp.float32(0.9)})) == pytest.approx(0.9)
+
+    def test_defs_expr_fallback(self):
+        """Parameter with expression def is compiled and used."""
+        # pSub = 1 - pNoSub, pNoSub = exp(-t)
+        defs = {
+            "pNoSub": {"exp": {"*": [-1, "t"]}},
+            "pSub": {"not": "pNoSub"},
+        }
+        fn = compile_expr("pSub", defs=defs)
+        # With t=1: pNoSub = exp(-1) ≈ 0.368, pSub ≈ 0.632
+        result = float(fn({"t": jnp.float32(1.0)}))
+        expected = 1.0 - math.exp(-1.0)
+        assert result == pytest.approx(expected, abs=1e-5)
+
+    def test_defs_chain(self):
+        """Chained definitions resolve correctly."""
+        defs = {
+            "pNoSub": {"exp": {"*": [-1, "t"]}},
+            "pSub": {"not": "pNoSub"},
+            "pDiff": {"/": ["pSub", 4]},
+            "pSame": {"+": ["pNoSub", "pDiff"]},
+        }
+        fn = compile_expr("pSame", defs=defs)
+        t = 0.5
+        pNoSub = math.exp(-t)
+        pSub = 1.0 - pNoSub
+        pDiff = pSub / 4.0
+        pSame = pNoSub + pDiff
+        result = float(fn({"t": jnp.float32(t)}))
+        assert result == pytest.approx(pSame, abs=1e-5)
+
+    def test_defs_circular_raises(self):
+        """Circular definitions raise ValueError."""
+        defs = {"a": "b", "b": "a"}
+        with pytest.raises(ValueError, match="Circular"):
+            compile_expr("a", defs=defs)
+
+    def test_undefined_param_raises(self):
+        """Undefined parameter (no def, not in caller's dict) raises KeyError."""
+        fn = compile_expr("undefined_param")
+        with pytest.raises(KeyError):
+            fn({})
+
 
 class TestParameterizedMachine:
     """Test ParameterizedMachine compilation."""
@@ -86,6 +138,7 @@ class TestParameterizedMachine:
 
         assert pm.n_states == 1
         assert pm.param_names == {"p", "q"}
+        assert pm.free_params == {"p", "q"}  # no defs in bitnoise
         assert len(pm.input_tokens) > 1  # has input alphabet
         assert len(pm.output_tokens) > 1  # has output alphabet
 
@@ -114,6 +167,71 @@ class TestParameterizedMachine:
         import numpy.testing as npt
         mask = jm.log_trans > -1e30
         npt.assert_allclose(lt[mask], jm.log_trans[mask], atol=0.01)
+
+
+    def test_counter_defs_fallback(self, repo_root):
+        """counter.json has defs: {p: 1}. No caller params needed."""
+        td_path = str(repo_root / "t" / "machine" / "counter.json")
+        machine = Machine.from_file(td_path)
+        assert machine.defs == {"p": 1}
+
+        pm = ParameterizedMachine.from_machine(machine)
+        assert pm.param_names == {"p"}
+        assert pm.free_params == set()  # p is defined in defs
+
+        # build_log_trans should work with empty param dict
+        lt = pm.build_log_trans({})
+        # p=1 means weight is 1, log(1) = 0
+        assert float(lt.max()) == pytest.approx(0.0, abs=0.01)
+
+    def test_jukescantor_defs(self):
+        """Jukes-Cantor model: transitions use pSame/pDiff, defs chain to free param t."""
+        import json
+        jc_path = "/Users/yam/machineboss/preset/jukescantor.json"
+        machine = Machine.from_file(jc_path)
+
+        assert "pNoSub" in machine.defs
+        assert "pSame" in machine.defs
+
+        pm = ParameterizedMachine.from_machine(machine)
+        # All transition params (pSame, pDiff) are defined;
+        # the only free param is "t" (used by pNoSub = exp(-t))
+        assert pm.free_params == {"t"}
+
+        # Forward with t=0.5
+        t_val = 0.5
+        pNoSub = math.exp(-t_val)
+        pSub = 1.0 - pNoSub
+        pDiff = pSub / 4.0
+        pSame = pNoSub + pDiff
+
+        # Build log_trans with only "t" supplied
+        lt = pm.build_log_trans({"t": jnp.float32(t_val)})
+        # Check a same-token transition (e.g. A→A uses pSame)
+        # Token indices: 0=empty, alphabetical after that
+        in_A = pm.input_tokens.index("A")
+        out_A = pm.output_tokens.index("A")
+        assert float(lt[in_A, out_A, 0, 0]) == pytest.approx(
+            math.log(pSame), abs=0.01)
+
+    def test_defs_with_caller_override(self):
+        """Caller can override a machine-defined parameter."""
+        import json
+        machine = Machine.from_json({
+            "state": [{"trans": [{"to": 0, "out": "x", "weight": "p"}]}],
+            "defs": {"p": 0.5},
+        })
+        pm = ParameterizedMachine.from_machine(machine)
+        assert pm.free_params == set()  # p is defined
+
+        # Use machine def (p=0.5)
+        lt_def = pm.build_log_trans({})
+        # Override with caller value (p=0.9)
+        lt_override = pm.build_log_trans({"p": jnp.float32(0.9)})
+
+        # They should differ
+        assert float(lt_def.max()) == pytest.approx(math.log(0.5), abs=0.01)
+        assert float(lt_override.max()) == pytest.approx(math.log(0.9), abs=0.01)
 
 
 class TestNeuralForwardConstantParams:
@@ -386,6 +504,56 @@ class TestNeuralForwardVaryingParams:
         }
 
         neural_ll = float(neural_log_forward(pm, in_pswm, out_pswm, const_params))
+
+        assert neural_ll == pytest.approx(boss_ll, abs=0.01), \
+            f"neural={neural_ll} != boss={boss_ll}"
+
+    def test_jukescantor_vs_boss(self, repo_root, boss_path, tmp_path):
+        """Jukes-Cantor (defs-based) with only free param t supplied."""
+        import subprocess
+
+        jc_path = str(repo_root / "preset" / "jukescantor.json")
+
+        in_str = "ACGT"
+        out_str = "ACGA"  # one substitution (T→A at position 4)
+        t_val = 0.5
+
+        # Write params to temp file for boss -P
+        params_file = tmp_path / "params.json"
+        params_file.write_text(json.dumps({"t": t_val}))
+
+        # C++ reference
+        result = subprocess.run(
+            [boss_path, jc_path,
+             "--input-chars", in_str,
+             "--output-chars", out_str,
+             "-P", str(params_file), "-L"],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            pytest.skip(f"boss failed: {result.stderr}")
+        data = json.loads(result.stdout)
+        boss_ll = float(data[0][-1]) if isinstance(data[0], list) else float(data[0])
+
+        # Neural forward — only supply "t", defs provide pSame/pDiff/etc.
+        machine = Machine.from_file(jc_path)
+        pm = ParameterizedMachine.from_machine(machine)
+
+        assert pm.free_params == {"t"}, f"Expected free_params={{t}}, got {pm.free_params}"
+
+        Li, Lo = len(in_str), len(out_str)
+        from machineboss.jax.types import NEG_INF
+
+        in_toks = pm.tokenize_input(list(in_str))
+        out_toks = pm.tokenize_output(list(out_str))
+        in_pswm = jnp.full((Li, pm.n_input_tokens), NEG_INF)
+        in_pswm = in_pswm.at[jnp.arange(Li), jnp.array(in_toks)].set(0.0)
+        out_pswm = jnp.full((Lo, pm.n_output_tokens), NEG_INF)
+        out_pswm = out_pswm.at[jnp.arange(Lo), jnp.array(out_toks)].set(0.0)
+
+        # Only supply the free parameter "t"
+        params = {"t": jnp.full((Li + 1, Lo + 1), t_val)}
+        neural_ll = float(neural_log_forward(pm, in_pswm, out_pswm, params))
 
         assert neural_ll == pytest.approx(boss_ll, abs=0.01), \
             f"neural={neural_ll} != boss={boss_ll}"
