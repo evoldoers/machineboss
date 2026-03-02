@@ -89,6 +89,20 @@ Returns (log-likelihood, per-transition expected counts).
 - `strategy='auto'`: uses `'optimal'` for 1D dense, `'simple'` otherwise
 - 1D vs 2D: 1D if one sequence is `None`, 2D if both provided
 
+## Token alphabet ordering
+
+Token alphabets are **lexicographically sorted** by `Machine.input_alphabet()`
+and `Machine.output_alphabet()`. Token index 0 is always the empty (silent)
+token. Indices 1..N map to the sorted alphabet symbols.
+
+For example, a machine with input symbols `{C, A, G, T}` produces
+`input_tokens = ['', 'A', 'C', 'G', 'T']` with indices `[0, 1, 2, 3, 4]`.
+
+This ordering is used throughout: `JAXMachine.log_trans`, `ParameterizedMachine`,
+`TokenSeq`, `PSWMSeq`, and all DP algorithms. When constructing token index
+arrays manually, use `pm.tokenize_input()` / `pm.tokenize_output()` or
+`em.tokenize_input()` / `em.tokenize_output()` to map symbols to indices.
+
 ## Machine types
 
 ### Building a JAXMachine
@@ -292,6 +306,65 @@ params = {
 Definition chains are compiled recursively (e.g. `pSame → pNoSub → t`) and
 circular definitions are detected at compile time with a `ValueError`.
 
+### TOK (tokenized sequence) wrappers
+
+For convenience, `_tok` variants accept token index arrays instead of PSWMs:
+
+```python
+from machineboss.jax.dp_neural import (
+    neural_log_forward_tok, neural_log_viterbi_tok, neural_log_backward_matrix_tok,
+)
+
+in_toks = jnp.array(pm.tokenize_input(list("ACGT")), dtype=jnp.int32)
+out_toks = jnp.array(pm.tokenize_output(list("ACGA")), dtype=jnp.int32)
+params = {"t": jnp.full((Li + 1, Lo + 1), 0.5)}
+
+ll = neural_log_forward_tok(pm, in_toks, out_toks, params)
+```
+
+These convert tokens to one-hot PSWMs internally. Results are identical to the
+PSWM versions with one-hot inputs.
+
+### Broadcast parameter shapes
+
+Parameter tensors can have any shape broadcastable to `(Li+1, Lo+1)`:
+`(Li+1, Lo+1)`, `(Li+1, 1)`, `(1, Lo+1)`, or `(1, 1)`. Size-1 axes are
+handled by index clamping — the full broadcast tensor is **never materialized**.
+Gradients preserve the input shape (e.g. a `(Li+1, 1)` parameter produces
+a `(Li+1, 1)` gradient).
+
+## Alignment-Constrained DP
+
+Alignment-constrained variants visit only the cells of the 2D DP matrix
+touched by a prescribed pairwise alignment, using 1D memory.
+
+```python
+from machineboss.jax.dp_aligned import (
+    aligned_log_forward, aligned_log_viterbi,
+    neural_aligned_log_forward, neural_aligned_log_viterbi,
+    validate_alignment, MAT, INS, DEL,
+)
+
+# Alignment: sequence of MAT=0, INS=1, DEL=2
+# MAT: consume input + output (i++, j++)
+# INS: consume input only (i++)
+# DEL: consume output only (j++)
+alignment = jnp.array([MAT, MAT, INS, DEL, MAT], dtype=jnp.int32)
+validate_alignment(alignment, Li=4, Lo=4)
+
+# Standard (fixed-weight) aligned DP
+ll = aligned_log_forward(jax_machine, input_tokens, output_tokens, alignment)
+vit = aligned_log_viterbi(jax_machine, input_tokens, output_tokens, alignment)
+
+# Neural (position-dependent) aligned DP
+ll = neural_aligned_log_forward(pm, in_toks, out_toks, alignment, params)
+vit = neural_aligned_log_viterbi(pm, in_toks, out_toks, alignment, params)
+```
+
+The DP scans along the alignment in a single `jax.lax.scan`, tracking
+current (i, j) position. Complexity: O(A × S²) where A is alignment length,
+compared to O(Li × Lo × S²) for unconstrained 2D. Differentiable via `jax.grad`.
+
 ## Module structure
 
 | Module | Purpose |
@@ -312,7 +385,8 @@ circular definitions are detected at compile time with a `ValueError`.
 | `fused.py` | Generic fused Plan7+transducer DP |
 | `fused_plan7.py` | Plan7-aware fused DP with nested scans |
 | `jax_weight.py` | Weight expression compiler (`ParameterizedMachine`) |
-| `dp_neural.py` | Parameterized 2D DP with position-dependent weights |
+| `dp_neural.py` | Parameterized 2D DP with position-dependent weights (PSWM + TOK) |
+| `dp_aligned.py` | Alignment-constrained 1D DP (standard + neural) |
 
 ## Testing
 
@@ -338,3 +412,10 @@ Test categories:
 - **Defs chain**: chained definitions (e.g. Jukes-Cantor pSame → pNoSub → t)
 - **Defs circular**: circular definitions detected at compile time
 - **Jukes-Cantor vs C++ boss**: defs-based model matches `boss -L -P`
+- **Neural TOK = PSWM**: tokenized wrappers match one-hot PSWM exactly
+- **Broadcast params**: (Li+1,1), (1,Lo+1), (1,1) match full (Li+1,Lo+1)
+- **Broadcast grad shape**: gradient shape matches input parameter shape
+- **Aligned ≤ unconstrained**: alignment-constrained forward ≤ unconstrained
+- **Aligned Viterbi ≤ Forward**: invariant within aligned DP
+- **Neural aligned = standard aligned**: constant params match fixed-weight
+- **Aligned grad**: JAX autodiff through neural aligned DP

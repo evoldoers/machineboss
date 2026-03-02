@@ -8,7 +8,12 @@ where parameters are computed from sequences by a neural network.
 The caller provides:
 - A ParameterizedMachine (compiled from a Machine with weight expressions)
 - Two PSWMs (input and output emission log-probabilities)
-- A dict mapping each parameter name to a (Li+1, Lo+1) tensor
+- A dict mapping each parameter name to a broadcastable tensor
+
+Parameter tensors can have any shape broadcastable to ``(Li+1, Lo+1)``:
+``(Li+1, Lo+1)``, ``(Li+1, 1)``, ``(1, Lo+1)``, or ``(1, 1)``.
+Size-1 axes are handled by index clamping, so the full broadcast tensor
+is never materialized — this is important for memory efficiency.
 
 At each cell (i, j) of the 2D DP matrix, the transition tensor is built
 from the parameters at that position. JIT compiles the weight expression
@@ -91,8 +96,18 @@ def _emit_trans_matrix(log_trans, in_emission, out_emission, semiring,
 
 
 def _build_lt_at(pm, params, i, j):
-    """Build log_trans tensor at position (i, j)."""
-    pos_params = {name: val[i, j] for name, val in params.items()}
+    """Build log_trans tensor at position (i, j).
+
+    Supports broadcast-shaped parameter tensors: if a parameter has shape
+    ``(Li+1, 1)`` or ``(1, Lo+1)`` or ``(1, 1)`` it is *not* materialized
+    to ``(Li+1, Lo+1)``.  The size-1 axis is handled by clamping the index
+    to 0, which JAX traces without allocating the full broadcast tensor.
+    """
+    pos_params = {
+        name: val[jnp.minimum(i, val.shape[0] - 1),
+                   jnp.minimum(j, val.shape[1] - 1)]
+        for name, val in params.items()
+    }
     return pm.build_log_trans(pos_params)
 
 
@@ -107,7 +122,9 @@ def neural_forward_2d(pm: ParameterizedMachine,
         pm: ParameterizedMachine (compiled from Machine with weight exprs)
         input_pswm: (Li, n_in) input emission log-probabilities
         output_pswm: (Lo, n_out) output emission log-probabilities
-        params: dict mapping parameter names to (Li+1, Lo+1) arrays
+        params: dict mapping parameter names to arrays broadcastable to
+            (Li+1, Lo+1).  Accepted shapes: (Li+1, Lo+1), (Li+1, 1),
+            (1, Lo+1), (1, 1).  Size-1 axes are not materialized.
         semiring: LOGSUMEXP for Forward, MAXPLUS for Viterbi
 
     Returns:
@@ -312,7 +329,8 @@ def neural_log_forward(pm: ParameterizedMachine,
         pm: ParameterizedMachine compiled from a Machine with weight expressions.
         input_pswm: (Li, n_in) input emission log-probs (PSWMSeq.log_probs).
         output_pswm: (Lo, n_out) output emission log-probs (PSWMSeq.log_probs).
-        params: dict mapping each parameter name to a (Li+1, Lo+1) JAX array.
+        params: dict mapping each parameter name to a JAX array broadcastable
+            to (Li+1, Lo+1).  Supports (Li+1, 1), (1, Lo+1), (1, 1).
 
     Returns:
         Log-likelihood (scalar).
@@ -330,7 +348,8 @@ def neural_log_viterbi(pm: ParameterizedMachine,
         pm: ParameterizedMachine compiled from a Machine with weight expressions.
         input_pswm: (Li, n_in) input emission log-probs.
         output_pswm: (Lo, n_out) output emission log-probs.
-        params: dict mapping each parameter name to a (Li+1, Lo+1) JAX array.
+        params: dict mapping each parameter name to a JAX array broadcastable
+            to (Li+1, Lo+1).  Supports (Li+1, 1), (1, Lo+1), (1, 1).
 
     Returns:
         Viterbi log-score (scalar).
@@ -347,3 +366,86 @@ def neural_log_backward_matrix(pm: ParameterizedMachine,
     Returns full backward matrix (Li+1, Lo+1, S).
     """
     return neural_backward_2d(pm, input_pswm, output_pswm, params, LOGSUMEXP)
+
+
+# ---------------------------------------------------------------------------
+# TOK (tokenized sequence) wrappers
+# ---------------------------------------------------------------------------
+
+def _tok_to_pswm(tokens: jnp.ndarray, n_tokens: int) -> jnp.ndarray:
+    """Convert a token index array to a one-hot PSWM (log-space).
+
+    Args:
+        tokens: (L,) int32 token indices (1-based; 0 = empty/silent).
+        n_tokens: total number of tokens including empty at index 0.
+
+    Returns:
+        (L, n_tokens) log-space one-hot: 0.0 at the token position,
+        NEG_INF elsewhere.
+    """
+    L = tokens.shape[0]
+    pswm = jnp.full((L, n_tokens), NEG_INF)
+    return pswm.at[jnp.arange(L), tokens].set(0.0)
+
+
+def neural_log_forward_tok(pm: ParameterizedMachine,
+                           input_tokens: jnp.ndarray,
+                           output_tokens: jnp.ndarray,
+                           params: dict[str, jnp.ndarray]) -> float:
+    """Forward algorithm with tokenized sequences and position-dependent params.
+
+    Args:
+        pm: ParameterizedMachine compiled from a Machine with weight expressions.
+        input_tokens: (Li,) int32 input token indices (1-based).
+        output_tokens: (Lo,) int32 output token indices (1-based).
+        params: dict mapping each parameter name to a JAX array broadcastable
+            to (Li+1, Lo+1).
+
+    Returns:
+        Log-likelihood (scalar).
+    """
+    in_pswm = _tok_to_pswm(input_tokens, pm.n_input_tokens)
+    out_pswm = _tok_to_pswm(output_tokens, pm.n_output_tokens)
+    return neural_forward_2d(pm, in_pswm, out_pswm, params, LOGSUMEXP)
+
+
+def neural_log_viterbi_tok(pm: ParameterizedMachine,
+                           input_tokens: jnp.ndarray,
+                           output_tokens: jnp.ndarray,
+                           params: dict[str, jnp.ndarray]) -> float:
+    """Viterbi algorithm with tokenized sequences and position-dependent params.
+
+    Args:
+        pm: ParameterizedMachine compiled from a Machine with weight expressions.
+        input_tokens: (Li,) int32 input token indices (1-based).
+        output_tokens: (Lo,) int32 output token indices (1-based).
+        params: dict mapping each parameter name to a JAX array broadcastable
+            to (Li+1, Lo+1).
+
+    Returns:
+        Viterbi log-score (scalar).
+    """
+    in_pswm = _tok_to_pswm(input_tokens, pm.n_input_tokens)
+    out_pswm = _tok_to_pswm(output_tokens, pm.n_output_tokens)
+    return neural_forward_2d(pm, in_pswm, out_pswm, params, MAXPLUS)
+
+
+def neural_log_backward_matrix_tok(pm: ParameterizedMachine,
+                                   input_tokens: jnp.ndarray,
+                                   output_tokens: jnp.ndarray,
+                                   params: dict[str, jnp.ndarray]) -> jnp.ndarray:
+    """Backward algorithm with tokenized sequences and position-dependent params.
+
+    Args:
+        pm: ParameterizedMachine compiled from a Machine with weight expressions.
+        input_tokens: (Li,) int32 input token indices (1-based).
+        output_tokens: (Lo,) int32 output token indices (1-based).
+        params: dict mapping each parameter name to a JAX array broadcastable
+            to (Li+1, Lo+1).
+
+    Returns:
+        Full backward matrix (Li+1, Lo+1, S).
+    """
+    in_pswm = _tok_to_pswm(input_tokens, pm.n_input_tokens)
+    out_pswm = _tok_to_pswm(output_tokens, pm.n_output_tokens)
+    return neural_backward_2d(pm, in_pswm, out_pswm, params, LOGSUMEXP)

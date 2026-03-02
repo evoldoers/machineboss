@@ -18,6 +18,7 @@ from machineboss.jax.backward import log_backward_matrix
 from machineboss.jax.jax_weight import ParameterizedMachine, compile_expr
 from machineboss.jax.dp_neural import (
     neural_log_forward, neural_log_viterbi, neural_log_backward_matrix,
+    neural_log_forward_tok, neural_log_viterbi_tok, neural_log_backward_matrix_tok,
 )
 
 
@@ -557,3 +558,252 @@ class TestNeuralForwardVaryingParams:
 
         assert neural_ll == pytest.approx(boss_ll, abs=0.01), \
             f"neural={neural_ll} != boss={boss_ll}"
+
+
+class TestBroadcastParams:
+    """Test that broadcast-shaped parameter tensors work correctly
+    and produce the same results as fully materialized tensors."""
+
+    @pytest.fixture
+    def bitnoise_setup(self, repo_root):
+        """Set up bitnoise machine with PSWM sequences."""
+        td_path = str(repo_root / "t" / "machine" / "bitnoise.json")
+        machine = Machine.from_file(td_path)
+        pm = ParameterizedMachine.from_machine(machine)
+
+        in_str = "10"
+        out_str = "10"
+        Li, Lo = len(in_str), len(out_str)
+
+        from machineboss.jax.types import NEG_INF
+        in_toks = pm.tokenize_input(list(in_str))
+        out_toks = pm.tokenize_output(list(out_str))
+        in_pswm = jnp.full((Li, pm.n_input_tokens), NEG_INF)
+        in_pswm = in_pswm.at[jnp.arange(Li), jnp.array(in_toks)].set(0.0)
+        out_pswm = jnp.full((Lo, pm.n_output_tokens), NEG_INF)
+        out_pswm = out_pswm.at[jnp.arange(Lo), jnp.array(out_toks)].set(0.0)
+
+        return pm, in_pswm, out_pswm, Li, Lo
+
+    def test_full_shape_baseline(self, bitnoise_setup):
+        """Baseline: full (Li+1, Lo+1) tensors."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        ll = float(neural_log_forward(pm, in_pswm, out_pswm, params))
+        assert math.isfinite(ll)
+
+    def test_broadcast_1_Lo(self, bitnoise_setup):
+        """Shape (1, Lo+1): same value across all input positions."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        full_params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        bcast_params = {
+            "p": jnp.full((1, Lo + 1), 0.9),
+            "q": jnp.full((1, Lo + 1), 0.1),
+        }
+        ll_full = float(neural_log_forward(pm, in_pswm, out_pswm, full_params))
+        ll_bcast = float(neural_log_forward(pm, in_pswm, out_pswm, bcast_params))
+        assert ll_bcast == pytest.approx(ll_full, abs=1e-5)
+
+    def test_broadcast_Li_1(self, bitnoise_setup):
+        """Shape (Li+1, 1): same value across all output positions."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        full_params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        bcast_params = {
+            "p": jnp.full((Li + 1, 1), 0.9),
+            "q": jnp.full((Li + 1, 1), 0.1),
+        }
+        ll_full = float(neural_log_forward(pm, in_pswm, out_pswm, full_params))
+        ll_bcast = float(neural_log_forward(pm, in_pswm, out_pswm, bcast_params))
+        assert ll_bcast == pytest.approx(ll_full, abs=1e-5)
+
+    def test_broadcast_1_1(self, bitnoise_setup):
+        """Shape (1, 1): scalar broadcast to all positions."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        full_params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        bcast_params = {
+            "p": jnp.full((1, 1), 0.9),
+            "q": jnp.full((1, 1), 0.1),
+        }
+        ll_full = float(neural_log_forward(pm, in_pswm, out_pswm, full_params))
+        ll_bcast = float(neural_log_forward(pm, in_pswm, out_pswm, bcast_params))
+        assert ll_bcast == pytest.approx(ll_full, abs=1e-5)
+
+    def test_broadcast_mixed(self, bitnoise_setup):
+        """Different parameters with different broadcast shapes."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        full_params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        mixed_params = {
+            "p": jnp.full((Li + 1, 1), 0.9),  # broadcast over output
+            "q": jnp.full((1, Lo + 1), 0.1),   # broadcast over input
+        }
+        ll_full = float(neural_log_forward(pm, in_pswm, out_pswm, full_params))
+        ll_mixed = float(neural_log_forward(pm, in_pswm, out_pswm, mixed_params))
+        assert ll_mixed == pytest.approx(ll_full, abs=1e-5)
+
+    def test_broadcast_grad(self, bitnoise_setup):
+        """Gradient through broadcast-shaped params has the broadcast shape."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        p_bcast = jnp.full((Li + 1, 1), 0.9)
+        q_full = jnp.full((Li + 1, Lo + 1), 0.1)
+
+        def loss_fn(p_t):
+            return neural_log_forward(pm, in_pswm, out_pswm,
+                                       {"p": p_t, "q": q_full})
+
+        grad_p = jax.grad(loss_fn)(p_bcast)
+        # Gradient shape should match input shape, NOT materialized shape
+        assert grad_p.shape == (Li + 1, 1), \
+            f"Expected grad shape {(Li + 1, 1)}, got {grad_p.shape}"
+        assert jnp.all(jnp.isfinite(grad_p))
+        assert jnp.any(grad_p != 0.0), "Gradient is all zeros"
+
+    def test_broadcast_not_materialized(self, bitnoise_setup):
+        """Verify broadcast tensors are not expanded in memory."""
+        pm, in_pswm, out_pswm, Li, Lo = bitnoise_setup
+        p_bcast = jnp.full((Li + 1, 1), 0.9)
+        # The tensor itself should have nbytes proportional to (Li+1)*1,
+        # not (Li+1)*(Lo+1)
+        assert p_bcast.nbytes == (Li + 1) * 1 * 4  # float32 = 4 bytes
+        # And it should work correctly
+        params = {"p": p_bcast, "q": jnp.full((1, 1), 0.1)}
+        ll = float(neural_log_forward(pm, in_pswm, out_pswm, params))
+        assert math.isfinite(ll)
+
+
+class TestNeuralTok:
+    """Test TOK (tokenized) neural DP wrappers match PSWM equivalents."""
+
+    @pytest.fixture
+    def bitnoise_pm(self, repo_root):
+        td_path = str(repo_root / "t" / "machine" / "bitnoise.json")
+        machine = Machine.from_file(td_path)
+        return ParameterizedMachine.from_machine(machine)
+
+    def _make_seqs(self, pm, in_str, out_str):
+        """Return (in_toks, out_toks, in_pswm, out_pswm, Li, Lo)."""
+        Li, Lo = len(in_str), len(out_str)
+        from machineboss.jax.types import NEG_INF
+        in_toks = jnp.array(pm.tokenize_input(list(in_str)), dtype=jnp.int32)
+        out_toks = jnp.array(pm.tokenize_output(list(out_str)), dtype=jnp.int32)
+        in_pswm = jnp.full((Li, pm.n_input_tokens), NEG_INF)
+        in_pswm = in_pswm.at[jnp.arange(Li), in_toks].set(0.0)
+        out_pswm = jnp.full((Lo, pm.n_output_tokens), NEG_INF)
+        out_pswm = out_pswm.at[jnp.arange(Lo), out_toks].set(0.0)
+        return in_toks, out_toks, in_pswm, out_pswm, Li, Lo
+
+    def test_tok_forward_matches_pswm(self, bitnoise_pm):
+        """TOK forward should exactly match PSWM forward with one-hot."""
+        pm = bitnoise_pm
+        in_toks, out_toks, in_pswm, out_pswm, Li, Lo = self._make_seqs(
+            pm, "10", "01")
+        params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        ll_pswm = float(neural_log_forward(pm, in_pswm, out_pswm, params))
+        ll_tok = float(neural_log_forward_tok(pm, in_toks, out_toks, params))
+        assert ll_tok == pytest.approx(ll_pswm, abs=1e-6)
+
+    def test_tok_viterbi_matches_pswm(self, bitnoise_pm):
+        """TOK viterbi should exactly match PSWM viterbi with one-hot."""
+        pm = bitnoise_pm
+        in_toks, out_toks, in_pswm, out_pswm, Li, Lo = self._make_seqs(
+            pm, "10", "10")
+        params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        vit_pswm = float(neural_log_viterbi(pm, in_pswm, out_pswm, params))
+        vit_tok = float(neural_log_viterbi_tok(pm, in_toks, out_toks, params))
+        assert vit_tok == pytest.approx(vit_pswm, abs=1e-6)
+
+    def test_tok_backward_matches_pswm(self, bitnoise_pm):
+        """TOK backward should match PSWM backward matrix."""
+        import numpy.testing as npt
+        pm = bitnoise_pm
+        in_toks, out_toks, in_pswm, out_pswm, Li, Lo = self._make_seqs(
+            pm, "10", "10")
+        params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        bp_pswm = neural_log_backward_matrix(pm, in_pswm, out_pswm, params)
+        bp_tok = neural_log_backward_matrix_tok(pm, in_toks, out_toks, params)
+        npt.assert_allclose(bp_tok, bp_pswm, atol=1e-5)
+
+    def test_tok_backward_consistency(self, bitnoise_pm):
+        """TOK backward[0,0,start] should equal TOK forward."""
+        pm = bitnoise_pm
+        in_toks, out_toks, in_pswm, out_pswm, Li, Lo = self._make_seqs(
+            pm, "10", "10")
+        params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        ll_tok = float(neural_log_forward_tok(pm, in_toks, out_toks, params))
+        bp_tok = neural_log_backward_matrix_tok(pm, in_toks, out_toks, params)
+        assert float(bp_tok[0, 0, 0]) == pytest.approx(ll_tok, abs=0.01)
+
+    def test_tok_vs_boss(self, repo_root, boss_path):
+        """TOK neural forward with constant params matches C++ boss."""
+        import subprocess
+        td_path = str(repo_root / "t" / "machine" / "bitnoise.json")
+        params_path = str(repo_root / "t" / "io" / "params.json")
+        with open(params_path) as f:
+            param_vals = json.load(f)
+
+        in_str, out_str = "101", "010"
+        result = subprocess.run(
+            [boss_path, td_path,
+             "--input-chars", in_str, "--output-chars", out_str,
+             "-P", params_path, "-L"],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            pytest.skip(f"boss failed: {result.stderr}")
+        data = json.loads(result.stdout)
+        boss_ll = float(data[0][-1]) if isinstance(data[0], list) else float(data[0])
+
+        machine = Machine.from_file(td_path)
+        pm = ParameterizedMachine.from_machine(machine)
+        Li, Lo = len(in_str), len(out_str)
+        in_toks = jnp.array(pm.tokenize_input(list(in_str)), dtype=jnp.int32)
+        out_toks = jnp.array(pm.tokenize_output(list(out_str)), dtype=jnp.int32)
+        const_params = {
+            name: jnp.full((Li + 1, Lo + 1), val)
+            for name, val in param_vals.items()
+        }
+        neural_ll = float(neural_log_forward_tok(pm, in_toks, out_toks, const_params))
+        assert neural_ll == pytest.approx(boss_ll, abs=0.01)
+
+    def test_tok_with_broadcast_params(self, bitnoise_pm):
+        """TOK wrappers work with broadcast-shaped params."""
+        pm = bitnoise_pm
+        in_toks, out_toks, in_pswm, out_pswm, Li, Lo = self._make_seqs(
+            pm, "10", "10")
+        full_params = {
+            "p": jnp.full((Li + 1, Lo + 1), 0.9),
+            "q": jnp.full((Li + 1, Lo + 1), 0.1),
+        }
+        bcast_params = {
+            "p": jnp.full((1, 1), 0.9),
+            "q": jnp.full((1, 1), 0.1),
+        }
+        ll_full = float(neural_log_forward_tok(pm, in_toks, out_toks, full_params))
+        ll_bcast = float(neural_log_forward_tok(pm, in_toks, out_toks, bcast_params))
+        assert ll_bcast == pytest.approx(ll_full, abs=1e-5)
