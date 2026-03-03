@@ -93,14 +93,14 @@ Instead of a concrete `state` array, a machine JSON object can be one of the fol
 
 | Operator | Arity | Description |
 |---|---|---|
-| `compose` | 2 | Transducer composition (matrix multiplication). Sum out silent cycles. |
+| `compose` | 2 | Transducer composition (matrix multiplication). Break silent cycles. |
 | `compose-sum` | 2 | Composition with silent-cycle summation. |
 | `compose-unsort` | 2 | Composition without sorting. |
 | `concat` | 2 | Concatenation of two machines. |
-| `intersect` | 2 | Intersection (pointwise product). Sum out silent cycles. |
+| `intersect` | 2 | Intersection (pointwise product). Break silent cycles. |
 | `intersect-sum` | 2 | Intersection with silent-cycle summation. |
 | `intersect-unsort` | 2 | Intersection without sorting. |
-| `or` | 2 | Union (pointwise sum). |
+| `union` | 2 | Union (pointwise sum). |
 | `loop` | 2 | Loop: `x(yx)*`. |
 | `opt` | 1 | Zero or one (union with null). |
 | `star` | 1 | Kleene star (zero or more). |

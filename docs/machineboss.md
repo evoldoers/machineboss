@@ -5,6 +5,7 @@ permalink: /machineboss/
 ---
 
 # Machine Boss Program Reference
+{: .no_toc }
 
 Machine Boss is a command-line toolkit for constructing, manipulating, and applying
 [weighted finite-state transducers](https://en.wikipedia.org/wiki/Finite-state_transducer)
@@ -20,8 +21,6 @@ directly in the browser, with a pure JavaScript CPU fallback for environments wi
 **Citation:** Silvestre-Ryan, Wang, Sharma, Lin, Shen, Dider, and Holmes.
 [*Machine Boss: Rapid Prototyping of Bioinformatic Automata.*](https://pubmed.ncbi.nlm.nih.gov/32683444/)
 Bioinformatics (2020).
-
-{: .no_toc }
 
 ## Table of contents
 {: .no_toc .text-delta }
@@ -100,6 +99,8 @@ Replace `--generate` with `--echo` for identity machines that copy input to outp
 |---|---|
 | `--hmmer FILE.hmm` | Generator from an HMMER3 profile HMM (local alignment mode). |
 | `--hmmer-global FILE.hmm` | Generator from an HMMER3 profile HMM (global alignment mode). |
+| `--hmmer-plan7 FILE.hmm` | Plan7 generator from an HMMER3 model (single-hit with N/C flanks). |
+| `--hmmer-multihit FILE.hmm` | Plan7 generator from an HMMER3 model (multi-hit with J loop). |
 | `--jphmm FILE.fa` | Jumping profile HMM generator from a FASTA multiple alignment. |
 
 A bare filename argument (not matching any option) is loaded as a JSON machine file.
@@ -117,6 +118,7 @@ Selected via `--preset NAME` or `-p NAME`.
 | `prot2dna` | GeneWise-style model: find a protein in DNA. |
 | `psw2dna` | GeneWise-style model with substitutions & indels. |
 | `dnapsw` | Probabilistic Smith-Waterman for DNA. |
+| `dnapswnbr` | Probabilistic Smith-Waterman for DNA (no between-region model). |
 | `protpsw` | Probabilistic Smith-Waterman for protein. |
 | `jukescantor` | Jukes-Cantor (1969) DNA substitution model. |
 | `tkf91branch` | Thorne-Kishino-Felsenstein (1991) DNA indel model + Jukes-Cantor substitutions. |
@@ -151,6 +153,9 @@ Selected via `--preset NAME` or `-p NAME`.
 | `--sort` | | Topological sort, eliminating silent cycles. |
 | `--sort-fast` | | Topological sort, breaking silent cycles (faster, destructive). |
 | `--sort-cyclic` | | Topological sort preserving silent cycles. |
+| `--decode-sort` | | Topological sort of non-outputting transition graph. |
+| `--encode-sort` | | Topological sort of non-inputting transition graph. |
+| `--full-sort` | | Topological sort of entire transition graph. |
 | `--eliminate` | | Eliminate all silent transitions. |
 | `--eliminate-states` | | Eliminate states with only silent in/out transitions. |
 | `--silence-input` | | Clear input labels (machine becomes a generator). |
@@ -159,8 +164,14 @@ Selected via `--preset NAME` or `-p NAME`.
 | `--copy-input-to-output` | | Copy input labels to outputs (recognizer → echo). |
 | `--flank-input-wild` | | Add flanking delete states for partial input matching. |
 | `--flank-output-wild` | | Add flanking insert states for partial output matching. |
+| `--flank-either-wild` | | Add flanking insert or delete states: partially match either input or output at each end. |
+| `--flank-both-wild` | | Add flanking insert & delete states: partially match input and/or output. |
+| `--flank-input-geom EXPR` | | Like `--flank-input-wild`, but with geometrically-distributed flanking length. |
+| `--flank-output-geom EXPR` | | Like `--flank-output-wild`, but with geometrically-distributed flanking length. |
 | `--weight-input EXPR` | | Multiply input weights by expression (`%` = input symbol, `#` = alphabet size). |
 | `--weight-output EXPR` | | Multiply output weights by expression. |
+| `--weight-input-geom EXPR` | | Place geometric distribution over input length. |
+| `--weight-output-geom EXPR` | | Place geometric distribution over output length. |
 | `--strip-names` | | Remove state names (can speed up composition). |
 | `--pad` | | Add dummy start & end states. |
 

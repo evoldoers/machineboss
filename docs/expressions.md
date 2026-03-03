@@ -47,6 +47,7 @@ Exp        <- 'exp' _ '(' _ Term _ ')' / 'e' _ '^' _ Primary
 Log        <- 'log' _ '(' _ Term _ ')'
 NegateProb <- '!' _ Primary
 Negative   <- '-' _ Primary
+Sign       <- [-+]?
 Number     <- Sign _ (Scientific / IntOrFloat)
 IntOrFloat <- Float / Integer
 Integer    <- [0-9]+
@@ -159,7 +160,7 @@ The two notations are interchangeable:
 
 In a JSON transition, you can use either notation:
 
-```json
+```javascript
 // Using the structured "weight" field (JSON expression tree):
 {"to": "S", "in": "0", "out": "0", "weight": {"*": ["p", "q"]}}
 

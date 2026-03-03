@@ -28,8 +28,8 @@ Compiler: clang++ (preferred) or g++, C++11. Links against GSL, Boost (regex, pr
 - `t/` — test data, expected outputs, and test source files
 - `bin/` — compiled binary output (generated)
 - `obj/` — compiled object files (generated)
-- `wasm/` — WebAssembly build artifacts
-- `emcc/` — Emscripten support files
+- `docs/` — GitHub Pages documentation (Jekyll + Markdown), served at machineboss.org
+- `python/machineboss/` — Python/JAX package (machine, weight, eval, forward, viterbi, etc.)
 - `python/codes/` — Python coding-theory utilities (hamming74.py, mixradar.py)
 - `img/` — images for documentation
 - `examples/` — example scripts
