@@ -25,6 +25,7 @@ with a pure JavaScript CPU fallback for environments without WebGPU support.
 
 ## Documentation
 
+- **[Tutorial](/tutorial/)** --- walk through the "occasionally dishonest casino" example, building generators, transducers, and compositions
 - **[Program Reference](/machineboss/)** --- full command-line reference for the `boss` tool
 - **[JSON Format Reference](/json-format/)** --- documentation for the Machine Boss JSON transducer format and related schemas
 - **[Expression Language](/expressions/)** --- the weight expression mini-language

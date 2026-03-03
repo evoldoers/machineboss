@@ -1,0 +1,45 @@
+{"state":
+ [{"id": "Fair",
+   "trans": [
+     {"out": "1", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "2", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "3", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "4", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "5", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "6", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "1", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
+     {"out": "2", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
+     {"out": "3", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
+     {"out": "4", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
+     {"out": "5", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
+     {"out": "6", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
+     {"to": "End", "weight": "pEnd"}
+   ]},
+  {"id": "Loaded",
+   "trans": [
+     {"out": "1", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedPOther"]}},
+     {"out": "2", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedPOther"]}},
+     {"out": "3", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedPOther"]}},
+     {"out": "4", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedPOther"]}},
+     {"out": "5", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedPOther"]}},
+     {"out": "6", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedP6"]}},
+     {"out": "1", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedPOther"]}},
+     {"out": "2", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedPOther"]}},
+     {"out": "3", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedPOther"]}},
+     {"out": "4", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedPOther"]}},
+     {"out": "5", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedPOther"]}},
+     {"out": "6", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedP6"]}},
+     {"to": "End", "weight": "pEnd"}
+   ]},
+  {"id": "End", "trans": []}
+ ],
+ "defs": {
+   "pContinue": {"not": "pEnd"},
+   "loadedPOther": {"/": [{"not": "loadedP6"}, 5]},
+   "fairDie": {"/": [1, 6]},
+   "fairStay": {"*": ["pContinue", {"not": "changeToLoadedDie"}]},
+   "fairSwitch": {"*": ["pContinue", "changeToLoadedDie"]},
+   "loadedStay": {"*": ["pContinue", {"not": "changeToFairDie"}]},
+   "loadedSwitch": {"*": ["pContinue", "changeToFairDie"]}
+ }
+}

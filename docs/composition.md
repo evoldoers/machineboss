@@ -1,6 +1,6 @@
 ---
 title: Composition Algorithm
-nav_order: 6
+nav_order: 7
 permalink: /composition/
 ---
 

@@ -1,0 +1,36 @@
+{"state":
+ [{"id": "Fair",
+   "trans": [
+     {"out": "1", "to": "Fair", "weight": 0.15675},
+     {"out": "2", "to": "Fair", "weight": 0.15675},
+     {"out": "3", "to": "Fair", "weight": 0.15675},
+     {"out": "4", "to": "Fair", "weight": 0.15675},
+     {"out": "5", "to": "Fair", "weight": 0.15675},
+     {"out": "6", "to": "Fair", "weight": 0.15675},
+     {"out": "1", "to": "Loaded", "weight": 0.00825},
+     {"out": "2", "to": "Loaded", "weight": 0.00825},
+     {"out": "3", "to": "Loaded", "weight": 0.00825},
+     {"out": "4", "to": "Loaded", "weight": 0.00825},
+     {"out": "5", "to": "Loaded", "weight": 0.00825},
+     {"out": "6", "to": "Loaded", "weight": 0.00825},
+     {"to": "End", "weight": 0.01}
+   ]},
+  {"id": "Loaded",
+   "trans": [
+     {"out": "1", "to": "Loaded", "weight": 0.0891},
+     {"out": "2", "to": "Loaded", "weight": 0.0891},
+     {"out": "3", "to": "Loaded", "weight": 0.0891},
+     {"out": "4", "to": "Loaded", "weight": 0.0891},
+     {"out": "5", "to": "Loaded", "weight": 0.0891},
+     {"out": "6", "to": "Loaded", "weight": 0.4455},
+     {"out": "1", "to": "Fair", "weight": 0.0099},
+     {"out": "2", "to": "Fair", "weight": 0.0099},
+     {"out": "3", "to": "Fair", "weight": 0.0099},
+     {"out": "4", "to": "Fair", "weight": 0.0099},
+     {"out": "5", "to": "Fair", "weight": 0.0099},
+     {"out": "6", "to": "Fair", "weight": 0.0495},
+     {"to": "End", "weight": 0.01}
+   ]},
+  {"id": "End", "trans": []}
+ ]
+}

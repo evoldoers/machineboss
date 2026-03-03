@@ -1,0 +1,51 @@
+{"state":
+ [{"id": "H0",
+   "trans": [
+     {"in": "1", "out": "1", "to": "H0"},
+     {"in": "2", "out": "2", "to": "H0"},
+     {"in": "3", "out": "3", "to": "H0"},
+     {"in": "4", "out": "4", "to": "H0"},
+     {"in": "5", "out": "5", "to": "H0"},
+     {"in": "6", "out": "6", "to": "H1"},
+     {"to": "End"}
+   ]},
+  {"id": "H1",
+   "trans": [
+     {"in": "1", "out": "1", "to": "H0"},
+     {"in": "2", "out": "2", "to": "H0"},
+     {"in": "3", "out": "3", "to": "H0"},
+     {"in": "4", "out": "4", "to": "H0"},
+     {"in": "5", "out": "5", "to": "H0"},
+     {"in": "6", "out": "6", "to": "H2"},
+     {"to": "End"}
+   ]},
+  {"id": "H2",
+   "trans": [
+     {"in": "1", "out": "1", "to": "H0"},
+     {"in": "2", "out": "2", "to": "H0"},
+     {"in": "3", "out": "3", "to": "H0"},
+     {"in": "4", "out": "4", "to": "H0"},
+     {"in": "5", "out": "5", "to": "H0"},
+     {"in": "6", "out": "6", "to": "H2", "weight": {"not": "startLying"}},
+     {"in": "6", "out": "6", "to": "L", "weight": "startLying"},
+     {"to": "End"}
+   ]},
+  {"id": "L",
+   "trans": [
+     {"in": "1", "out": "1", "to": "H0", "weight": "stopLying"},
+     {"in": "2", "out": "2", "to": "H0", "weight": "stopLying"},
+     {"in": "3", "out": "3", "to": "H0", "weight": "stopLying"},
+     {"in": "4", "out": "4", "to": "H0", "weight": "stopLying"},
+     {"in": "5", "out": "5", "to": "H0", "weight": "stopLying"},
+     {"in": "1", "out": "1", "to": "L", "weight": {"not": "stopLying"}},
+     {"in": "2", "out": "2", "to": "L", "weight": {"not": "stopLying"}},
+     {"in": "3", "out": "3", "to": "L", "weight": {"not": "stopLying"}},
+     {"in": "4", "out": "4", "to": "L", "weight": {"not": "stopLying"}},
+     {"in": "5", "out": "5", "to": "L", "weight": {"not": "stopLying"}},
+     {"in": "6", "to": "L", "weight": "censorTheNews"},
+     {"in": "6", "out": "6", "to": "L", "weight": {"not": "censorTheNews"}},
+     {"to": "End"}
+   ]},
+  {"id": "End", "trans": []}
+ ]
+}
