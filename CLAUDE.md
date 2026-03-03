@@ -30,7 +30,7 @@ Compiler: clang++ (preferred) or g++, C++11. Links against GSL, Boost (regex, pr
 - `obj/` — compiled object files (generated)
 - `wasm/` — WebAssembly build artifacts
 - `emcc/` — Emscripten support files
-- `python/` — Python utilities (hamming74.py, mixradar.py)
+- `python/codes/` — Python coding-theory utilities (hamming74.py, mixradar.py)
 - `img/` — images for documentation
 - `examples/` — example scripts
 
