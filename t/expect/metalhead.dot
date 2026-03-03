@@ -1,0 +1,27 @@
+digraph G {
+ rankdir=LR;
+ node [fontname="Helvetica",fontsize=12];
+ edge [fontname="Helvetica",fontsize=10];
+
+ start [shape=point,width=0,height=0,label=""];
+ start -> 0;
+
+ 0 [shape=circle,label="S0"];
+ 1 [shape=circle,label="S1"];
+ 2 [shape=circle,label="S2"];
+ 3 [shape=doublecircle,label="End"];
+
+ 0 -> 0 [label="1,2,3,4,5"];
+ 0 -> 1 [label="6"];
+ 0 -> 3 [label="&epsilon;",style=dashed,color=gray,fontcolor=gray];
+
+ 1 -> 0 [label="1,2,3,4,5"];
+ 1 -> 2 [label="6"];
+ 1 -> 3 [label="&epsilon;",style=dashed,color=gray,fontcolor=gray];
+
+ 2 -> 0 [label="1,2,3,4,5"];
+ 2 -> 2 [label="6/6!"];
+ 2 -> 3 [label="&epsilon;",style=dashed,color=gray,fontcolor=gray];
+
+
+}

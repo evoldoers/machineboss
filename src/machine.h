@@ -73,7 +73,8 @@ struct Machine {
 
   void writeJson (ostream& out, bool memoizeRepeatedExpressions = false, bool showParams = false, bool useStateIDs = false) const;
   void readJson (const json& json);
-  void writeDot (ostream& out, const char* emptyLabelText = "&epsilon;") const;
+  void writeDot (ostream& out, const char* emptyLabelText = "&epsilon;",
+		 bool mergeEdges = true, bool abbreviateLabels = true) const;
 
   StateIndex nStates() const;
   size_t nTransitions() const;

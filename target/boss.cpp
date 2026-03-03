@@ -152,6 +152,8 @@ int main (int argc, char** argv) {
     appOpts.add_options()
       ("save,S", po::value<string>(), "save machine to file")
       ("graphviz,G", "write machine in Graphviz DOT format")
+      ("dot-no-merge", "show each transition as a separate edge in DOT output")
+      ("dot-show-io", "always show in/out labels (disable abbreviating a/a to a) in DOT output")
       ("stats", "show model statistics (#states, #transitions, #params)")
       ("evaluate", "evaluate all transition weights in final machine")
       ("define-exprs", "define and re-use repeated (sub)expressions, for compactness")
@@ -675,7 +677,7 @@ int main (int argc, char** argv) {
     // output transducer
     function<void(ostream&)> showMachine = [&](ostream& out) {
       if (vm.count("graphviz"))
-	machine.writeDot (out);
+	machine.writeDot (out, "&epsilon;", !vm.count("dot-no-merge"), !vm.count("dot-show-io"));
       else
 	machine.writeJson (out, vm.count("define-exprs"), vm.count("show-params"), vm.count("name-states"));
     };

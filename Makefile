@@ -444,6 +444,9 @@ test-constraints: t/bin/testconstraints
 test-dot:
 	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --graphviz t/expect/bitnoise.dot
 	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json t/machine/bitnoise.json --graphviz t/expect/bitnoise2.dot
+	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --graphviz --dot-no-merge t/expect/bitnoise-no-merge.dot
+	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --graphviz --dot-show-io t/expect/bitnoise-show-io.dot
+	@$(TEST) $(WRAPBOSS) tutorial/metalhead.json --graphviz t/expect/metalhead.dot
 
 # Symbolic algebra tests
 ALGEBRA_TESTS = test-list-params test-deriv-xplusy-x test-deriv-xy-x test-eval-1plus2

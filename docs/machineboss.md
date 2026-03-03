@@ -266,6 +266,8 @@ Machine Boss can generate standalone C++, JavaScript, or WGSL (WebGPU) code impl
 |---|---|
 | `--save FILE` | Save machine to file (instead of stdout). |
 | `--graphviz` | Output in GraphViz DOT format. |
+| `--dot-no-merge` | Show each transition as a separate edge in DOT output. |
+| `--dot-show-io` | Always show `in/out` labels in DOT output (disable abbreviating `a/a` to `a`). |
 | `--stats` | Show model statistics (states, transitions, parameters). |
 | `--evaluate` | Evaluate all transition weights numerically. |
 | `--define-exprs` | Define and re-use repeated sub-expressions for compactness. |

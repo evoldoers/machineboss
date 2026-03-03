@@ -501,25 +501,97 @@ void Machine::readJson (const json& pj) {
   }
 }
 
-void Machine::writeDot (ostream& out, const char* emptyLabelText) const {
-  out << "digraph G {\n";
+void Machine::writeDot (ostream& out, const char* emptyLabelText, bool mergeEdges, bool abbreviateLabels) const {
+  const StateIndex endIdx = nStates() - 1;
+  out << "digraph G {" << endl;
+  out << " rankdir=LR;" << endl;
+  out << " node [fontname=\"Helvetica\",fontsize=12];" << endl;
+  out << " edge [fontname=\"Helvetica\",fontsize=10];" << endl;
+  out << endl;
+
+  // invisible start node with arrow into state 0
+  out << " start [shape=point,width=0,height=0,label=\"\"];" << endl;
+  out << " start -> 0;" << endl;
+  out << endl;
+
+  // state nodes
   for (StateIndex s = 0; s < nStates(); ++s) {
     const auto& n = state[s].name;
-    out << " " << s << " [label=\""
+    const string shape = (s == endIdx) ? "doublecircle" : "circle";
+    out << " " << s << " [shape=" << shape << ",label=\""
 	<< escaped_str (n.is_string() ? n.get<string>() : n.dump())
 	<< "\"];" << endl;
   }
   out << endl;
+
+  // helper to build the IO part of an edge label (without weight)
+  auto makeIOLabel = [&](const MachineTransition& t) -> string {
+    const string inStr = t.in.empty() ? string(emptyLabelText) : escaped_str(t.in);
+    const string outStr = t.out.empty() ? string(emptyLabelText) : escaped_str(t.out);
+    if (abbreviateLabels) {
+      if (!t.in.empty() && !t.out.empty() && t.in == t.out)
+	return inStr;
+      if (t.in.empty() && !t.out.empty())
+	return outStr;
+      if (!t.in.empty() && t.out.empty())
+	return inStr;
+      if (t.in.empty() && t.out.empty())
+	return string(emptyLabelText);
+    }
+    return inStr + "/" + outStr;
+  };
+
+  // helper to build a full edge label (IO + weight)
+  auto makeFullLabel = [&](const MachineTransition& t) -> string {
+    string label = makeIOLabel(t);
+    if (!WeightAlgebra::isOne(t.weight))
+      label += " [" + WeightAlgebra::toString(t.weight, ParamDefs()) + "]";
+    return label;
+  };
+
+  // edges
   for (StateIndex s = 0; s < nStates(); ++s) {
     const MachineState& ms = state[s];
-    for (const auto& t: ms.trans)
-      out << " " << s << " -> " << t.dest << " [headlabel=\""
-	  << escaped_str (t.in.empty() ? emptyLabelText : t.in.c_str())
-	  << "/"
-	  << escaped_str (t.out.empty() ? emptyLabelText : t.out.c_str())
-	  << "\""
-	  << (WeightAlgebra::isOne(t.weight) ? string() : (string(",taillabel=\"") + WeightAlgebra::toString (t.weight, ParamDefs()) + "\""))
-	  << "];" << endl;
+    if (mergeEdges) {
+      // group transitions by (dest, weight_string) and merge IO labels
+      map<pair<StateIndex,string>, vector<string>> groups;
+      map<pair<StateIndex,string>, bool> groupSilent;
+      vector<pair<StateIndex,string>> groupOrder;
+      for (const auto& t: ms.trans) {
+	const string weightStr = WeightAlgebra::toString(t.weight, ParamDefs());
+	auto key = make_pair(t.dest, weightStr);
+	if (groups.find(key) == groups.end()) {
+	  groupOrder.push_back(key);
+	  groupSilent[key] = true;
+	}
+	groups[key].push_back(makeIOLabel(t));
+	if (!t.in.empty() || !t.out.empty())
+	  groupSilent[key] = false;
+      }
+      for (const auto& key: groupOrder) {
+	const auto& labels = groups.at(key);
+	string combined;
+	for (size_t i = 0; i < labels.size(); ++i) {
+	  if (i > 0) combined += ",";
+	  combined += labels[i];
+	}
+	if (key.second != "1")
+	  combined += " [" + key.second + "]";
+	out << " " << s << " -> " << key.first << " [label=\"" << combined << "\"";
+	if (groupSilent.at(key))
+	  out << ",style=dashed,color=gray,fontcolor=gray";
+	out << "];" << endl;
+      }
+    } else {
+      for (const auto& t: ms.trans) {
+	const string label = makeFullLabel(t);
+	const bool isSilent = t.in.empty() && t.out.empty();
+	out << " " << s << " -> " << t.dest << " [label=\"" << label << "\"";
+	if (isSilent)
+	  out << ",style=dashed,color=gray,fontcolor=gray";
+	out << "];" << endl;
+      }
+    }
     out << endl;
   }
   out << "}" << endl;

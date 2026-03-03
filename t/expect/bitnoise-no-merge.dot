@@ -6,9 +6,11 @@ digraph G {
  start [shape=point,width=0,height=0,label=""];
  start -> 0;
 
- 0 [shape=doublecircle,label="[\"S\",\"S\"]"];
+ 0 [shape=doublecircle,label="S"];
 
- 0 -> 0 [label="0,1 [q*q+p*p]"];
- 0 -> 0 [label="0/1,1/0 [q*p+p*q]"];
+ 0 -> 0 [label="0 [p]"];
+ 0 -> 0 [label="0/1 [q]"];
+ 0 -> 0 [label="1 [p]"];
+ 0 -> 0 [label="1/0 [q]"];
 
 }

@@ -1,9 +1,14 @@
 digraph G {
- 0 [label="S"];
+ rankdir=LR;
+ node [fontname="Helvetica",fontsize=12];
+ edge [fontname="Helvetica",fontsize=10];
 
- 0 -> 0 [headlabel="0/0",taillabel="p"];
- 0 -> 0 [headlabel="0/1",taillabel="q"];
- 0 -> 0 [headlabel="1/1",taillabel="p"];
- 0 -> 0 [headlabel="1/0",taillabel="q"];
+ start [shape=point,width=0,height=0,label=""];
+ start -> 0;
+
+ 0 [shape=doublecircle,label="S"];
+
+ 0 -> 0 [label="0,1 [p]"];
+ 0 -> 0 [label="0/1,1/0 [q]"];
 
 }

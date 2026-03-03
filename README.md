@@ -401,6 +401,7 @@ Here are some examples of files that fit these schemas:
 ## Help text
 
 <pre><code>
+<code>
 
 General options:
   -h [ --help ]                 display this help message
@@ -559,6 +560,10 @@ Miscellaneous:
 Transducer application:
   -S [ --save ] arg             save machine to file
   -G [ --graphviz ]             write machine in Graphviz DOT format
+  --dot-no-merge                show each transition as a separate edge in DOT 
+                                output
+  --dot-show-io                 always show in/out labels (disable abbreviating
+                                a/a to a) in DOT output
   --stats                       show model statistics (#states, #transitions, 
                                 #params)
   --evaluate                    evaluate all transition weights in final 
