@@ -7,8 +7,8 @@ permalink: /composition/
 # Machine Boss Composition Algorithm
 
 Transducer composition is the core operation in Machine Boss. Given two transducers
-A and B, the composition A &#x2218; B produces a new transducer that maps A's inputs
-directly to B's outputs, with A's output alphabet matched against B's input alphabet.
+A and B, the composition A &#x2218; B produces a new transducer that feeds A's outputs
+into B's inputs, mapping A's input alphabet to B's output alphabet.
 
 This document describes the implementation in
 `Machine::compose` (`src/machine.cpp`).
