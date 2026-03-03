@@ -31,18 +31,18 @@ JSON representation of a [weighted finite-state transducer](https://en.wikipedia
 Machine Boss is multilingual: algorithms are available in C++, Python/JAX, JavaScript, and WGSL (WebGPU).
 The [Python/JAX package](python/) provides differentiable inference and training algorithms,
 supporting HMM decoding heads and neural transducers for integration with deep learning frameworks.
-The [WebGPU/JavaScript library](js/webgpu/doc/webgpu.html) enables GPU-accelerated inference directly in the browser,
+The [WebGPU/JavaScript library](https://machineboss.org/webgpu/) enables GPU-accelerated inference directly in the browser,
 with a pure JavaScript CPU fallback for environments without WebGPU support.
 Both tokenized sequences and position-specific weight matrices (PSWMs/profiles) are supported.
 
 ## Documentation
 
-- **[Program Reference](doc/machineboss.html)** &mdash; full command-line reference for the `boss` tool
-- **[JSON Format Reference](doc/json-format.html)** &mdash; documentation for the Machine Boss JSON transducer format and related schemas
-- **[Expression Language](doc/expressions.html)** &mdash; the weight expression mini-language used in `--weight`, `--weight-input`, `--weight-output`, and the `"expr"` field in JSON transitions
-- **[JSON Output Formats](doc/json-output.html)** &mdash; documentation for all JSON output formats (machine, parameters, log-likelihood, alignment, counts, encoding, decoding)
-- **[Composition Algorithm](doc/composition.html)** &mdash; detailed description of the transducer composition algorithm
-- **[WebGPU API](js/webgpu/doc/webgpu.html)** &mdash; GPU-accelerated inference in the browser via WebGPU with JavaScript CPU fallback
+- **[Program Reference](https://machineboss.org/machineboss/)** &mdash; full command-line reference for the `boss` tool
+- **[JSON Format Reference](https://machineboss.org/json-format/)** &mdash; documentation for the Machine Boss JSON transducer format and related schemas
+- **[Expression Language](https://machineboss.org/expressions/)** &mdash; the weight expression mini-language used in `--weight`, `--weight-input`, `--weight-output`, and the `"expr"` field in JSON transitions
+- **[JSON Output Formats](https://machineboss.org/json-output/)** &mdash; documentation for all JSON output formats (machine, parameters, log-likelihood, alignment, counts, encoding, decoding)
+- **[Composition Algorithm](https://machineboss.org/composition/)** &mdash; detailed description of the transducer composition algorithm
+- **[WebGPU API](https://machineboss.org/webgpu/)** &mdash; GPU-accelerated inference in the browser via WebGPU with JavaScript CPU fallback
 
 ## Citation
 

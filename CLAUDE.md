@@ -68,8 +68,11 @@ The native machine format is a restricted JSON representation of a WFST. Schemas
 
 ## Documentation
 
-- [doc/machineboss.html](doc/machineboss.html) — program reference
-- [doc/json-format.html](doc/json-format.html) — JSON format reference
-- [doc/expressions.html](doc/expressions.html) — weight expression mini-language (grammar in `src/grammars/expr.h`, parser in `src/parsers.cpp`)
-- [doc/json-output.html](doc/json-output.html) — JSON output format reference (machine, parameters, loglike, alignment, counts, encode, decode)
-- [doc/composition.html](doc/composition.html) — transducer composition algorithm documentation
+Documentation is hosted at [machineboss.org](https://machineboss.org/) via GitHub Pages. Markdown source files are in `docs/`:
+
+- `docs/machineboss.md` — program reference
+- `docs/json-format.md` — JSON format reference
+- `docs/expressions.md` — weight expression mini-language (grammar in `src/grammars/expr.h`, parser in `src/parsers.cpp`)
+- `docs/json-output.md` — JSON output format reference (machine, parameters, loglike, alignment, counts, encode, decode)
+- `docs/composition.md` — transducer composition algorithm documentation
+- `docs/webgpu.md` — WebGPU API reference
