@@ -62,6 +62,8 @@ The README help text is auto-generated from `boss -h`. Run `make README.md` to u
 
 Tests are defined in the Makefile and use `t/testexpect.py` as a harness. Test categories: schema validation, composition, construction, I/O, algebra, dynamic programming, code generation, encoding/decoding, expression parsing, JSON API operations, preset loading. Some tests require `node` (JS tests).
 
+Refuse to commit if any tests are not passing.
+
 ## JSON Format
 
 The native machine format is a restricted JSON representation of a WFST. Schemas are in `schema/`. The start state is always first; the end state is always last. Transitions can use algebraic weight expressions with named parameters.

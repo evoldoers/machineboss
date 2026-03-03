@@ -185,10 +185,10 @@ class TestParameterizedMachine:
         # p=1 means weight is 1, log(1) = 0
         assert float(lt.max()) == pytest.approx(0.0, abs=0.01)
 
-    def test_jukescantor_defs(self):
+    def test_jukescantor_defs(self, repo_root):
         """Jukes-Cantor model: transitions use pSame/pDiff, defs chain to free param t."""
         import json
-        jc_path = "/Users/yam/machineboss/preset/jukescantor.json"
+        jc_path = str(repo_root / "preset" / "jukescantor.json")
         machine = Machine.from_file(jc_path)
 
         assert "pNoSub" in machine.defs

@@ -13,7 +13,7 @@ in bioinformatics. It supports regular expressions, HMMER profile HMMs, CSV prof
 and a native [JSON transducer format](/json-format/).
 
 Machine Boss is multilingual: algorithms are available in C++, Python/JAX, JavaScript, and WGSL (WebGPU).
-The Python/JAX package provides differentiable inference and training algorithms,
+The [Python/JAX package](/python/) provides differentiable inference and training algorithms,
 supporting HMM decoding heads and neural transducers for integration with deep learning frameworks.
 The [WebGPU/JavaScript library](/webgpu/) enables GPU-accelerated inference
 directly in the browser, with a pure JavaScript CPU fallback for environments without WebGPU support.
