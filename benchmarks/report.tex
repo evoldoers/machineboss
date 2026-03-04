@@ -1,0 +1,146 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{amsmath}
+
+\title{Machine Boss: Dynamic Programming Performance Benchmarks}
+\author{Machine Boss benchmark suite}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Methodology}
+
+We benchmark the Forward and Viterbi dynamic programming algorithms across multiple
+backends in the Machine Boss WFST toolkit:
+
+\begin{itemize}
+  \item \textbf{C++ native}: the \texttt{boss} CLI (\texttt{-L} for Forward, \texttt{-V} for Viterbi)
+  \item \textbf{JAX 1D scan}: Python/JAX using \texttt{jax.lax.scan} (sequential)
+  \item \textbf{JAX 1D parallel}: Python/JAX using \texttt{jax.lax.associative\_scan} (parallel prefix)
+  \item \textbf{JAX 2D scan}: Python/JAX 2D with sequential outer scan
+  \item \textbf{JAX 2D wavefront}: Python/JAX 2D with anti-diagonal wavefront parallelism
+  \item \textbf{JAX GPU}: JAX on GPU (skipped if unavailable)
+  \item \textbf{JS CPU}: JavaScript CPU fallback via Node.js
+\end{itemize}
+
+\subsection{1D problems (generators)}
+
+Random generator machines (output-only) with DNA alphabet (A, C, G, T) are tested across:
+\begin{itemize}
+  \item Sequence length $L \in \{100, 500, 2000, 10000\}$
+  \item Machine states $S \in \{4, 16, 64\}$
+\end{itemize}
+
+\subsection{2D problems (transducers)}
+
+Random transducer machines with DNA alphabet are tested across:
+\begin{itemize}
+  \item Input length $L_{\mathrm{in}} \in \{10, 50, 200\}$
+  \item Output length $L_{\mathrm{out}} \in \{10, 50, 200\}$
+  \item Machine states $S \in \{4, 16, 64\}$
+\end{itemize}
+
+Each configuration is timed over multiple repetitions after a warmup call
+(which also triggers JIT compilation for JAX backends).
+We report mean $\pm$ standard deviation in seconds.
+Configurations that exceed a timeout threshold are recorded with their probe timing
+and larger sizes are skipped.
+
+\section{Hardware}
+
+\input{tables/machine_stats}
+
+\section{Results: 1D Forward}
+
+\input{tables/1d_forward_includes}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/1d_scaling_L_Forward.pdf}
+  \caption{1D Forward: scaling by sequence length $L$, faceted by states $S$. Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/1d_comparison_Forward.pdf}
+  \caption{1D Forward: time relative to C++ native, by configuration.}
+\end{figure}
+
+\section{Results: 1D Viterbi}
+
+\input{tables/1d_viterbi_includes}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/1d_scaling_L_Viterbi.pdf}
+  \caption{1D Viterbi: scaling by sequence length $L$, faceted by states $S$. Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/1d_comparison_Viterbi.pdf}
+  \caption{1D Viterbi: time relative to C++ native, by configuration.}
+\end{figure}
+
+\section{Results: 2D Forward}
+
+\input{tables/2d_forward_includes}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_scaling_Li_Forward.pdf}
+  \caption{2D Forward: scaling by input length $L_{\mathrm{in}}$, faceted by states $S$ (rows) and output length $L_{\mathrm{out}}$ (columns). Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_scaling_Lo_Forward.pdf}
+  \caption{2D Forward: scaling by output length $L_{\mathrm{out}}$, faceted by states $S$ (rows) and input length $L_{\mathrm{in}}$ (columns). Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_scaling_S_Forward.pdf}
+  \caption{2D Forward: scaling by states $S$, faceted by $L_{\mathrm{in}}$ (rows) and $L_{\mathrm{out}}$ (columns). Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_comparison_Forward.pdf}
+  \caption{2D Forward: time relative to C++ native, by configuration.}
+\end{figure}
+
+\section{Results: 2D Viterbi}
+
+\input{tables/2d_viterbi_includes}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_scaling_Li_Viterbi.pdf}
+  \caption{2D Viterbi: scaling by input length $L_{\mathrm{in}}$, faceted by states $S$ (rows) and output length $L_{\mathrm{out}}$ (columns). Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_scaling_Lo_Viterbi.pdf}
+  \caption{2D Viterbi: scaling by output length $L_{\mathrm{out}}$, faceted by states $S$ (rows) and input length $L_{\mathrm{in}}$ (columns). Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_scaling_S_Viterbi.pdf}
+  \caption{2D Viterbi: scaling by states $S$, faceted by $L_{\mathrm{in}}$ (rows) and $L_{\mathrm{out}}$ (columns). Log-log scale.}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figures/2d_comparison_Viterbi.pdf}
+  \caption{2D Viterbi: time relative to C++ native, by configuration.}
+\end{figure}
+
+\end{document}

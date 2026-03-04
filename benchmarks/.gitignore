@@ -1,0 +1,15 @@
+# Generated artifacts
+figures/
+tables/
+
+# LaTeX intermediates
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+
+# Keep results and final PDF
+!results/
+!report.pdf
