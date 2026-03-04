@@ -24,12 +24,17 @@ namespace MachineBoss {
    Test(...) does not exit or throw an exception,
    just prints a warning and returns false if the assertion fails.
 */
+namespace detail {
 void Abort(const char* error, ...);
 void Warn(const char* warning, ...);
 void Fail(const char* error, ...);
-#define Test(assertion,...) ((assertion) ? true : (Warn(__VA_ARGS__), false))
-#define Assert(assertion,...) do { if (!(assertion)) Abort("Assertion Failed: " __VA_ARGS__); } while (0)
-#define Require(assertion,...) do { if (!(assertion)) Fail(__VA_ARGS__); } while (0)
+}  // end namespace detail
+using detail::Abort;
+using detail::Warn;
+using detail::Fail;
+#define Test(assertion,...) ((assertion) ? true : (MachineBoss::detail::Warn(__VA_ARGS__), false))
+#define Assert(assertion,...) do { if (!(assertion)) MachineBoss::detail::Abort("Assertion Failed: " __VA_ARGS__); } while (0)
+#define Require(assertion,...) do { if (!(assertion)) MachineBoss::detail::Fail(__VA_ARGS__); } while (0)
 
 void CheckGsl (int gslErrorCode);
 

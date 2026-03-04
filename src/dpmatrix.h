@@ -12,6 +12,8 @@
 
 namespace MachineBoss {
 
+namespace detail {
+
 struct IndexMapperBase {
   typedef typename Envelope::InputIndex InputIndex;
   typedef typename Envelope::OutputIndex OutputIndex;
@@ -54,6 +56,11 @@ struct RollingOutputIndexMapper : IndexMapperBase {
     return (outPos % 2) * inSuperCells + inPos;
   }
 };
+
+}  // end namespace detail
+
+using detail::IdentityIndexMapper;
+using detail::RollingOutputIndexMapper;
 
 template<class IndexMapper>
 class DPMatrix : protected IndexMapper {

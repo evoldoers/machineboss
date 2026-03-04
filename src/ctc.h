@@ -15,9 +15,25 @@
 // seqCell(outPos,state) and prefixCell(outPos,state) track states in, respectively, echo(A)*G and wild(A)*G.
 namespace MachineBoss {
 
-struct PrefixTree {
+class PrefixTree {
+public:
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
+
+  PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, InputIndex maxBacktrack);
+
+  vguard<InputSymbol> doPrefixSearch();  // finds most likely input
+  vguard<InputSymbol> doAnnealedSearch (mt19937&, int stepsPerTok, bool doCooling = true);
+
+  vguard<InputSymbol> sampleSeq (mt19937&);  // samples from posterior distribution over inputs
+  vguard<InputToken> sampleTokSeq (mt19937&);
+
+  vguard<InputSymbol> bestSeq() const { return seqTraceback (bestSeqNode); }
+  vguard<InputSymbol> bestPrefix() const { return seqTraceback (bestPrefixNode()); }
+
+  double logSeqProb (const list<InputToken>&, bool humble = false);
+
+private:
   struct Node {
     const InputToken inTok;
     const Node* parent;
@@ -30,7 +46,7 @@ struct PrefixTree {
     list<Node*> child;
     list<Node>::iterator iter;
     list<Node*>::iterator parentIter;
-    
+
     Node();
     Node (const PrefixTree& tree, const Node* parent, InputToken inTok);
 
@@ -97,27 +113,14 @@ struct PrefixTree {
   Node* bestSeqNode;
   double bestLogSeqProb;
   InputIndex maxPrefixLen;
-  
-  PrefixTree (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, InputIndex maxBacktrack);
+
   void clear();
-  
-  vguard<InputSymbol> doPrefixSearch();  // finds most likely input
-  vguard<InputSymbol> doAnnealedSearch (mt19937&, int stepsPerTok, bool doCooling = true);
-
-  vguard<InputSymbol> sampleSeq (mt19937&);  // samples from posterior distribution over inputs
-  vguard<InputToken> sampleTokSeq (mt19937&);
-
-  double logSeqProb (const list<InputToken>&, bool humble = false);
-
   Node* rootNode();
   void extendNode (Node* parent);
   Node* addNode (Node* parent, InputToken inTok, bool humble = false);
   void removeNode (Node* node);
   Node* bestPrefixNode() const { return nodeQueue.front(); }
   string nodeQueueDebugString() const;
-  
-  vguard<InputSymbol> bestSeq() const { return seqTraceback (bestSeqNode); }
-  vguard<InputSymbol> bestPrefix() const { return seqTraceback (bestPrefixNode()); }
   vguard<InputSymbol> seqTraceback (const Node* node) const;
 };
 

@@ -12,10 +12,16 @@
 
 namespace MachineBoss {
 
-struct BeamSearchMatrix {
+class BeamSearchMatrix {
+public:
   typedef Envelope::InputIndex InputIndex;
   typedef Envelope::OutputIndex OutputIndex;
 
+  BeamSearchMatrix (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, size_t beamWidth = DefaultBeamWidth);
+
+  vguard<InputSymbol> bestSeq();
+
+private:
   struct SeqNode {
     typedef SeqNode* SeqNodePtr;
     const InputToken inTok;
@@ -33,7 +39,7 @@ struct BeamSearchMatrix {
       return logWeight.at(a) > logWeight.at(b);
     }
   };
-  
+
   const EvaluatedMachine& machine;
   const vguard<OutputToken> output;
   const OutputIndex outLen;
@@ -47,7 +53,7 @@ struct BeamSearchMatrix {
   inline size_t nCells() const {
     return (outLen + 1) * nStates;
   }
-  
+
   inline size_t cellIndex (OutputIndex outPos, StateIndex state) const {
     return outPos * nStates + state;
   }
@@ -85,9 +91,6 @@ struct BeamSearchMatrix {
     return node->child[inTok];
   }
 
-  BeamSearchMatrix (const EvaluatedMachine& machine, const vguard<OutputSymbol>& outSym, size_t beamWidth = DefaultBeamWidth);
-
-  vguard<InputSymbol> bestSeq();
   vguard<InputSymbol> getSeq (SeqNodePtr) const;
 };
 

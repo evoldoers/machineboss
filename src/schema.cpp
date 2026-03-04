@@ -90,11 +90,11 @@ bool SchemaCache::validate (const char* schemaNameStem, const json& data) const 
   return valid;
 }
 
-bool MachineSchema::validate (const char* schemaNameStem, const nlohmann::json& data) {
+bool detail::MachineSchema::validate (const char* schemaNameStem, const nlohmann::json& data) {
   return schemaCache.validate (schemaNameStem, data);
 }
 
-void MachineSchema::validateOrDie (const char* schemaNameStem, const nlohmann::json& data) {
+void detail::MachineSchema::validateOrDie (const char* schemaNameStem, const nlohmann::json& data) {
   const string err = string(schemaNameStem) + " specification does not fit schema";
   Require (validate(schemaNameStem,data), err.c_str());
 }

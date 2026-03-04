@@ -33,6 +33,8 @@ typedef double LogProb;
 
 double log_sum_exp_unary_slow (double x);  /* does not use lookup table */
 
+namespace detail {
+
 struct LogSumExpLookupTable {
   double *lookup;
   LogSumExpLookupTable();
@@ -40,6 +42,8 @@ struct LogSumExpLookupTable {
 };
 
 extern LogSumExpLookupTable logSumExpLookupTable;
+
+}  // end namespace detail
 
 inline double log_sum_exp_unary (double x) {
   /* returns log(1 + exp(-x)) for nonnegative x */
@@ -53,10 +57,10 @@ inline double log_sum_exp_unary (double x) {
     return -x;
   }
   const int n = (int) (x / LOG_SUM_EXP_LOOKUP_PRECISION);
-  const double f0 = logSumExpLookupTable.lookup[n];
+  const double f0 = detail::logSumExpLookupTable.lookup[n];
 #ifdef LOG_SUM_EXP_INTERPOLATE
   const double dx = x - (n * LOG_SUM_EXP_LOOKUP_PRECISION);
-  const double f1 = logSumExpLookupTable.lookup[n+1];
+  const double f1 = detail::logSumExpLookupTable.lookup[n+1];
   const double df = f1 - f0;
   return f0 + df * (dx / LOG_SUM_EXP_LOOKUP_PRECISION);
 #else /* LOG_SUM_EXP_INTERPOLATE */

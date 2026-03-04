@@ -91,7 +91,7 @@ endif
 endif
 
 LD_FLAGS = -lstdc++ -lm
-CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iext -Iext/nlohmann_json
+CPP_FLAGS += $(ALL_FLAGS) -Isrc -Iinclude -Iext -Iext/nlohmann_json
 LD_FLAGS += $(ALL_LIBS) -lz
 
 # files
@@ -122,11 +122,25 @@ install: $(BOSS)
 
 lib: $(LIBTARGET)
 
+# Public API headers (umbrella + direct includes)
+PUBLIC_HEADERS = include/machineboss.h \
+    src/api.h src/machine.h src/weight.h src/params.h src/constraints.h \
+    src/seqpair.h src/eval.h src/fastseq.h \
+    src/forward.h src/backward.h src/viterbi.h \
+    src/counts.h src/fitter.h src/beam.h src/ctc.h src/compiler.h \
+    src/preset.h src/hmmer.h src/csv.h src/jphmm.h src/parsers.h
+
+# Transitively-required headers (part of ABI)
+ABI_HEADERS = src/dpmatrix.h src/dpmatrix.defs.h src/forward.defs.h \
+    src/vguard.h src/stacktrace.h src/util.h src/jsonio.h \
+    src/logsumexp.h src/logger.h src/schema.h \
+    src/softplus.h src/getparams.h src/regexmacros.h
+
 install-lib: $(LIBTARGET)
 	@test -e $(INSTALL_INCLUDE) || mkdir -p $(INSTALL_INCLUDE)
-	cp -r src/*.h $(INSTALL_INCLUDE)
-	cp -r ext/* $(INSTALL_INCLUDE)
-	cp -r ext/nlohmann_json/* $(INSTALL_INCLUDE)
+	cp $(PUBLIC_HEADERS) $(INSTALL_INCLUDE)/
+	cp $(ABI_HEADERS) $(INSTALL_INCLUDE)/
+	cp ext/nlohmann_json/json.hpp $(INSTALL_INCLUDE)/
 	cp $(LIBTARGET) $(INSTALL_LIB)
 
 # Main build rules

@@ -27,7 +27,7 @@
 using namespace MachineBoss;
 
 // function defs
-void MachineBoss::Warn(const char* warning, ...) {
+void MachineBoss::detail::Warn(const char* warning, ...) {
   va_list argptr;
   fprintf(stderr,"Warning: ");
   va_start (argptr, warning);
@@ -36,7 +36,7 @@ void MachineBoss::Warn(const char* warning, ...) {
   va_end (argptr);
 }
 
-void MachineBoss::Abort(const char* error, ...) {
+void MachineBoss::detail::Abort(const char* error, ...) {
   va_list argptr;
   va_start (argptr, error);
   fprintf(stderr,"Abort: ");
@@ -47,7 +47,7 @@ void MachineBoss::Abort(const char* error, ...) {
   throw runtime_error("Abort");
 }
 
-void MachineBoss::Fail(const char* error, ...) {
+void MachineBoss::detail::Fail(const char* error, ...) {
   va_list argptr;
   va_start (argptr, error);
   vfprintf(stderr,error,argptr);

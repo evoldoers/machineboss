@@ -13,35 +13,35 @@
 // dual-purpose C++/JavaScript compiler
 namespace MachineBoss {
 
-struct Compiler {
+class WGSLCompiler;
+
+class Compiler {
+  friend class WGSLCompiler;
+public:
   typedef size_t TransIndex;
   typedef size_t FuncIndex;
   typedef pair<StateIndex,TransIndex> StateTransIndex;
 
   typedef enum SeqType { Profile = 0, IntVec = 1, String = 2 } SeqType;
-  
-  // machine analysis for compiler
-  struct MachineInfo {
-    const Compiler& compiler;
-    Machine wm;
-    EvaluatedMachine eval;
-    map<string,FuncIndex> funcIdx;
-    vguard<vguard<StateTransIndex> > incoming;
-    MachineInfo (const Compiler&, const Machine&);
-    string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
-    string storeTransitions (ostream*, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
-    void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, SeqType outType, bool outputWaiting) const;
-    void flushTransitions (ostream&, string& lvalue, string& rvalue, const string& indent) const;
-    string bufRowAccessor (const string&, const string&, const SeqType) const;
-    string inputRowAccessor (const string&, const string&) const;
-    void showCell (ostream&, const string& indent, bool withInput, bool withOutput) const;
-  };
 
   // general config
   bool showCells;  // add code that displays DP matrix
   bool useMaxReduce;  // use max() instead of logSumExp() for reduce, i.e. Viterbi instead of Forward
+
+  Compiler();
+
+  void compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* dir = DefaultCodeGenDir, const char* funcName = DefaultForwardFunctionName) const;
+
+  void compileWGSL (const Machine&, const char* dir = DefaultCodeGenDir) const;
+
+  static bool isCharAlphabet (const vguard<string>&);
+
+protected:
+  // machine analysis for compiler (defined in compiler.cpp)
+  struct MachineInfo;
+
   size_t maxNestDepth;  // defaults to DefaultMaxNestDepth
-  
+
   // per-language config
   string preamble;         // #include's, helper function declarations or definitions, etc.
   string funcKeyword;      // keywords to declare function returning number (return type for C++, "function" for JS)
@@ -78,9 +78,7 @@ struct Compiler {
   string filenameSuffix;   // .cpp, .js
   string headerSuffix;     // .h, .js
   string includeGetParams; // #include "getparams.h" (or equivalent)
-  
-  Compiler();
-  
+
   static string transVar (const EvaluatedMachine&, StateIndex s, TransIndex t);
   static string funcVar (FuncIndex f);
 
@@ -107,23 +105,19 @@ struct Compiler {
   virtual string realLog (const string&) const = 0;
 
   virtual string postamble (const vguard<string>& funcNames) const = 0;
-  
-  static bool isCharAlphabet (const vguard<string>&);
 
   string reduce (vguard<string>& exprs, const string& lineIndent, bool topLevel, bool alreadyBounded) const;
   string valOrInf (const string& arg) const;
   string expr2string (const WeightExpr& w, const map<string,FuncIndex>& funcIdx, int parentPrecedence = 0) const;
-  
+
   string headerFilename (const char* dir, const char* funcName) const;
   string privateHeaderFilename (const char* dir, const char* funcName) const;
-
-  void compileForward (const Machine&, SeqType xType = Profile, SeqType yType = Profile, const char* dir = DefaultCodeGenDir, const char* funcName = DefaultForwardFunctionName) const;
-
-  void compileWGSL (const Machine&, const char* dir = DefaultCodeGenDir) const;
 };
 
-struct JavaScriptCompiler : Compiler {
+class JavaScriptCompiler : public Compiler {
+public:
   JavaScriptCompiler();
+protected:
   string declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const;
   string declareArray (const string& type, const string& arrayName, const string& dim) const;
   string deleteArray (const string& arrayName) const;
@@ -147,8 +141,10 @@ struct JavaScriptCompiler : Compiler {
   string initStringArray (const string& arrayName, const vguard<string>& values) const;
 };
 
-struct CPlusPlusCompiler : Compiler {
+class CPlusPlusCompiler : public Compiler {
+public:
   CPlusPlusCompiler (bool is64bit);
+protected:
   string declareArray (const string& type, const string& arrayName, const string& dim1, const string& dim2) const;
   string declareArray (const string& type, const string& arrayName, const string& dim) const;
   string deleteArray (const string& arrayName) const;
@@ -172,7 +168,8 @@ struct CPlusPlusCompiler : Compiler {
   string initStringArray (const string& arrayName, const vguard<string>& values) const;
 };
 
-struct WGSLCompiler {
+class WGSLCompiler {
+public:
   static void compile (const Machine&, const char* dir = DefaultCodeGenDir);
 };
 

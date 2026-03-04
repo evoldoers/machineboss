@@ -5,9 +5,9 @@
 
 using namespace MachineBoss;
 
-LogSumExpLookupTable MachineBoss::logSumExpLookupTable = LogSumExpLookupTable();
+detail::LogSumExpLookupTable MachineBoss::detail::logSumExpLookupTable = detail::LogSumExpLookupTable();
 
-LogSumExpLookupTable::LogSumExpLookupTable() {
+detail::LogSumExpLookupTable::LogSumExpLookupTable() {
   lookup = new double [LOG_SUM_EXP_LOOKUP_ENTRIES];
   int n;
   double x;
@@ -17,7 +17,7 @@ LogSumExpLookupTable::LogSumExpLookupTable() {
   }
 }
 
-LogSumExpLookupTable::~LogSumExpLookupTable() {
+detail::LogSumExpLookupTable::~LogSumExpLookupTable() {
   delete[] lookup;
 }
 

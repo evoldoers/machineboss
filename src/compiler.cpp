@@ -5,6 +5,23 @@
 
 using namespace MachineBoss;
 
+// MachineInfo definition (internal to compiler)
+struct Compiler::MachineInfo {
+  const Compiler& compiler;
+  Machine wm;
+  EvaluatedMachine eval;
+  map<string,FuncIndex> funcIdx;
+  vguard<vguard<StateTransIndex> > incoming;
+  MachineInfo (const Compiler&, const Machine&);
+  string expr2string (const WeightExpr& w) const { return compiler.expr2string (w, funcIdx); }
+  string storeTransitions (ostream*, const char* dir, const char* funcPrefix, bool withNull, bool withIn, bool withOut, bool withBoth, InputToken inTok, OutputToken outTok, SeqType outType, bool start) const;
+  void addTransitions (vguard<string>& exprs, bool withInput, bool withOutput, StateIndex s, InputToken inTok, OutputToken outTok, SeqType outType, bool outputWaiting) const;
+  void flushTransitions (ostream&, string& lvalue, string& rvalue, const string& indent) const;
+  string bufRowAccessor (const string&, const string&, const SeqType) const;
+  string inputRowAccessor (const string&, const string&) const;
+  void showCell (ostream&, const string& indent, bool withInput, bool withOutput) const;
+};
+
 Compiler::Compiler()
   : showCells (false), useMaxReduce (false), maxNestDepth (DefaultMaxNestDepth)
 { }
