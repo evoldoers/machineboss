@@ -278,9 +278,50 @@ python python/codes/mixradar.py 8 --json | \
   boss - --preset terndna --input-chars 10110011 --beam-encode
 ```
 
+### Motif-avoiding DNA encoder generator
+
+The `dnastore.py` script generates a DNA encoding transducer
+that avoids specified sequence motifs (such as restriction enzyme recognition sites)
+in addition to homopolymers.
+It builds a filtered De Bruijn graph over DNA k-mers,
+where each state tracks the recent sequence context
+and only permits successor bases that do not create a forbidden pattern.
+
+The number of valid successors at each state determines the radix:
+
+```bash
+# Basic stats: 4-mer context, homopolymer avoidance only
+python python/codes/dnastore.py 4 --stats
+# All 108 valid 4-mers have radix 3 (the Goldman ternary code)
+
+# Add AfeI restriction site avoidance (context must be >= motif length - 1)
+python python/codes/dnastore.py 6 --motif AGCGCT --stats
+# 3 states drop to radix 2 (those ending in AGCGC, where emitting T
+# would create the forbidden AGCGCT)
+```
+
+Generate the transducer as Machine Boss JSON:
+
+```bash
+python python/codes/dnastore.py 6 --motif AGCGCT --json >dnastore6.json
+```
+
+The transducer reads radix-annotated input symbols
+(in `digit_radix` format, matching `mixradar.py` output)
+and emits DNA bases.
+At radix-1 states (where only one base is valid),
+the transducer emits the forced base without consuming input.
+
+The `--avoid-rc` flag additionally excludes reverse complements of the specified motifs,
+and `--dot` generates GraphViz output for visualization.
+
 ## References
 
 - Goldman, N., Bertone, P., Chen, S., Dessimoz, C., LeProust, E. M., Sipos, B., & Birney, E. (2013).
   Towards practical, high-capacity, low-maintenance information storage in synthesized DNA.
   *Nature*, 494(7435), 77–80.
   [doi:10.1038/nature11875](https://doi.org/10.1038/nature11875)
+
+- Holmes, I. (2017).
+  dnastore: a tool for DNA data storage coding.
+  [github.com/ihh/dnastore](https://github.com/ihh/dnastore)

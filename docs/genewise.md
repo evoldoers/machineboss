@@ -109,14 +109,15 @@ The trick was to recognize that all these components are themselves state machin
 (weighted finite-state transducers) that can be composed —
 but rather than explicitly building the enormous product machine
 and then running DP on it,
-Birney wrote a code generator called _Dynamite_ that took a declarative description
+Birney used _Dynamite_, a code generator he had begun developing
+before arriving at the Sanger Centre, that took a declarative description
 of the composed DP recurrence and generated optimized C code
 for the fused algorithm.
 The generated code interleaved the recurrences of the component models,
 visiting only the reachable states of the product.
 
-It is said that Birney, who began this work as a PhD student at the Sanger Centre
-and was already publishing on the topic as an undergraduate,
+It is said that Birney, who did the majority of his work on GeneWise and GenomeWise
+at the Sanger Centre and was already publishing on the topic as an undergraduate,
 was notorious among his peers for having cited his own 1996
 "PairWise and SearchWise" paper (Birney, 1996) in his undergraduate final examination.
 
