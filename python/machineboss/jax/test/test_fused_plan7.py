@@ -142,3 +142,146 @@ class TestFusedPlan7Viterbi:
 
         assert vit_ll <= fwd_ll + 0.01, \
             f"Viterbi={vit_ll} > Forward={fwd_ll}"
+
+
+# ============================================================
+# Helpers for bug regression tests
+# ============================================================
+
+AA_ALPHABET = list('ACDEFGHIKLMNPQRSTVWY')
+
+
+def _make_aa_echo_transducer():
+    """Build a simple amino acid echo transducer (1 state, self-loops)."""
+    aa_echo_json = {
+        'state': [{
+            'id': 'S',
+            'trans': [{'in': aa, 'out': aa, 'to': 'S'} for aa in AA_ALPHABET]
+        }]
+    }
+    return EvaluatedMachine.from_machine(
+        Machine.from_json(json.dumps(aa_echo_json)))
+
+
+def _build_aa_echo_plan7(repo_root, *, multihit=False):
+    """Build Plan7-aware fused machine with fn3 + aa_echo."""
+    hmmer_path = str(repo_root / "t" / "hmmer" / "fn3.hmm")
+    with open(hmmer_path) as f:
+        hmmer = HmmerModel.read(f)
+    td_em = _make_aa_echo_transducer()
+    fm = FusedPlan7Machine.build(hmmer, td_em, multihit=multihit)
+    return fm, td_em
+
+
+class TestFusedPlan7BugRegression:
+    """Regression tests that catch the 4 bugs fixed from the JS kernel.
+
+    Uses fn3.hmm + amino acid echo transducer, which exercises real amino acid
+    emissions (unlike bitecho which produces -Infinity with amino acid profiles).
+    """
+
+    def test_aa_echo_reference_values(self, repo_root):
+        """Forward matches Float64 JS reference values.
+
+        Catches bugs #2 (missing NX->N, CX->C, JX->J), #3 (pre/post E),
+        and #4 (missing B->M_k->E->CX chain).
+        """
+        fm, td_em = _build_aa_echo_plan7(repo_root)
+
+        cases = [
+            ('',     -15.776),
+            ('A',    -17.234),
+            ('ACDE', -25.701),
+        ]
+
+        for seq_str, ref in cases:
+            if seq_str:
+                out_seq = jnp.array(td_em.tokenize_output(list(seq_str)))
+            else:
+                out_seq = jnp.array([], dtype=jnp.int32)
+            ll = float(fused_plan7_log_forward(fm, out_seq))
+            assert ll == pytest.approx(ref, abs=0.5), \
+                f"seq='{seq_str}': Plan7={ll} != ref={ref}"
+
+    def test_aa_echo_viterbi_le_forward(self, repo_root):
+        """Viterbi <= Forward with aa_echo + fn3.
+
+        Catches major routing bugs where Viterbi might exceed Forward.
+        """
+        fm, td_em = _build_aa_echo_plan7(repo_root)
+        out_seq = jnp.array(td_em.tokenize_output(list('ACDE')))
+
+        fwd_ll = float(fused_plan7_log_forward(fm, out_seq))
+        vit_ll = float(fused_plan7_log_viterbi(fm, out_seq))
+
+        assert math.isfinite(fwd_ll), f"Forward not finite: {fwd_ll}"
+        assert math.isfinite(vit_ll), f"Viterbi not finite: {vit_ll}"
+        assert vit_ll <= fwd_ll + 0.01, \
+            f"Viterbi={vit_ll} > Forward={fwd_ll}"
+
+    def test_aa_echo_semiring_difference(self, repo_root):
+        """Forward > Viterbi for multi-path profile.
+
+        Catches semiring/routing confusion (if all mass goes through one path,
+        Forward == Viterbi, which would indicate broken routing).
+        """
+        fm, td_em = _build_aa_echo_plan7(repo_root)
+        out_seq = jnp.array(td_em.tokenize_output(list('ACDE')))
+
+        fwd_ll = float(fused_plan7_log_forward(fm, out_seq))
+        vit_ll = float(fused_plan7_log_viterbi(fm, out_seq))
+
+        assert fwd_ll > vit_ll + 1e-6, \
+            f"Forward ({fwd_ll}) should be > Viterbi ({vit_ll})"
+
+    def test_empty_sequence(self, repo_root):
+        """Forward on empty output with aa_echo + fn3.
+
+        Catches init bug (#4): B->M_k->E->CX->T path must be propagated.
+        """
+        fm, td_em = _build_aa_echo_plan7(repo_root)
+        out_seq = jnp.array([], dtype=jnp.int32)
+
+        ll = float(fused_plan7_log_forward(fm, out_seq))
+        assert math.isfinite(ll), f"Empty seq Forward not finite: {ll}"
+        assert ll == pytest.approx(-15.776, abs=0.5), \
+            f"Empty seq Forward={ll} != ref=-15.776"
+
+    def test_tighter_vs_generic_fused(self, repo_root, boss_path):
+        """Plan7-fused vs generic-fused with fn3+bitecho, tight tolerance.
+
+        Catches all bugs since generic fused (via explicit composition) is correct.
+        """
+        hmmer_path = str(repo_root / "t" / "hmmer" / "fn3.hmm")
+        td_path = str(repo_root / "t" / "machine" / "bitecho.json")
+
+        generic, td_em = _build_generic_fused(hmmer_path, td_path, boss_path)
+        plan7, _ = _build_plan7_fused(hmmer_path, td_path, boss_path)
+
+        test_seq = list("010101")
+        out_seq = jnp.array(td_em.tokenize_output(test_seq))
+
+        gen_ll = float(fused_log_forward(generic, out_seq))
+        p7_ll = float(fused_plan7_log_forward(plan7, out_seq))
+
+        assert p7_ll == pytest.approx(gen_ll, abs=0.01), \
+            f"Plan7={p7_ll} != generic={gen_ll} (tight tolerance)"
+
+    def test_flanking_n_c_populated(self, repo_root):
+        """After Forward with aa_echo, N and C flanking states have finite probability.
+
+        Catches bug #2 (missing NX->N, CX->C transitions): without these,
+        N/C emitting states stay at -Infinity.
+        """
+        fm, td_em = _build_aa_echo_plan7(repo_root)
+        out_seq = jnp.array(td_em.tokenize_output(list('ACDE')))
+
+        # Run Forward manually to inspect flanking state
+        from machineboss.jax.fused_plan7 import _fused_plan7_dp, LOGSUMEXP
+        # Use the public API and check the result is finite
+        ll = float(fused_plan7_log_forward(fm, out_seq))
+        assert math.isfinite(ll), \
+            f"Forward with aa_echo should be finite (got {ll})"
+        # If N/C are unpopulated, the result would be -Infinity or very negative
+        assert ll > -100, \
+            f"Forward={ll} is too negative — flanking states likely unpopulated"

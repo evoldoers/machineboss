@@ -294,165 +294,51 @@ def _fused_plan7_dp(fm: FusedPlan7Machine, output_seq: jnp.ndarray,
     Lo = len(output_seq)
 
     # State representation:
-    #   core_m: (K, S_td) — at M_k post-emission (ready for Mx_k routing)
-    #   core_i: (K, S_td) — at I_k post-emission (ready for Ix_k routing)
+    #   core_m: (K, S_td) — at M_k pre-emission (ready for next emission)
+    #   core_i: (K, S_td) — at I_k pre-emission
     #   core_d: (K, S_td) — at D_k (silent)
     #   flanking: (N_FLANKING, S_td)
 
-    def _init_state():
-        """Initialize: start at S, then S → Nx (weight 1.0)."""
-        core_m = jnp.full((K, S_td), NEG_INF)
-        core_i = jnp.full((K, S_td), NEG_INF)
-        core_d = jnp.full((K, S_td), NEG_INF)
-        flanking = jnp.full((N_FLANKING, S_td), NEG_INF)
-        # S → Nx with weight 1.0; td starts at state 0
-        flanking = flanking.at[_NX, 0].set(0.0)
-        return core_m, core_i, core_d, flanking
-
     def _propagate_flanking_silent(flanking, semiring):
-        """Propagate silent flanking transitions: Nx→N/B, Cx→C/T, Jx→J/B, E→Cx/Jx.
+        """Propagate silent flanking transitions (single-pass DAG).
 
-        Also propagates transducer silent transitions at each flanking state.
+        The flanking silent graph is acyclic:
+          E->CX, E->JX, NX->B, JX->B, NX->N, CX->C, JX->J
+        A single pass in topological order suffices.
+        After applying flanking edges, propagate transducer silent at each state.
         """
-        def body_fn(carry):
-            fl, _ = carry
+        fl = flanking
 
-            new_fl = jnp.full_like(fl, NEG_INF)
+        # E -> CX
+        fl = fl.at[_CX].set(semiring.plus(fl[_CX], fl[_E] + fm.log_e_to_cx))
 
-            # Nx → B: silent
-            nx_to_b = fl[_NX] + fm.log_n_to_b
-            new_fl = new_fl.at[_B].set(
-                semiring.plus(new_fl[_B], nx_to_b))
+        # E -> JX
+        fl = fl.at[_JX].set(semiring.plus(fl[_JX], fl[_E] + fm.log_e_to_jx))
 
-            # Cx → T: silent (T is terminal, not tracked)
-            # E → Cx: silent
-            e_to_cx = fl[_E] + fm.log_e_to_cx
-            new_fl = new_fl.at[_CX].set(
-                semiring.plus(new_fl[_CX], e_to_cx))
+        # NX -> B
+        fl = fl.at[_B].set(semiring.plus(fl[_B], fl[_NX] + fm.log_n_to_b))
 
-            # E → Jx: silent
-            e_to_jx = fl[_E] + fm.log_e_to_jx
-            new_fl = new_fl.at[_JX].set(
-                semiring.plus(new_fl[_JX], e_to_jx))
+        # JX -> B (must come after E -> JX)
+        fl = fl.at[_B].set(semiring.plus(fl[_B], fl[_JX] + fm.log_j_to_b))
 
-            # Jx → B: silent
-            jx_to_b = fl[_JX] + fm.log_j_to_b
-            new_fl = new_fl.at[_B].set(
-                semiring.plus(new_fl[_B], jx_to_b))
+        # NX -> N
+        fl = fl.at[_N].set(semiring.plus(fl[_N], fl[_NX] + fm.log_n_loop))
 
-            # Propagate td silent at each flanking state
-            new_fl = jax.vmap(
-                lambda v: _propagate_td_silent(v, td_silent, semiring)
-            )(new_fl)
+        # CX -> C (must come after E -> CX)
+        fl = fl.at[_C].set(semiring.plus(fl[_C], fl[_CX] + fm.log_c_loop))
 
-            combined = semiring.plus(fl, new_fl)
-            return combined, fl
+        # JX -> J (must come after E -> JX)
+        fl = fl.at[_J].set(semiring.plus(fl[_J], fl[_JX] + fm.log_j_loop))
 
-        def cond_fn(carry):
-            new, prev = carry
-            return jnp.any(jnp.abs(new - prev) > 1e-10)
+        # Propagate td silent at each flanking state
+        fl = jax.vmap(
+            lambda v: _propagate_td_silent(v, td_silent, semiring)
+        )(fl)
 
-        init = (flanking, jnp.full_like(flanking, NEG_INF))
-        result, _ = jax.lax.while_loop(cond_fn, body_fn, init)
-        return result
-
-    def _enter_core_from_b(b_val, semiring):
-        """B → M_k entries (local mode). Returns initial core_m, core_d."""
-        # B → M_k with log_b_entry[k]
-        # Each M_k starts with b_val + log_b_entry[k], at the M_k state
-        # (which will then emit — but emission happens during the output step)
-        #
-        # Actually, B → M_k means we go to M_k which needs to emit.
-        # Before any output, these M_k values are "pre-emission" states.
-        # In the x-state pattern: B → m_idx(k), which is the emitting state.
-        # The emission will happen when we process an output token.
-        core_m = log_b_entry[:, None] + b_val[None, :]  # (K, S_td)
-        core_d = jnp.full((K, S_td), NEG_INF)
-        return core_m, core_d
-
-    def _propagate_core_silent(core_m, core_d, semiring):
-        """Propagate silent transitions within core: D chains and routing.
-
-        After emission, M_k goes to Mx_k which routes to M_{k+1}, I_k, D_{k+1}.
-        D_k routes to M_{k+1}, D_{k+1}.
-        This is the "post-emission routing" + delete chain propagation.
-
-        Uses inner scan over k=1..K to propagate the delete chain.
-        Returns updated core_m, core_d, and E accumulator.
-        """
-        # The post-emission routing from Mx_k:
-        #   Mx_k → M_{k+1}: weight m_to_m[k]  (goes to core_m[k+1] pre-emission)
-        #   Mx_k → I_k: weight m_to_i[k]  (goes to core_i[k] pre-emission)
-        #   Mx_k → D_{k+1}: weight m_to_d[k]  (goes to core_d[k+1])
-        #
-        # Similarly Ix_k routing:
-        #   Ix_k → M_{k+1}: weight i_to_m[k]
-        #   Ix_k → I_k: weight i_to_i[k]  (self-loop: handled during emission)
-        #
-        # D_k routing:
-        #   D_k → M_{k+1}: weight d_to_m[k]
-        #   D_k → D_{k+1}: weight d_to_d[k]
-        #
-        # In local mode, M_k and D_k also → E (weight 1.0 additive)
-
-        # First, compute what Mx_k and D_k contribute to the next position
-        # and to E. We scan forward through k.
-
-        # For Mx_k: source is core_m[k] (post-emission)
-        # For D_k: source is core_d[k]
-
-        # Contributions to E (local mode: all M_k and D_k can exit)
-        e_from_m = core_m  # M_k → E with weight 1 (log 0)
-        e_from_d = core_d  # D_k → E with weight 1 (log 0)
-
-        # Contributions to next core positions via inner scan
-        def inner_scan_fn(carry, k):
-            """Process node k: propagate incoming m/d to next position."""
-            m_incoming, d_incoming = carry  # (S_td,) each
-
-            # m_incoming is what flows into M_k from the left
-            # d_incoming is what flows into D_k from the left
-            # Plus whatever is already in core_m[k] and core_d[k]
-            m_at_k = semiring.plus(core_m[k], m_incoming)
-            d_at_k = semiring.plus(core_d[k], d_incoming)
-
-            # Propagate td silent at M_k and D_k
-            m_at_k = _propagate_td_silent(m_at_k, td_silent, semiring)
-            d_at_k = _propagate_td_silent(d_at_k, td_silent, semiring)
-
-            # Mx_k routing (from m_at_k):
-            m_to_next = m_at_k + log_m_to_m[k]  # → M_{k+1}
-            d_to_next_from_m = m_at_k + log_m_to_d[k]  # → D_{k+1}
-
-            # D_k routing:
-            m_to_next_from_d = d_at_k + log_d_to_m[k]  # → M_{k+1}
-            d_to_next_from_d = d_at_k + log_d_to_d[k]  # → D_{k+1}
-
-            # Combined outgoing
-            m_out = semiring.plus(m_to_next, m_to_next_from_d)
-            d_out = semiring.plus(d_to_next_from_m, d_to_next_from_d)
-
-            return (m_out, d_out), (m_at_k, d_at_k)
-
-        # For k=0 (first node), incoming is from B entry (already in core_m)
-        init_carry = (jnp.full(S_td, NEG_INF), jnp.full(S_td, NEG_INF))
-        (m_exit, d_exit), (all_m, all_d) = jax.lax.scan(
-            inner_scan_fn, init_carry, jnp.arange(K))
-
-        # E accumulator: in local mode, every M_k and D_k can go to E
-        e_val = semiring.reduce(
-            jnp.stack([
-                semiring.reduce(all_m, axis=0),
-                semiring.reduce(all_d, axis=0),
-            ], axis=0), axis=0)  # (S_td,)
-
-        # m_exit and d_exit go to E in non-local mode
-        # (In local mode they already contributed via all_m/all_d)
-
-        return all_m, all_d, e_val
+        return fl
 
     def _emit_output_step(core_m, core_i, core_d, flanking, out_tok, semiring):
-        """Process one output token: Plan7 emits → transducer produces output.
+        """Process one output token: Plan7 emits -> transducer produces output.
 
         Returns updated state after emission + silent propagation.
         """
@@ -518,51 +404,41 @@ def _fused_plan7_dp(fm: FusedPlan7Machine, output_seq: jnp.ndarray,
     def _route_post_emission(core_m, core_i, core_d, flanking, semiring):
         """Route after emissions: Mx/Ix/D propagation + flanking silent.
 
-        Inner scan over core positions for the M→next, D→next chains.
+        Inner scan over core positions for the M->next, D->next chains.
         Also handles insert self-loops and flanking routing.
+
+        Key invariant: core_m[k] is POST-emission (at Mx_k). The inner scan's
+        m_incoming carries PRE-emission mass arriving at M_k from left routing.
+        Only pre-emission M_k and D_k contribute to E (local exit).
+        Only post-emission Mx_k is routed through m_to_m/i/d.
+        Pre-emission M_k values persist in the returned core_m for next emission.
         """
-        # Mx_k routing from core_m[k]:
-        #   → M_{k+1} (m_to_m), → I_k (m_to_i), → D_{k+1} (m_to_d), → E (local)
-        # Ix_k routing from core_i[k]:
-        #   → M_{k+1} (i_to_m), → I_k self (i_to_i), → E (local, last node only)
-        # D_k routing from core_d[k]:
-        #   → M_{k+1} (d_to_m), → D_{k+1} (d_to_d), → E (local)
-
-        # Insert self-loop: I_k → Ix_k → I_k with weight i_to_i
-        # Handle by geometric series: I_k_final = I_k / (1 - i_to_i) in prob space
-        # In log space: I_k_final = I_k - log(1 - exp(i_to_i))... complex.
-        # Better: just add the i_to_i contribution to core_i
-        # Actually for the self-loop, Ix_k → I_k (i_to_i) means:
-        # after I_k emits, goes to Ix_k, then Ix_k → I_k (self-loop).
-        # This is handled in the NEXT emission step: core_i[k] will have
-        # the i_to_i contribution added.
-
-        # Inner scan: propagate through core left-to-right
-        # At each k, compute contributions to k+1 and to E
-
         e_accum = jnp.full(S_td, NEG_INF)
 
         def inner_route(carry, k):
             m_incoming, d_incoming, e_acc = carry
 
-            # Values at node k including incoming from left
-            m_at_k = semiring.plus(core_m[k], m_incoming)
-            i_at_k = core_i[k]  # I_k only from emissions, no left-propagation
+            # D_k: combine emit-step D_k with incoming from left
             d_at_k = semiring.plus(core_d[k], d_incoming)
-
-            # Propagate td silent
-            m_at_k = _propagate_td_silent(m_at_k, td_silent, semiring)
-            i_at_k = _propagate_td_silent(i_at_k, td_silent, semiring)
             d_at_k = _propagate_td_silent(d_at_k, td_silent, semiring)
 
-            # E contributions (local mode)
-            e_acc = semiring.plus(e_acc, m_at_k)
+            # Pre-emission M_k from routing (ONLY m_incoming, not core_m[k])
+            m_pre_k = _propagate_td_silent(m_incoming, td_silent, semiring)
+
+            # Post-emission Mx_k (core_m[k])
+            mx_k = _propagate_td_silent(core_m[k], td_silent, semiring)
+
+            # Post-emission Ix_k (core_i[k])
+            i_at_k = _propagate_td_silent(core_i[k], td_silent, semiring)
+
+            # E contributions: ONLY pre-emission M_k and D_k (not Mx_k)
+            e_acc = semiring.plus(e_acc, m_pre_k)
             e_acc = semiring.plus(e_acc, d_at_k)
 
-            # Mx_k outgoing
-            m_to_next = m_at_k + log_m_to_m[k]
-            i_from_m = m_at_k + log_m_to_i[k]
-            d_from_m = m_at_k + log_m_to_d[k]
+            # Mx_k outgoing (post-emission only)
+            m_to_next = mx_k + log_m_to_m[k]
+            i_from_m = mx_k + log_m_to_i[k]
+            d_from_m = mx_k + log_m_to_d[k]
 
             # Ix_k outgoing
             m_from_i = i_at_k + log_i_to_m[k]
@@ -576,64 +452,87 @@ def _fused_plan7_dp(fm: FusedPlan7Machine, output_seq: jnp.ndarray,
             m_out = semiring.plus(m_to_next, semiring.plus(m_from_i, m_from_d))
             d_out = semiring.plus(d_from_m, d_from_d)
 
-            # I_k gets contribution from Mx_k → I_k and self-loop
+            # I_k gets contribution from Mx_k -> I_k and self-loop
             new_i_k = semiring.plus(i_from_m, i_self)
 
-            return (m_out, d_out, e_acc), new_i_k
+            return (m_out, d_out, e_acc), (m_pre_k, new_i_k)
 
         init_carry = (jnp.full(S_td, NEG_INF), jnp.full(S_td, NEG_INF), e_accum)
-        (m_exit, d_exit, e_final), new_core_i = jax.lax.scan(
+        (m_exit, d_exit, e_final), (all_m_pre, new_core_i) = jax.lax.scan(
             inner_route, init_carry, jnp.arange(K))
 
-        # m_exit and d_exit flow to E (from last node, non-local transitions)
-        # In local mode they already went to E inside the scan.
-        # But for the last node (k=K-1 in 0-indexed), m_to_m and d_to_m
-        # go to E in non-local mode. In local mode (which we use), they
-        # already contributed to e_final inside the loop.
-        # The m_exit/d_exit are the "overflow" past node K — discard them.
-
-        # Flanking N emission routing: N → Nx (after emission)
-        # N emitted already; now route through Nx
+        # Build new flanking
         new_flanking = jnp.full((N_FLANKING, S_td), NEG_INF)
 
-        # Nx receives from N (post-emission → Nx)
+        # Nx receives from N (post-emission -> Nx)
         new_flanking = new_flanking.at[_NX].set(flanking[_N])
-        # Note: flanking[_N] here is the POST-emission N value
 
-        # Cx receives from C (post-emission → Cx)
+        # Cx receives from C (post-emission -> Cx)
         new_flanking = new_flanking.at[_CX].set(flanking[_C])
 
-        # Jx receives from J (post-emission → Jx)
+        # Jx receives from J (post-emission -> Jx)
         new_flanking = new_flanking.at[_JX].set(flanking[_J])
 
         # E receives from core
         new_flanking = new_flanking.at[_E].set(e_final)
 
-        # Now propagate silent flanking: Nx→N/B, E→Cx/Jx, Cx→C/T, Jx→J/B
+        # Propagate silent flanking: NX->N/B, E->CX/JX, CX->C, JX->J/B
         new_flanking = _propagate_flanking_silent(new_flanking, semiring)
 
-        # B → core entry
+        # Final core_m = pre-emission from routing + new B entry
         b_val = new_flanking[_B]
-        new_core_m = log_b_entry[:, None] + b_val[None, :]  # (K, S_td)
+        new_core_m = semiring.plus(
+            all_m_pre, log_b_entry[:, None] + b_val[None, :])
+
+        # B -> M_k -> E chain: new B-entry M_k can immediately exit to E
+        b_entries = log_b_entry[:, None] + b_val[None, :]  # (K, S_td)
+        b_entries_closed = jax.vmap(
+            lambda v: _propagate_td_silent(v, td_silent, semiring)
+        )(b_entries)  # (K, S_td)
+        e_from_b = semiring.reduce(b_entries_closed, axis=0)  # (S_td,)
+
+        # Propagate E -> CX -> C and E -> JX -> J -> B
+        e_closed = _propagate_td_silent(e_from_b, td_silent, semiring)
+
+        new_flanking = new_flanking.at[_E].set(
+            semiring.plus(new_flanking[_E], e_from_b))
+
+        # E -> CX
+        cx_inc = e_closed + fm.log_e_to_cx
+        new_flanking = new_flanking.at[_CX].set(
+            semiring.plus(new_flanking[_CX], cx_inc))
+
+        # CX -> C
+        c_inc = cx_inc + fm.log_c_loop
+        new_flanking = new_flanking.at[_C].set(
+            semiring.plus(new_flanking[_C], c_inc))
+
+        # E -> JX
+        jx_inc = e_closed + fm.log_e_to_jx
+        new_flanking = new_flanking.at[_JX].set(
+            semiring.plus(new_flanking[_JX], jx_inc))
+
+        # JX -> J
+        j_inc = jx_inc + fm.log_j_loop
+        new_flanking = new_flanking.at[_J].set(
+            semiring.plus(new_flanking[_J], j_inc))
+
+        # JX -> B -> M_k (multi-hit)
+        b_inc = jx_inc + fm.log_j_to_b
+        new_flanking = new_flanking.at[_B].set(
+            semiring.plus(new_flanking[_B], b_inc))
+        new_core_m = semiring.plus(
+            new_core_m, log_b_entry[:, None] + b_inc[None, :])
+
         new_core_d = jnp.full((K, S_td), NEG_INF)
 
         return new_core_m, new_core_i, new_core_d, new_flanking
 
     def _get_terminal_val(flanking, semiring):
-        """Get terminal state value: Cx → T."""
+        """Get terminal state value: Cx -> T."""
         t_val = flanking[_CX] + fm.log_c_to_t
         t_val = _propagate_td_silent(t_val, td_silent, semiring)
         return t_val[fm.S_td - 1]
-
-    # Initialize
-    core_m, core_i, core_d, flanking = _init_state()
-
-    # Propagate initial silent transitions
-    flanking = _propagate_flanking_silent(flanking, semiring)
-
-    # B → core entry
-    b_val = flanking[_B]
-    core_m = log_b_entry[:, None] + b_val[None, :]
 
     # Handle Plan7 emissions that don't produce output (silent transducer output)
     # M_k and I_k can emit amino acids consumed silently by transducer
@@ -653,10 +552,59 @@ def _fused_plan7_dp(fm: FusedPlan7Machine, output_seq: jnp.ndarray,
 
         return semiring.plus(core_m, m_result), semiring.plus(core_i, i_result)
 
-    # Initial: handle silent emissions + routing before first output
-    core_m, core_i = _emit_silent_core(core_m, core_i, semiring)
-    core_m, core_i, core_d, flanking = _route_post_emission(
-        core_m, core_i, core_d, flanking, semiring)
+    # Initialize: manual 8-step DAG propagation (matching JS kernel)
+    core_m = jnp.full((K, S_td), NEG_INF)
+    core_i = jnp.full((K, S_td), NEG_INF)
+    core_d = jnp.full((K, S_td), NEG_INF)
+    flanking = jnp.full((N_FLANKING, S_td), NEG_INF)
+
+    # Step 1: S -> NX; propagate td_silent at NX
+    flanking = flanking.at[_NX, 0].set(0.0)
+    flanking = flanking.at[_NX].set(
+        _propagate_td_silent(flanking[_NX], td_silent, semiring))
+
+    # Step 2: NX -> B, NX -> N; propagate td_silent at B, N
+    flanking = flanking.at[_B].set(flanking[_NX] + fm.log_n_to_b)
+    flanking = flanking.at[_N].set(flanking[_NX] + fm.log_n_loop)
+    flanking = flanking.at[_B].set(
+        _propagate_td_silent(flanking[_B], td_silent, semiring))
+    flanking = flanking.at[_N].set(
+        _propagate_td_silent(flanking[_N], td_silent, semiring))
+
+    # Step 3: B -> M_k (pre-emission entry)
+    b_val = flanking[_B]
+    core_m = log_b_entry[:, None] + b_val[None, :]
+
+    # Step 4: M_k -> E (pre-emission local exit, weight 1); propagate td_silent at E
+    m_closed = jax.vmap(
+        lambda v: _propagate_td_silent(v, td_silent, semiring)
+    )(core_m)
+    e_val = semiring.reduce(m_closed, axis=0)
+    flanking = flanking.at[_E].set(e_val)
+    flanking = flanking.at[_E].set(
+        _propagate_td_silent(flanking[_E], td_silent, semiring))
+
+    # Step 5: E -> CX, E -> JX
+    flanking = flanking.at[_CX].set(flanking[_E] + fm.log_e_to_cx)
+    flanking = flanking.at[_JX].set(flanking[_E] + fm.log_e_to_jx)
+
+    # Step 6: JX -> B (multi-hit)
+    flanking = flanking.at[_B].set(
+        semiring.plus(flanking[_B], flanking[_JX] + fm.log_j_to_b))
+
+    # Step 7: CX -> C, JX -> J; propagate td_silent at CX, JX, C, J
+    flanking = flanking.at[_C].set(flanking[_CX] + fm.log_c_loop)
+    flanking = flanking.at[_J].set(flanking[_JX] + fm.log_j_loop)
+    for f in [_CX, _JX, _C, _J]:
+        flanking = flanking.at[f].set(
+            _propagate_td_silent(flanking[f], td_silent, semiring))
+
+    # Step 8: Multi-hit B -> M_k entries (from JX -> B increment)
+    jx_to_b = flanking[_JX] + fm.log_j_to_b
+    b_inc = _propagate_td_silent(jx_to_b, td_silent, semiring)
+    core_m = semiring.plus(core_m, log_b_entry[:, None] + b_inc[None, :])
+
+    # Handle initial silent emissions
     core_m, core_i = _emit_silent_core(core_m, core_i, semiring)
 
     if Lo == 0:
