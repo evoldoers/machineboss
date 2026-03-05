@@ -108,6 +108,7 @@ All functions are in the `MachineBoss` namespace.
 | `loadMachineJson(jsonString)` | Parse a Machine from a JSON string |
 | `saveMachine(machine, filename)` | Write a Machine to a JSON file |
 | `machineToJson(machine)` | Serialize a Machine to a JSON string |
+| `mergeEquivalentStates(machine)` | Merge states with identical outgoing transitions |
 | `forwardLogLike(machine, params, seqPair [, envelope])` | Forward algorithm log-likelihood |
 | `viterbiLogLike(machine, params, seqPair)` | Viterbi log-likelihood |
 | `viterbiAlign(machine, params, seqPair)` | Viterbi alignment (returns MachinePath) |

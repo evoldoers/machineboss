@@ -1,0 +1,9 @@
+{"merge":
+  {"state":[
+    {"id":"A","trans":[
+      {"to":"B","out":"x","weight":2},
+      {"to":"B","out":"x","weight":3}
+    ]},
+    {"id":"B"}
+  ]}
+}

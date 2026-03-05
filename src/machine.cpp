@@ -413,6 +413,9 @@ void Machine::readJson (const json& pj) {
   } else if (pj.count("eliminate")) {
     *this = JsonReader<Machine>::fromJson (pj["eliminate"]).eliminateSilentTransitions();
 
+  } else if (pj.count("merge")) {
+    *this = JsonReader<Machine>::fromJson (pj["merge"]).mergeEquivalentStates();
+
   } else if (pj.count("reverse")) {
     *this = JsonReader<Machine>::fromJson (pj["reverse"]).reverse();
 
@@ -1427,6 +1430,79 @@ bool Machine::isAligningMachine() const {
 Machine Machine::eliminateRedundantStates() const {
   LogThisAt(3,"Eliminating redundant states from " << nStates() << "-state transducer" << endl);
   return eliminateSingleSilentIncomingStates().eliminateSingleSilentOutgoingStates();
+}
+
+Machine Machine::mergeEquivalentStates() const {
+  LogThisAt(3,"Merging equivalent states in " << nStates() << "-state transducer" << endl);
+  Machine current = *this;
+  while (true) {
+    const StateIndex nOldStates = current.nStates();
+    // Step 1: Merge parallel transitions using TransAccumulator
+    for (StateIndex s = 0; s < current.nStates(); ++s) {
+      TransAccumulator ta;
+      for (const auto& t: current.state[s].trans)
+	ta.accumulate (t);
+      current.state[s].trans = ta.transitions();
+    }
+    // Step 2: Compute signature for each state and group by signature
+    // Signature = sorted string representation of (dest, in, out, weight)
+    map<StateIndex,StateIndex> redirect;  // old -> representative
+    {
+      map<string,vector<StateIndex> > sigGroups;
+      for (StateIndex s = 0; s < current.nStates(); ++s) {
+	vector<string> sigParts;
+	for (const auto& t: current.state[s].trans) {
+	  ostringstream os;
+	  os << t.dest << "\t" << t.in << "\t" << t.out << "\t";
+	  WeightAlgebra::toJsonStream (os, t.weight);
+	  sigParts.push_back (os.str());
+	}
+	sort (sigParts.begin(), sigParts.end());
+	ostringstream sigStr;
+	for (const auto& p: sigParts)
+	  sigStr << p << "\n";
+	sigGroups[sigStr.str()].push_back (s);
+      }
+      for (const auto& group: sigGroups) {
+	const auto& states = group.second;
+	if (states.size() > 1) {
+	  // Pick representative: prefer start (0) or end (nStates-1), else lowest index
+	  StateIndex rep = states[0];
+	  for (StateIndex s: states)
+	    if (s == current.startState() || s == current.endState()) {
+	      rep = s;
+	      break;
+	    }
+	  for (StateIndex s: states)
+	    if (s != rep)
+	      redirect[s] = rep;
+	}
+      }
+    }
+    if (redirect.empty()) {
+      LogThisAt(5,"No equivalent states to merge" << endl);
+      break;
+    }
+    // Step 3: Redirect transitions
+    for (StateIndex s = 0; s < current.nStates(); ++s)
+      for (auto& t: current.state[s].trans)
+	if (redirect.count (t.dest))
+	  t.dest = redirect.at (t.dest);
+    // Step 4: Remove unreachable states
+    current = current.ergodicMachine();
+    LogThisAt(4,"After merge pass: " << current.nStates() << " states (was " << nOldStates << ")" << endl);
+    if (current.nStates() == nOldStates)
+      break;
+  }
+  // Final pass: merge any parallel transitions created by the last redirect
+  for (StateIndex s = 0; s < current.nStates(); ++s) {
+    TransAccumulator ta;
+    for (const auto& t: current.state[s].trans)
+      ta.accumulate (t);
+    current.state[s].trans = ta.transitions();
+  }
+  LogThisAt(3,"Merge yielded " << current.nStates() << "-state transducer" << endl);
+  return current;
 }
 
 Machine Machine::eliminateSingleSilentIncomingStates() const {

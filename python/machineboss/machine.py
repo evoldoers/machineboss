@@ -144,3 +144,98 @@ class Machine:
     @property
     def n_transitions(self) -> int:
         return sum(len(s.trans) for s in self.state)
+
+    def merge_equivalent_states(self) -> Machine:
+        """Merge states with identical outgoing transitions (collapse bubbles)."""
+        current = self
+        while True:
+            n_old = current.n_states
+            # Step 1: Merge parallel transitions
+            for s in current.state:
+                merged: dict[tuple, Any] = {}
+                for t in s.trans:
+                    key = (t.dest, t.input or "", t.output or "")
+                    if key in merged:
+                        merged[key] = {"+" : [merged[key], t.weight]}
+                    else:
+                        merged[key] = t.weight
+                s.trans = [
+                    MachineTransition(
+                        dest=k[0],
+                        input=k[1] or None,
+                        output=k[2] or None,
+                        weight=w,
+                    )
+                    for k, w in merged.items()
+                ]
+            # Step 2: Compute signatures and group states
+            import json as _json
+            sig_groups: dict[str, list[int]] = {}
+            for i, s in enumerate(current.state):
+                sig = sorted(
+                    (_json.dumps(t.dest), t.input or "", t.output or "", _json.dumps(t.weight))
+                    for t in s.trans
+                )
+                key = _json.dumps(sig)
+                sig_groups.setdefault(key, []).append(i)
+            redirect: dict[int, int] = {}
+            for states in sig_groups.values():
+                if len(states) > 1:
+                    rep = states[0]
+                    for si in states:
+                        if si == current.start_state or si == current.end_state:
+                            rep = si
+                            break
+                    for si in states:
+                        if si != rep:
+                            redirect[si] = rep
+            if not redirect:
+                break
+            # Step 3: Redirect transitions
+            for s in current.state:
+                for t in s.trans:
+                    if t.dest in redirect:
+                        t.dest = redirect[t.dest]
+            # Step 4: Remove unreachable states
+            reachable = set()
+            queue = [current.start_state]
+            reachable.add(current.start_state)
+            while queue:
+                si = queue.pop()
+                for t in current.state[si].trans:
+                    if t.dest not in reachable:
+                        reachable.add(t.dest)
+                        queue.append(t.dest)
+            if current.end_state not in reachable:
+                break
+            old2new: dict[int, int] = {}
+            new_states: list[MachineState] = []
+            for i in range(current.n_states):
+                if i in reachable:
+                    old2new[i] = len(new_states)
+                    new_states.append(current.state[i])
+            for s in new_states:
+                for t in s.trans:
+                    t.dest = old2new[t.dest]
+            current = Machine(state=new_states, defs=current.defs)
+            if current.n_states == n_old:
+                break
+        # Final parallel-transition merge
+        for s in current.state:
+            merged_f: dict[tuple, Any] = {}
+            for t in s.trans:
+                key = (t.dest, t.input or "", t.output or "")
+                if key in merged_f:
+                    merged_f[key] = {"+" : [merged_f[key], t.weight]}
+                else:
+                    merged_f[key] = t.weight
+            s.trans = [
+                MachineTransition(
+                    dest=k[0],
+                    input=k[1] or None,
+                    output=k[2] or None,
+                    weight=w,
+                )
+                for k, w in merged_f.items()
+            ]
+        return current

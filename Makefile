@@ -270,7 +270,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -312,6 +312,12 @@ test-eliminate:
 	@$(TEST) $(WRAPBOSS) t/machine/silent3.json -n t/expect/silent3-elim.json
 	@$(TEST) $(WRAPBOSS) t/machine/single-silent-incoming.json --eliminate-states t/expect/single-silent-incoming.json
 	@$(TEST) $(WRAPBOSS) t/machine/single-silent-outgoing.json --eliminate-states t/expect/single-silent-outgoing.json
+
+test-merge:
+	@$(TEST) $(WRAPBOSS) t/machine/merge-parallel.json --merge-states t/expect/merge-parallel.json
+	@$(TEST) $(WRAPBOSS) t/machine/merge-bubble.json --merge-states t/expect/merge-bubble.json
+	@$(TEST) $(WRAPBOSS) t/machine/merge-noop.json --merge-states t/expect/merge-noop.json
+	@$(TEST) $(WRAPBOSS) t/machine/merge-chain.json --merge-states t/expect/merge-chain.json
 
 test-reverse:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq001.json -e t/expect/generator001-reversed.json
@@ -672,7 +678,7 @@ $(PRESET_TESTS): test-preset-%:
 	@$(TEST) $(WRAPBOSS) t/expect/preset-$*.tmp.json -idem
 
 # JSON API operation tests
-JSON_API_TESTS = test-json-concat test-json-union test-json-intersect test-json-intersect-sum test-json-intersect-unsort test-json-compose-sum test-json-compose-unsort test-json-loop test-json-opt test-json-star test-json-plus test-json-eliminate test-json-reverse test-json-revcomp test-json-transpose
+JSON_API_TESTS = test-json-concat test-json-union test-json-intersect test-json-intersect-sum test-json-intersect-unsort test-json-compose-sum test-json-compose-unsort test-json-loop test-json-opt test-json-star test-json-plus test-json-eliminate test-json-merge test-json-reverse test-json-revcomp test-json-transpose
 test-json-concat:
 	@$(TEST) $(WRAPBOSS) t/machine/concat-001-101.json t/expect/json-concat.json
 
@@ -708,6 +714,9 @@ test-json-plus:
 
 test-json-eliminate:
 	@$(TEST) $(WRAPBOSS) t/machine/eliminate-silent.json t/expect/json-eliminate.json
+
+test-json-merge:
+	@$(TEST) $(WRAPBOSS) t/machine/merge-json.json t/expect/merge-json.json
 
 test-json-reverse:
 	@$(TEST) $(WRAPBOSS) t/machine/reverse-gen001.json t/expect/json-reverse.json

@@ -158,6 +158,7 @@ Selected via `--preset NAME` or `-p NAME`.
 | `--full-sort` | | Topological sort of entire transition graph. |
 | `--eliminate` | | Eliminate all silent transitions. |
 | `--eliminate-states` | | Eliminate states with only silent in/out transitions. |
+| `--merge-states` | | Merge states with equivalent outgoing transitions (collapse bubbles). |
 | `--silence-input` | | Clear input labels (machine becomes a generator). |
 | `--silence-output` | | Clear output labels (machine becomes a recognizer). |
 | `--copy-output-to-input` | | Copy output labels to inputs (generator → echo). |

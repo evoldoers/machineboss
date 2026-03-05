@@ -118,7 +118,7 @@ visiting only the reachable states of the product.
 It is said that Birney, who began this work as a PhD student at the Sanger Centre
 and was already publishing on the topic as an undergraduate,
 was notorious among his peers for having cited his own 1996
-"PairWise and SearchWise" paper in his undergraduate final examination.
+"PairWise and SearchWise" paper (Birney, 1996) in his undergraduate final examination.
 
 The resulting GeneWise program became a cornerstone of eukaryotic genome annotation
 and was used extensively in the annotation of the human genome.
@@ -160,11 +160,57 @@ This is a clear precursor to Machine Boss's own approach
 of representing models as composable JSON transducers
 and compiling them to optimized C++, JavaScript, or WebGPU code.
 
+Crucially, Dynamite was a _generic_ DP code generator:
+it understood recurrence structure (states, transitions, scores)
+but had no built-in notion of probabilistic models.
+It could generate Viterbi and Forward-like score computations,
+but not training algorithms such as Forward-Backward or Baum-Welch,
+because those require understanding the probabilistic semantics —
+that transition weights are probabilities, that the goal is to maximize likelihood,
+and that expected counts can be computed by combining forward and backward passes.
+As a result, GeneWise could _score_ and _align_ but could not _train_ its own parameters.
+
 Dynamite itself could target multiple platforms and generated code
 for some quite esoteric architectures of its era.
 Machine Boss continues this tradition with its multi-backend code generator
 (`boss --cpp64 --codegen` for C++, `boss --js --codegen` for JavaScript,
 and WebGPU shader generation for GPU execution).
+
+### HMMoC: a compiler for HMM algorithms
+
+Gerton Lunter's HMMoC (Lunter, 2007) took the code-generation idea further
+by building probabilistic semantics into the compiler.
+HMMoC translated declarative HMM descriptions
+into efficient C++ implementations not just of Viterbi and Forward,
+but also Backward, Forward-Backward, and Baum-Welch training.
+Because HMMoC understood that its models were probabilistic,
+it could automatically generate the derivative computations
+needed for parameter estimation — something Dynamite could not do.
+
+Like Dynamite, HMMoC allowed researchers to specify complex HMM topologies
+at a high level and have the compiler handle loop ordering, memory layout,
+and numerical details.
+But by closing the loop from scoring to training,
+HMMoC demonstrated that a code generator for biological sequence models
+could be a complete toolkit, not just an alignment engine.
+
+### Generic HMM libraries
+
+In parallel with these code-generation approaches,
+many bioinformatics libraries offered generic HMM implementations
+with built-in training algorithms —
+far too many to enumerate here.
+These ranged from general-purpose toolkits
+(GHMM, HMMlib, pomegranate, hmmlearn, StochHMM, among others)
+to domain-specific frameworks embedded in larger bioinformatics packages.
+Most provided Forward-Backward and Baum-Welch out of the box,
+but operated on explicitly instantiated state spaces
+rather than generating compiled code for specific model topologies.
+The trade-off was generality versus performance:
+a generic library can handle any HMM,
+but a compiled code generator like Dynamite, HMMoC, or Machine Boss
+can exploit the specific structure of a model
+for dramatically better cache behavior, loop ordering, and vectorization.
 
 ### From GeneWise to Exonerate to miniprot
 
@@ -381,7 +427,11 @@ GPU acceleration and gradient computation (for differentiable sequence analysis)
   Profile hidden Markov models.
   *Bioinformatics*, 14(9), 755–763.
 
-### GeneWise, Dynamite, and successors
+### GeneWise, Dynamite, HMMoC, and successors
+
+- Birney, E. (1996).
+  PairWise and SearchWise: finding the optimal alignment in a simultaneous comparison of a protein profile against all DNA translation frames.
+  *Unpublished undergraduate thesis*.
 
 - Birney, E., & Durbin, R. (1997).
   Dynamite: a flexible code generating language for dynamic programming methods used in sequence comparison.
@@ -396,6 +446,11 @@ GPU acceleration and gradient computation (for differentiable sequence analysis)
   *Genome Research*, 14(5), 988–995.
   [doi:10.1101/gr.1865504](https://doi.org/10.1101/gr.1865504)
 
+- Lunter, G. (2007).
+  HMMoC — a compiler for hidden Markov models.
+  *Bioinformatics*, 23(18), 2485–2487.
+  [doi:10.1093/bioinformatics/btm350](https://doi.org/10.1093/bioinformatics/btm350)
+
 - Slater, G. St. C., & Birney, E. (2005).
   Automated generation of heuristics for biological sequence comparison.
   *BMC Bioinformatics*, 6, 31.
@@ -405,3 +460,10 @@ GPU acceleration and gradient computation (for differentiable sequence analysis)
   Protein-to-genome alignment with miniprot.
   *Bioinformatics*, 39(1), btad014.
   [doi:10.1093/bioinformatics/btad014](https://doi.org/10.1093/bioinformatics/btad014)
+
+### Machine Boss
+
+- Silvestre-Ryan, J., Wang, Y., Sharma, M., Lin, S., Shen, Y., Dider, S., & Holmes, I. (2021).
+  Machine Boss: rapid prototyping of bioinformatic automata.
+  *Bioinformatics*, 37(1), 142–143.
+  [doi:10.1093/bioinformatics/btaa633](https://doi.org/10.1093/bioinformatics/btaa633)

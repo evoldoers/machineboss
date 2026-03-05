@@ -24,6 +24,10 @@ string MachineBoss::machineToJson (const Machine& machine) {
   return JsonWriter<Machine>::toJsonString (machine);
 }
 
+Machine MachineBoss::mergeEquivalentStates (const Machine& machine) {
+  return machine.mergeEquivalentStates();
+}
+
 double MachineBoss::forwardLogLike (const Machine& machine, const Params& params, const SeqPair& seqPair) {
   const EvaluatedMachine eval (machine, params);
   const ForwardMatrix fwd (eval, seqPair);

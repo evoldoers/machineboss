@@ -189,6 +189,7 @@ struct Machine {
   Machine eliminateSingleSilentIncomingStates() const;  // eliminates states which have only one incoming silent transition
   Machine eliminateSingleSilentOutgoingStates() const;  // eliminates states which have only one outgoing silent transition
   Machine eliminateRedundantStates() const;  // eliminates states which have only one incoming and/or outgoing silent transition
+  Machine mergeEquivalentStates() const;  // merge states with identical outgoing transitions
 
   Machine subgraph (const vguard<vguard<bool> >&) const;
   Machine downsample (double maxProportionOfTransitionsToKeep, double minPostProbOfSelectedTransitions = 0.) const;

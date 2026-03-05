@@ -514,6 +514,8 @@ Postfix operators:
   -n [ --eliminate ]            eliminate all silent transitions
   --eliminate-states            eliminate all states whose only outgoing (or 
                                 incoming) transition is silent
+  --merge-states                merge states with equivalent outgoing 
+                                transitions (collapse bubbles)
   --strip-names                 remove all state names. Some algorithms (e.g. 
                                 composition of large transducers) are faster if
                                 states are unnamed

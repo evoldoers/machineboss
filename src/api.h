@@ -33,6 +33,9 @@ namespace MachineBoss {
   Params baumWelchFit (const Machine&, const Constraints&, const SeqPairList&,
                        const Params& seed = Params(), const Params& constants = Params());
 
+  // Machine transformations
+  Machine mergeEquivalentStates(const Machine&);
+
   // Beam search decoding
   vguard<InputSymbol> beamDecode (const Machine&, const Params&,
                                   const vguard<OutputSymbol>&,
