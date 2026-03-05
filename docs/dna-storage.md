@@ -210,6 +210,37 @@ The `mixradar.py` script generates variable-length mix-radix codes —
 a generalization of arithmetic coding that uses mixed radices (2, 3, and 4)
 instead of a fixed base.
 
+**Why mixed radices?**
+The Goldman ternary code assumes that at every position
+you have exactly 3 choices (the bases that differ from the previous one).
+But in practice, a DNA storage scheme may need to avoid
+more than just homopolymers.
+For example, you might want to exclude restriction enzyme recognition sites
+(like AfeI's AGCGCT) so the stored DNA survives enzymatic processing.
+Other constraints could include avoiding long GC-rich or AT-rich stretches,
+secondary structure motifs, or sequences that interfere with synthesis.
+
+These context-dependent constraints mean that at some positions
+you may have fewer than 3 bases available.
+If the previous two bases were AG and you need to avoid AGC,
+you can only choose from {A, G, T} — but G is already excluded
+by the homopolymer rule, leaving just {A, T}: only 2 options,
+so you can encode at most 1 bit at that position.
+Sometimes the constraints leave only a single valid base,
+in which case you can encode no information at all —
+you simply emit the forced base and wait for the next position
+to offer more choices.
+
+A fixed-radix code cannot handle this gracefully:
+it assumes a constant number of choices per position.
+A mix-radix code adapts naturally,
+using radix 4 when all bases are available,
+radix 3 when one is excluded (the common case),
+radix 2 when two are excluded,
+and radix 1 (a forced emit) when only one base is possible.
+This extracts the maximum information from every position
+regardless of how many options the constraints leave open.
+
 The idea is to encode a block of binary input bits (plus an end-of-file symbol)
 into a variable-length sequence of digits drawn from alphabets of different sizes.
 The encoder assigns probability intervals to input words (based on their binary probabilities
