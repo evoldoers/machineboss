@@ -2,6 +2,15 @@
 
 Bioinformatics automata toolkit for constructing, manipulating, and applying weighted finite-state transducers (WFSTs). Provides both a CLI (`boss`) and C++ library.
 
+## Reference Algorithm Project
+
+This is a **reference algorithm project** (see global `~/.claude/CLAUDE.md` for the full standard).
+Implementation tiers: JAX (reference), WebGPU (JS), C++ CLI/library (legacy, in place of Rust/WASM).
+The C++ predates the standard; WASM compilation is handled separately from the C++ build.
+All the standard's requirements apply: math-first design, API uniformity across tiers,
+cross-implementation consistency tests, proactive edge case tests, bug regression tests
+propagated to all implementations, benchmarks, and documentation.
+
 ## Build
 
 ```bash
