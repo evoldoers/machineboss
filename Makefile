@@ -742,7 +742,7 @@ WRAPTEST = $(TEST)
 test: $(BOSSTARGET) $(TESTS)
 
 # WebGPU tests (CPU fallback, Node.js)
-WEBGPU_TESTS = test-webgpu-cpu test-webgpu-agreement
+WEBGPU_TESTS = test-webgpu-cpu test-webgpu-agreement test-webgpu-fused-plan7
 
 test-webgpu-cpu:
 	@node js/webgpu/test/test-cpu.mjs
@@ -750,7 +750,16 @@ test-webgpu-cpu:
 test-webgpu-agreement:
 	@node js/webgpu/test/test-gpu-cpu-agreement.mjs
 
+test-webgpu-fused-plan7:
+	@node js/webgpu/test/test-fused-plan7.mjs
+
 test-webgpu: $(WEBGPU_TESTS)
+
+# WebGPU benchmarks
+bench-webgpu-fused-plan7:
+	@node js/webgpu/bench/bench-fused-plan7.mjs
+
+bench-webgpu: bench-webgpu-fused-plan7
 
 # Schema validator
 ajv:

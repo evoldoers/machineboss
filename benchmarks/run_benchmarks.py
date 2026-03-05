@@ -605,6 +605,75 @@ mb.destroy();
         os.unlink(script_file)
 
 
+def _time_js_fused_plan7(hmm_path, transducer_json, params, algorithm,
+                          output_seq, n_reps=3, timeout=60.0):
+    """Time JavaScript fused Plan7 kernel via Node.js.
+
+    Returns (mean_s, std_s, n_reps_completed, loglike) or None.
+    """
+    js_dir = REPO_ROOT / "js" / "webgpu"
+    if not (js_dir / "cpu" / "fused-plan7.mjs").exists():
+        return None
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(transducer_json, f)
+        td_file = f.name
+
+    algo_fn = "fusedPlan7Forward" if algorithm == "Forward" else "fusedPlan7Viterbi"
+    out_str = json.dumps(list(output_seq)) if output_seq else "[]"
+    params_str = json.dumps(params)
+
+    script = f"""
+import {{ readFileSync }} from 'fs';
+import {{ parseHmmer }} from '{js_dir}/internal/hmmer-parse.mjs';
+import {{ prepareMachine, tokenize }} from '{js_dir}/internal/machine-prep.mjs';
+import {{ buildFusedPlan7, fusedPlan7Forward, fusedPlan7Viterbi }} from '{js_dir}/cpu/fused-plan7.mjs';
+
+const hmm = parseHmmer(readFileSync('{hmm_path}', 'utf8'));
+const td = JSON.parse(readFileSync('{td_file}', 'utf8'));
+const params = {params_str};
+const prepared = prepareMachine(td, params);
+const fused = buildFusedPlan7(hmm, prepared);
+const outSeq = tokenize({out_str}, prepared.outputAlphabet);
+
+// Warmup
+let ll = {algo_fn}(fused, outSeq);
+
+const times = [];
+for (let i = 0; i < {n_reps}; i++) {{
+    const t0 = performance.now();
+    ll = {algo_fn}(fused, outSeq);
+    const elapsed = (performance.now() - t0) / 1000.0;
+    times.push(elapsed);
+    if (elapsed > {timeout}) break;
+}}
+
+const mean = times.reduce((a, b) => a + b) / times.length;
+const std = Math.sqrt(times.reduce((a, b) => a + (b - mean) ** 2, 0) / times.length);
+console.log(JSON.stringify({{ mean, std, n: times.length, ll }}));
+"""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".mjs", delete=False) as f:
+        f.write(script)
+        script_file = f.name
+
+    try:
+        result = subprocess.run(
+            ["node", script_file],
+            capture_output=True, text=True,
+            timeout=timeout * (n_reps + 2),
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout.strip())
+        return (data["mean"], data["std"], data["n"], data["ll"])
+    except Exception:
+        return None
+    finally:
+        os.unlink(td_file)
+        os.unlink(script_file)
+
+
 # ---------------------------------------------------------------------------
 # Timing helper
 # ---------------------------------------------------------------------------

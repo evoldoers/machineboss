@@ -16,6 +16,8 @@
 
 import { prepareMachine, tokenize } from './internal/machine-prep.mjs';
 import { detectBackend } from './internal/detect-backend.mjs';
+import { parseHmmer } from './internal/hmmer-parse.mjs';
+import { buildFusedPlan7, fusedPlan7Forward, fusedPlan7Viterbi } from './cpu/fused-plan7.mjs';
 
 // CPU fallback imports
 import { forward1D, forward1DFull } from './cpu/forward-1d.mjs';
@@ -88,7 +90,7 @@ export class MachineBoss {
     } else if (pref === 'webgpu') {
       const detected = await detectBackend();
       if (detected.backend !== 'webgpu') {
-        throw new Error('WebGPU not available');
+        throw new Error('WebGPU is not available in this environment. Use { backend: "cpu" } or "auto" to fall back to CPU.');
       }
       backend = 'webgpu';
       device = detected.device;
@@ -329,6 +331,51 @@ export class MachineBoss {
     }
 
     return { logLikelihood, posteriors };
+  }
+
+  /**
+   * Create a MachineBoss instance for fused Plan7+transducer DP.
+   *
+   * @param {string} hmmerText - HMMER3 profile text
+   * @param {Object} transducerJSON - Transducer machine JSON object
+   * @param {Object<string,number>} [params={}] - Transducer parameter values
+   * @param {Object} [options={}]
+   * @param {boolean} [options.multihit=false] - Enable multi-hit mode
+   * @param {number} [options.L=400] - Expected sequence length for flanking states
+   * @returns {Promise<MachineBoss>}
+   */
+  static async createFusedPlan7(hmmerText, transducerJSON, params = {}, options = {}) {
+    const hmmerModel = parseHmmer(hmmerText);
+    const prepared = prepareMachine(transducerJSON, params);
+    const fused = buildFusedPlan7(hmmerModel, prepared, {
+      multihit: options.multihit || false,
+      L: options.L || 400,
+    });
+    const instance = new MachineBoss(prepared, 'cpu', null);
+    instance._fusedPlan7 = fused;
+    return instance;
+  }
+
+  /**
+   * Compute fused Plan7+transducer Forward log-likelihood.
+   *
+   * @param {Uint32Array} outputTokens - 1-based output token indices
+   * @returns {Promise<number>}
+   */
+  async fusedForward(outputTokens) {
+    if (!this._fusedPlan7) throw new Error('Not a fused Plan7 instance; use createFusedPlan7()');
+    return fusedPlan7Forward(this._fusedPlan7, outputTokens);
+  }
+
+  /**
+   * Compute fused Plan7+transducer Viterbi score.
+   *
+   * @param {Uint32Array} outputTokens - 1-based output token indices
+   * @returns {Promise<number>}
+   */
+  async fusedViterbi(outputTokens) {
+    if (!this._fusedPlan7) throw new Error('Not a fused Plan7 instance; use createFusedPlan7()');
+    return fusedPlan7Viterbi(this._fusedPlan7, outputTokens);
   }
 
   /**

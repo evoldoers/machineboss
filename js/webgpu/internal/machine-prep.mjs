@@ -27,7 +27,7 @@ export function evaluateWeight(w, params, defs) {
   if (typeof w === 'string') {
     if (params != null && w in params) return params[w];
     if (defs != null && w in defs) return evaluateWeight(defs[w], params, defs);
-    throw new Error(`Unknown parameter: ${w}`);
+    throw new Error(`Unknown parameter "${w}". Pass it in the params object, e.g. { ${w}: 0.5 }`);
   }
   if (typeof w === 'object') {
     if ('*' in w) {
@@ -59,7 +59,7 @@ export function evaluateWeight(w, params, defs) {
     if ('not' in w) {
       return 1.0 - evaluateWeight(w['not'], params, defs);
     }
-    throw new Error(`Unknown weight expression operator: ${Object.keys(w)}`);
+    throw new Error(`Unsupported weight operator "${Object.keys(w).join(', ')}". Supported: *, +, -, /, pow, log, exp, not`);
   }
   throw new TypeError(`Unsupported weight expression type: ${typeof w}`);
 }
@@ -134,7 +134,7 @@ export function prepareMachine(machineJSON, params = {}) {
     if (typeof dest === 'number') return dest;
     const key = Array.isArray(dest) ? JSON.stringify(dest) : dest;
     if (key in nameToIdx) return nameToIdx[key];
-    throw new Error(`Unknown state reference: ${dest}`);
+    throw new Error(`Transition references unknown state "${dest}". Check that the "to" field matches a state "id" in your machine JSON.`);
   }
 
   // Allocate dense tensor: logTrans[inTok * nOut * S * S + outTok * S * S + src * S + dst]
@@ -186,7 +186,7 @@ export function prepareMachine(machineJSON, params = {}) {
  */
 export function tokenIndex(alphabet, symbol) {
   const idx = alphabet.indexOf(symbol);
-  if (idx < 0) throw new Error(`Unknown token: ${symbol}`);
+  if (idx < 0) throw new Error(`Unknown symbol "${symbol}". Valid symbols: ${alphabet.slice(1).join(', ')}`);
   return idx;
 }
 

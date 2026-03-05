@@ -212,16 +212,32 @@ do not change the mathematical result.
 |----------|----------|---------|
 | Explicit composition (`boss --compose`) | Small machines, or when you need the composed machine as a JSON file | C++ CLI, WebGPU, JavaScript |
 | Generic fused (`FusedMachine`) | Moderate-sized generators with any transducer | Python/JAX only |
-| Plan7-aware fused (`FusedPlan7Machine`) | Large HMMER profiles — exploits linear chain structure for efficiency | Python/JAX only |
+| Plan7-aware fused (`FusedPlan7Machine`) | Large HMMER profiles — exploits linear chain structure for efficiency | Python/JAX, JavaScript |
 
-The fused kernels are JIT-compiled by JAX, making them suitable for
+The Python/JAX fused kernels are JIT-compiled by JAX, making them suitable for
 GPU acceleration and gradient computation (for differentiable sequence analysis).
 
-**Note on WebGPU/WASM:** The fused kernels are currently available only in the Python/JAX backend.
-They are not implemented in the WebGPU or JavaScript backends.
-To run protein-to-DNA alignment on WebGPU, use explicit composition:
-construct the composed machine with `boss --hmmer-plan7 ... --compose ...`,
-then load the resulting JSON into the [WebGPU API](/webgpu/).
+### JavaScript fused kernel
+
+The Plan7-aware fused kernel is also available in the JavaScript/WebGPU backend
+as a CPU implementation (Float64Array). It can be used in Node.js or any
+JavaScript runtime:
+
+```javascript
+import { MachineBoss } from './machineboss-gpu.mjs';
+import { readFileSync } from 'fs';
+
+const hmmerText = readFileSync('profile.hmm', 'utf8');
+const transducerJSON = JSON.parse(readFileSync('transducer.json', 'utf8'));
+
+const mb = await MachineBoss.createFusedPlan7(hmmerText, transducerJSON);
+const outTok = mb.tokenize('ACGTACGT', 'output');
+const ll = await mb.fusedForward(outTok);
+const vitScore = await mb.fusedViterbi(outTok);
+```
+
+The JavaScript kernel provides Float64 precision, giving tighter agreement
+with the C++ `boss` CLI than the JAX f32 implementation.
 
 ## References
 
