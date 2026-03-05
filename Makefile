@@ -270,7 +270,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -376,6 +376,11 @@ test-nanopore-prefix:
 
 test-nanopore-decode:
 	@$(TEST) $(WRAPBOSS) --recognize-csv t/csv/nanopore_test.csv --beam-decode t/expect/nanopore_beam_decode.json
+
+test-dnastore:
+	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json t/expect/dnastore4.json
+	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json --input-json t/io/dnastore-input.json --beam-encode t/expect/dnastore-encode.json
+	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json --output-chars AGTAGTAG --beam-decode t/expect/dnastore-decode.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine

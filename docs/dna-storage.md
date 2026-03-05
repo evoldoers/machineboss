@@ -1,6 +1,6 @@
 ---
 title: DNA Storage
-nav_order: 12
+nav_order: 13
 permalink: /dna-storage/
 ---
 

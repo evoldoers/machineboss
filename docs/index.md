@@ -33,6 +33,15 @@ with a pure JavaScript CPU fallback for environments without WebGPU support.
 - **[Composition Algorithm](/composition/)** --- detailed description of the transducer composition algorithm
 - **[WebGPU API](/webgpu/)** --- GPU-accelerated inference in the browser via WebGPU with JavaScript CPU fallback
 - **[Python/JAX API](/python/)** --- differentiable dynamic programming with JAX
+- **[Presets Reference](/presets/)** --- built-in preset transducers
+- **[C++ Library API](/library-api/)** --- convenience functions for embedding Machine Boss
+
+### Tutorials
+
+- **[Biological Sequence Analysis](/bio-tutorial/)** --- protein motifs, profile HMMs, evolutionary models
+- **[GeneWise-style Fused DP](/genewise/)** --- protein-to-DNA alignment with fused JAX kernels
+- **[DNA Data Storage](/dna-storage/)** --- encoding binary data as constrained DNA sequences
+- **[A Brief History of Transducers](/transducer-history/)** --- from Turing to GeneWise to Machine Boss
 
 ## Installation
 
