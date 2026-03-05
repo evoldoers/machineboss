@@ -36,7 +36,9 @@ and Heng Li's miniprot (Li, 2023) revisited the problem with modern techniques â
 but neither fully replicates GeneWise's complete probabilistic model.
 GeneWise itself only implemented Viterbi alignment, not the Forward algorithm.
 Machine Boss's fused DP kernels bring the GeneWise approach into the GPU era
-via JAX, with both Forward and Viterbi support.
+via JAX, with Forward, Viterbi, and Forward-Backward support â€”
+and fully differentiable likelihoods,
+enabling neural HMMs whose parameters depend on the sequence.
 See [the history page](/transducer-history/) for more detail.
 
 ## Composition vs Fusion

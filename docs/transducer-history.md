@@ -225,7 +225,9 @@ that GeneWise offered: a Viterbi DP over the joint space of
 profile HMM, genetic code, intron model, and frameshift model.
 (GeneWise itself only implemented Viterbi, not Forward.)
 Machine Boss's [fused DP kernels](/genewise/) go further,
-supporting both Forward and Viterbi over the fused state space.
+supporting Forward, Viterbi, and Forward-Backward over the fused state space,
+with fully differentiable likelihoods via JAX —
+enabling neural HMMs whose parameters depend on the sequence.
 
 Machine Boss's fused DP kernels bring this story into the GPU era.
 Harnessing the power of JAX's JIT compilation, automatic differentiation,
