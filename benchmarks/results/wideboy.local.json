@@ -1,7 +1,7 @@
 {
   "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz",
   "hostname": "wideboy.local",
-  "timestamp": "2026-03-04T18:42:00",
+  "timestamp": "2026-03-04T19:47:16",
   "machine_stats": {
     "uname": {
       "system": "Darwin",
@@ -31,9 +31,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.034577745012938976,
+      "std_seconds": 0.0001700767192940531,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -44,9 +44,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0019935133333333333,
+      "std_seconds": 1.4552382011966913e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -57,9 +57,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03452224102026472,
+      "std_seconds": 0.00029880055287272937,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -70,9 +70,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0019997966666666666,
+      "std_seconds": 1.849222058656475e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -83,9 +83,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03410671131374935,
+      "std_seconds": 0.0002755926692695162,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -96,9 +96,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020019400000000002,
+      "std_seconds": 5.753196213120738e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -109,9 +109,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03557746640096108,
+      "std_seconds": 0.0005109317206441573,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -122,9 +122,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00214598,
+      "std_seconds": 0.00019009434727699468,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -135,9 +135,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03541845630388707,
+      "std_seconds": 0.00016728893615950072,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -148,9 +148,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002036053333333333,
+      "std_seconds": 3.2317418763811057e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -161,9 +161,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03987704264000058,
+      "std_seconds": 0.00040369831653675473,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -174,9 +174,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0019176899999999997,
+      "std_seconds": 8.793875937264518e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -187,9 +187,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.039974436668368675,
+      "std_seconds": 0.00014513170353773336,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -200,9 +200,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00219697,
+      "std_seconds": 6.374762740682993e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -213,9 +213,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06355031700028728,
+      "std_seconds": 0.0004382626877491427,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -226,9 +226,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00219987,
+      "std_seconds": 0.00017801675333143976,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -239,9 +239,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03506595296009133,
+      "std_seconds": 0.00015724254580618956,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -252,9 +252,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00200812,
+      "std_seconds": 4.852490769353337e-07,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -265,9 +265,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03506070433650166,
+      "std_seconds": 0.0001422739111938912,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -278,9 +278,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00208028,
+      "std_seconds": 9.734758069241714e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -291,9 +291,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03597878396976739,
+      "std_seconds": 0.00010912398771660541,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -304,9 +304,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020290900000000003,
+      "std_seconds": 8.307490595841865e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -317,9 +317,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03738435567356646,
+      "std_seconds": 0.0002172237243877954,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -330,9 +330,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021627933333333333,
+      "std_seconds": 0.00018587669395477087,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -343,9 +343,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03866622030424575,
+      "std_seconds": 0.0005806185596676859,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -356,9 +356,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0022177499999999997,
+      "std_seconds": 0.00015625947075297548,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -369,9 +369,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.043024871653566756,
+      "std_seconds": 0.00029785511192402346,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -382,9 +382,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002038026666666667,
+      "std_seconds": 2.0034026610300336e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -395,9 +395,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05289863500123223,
+      "std_seconds": 0.0008944235022845247,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -408,9 +408,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0024596,
+      "std_seconds": 5.281723645427378e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -421,9 +421,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.07534980964070807,
+      "std_seconds": 0.00019253014874073384,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -434,9 +434,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0022172366666666668,
+      "std_seconds": 2.543492786613754e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -447,9 +447,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.038530678333093725,
+      "std_seconds": 0.00029610632824326425,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -460,9 +460,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002279643333333333,
+      "std_seconds": 0.0001593045984549375,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -473,9 +473,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03850879737486442,
+      "std_seconds": 0.00038397037327996876,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -486,9 +486,9 @@
       "L": 100,
       "Li": 0,
       "Lo": 100,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021767433333333332,
+      "std_seconds": 0.0001771520387187859,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -499,9 +499,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04143281769938767,
+      "std_seconds": 0.0005805756125051748,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -512,9 +512,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00212534,
+      "std_seconds": 8.043995690368521e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -525,9 +525,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.041893717677642904,
+      "std_seconds": 0.0006410457501304687,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -538,9 +538,9 @@
       "L": 500,
       "Li": 0,
       "Lo": 500,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020904533333333335,
+      "std_seconds": 0.00016582089159357727,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -551,9 +551,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.050412256348257266,
+      "std_seconds": 0.00031746765774808434,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -564,9 +564,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0023941333333333333,
+      "std_seconds": 2.4485868486855003e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -577,9 +577,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05379615533941736,
+      "std_seconds": 0.0002623166495663755,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -590,9 +590,9 @@
       "L": 2000,
       "Li": 0,
       "Lo": 2000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021239699999999998,
+      "std_seconds": 9.626809786563088e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -603,9 +603,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.10074055229779333,
+      "std_seconds": 0.0005043015607263863,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -616,9 +616,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.004088276666666667,
+      "std_seconds": 5.6972540949322245e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -629,9 +629,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.12468620133586228,
+      "std_seconds": 0.001072954531980784,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -642,9 +642,9 @@
       "L": 10000,
       "Li": 0,
       "Lo": 10000,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0026184533333333333,
+      "std_seconds": 1.326811298648832e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -655,9 +655,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03592492531364163,
+      "std_seconds": 0.0002852686744898089,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -668,9 +668,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020064866666666668,
+      "std_seconds": 2.4810257735236026e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -681,9 +681,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03627654995458821,
+      "std_seconds": 0.000290314064755762,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -694,9 +694,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021564133333333334,
+      "std_seconds": 0.0002091581529741442,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -707,9 +707,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03537123297185948,
+      "std_seconds": 0.00035276804821842935,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -720,9 +720,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002354286666666667,
+      "std_seconds": 0.00021030347537678867,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -733,9 +733,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03573295136447996,
+      "std_seconds": 0.00014794724319665704,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -746,9 +746,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021307299999999995,
+      "std_seconds": 0.00015360957023137156,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -759,9 +759,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03670309600420296,
+      "std_seconds": 0.0006298762079894653,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -772,9 +772,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020502433333333334,
+      "std_seconds": 4.0628007034009806e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -785,9 +785,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03661943199889114,
+      "std_seconds": 0.0002837501225670613,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -798,9 +798,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002034903333333333,
+      "std_seconds": 1.0483511922167198e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -811,9 +811,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03661355566388617,
+      "std_seconds": 0.0006161950927482847,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -824,9 +824,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0019521066666666666,
+      "std_seconds": 2.2226760647672174e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -837,9 +837,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03567345029053589,
+      "std_seconds": 0.0006264050732940697,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -850,9 +850,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002128963333333333,
+      "std_seconds": 0.00017314411229441852,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -863,9 +863,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03630727902054787,
+      "std_seconds": 0.00012130851402829185,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -876,9 +876,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002157843333333333,
+      "std_seconds": 0.0001953465741246113,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -889,9 +889,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03684476134367287,
+      "std_seconds": 0.0002715416866100904,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -902,9 +902,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020811266666666667,
+      "std_seconds": 9.163253219002267e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -915,9 +915,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04130393670250972,
+      "std_seconds": 0.0006084630990624241,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -928,9 +928,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0022475033333333332,
+      "std_seconds": 0.00019091594962763656,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -941,9 +941,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04038768102570126,
+      "std_seconds": 0.0002586031652209217,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -954,9 +954,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00221154,
+      "std_seconds": 0.00016741434406884008,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -967,9 +967,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03656356032782545,
+      "std_seconds": 0.0005500559727078892,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -980,9 +980,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020349866666666667,
+      "std_seconds": 4.752798497259862e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -993,9 +993,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03584940265864134,
+      "std_seconds": 0.0004282045898874145,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1006,9 +1006,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020358533333333334,
+      "std_seconds": 7.5655021130273255e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1019,9 +1019,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.039650214331535004,
+      "std_seconds": 0.00039297143693635075,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1032,9 +1032,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021391799999999996,
+      "std_seconds": 2.0705187755729274e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1045,9 +1045,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03990145101367185,
+      "std_seconds": 0.0005197229920973177,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1058,9 +1058,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020623666666666667,
+      "std_seconds": 2.923790956199771e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1071,9 +1071,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05373475529874364,
+      "std_seconds": 0.0007385777330156338,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1084,9 +1084,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002575416666666667,
+      "std_seconds": 2.745684411743069e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1097,9 +1097,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05621316668111831,
+      "std_seconds": 0.001653914364657579,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1110,9 +1110,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002392456666666667,
+      "std_seconds": 3.901345095676058e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1123,9 +1123,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03794784265725563,
+      "std_seconds": 0.00021513153053459813,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1136,9 +1136,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021414533333333334,
+      "std_seconds": 0.00018076509809387687,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1149,9 +1149,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03848246302610884,
+      "std_seconds": 0.0006297048195073081,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1162,9 +1162,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020073433333333336,
+      "std_seconds": 1.5530705786351816e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1175,9 +1175,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.038911918993107975,
+      "std_seconds": 0.0006047777804446806,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1188,9 +1188,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002186306666666667,
+      "std_seconds": 0.00015113586323422894,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1201,9 +1201,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03799427964258939,
+      "std_seconds": 0.00038470936649419584,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1214,9 +1214,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020268233333333337,
+      "std_seconds": 9.440954518597354e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1227,9 +1227,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04112574097234756,
+      "std_seconds": 0.0002965732409910081,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1240,9 +1240,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021482533333333337,
+      "std_seconds": 1.0513998076638363e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1253,9 +1253,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.041302382674378656,
+      "std_seconds": 0.0004048348513180148,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1266,9 +1266,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021697233333333333,
+      "std_seconds": 0.00019761022752434192,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1279,9 +1279,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.03842084133066237,
+      "std_seconds": 0.0002710841709453239,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1292,9 +1292,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002034553333333333,
+      "std_seconds": 2.7454808119688058e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1305,9 +1305,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.038766899689411126,
+      "std_seconds": 0.00048136251927237276,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1318,9 +1318,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020035,
+      "std_seconds": 1.9674608001177455e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1331,9 +1331,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.041780400283945106,
+      "std_seconds": 0.0002750031573161247,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1344,9 +1344,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021675833333333334,
+      "std_seconds": 3.205136745219397e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1357,9 +1357,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04166057771847894,
+      "std_seconds": 0.0005035986299855607,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1370,9 +1370,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0021596833333333335,
+      "std_seconds": 0.00019511995563982907,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1383,9 +1383,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05603036598768085,
+      "std_seconds": 0.000653308057258948,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1396,9 +1396,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0025968999999999996,
+      "std_seconds": 3.935284233699008e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1409,9 +1409,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05464728370619317,
+      "std_seconds": 0.0007244566307300506,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1422,9 +1422,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0023082833333333335,
+      "std_seconds": 8.104545816323625e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1435,9 +1435,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.041969087634546064,
+      "std_seconds": 0.000366094905870519,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1448,9 +1448,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.00225993,
+      "std_seconds": 0.00015430390424959014,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1461,9 +1461,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04055114668638756,
+      "std_seconds": 0.00015155931420201337,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1474,9 +1474,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020540633333333332,
+      "std_seconds": 1.929915081609104e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1487,9 +1487,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05542534601408988,
+      "std_seconds": 0.00040492427494782213,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1500,9 +1500,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0027062500000000003,
+      "std_seconds": 0.00019107379848285491,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1513,9 +1513,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05476130766328424,
+      "std_seconds": 0.0005312558357602681,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1526,9 +1526,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0022863933333333334,
+      "std_seconds": 2.679917079977477e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1539,9 +1539,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.10760332768162091,
+      "std_seconds": 0.00030645167460526007,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1552,9 +1552,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.004268303333333333,
+      "std_seconds": 4.337316015950659e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1565,9 +1565,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.10513806832022965,
+      "std_seconds": 0.00032926861968478956,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1578,9 +1578,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0030749,
+      "std_seconds": 7.304957220956133e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1591,9 +1591,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04843868260892729,
+      "std_seconds": 0.00045057751290103693,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1604,9 +1604,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020619766666666664,
+      "std_seconds": 8.310994057405067e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1617,9 +1617,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.04850482436207434,
+      "std_seconds": 0.0003805801972642496,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1630,9 +1630,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0020226099999999998,
+      "std_seconds": 6.1302528495975715e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1643,9 +1643,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.052847606013529,
+      "std_seconds": 0.0010322619772888805,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1656,9 +1656,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002335076666666667,
+      "std_seconds": 0.0001962010508523222,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1669,9 +1669,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05245991901028901,
+      "std_seconds": 0.00029026510600732325,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1682,9 +1682,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002202603333333333,
+      "std_seconds": 0.00018898082959801913,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1695,9 +1695,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06464749299144994,
+      "std_seconds": 0.00033516260767503547,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1708,9 +1708,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0026491333333333333,
+      "std_seconds": 2.5010214357782263e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1721,9 +1721,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06435051036532968,
+      "std_seconds": 0.0010260227157223311,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1734,9 +1734,9 @@
       "L": 0,
       "Li": 10,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0022668966666666668,
+      "std_seconds": 3.932949727056732e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1747,9 +1747,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.05154203398463627,
+      "std_seconds": 0.0004803142823099664,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1760,9 +1760,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002257623333333333,
+      "std_seconds": 0.00017141024557735417,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1773,9 +1773,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.051090251693191625,
+      "std_seconds": 0.0002577836991621364,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1786,9 +1786,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002037643333333333,
+      "std_seconds": 2.1819242781443077e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1799,9 +1799,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06786088598892093,
+      "std_seconds": 0.000565134918699278,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1812,9 +1812,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002739536666666667,
+      "std_seconds": 2.2164861580639075e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1825,9 +1825,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06574295767738174,
+      "std_seconds": 0.00043059616183848163,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1838,9 +1838,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002380956666666667,
+      "std_seconds": 0.00015293064666341044,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1851,9 +1851,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.12771751634621373,
+      "std_seconds": 0.0009910315658631708,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1864,9 +1864,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.004833993333333333,
+      "std_seconds": 2.8058777988754387e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1877,9 +1877,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.12372578498131286,
+      "std_seconds": 2.744227190001362e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1890,9 +1890,9 @@
       "L": 0,
       "Li": 50,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.003228603333333333,
+      "std_seconds": 8.142703495904924e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1903,9 +1903,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06384972401428968,
+      "std_seconds": 0.0002389031735514101,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1916,9 +1916,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.002604683333333333,
+      "std_seconds": 3.912360696845605e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1929,9 +1929,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.06357171995720516,
+      "std_seconds": 0.0002941316554614926,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1942,9 +1942,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 10,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0022464466666666668,
+      "std_seconds": 5.070708913839141e-06,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1955,9 +1955,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.12729764302882055,
+      "std_seconds": 0.0008117693161466774,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1968,9 +1968,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.005249693333333334,
+      "std_seconds": 0.00020431377932538533,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1981,9 +1981,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.12454884565280129,
+      "std_seconds": 0.0005042634405701402,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -1994,9 +1994,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 50,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.0034724533333333335,
+      "std_seconds": 0.00028404840624247284,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -2007,9 +2007,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.36037218566828716,
+      "std_seconds": 0.0008346020295687379,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -2020,9 +2020,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.013327533333333334,
+      "std_seconds": 0.00023915983962381486,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -2033,9 +2033,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.35362029634416103,
+      "std_seconds": 0.003319349881108528,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     },
     {
@@ -2046,9 +2046,9 @@
       "L": 0,
       "Li": 200,
       "Lo": 200,
-      "mean_seconds": 0.0,
-      "std_seconds": 0.0,
-      "n_reps": 1,
+      "mean_seconds": 0.006314826666666666,
+      "std_seconds": 5.119642717568822e-05,
+      "n_reps": 3,
       "hardware_id": "wideboy.local / Intel(R) Xeon(R) W-3223 CPU @ 3.50GHz"
     }
   ]

@@ -44,12 +44,14 @@ all_data$std_seconds <- as.numeric(all_data$std_seconds)
 
 # Nicer backend labels
 backend_levels <- c(
-  "cpp", "jax_1d_simple", "jax_1d_optimal",
+  "cpp_interp", "cpp_compiled",
+  "jax_1d_simple", "jax_1d_optimal",
   "jax_2d_simple", "jax_2d_optimal",
   "jax_gpu_1d", "jax_gpu_2d", "js_cpu"
 )
 backend_labels <- c(
-  "C++ native", "JAX 1D scan", "JAX 1D parallel",
+  "C++ interpreter", "C++ compiled",
+  "JAX 1D scan", "JAX 1D parallel",
   "JAX 2D scan", "JAX 2D wavefront",
   "JAX GPU 1D", "JAX GPU 2D", "JS CPU"
 )
@@ -104,9 +106,9 @@ if (nrow(data_1d) > 0) {
   # Backend comparison for 1D
   for (algo in unique(data_1d$algorithm)) {
     df <- data_1d[data_1d$algorithm == algo, ]
-    if (nrow(df) == 0 || !("cpp" %in% df$backend)) next
+    if (nrow(df) == 0 || !("cpp_interp" %in% df$backend)) next
 
-    cpp_ref <- df[df$backend == "cpp", c("S", "L", "mean_seconds")]
+    cpp_ref <- df[df$backend == "cpp_interp", c("S", "L", "mean_seconds")]
     names(cpp_ref)[3] <- "cpp_time"
     df_ratio <- merge(df, cpp_ref, by = c("S", "L"))
     df_ratio$ratio <- df_ratio$mean_seconds / df_ratio$cpp_time
@@ -120,9 +122,9 @@ if (nrow(data_1d) > 0) {
       facet_wrap(~ S, labeller = label_both) +
       scale_y_log10() +
       labs(
-        title = paste0("1D ", algo, ": time relative to C++ native"),
+        title = paste0("1D ", algo, ": time relative to C++ interpreter"),
         x = "Configuration",
-        y = "Ratio (vs C++ native)"
+        y = "Ratio (vs C++ interpreter)"
       ) +
       theme_bench +
       theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
@@ -212,9 +214,9 @@ if (nrow(data_2d) > 0) {
   # Backend comparison for 2D
   for (algo in unique(data_2d$algorithm)) {
     df <- data_2d[data_2d$algorithm == algo, ]
-    if (nrow(df) == 0 || !("cpp" %in% df$backend)) next
+    if (nrow(df) == 0 || !("cpp_interp" %in% df$backend)) next
 
-    cpp_ref <- df[df$backend == "cpp", c("S", "Li", "Lo", "mean_seconds")]
+    cpp_ref <- df[df$backend == "cpp_interp", c("S", "Li", "Lo", "mean_seconds")]
     names(cpp_ref)[4] <- "cpp_time"
     df_ratio <- merge(df, cpp_ref, by = c("S", "Li", "Lo"))
     df_ratio$ratio <- df_ratio$mean_seconds / df_ratio$cpp_time
@@ -228,9 +230,9 @@ if (nrow(data_2d) > 0) {
       facet_wrap(~ S, labeller = label_both) +
       scale_y_log10() +
       labs(
-        title = paste0("2D ", algo, ": time relative to C++ native"),
+        title = paste0("2D ", algo, ": time relative to C++ interpreter"),
         x = "Configuration",
-        y = "Ratio (vs C++ native)"
+        y = "Ratio (vs C++ interpreter)"
       ) +
       theme_bench +
       theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 7))
