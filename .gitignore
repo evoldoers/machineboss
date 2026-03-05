@@ -45,6 +45,13 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+*.egg-info/
+
+# Claude Code
+.claude/
+
+# Temp files
+/001
 
 # Test build artifacts
 t/bin/

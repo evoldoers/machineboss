@@ -379,6 +379,7 @@ test-nanopore-decode:
 
 test-dnastore:
 	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json t/expect/dnastore4.json
+	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json --stats t/expect/dnastore4-stats.txt
 	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json --input-json t/io/dnastore-input.json --beam-encode t/expect/dnastore-encode.json
 	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json --output-chars AGTAGTAG --beam-decode t/expect/dnastore-decode.json
 

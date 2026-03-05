@@ -1,0 +1,1 @@
+110 states, 540 transitions (297 IO-conditioned), 0 parameters
