@@ -129,7 +129,7 @@ computational linguistics, and signals intelligence.
 
 This is not as surprising as it might seem.
 Sequence alignment, speech recognition, and cryptanalysis
-all reduce to the same mathematical problem:
+often reduce to the same mathematical problem:
 finding the most probable path through a hidden Markov model
 or the highest-scoring alignment between two symbol sequences.
 The Viterbi algorithm (Viterbi, 1967), originally developed for decoding
