@@ -920,20 +920,48 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
 # ---------------------------------------------------------------------------
 
 def save_results(results, out_dir="results"):
+    """Save results, merging with any existing data for this host.
+
+    New results replace old results for the same (problem, backend, algorithm,
+    S, L, Li, Lo) key; results for backends not in the new run are preserved.
+    """
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     hostname = platform.node() or "unknown"
     filepath = out_path / f"{hostname}.json"
+
+    # Load existing results if any
+    existing = []
+    if filepath.exists():
+        try:
+            with open(filepath) as f:
+                old_data = json.load(f)
+            existing = old_data.get("results", [])
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # Build set of keys being replaced by the new run
+    def _result_key(r):
+        return (r["problem"], r["backend"], r["algorithm"],
+                r.get("S", 0), r.get("L", 0), r.get("Li", 0), r.get("Lo", 0))
+
+    new_keys = {_result_key(r) for r in results}
+
+    # Keep old results whose keys are not in the new run
+    merged = [r for r in existing if _result_key(r) not in new_keys]
+    merged.extend(results)
+
     data = {
         "hardware_id": results[0]["hardware_id"] if results else hardware_id(),
         "hostname": hostname,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "machine_stats": _collect_machine_stats(),
-        "results": results,
+        "results": merged,
     }
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"\nResults saved to {filepath}")
+    print(f"\nResults saved to {filepath} ({len(merged)} records, "
+          f"{len(results)} new/updated, {len(merged) - len(results)} preserved)")
     return filepath
 
 
