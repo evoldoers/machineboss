@@ -7,7 +7,8 @@ permalink: /bio-tutorial/
 # Tutorial: Biological Sequence Analysis
 
 This tutorial demonstrates Machine Boss on biological sequence analysis tasks:
-protein motif searching, profile HMM matching, evolutionary models, and protein-to-DNA alignment.
+protein motif searching, profile HMM matching, evolutionary models, protein-to-DNA alignment,
+and neural transducers.
 For the introductory casino and reporter examples, see the [main tutorial](/tutorial/).
 
 ## Table of Contents
@@ -227,3 +228,147 @@ boss profile-dna.json --output-fasta dna.fa --viterbi
 Each `--preset` or machine file on the command line is composed (via transducer composition)
 with the preceding machine. This lets you build arbitrarily deep pipelines
 from simple building blocks.
+
+## Neural Transducers
+
+The Machine Boss JAX package supports **neural transducers**:
+neural networks that produce per-position parameters for a WFST.
+The Forward algorithm computes the log-likelihood,
+and gradients flow back through the dynamic programming into the neural network weights.
+
+This is implemented via the `ParameterizedMachine` and `neural_log_forward_tok` API.
+A `ParameterizedMachine` is compiled from a `Machine` whose transitions use symbolic weight expressions
+with named parameters (e.g. `t`, `pIns`, `pDel`).
+At runtime, the caller supplies each parameter as a tensor of shape `(Li+1, 1)`, `(1, Lo+1)`, or `(Li+1, Lo+1)`,
+allowing different parameter values at each position in the DP grid.
+
+### Example 1: Neural DNA Copy Transducer
+
+This example trains a 1D CNN to predict per-position evolutionary parameters
+for a 6-state TKF91-like DNA copy transducer.
+
+**Machine.** Six states (begin, wait, match, insert, delete, end) with Jukes-Cantor substitution.
+Three free parameters per position: evolutionary distance `t`, insertion probability `pIns`,
+and deletion probability `pDel`. The machine's `defs` derive substitution probabilities
+from `t` via the JC model: `pNoSub = exp(-t)`, `pSame = pNoSub + (1-pNoSub)/4`.
+
+```python
+from machineboss.neural.dna_copy import make_dna_copy_machine
+from machineboss.jax.jax_weight import ParameterizedMachine
+
+machine = make_dna_copy_machine()       # 6-state WFST
+pm = ParameterizedMachine.from_machine(machine)
+print(pm.free_params)                   # {'t', 'pIns', 'pDel'}
+```
+
+**CNN.** A small Flax/Linen 1D CNN maps one-hot DNA input `(L, 4)` to three per-position outputs.
+Output activations enforce valid ranges: `softplus` for `t` (positive), `sigmoid * 0.3` for probabilities.
+
+```python
+from machineboss.neural.dna_copy import DNACopyCNN, onehot_dna, cnn_params_to_dp_params
+
+model = DNACopyCNN(hidden=32, kernel=5)
+x = onehot_dna("ACGTACGT")              # (8, 4)
+cnn_params = model.init(jax.random.PRNGKey(0), x)
+t, pIns, pDel = model.apply(cnn_params, x)
+dp_params = cnn_params_to_dp_params(t, pIns, pDel)  # {'t': (9,1), 'pIns': (9,1), ...}
+```
+
+**Training.** The loss is the negative log-likelihood from the Forward algorithm.
+Gradients flow through the DP back into the CNN:
+
+```python
+from machineboss.jax.dp_neural import neural_log_forward_tok
+
+def loss_fn(cnn_params, x, in_tok, out_tok):
+    t, pIns, pDel = model.apply(cnn_params, x)
+    dp_params = cnn_params_to_dp_params(t, pIns, pDel)
+    return -neural_log_forward_tok(pm, in_tok, out_tok, dp_params)
+
+grads = jax.grad(loss_fn)(cnn_params, x, in_tok, out_tok)
+```
+
+**Simulator.** The included DNA simulator generates ancestor-descendant pairs
+with homopolymer-dependent error rates for training data:
+
+```python
+from machineboss.neural.simulator import simulate_dna_pair
+ancestor, descendant = simulate_dna_pair(jax.random.PRNGKey(0), length=100,
+                                          base_sub_rate=0.08, hp_multiplier=3.0)
+```
+
+A complete training script is provided in `examples/train_neural_dna_copy.py`.
+
+### Example 2: Neural TKF92 Protein Transducer
+
+This example trains an MSA transformer to predict per-position parameters
+for a 7-state TKF92 protein evolution transducer.
+
+**Machine.** Seven states (begin, orphan, wait, match, insert, delete, end) with F81 amino acid
+substitution and TKF92 fragment extension.
+The TKF92 model extends TKF91 with a fragment extension probability `r`:
+match, insert, and delete states have self-loops with probability `r`,
+allowing runs of operations within a single fragment.
+Free parameters: `t`, `insRate`, `delRate`, `r`, and 20 equilibrium frequencies `pi_0`..`pi_19`
+(24 total per position).
+
+```python
+from machineboss.neural.tkf92 import make_tkf92_machine
+
+machine = make_tkf92_machine()           # 7-state WFST, 20-AA alphabet
+pm = ParameterizedMachine.from_machine(machine)
+print(len(pm.free_params))              # 24
+```
+
+**MSA Transformer.** A Flax/Linen transformer with row attention (within sequences)
+and column attention (across sequences) reads a one-hot MSA `(N, L, 21)` and produces
+a mean-pooled representation `(L, d_model)`:
+
+```python
+from machineboss.neural.msa_transformer import MSATransformer
+from machineboss.neural.tkf92 import TKF92Heads, heads_to_dp_params
+
+transformer = MSATransformer(d_model=64, n_heads=4, n_layers=2)
+heads = TKF92Heads()
+
+# msa_onehot: (N, L, 21) from Stockholm parser
+embeddings = transformer.apply(t_params, msa_onehot)   # (L, 64)
+t, insRate, delRate, r, pi = heads.apply(h_params, embeddings)
+dp_params = heads_to_dp_params(t, insRate, delRate, r, pi)
+```
+
+The parameter heads enforce constraints: `t > 0`, `delRate > insRate` (required for TKF91),
+`0 < r < 1`, and `sum(pi) = 1`.
+
+**Stockholm parser.** A minimal parser reads Pfam-style `.sto` files:
+
+```python
+from machineboss.neural.stockholm import parse_stockholm_file
+msa = parse_stockholm_file("PF00516.sto")
+seq_i, seq_j = msa.ungapped_pair(0, 1)  # extract a training pair
+```
+
+A complete training script is provided in `examples/train_neural_tkf92.py`.
+
+### Notes on practical training
+
+**Sequence embeddings.**
+In practice, the MSA transformer shown here would benefit substantially from
+pre-trained protein language model embeddings as input features.
+[ESM-2](https://github.com/facebookresearch/esm) or
+[ESM-MSA-1b](https://github.com/facebookresearch/esm) embeddings of the MSA rows
+could replace (or augment) the raw one-hot input,
+providing rich per-residue representations learned from millions of protein sequences.
+This would likely improve convergence and generalization,
+especially for small families where the MSA alone provides limited signal.
+
+**Train/test splitting.**
+A proper evaluation of this setup should use tree-based splits
+of Pfam or TreeFam families to avoid data leakage.
+Specifically, the predictive target sequence (and any close homologs)
+should be excluded from the MSA used to supply embeddings to the transducer.
+Phylogeny-aware splitting ensures that the model cannot simply memorize
+the target from highly similar sequences in the conditioning MSA.
+Without such precautions, performance estimates will be inflated,
+as the model can exploit near-identical sequences rather than learning
+genuine evolutionary patterns.
