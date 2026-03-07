@@ -293,3 +293,83 @@ npx playwright test js/webgpu/test/test-webgpu.mjs
 | Node.js 18+ | No* | Yes |
 
 \* Node.js WebGPU support via `@aspect-build/webgpu` or Dawn bindings.
+
+## Fused Plan7+Transducer GPU API
+
+GPU-accelerated scoring of sequences against HMMER3 profile HMMs composed
+with transducers, without materializing the composed state space (GeneWise-style
+fused DP). Two GPU kernels are provided:
+
+- **Batch kernel**: B sequences scored in parallel (one workgroup per sequence).
+  Best for database search.
+- **Single-sequence kernel**: K threads cooperate per output position
+  (one per profile node). Best for large profiles on single sequences.
+
+Both use f32 (WebGPU limitation). CPU fallback uses Float64.
+GPU-vs-CPU agreement is within ~0.5 for Forward (logsumexp accumulation in f32).
+
+### `MachineBoss.createFusedPlan7(hmmerText, transducerJSON, params?, options?)`
+
+Factory method for fused Plan7+transducer instances. Returns `Promise<MachineBoss>`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `hmmerText` | string | HMMER3 profile text |
+| `transducerJSON` | Object | Transducer machine JSON |
+| `params` | Object | Transducer parameter values |
+| `options.multihit` | boolean | Enable multi-hit mode (default: false) |
+| `options.L` | number | Expected sequence length (default: 400) |
+| `options.backend` | string | `'auto'` (default), `'webgpu'`, or `'cpu'` |
+
+### `mb.fusedForward(outputTokens)`
+
+Single-sequence fused Forward. Uses GPU single-sequence kernel when available.
+Returns `Promise<number>`.
+
+### `mb.fusedViterbi(outputTokens)`
+
+Single-sequence fused Viterbi. Returns `Promise<number>`.
+
+### `mb.fusedForwardBatch(outputSeqArray)`
+
+Batch fused Forward. Takes `Uint32Array[]` of tokenized sequences.
+Uses GPU batch kernel when available.
+Returns `Promise<Float64Array>` of log-likelihoods.
+
+### `mb.fusedViterbiBatch(outputSeqArray)`
+
+Batch fused Viterbi. Returns `Promise<Float64Array>` of Viterbi scores.
+
+### Example: Fused Plan7 database search
+
+```javascript
+import { MachineBoss } from './machineboss-gpu.mjs';
+import { readFileSync } from 'fs';
+
+const hmmerText = readFileSync('profile.hmm', 'utf8');
+const transducer = { state: [{ id: 'S', trans:
+  'ACDEFGHIKLMNPQRSTVWY'.split('').map(aa =>
+    ({ in: aa, out: aa, to: 'S' }))
+}]};
+
+const mb = await MachineBoss.createFusedPlan7(hmmerText, transducer);
+console.log('Backend:', mb.backend); // 'webgpu' or 'cpu'
+
+// Score a batch of sequences
+const seqs = ['ACDE', 'VLIWFYH', 'MPQRST'].map(
+  s => mb.tokenize(s, 'output'));
+const scores = await mb.fusedForwardBatch(seqs);
+console.log('Scores:', Array.from(scores));
+
+mb.destroy();
+```
+
+### Testing
+
+```bash
+# CPU tests (always)
+node js/webgpu/test/test-fused-plan7.mjs
+
+# GPU tests (requires WebGPU runtime)
+node --experimental-webgpu js/webgpu/test/test-fused-plan7.mjs
+```

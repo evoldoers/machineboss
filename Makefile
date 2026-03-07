@@ -754,6 +754,9 @@ test-webgpu-agreement:
 test-webgpu-fused-plan7:
 	@node js/webgpu/test/test-fused-plan7.mjs
 
+test-webgpu-fused-plan7-gpu:
+	@node --experimental-webgpu js/webgpu/test/test-fused-plan7.mjs 2>/dev/null || echo "WebGPU not available — GPU tests skipped"
+
 test-webgpu: $(WEBGPU_TESTS)
 
 # WebGPU benchmarks

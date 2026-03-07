@@ -1,10 +1,12 @@
 /**
- * Tests for fused Plan7+transducer kernel (CPU).
+ * Tests for fused Plan7+transducer kernel (CPU and GPU).
  *
  * Validates the HMMER parser and fused Forward/Viterbi against
- * reference values from the `boss` CLI.
+ * reference values from the `boss` CLI. GPU tests compare against
+ * CPU reference values with f32 tolerance.
  *
  * Run: node js/webgpu/test/test-fused-plan7.mjs
+ * GPU: node --experimental-webgpu js/webgpu/test/test-fused-plan7.mjs
  */
 
 import { readFileSync } from 'fs';
@@ -16,6 +18,7 @@ import { MachineBoss } from '../machineboss-gpu.mjs';
 import { parseHmmer, calcMatchOccupancy } from '../internal/hmmer-parse.mjs';
 import { prepareMachine, tokenize } from '../internal/machine-prep.mjs';
 import { buildFusedPlan7, fusedPlan7Forward, fusedPlan7Viterbi } from '../cpu/fused-plan7.mjs';
+import { detectBackend } from '../internal/detect-backend.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..', '..');
@@ -272,6 +275,156 @@ console.log('Testing MachineBoss fused Plan7 API...');
   assert(vitLl <= fwdLl + 1e-10, `API fusedViterbi <= fusedForward`);
 
   mb.destroy();
+}
+
+// ============================================================
+// Test: MachineBoss batch API (CPU)
+// ============================================================
+console.log('Testing MachineBoss batch API (CPU)...');
+
+{
+  const hmmerText = loadText('t/hmmer/fn3.hmm');
+  const aaEcho = makeAaEchoTransducer();
+
+  const mb = await MachineBoss.createFusedPlan7(hmmerText, aaEcho, {}, { backend: 'cpu' });
+
+  const seqs = [
+    new Uint32Array(0),                              // empty
+    tokenize('A', mb.outputAlphabet),                 // single aa
+    tokenize('ACDE', mb.outputAlphabet),              // short
+    tokenize('VLIWFYH', mb.outputAlphabet),           // different aas
+  ];
+
+  const fwdBatch = await mb.fusedForwardBatch(seqs);
+  assert(fwdBatch.length === 4, `batch returns 4 results`);
+  for (let i = 0; i < 4; i++) {
+    const expected = fusedPlan7Forward(mb._fusedPlan7, seqs[i]);
+    assertClose(fwdBatch[i], expected, 1e-10,
+      `batch Forward[${i}] matches single Forward`);
+  }
+
+  const vitBatch = await mb.fusedViterbiBatch(seqs);
+  for (let i = 0; i < 4; i++) {
+    const expected = fusedPlan7Viterbi(mb._fusedPlan7, seqs[i]);
+    assertClose(vitBatch[i], expected, 1e-10,
+      `batch Viterbi[${i}] matches single Viterbi`);
+  }
+
+  mb.destroy();
+}
+
+// ============================================================
+// GPU tests (auto-skip if WebGPU unavailable)
+// ============================================================
+const GPU_TOL = 0.5; // f32 vs f64 accumulation tolerance
+
+const detected = await detectBackend();
+const hasGPU = detected.backend === 'webgpu';
+
+if (!hasGPU) {
+  console.log('\nWebGPU not available — skipping GPU tests.');
+  console.log('  (Run with: node --experimental-webgpu js/webgpu/test/test-fused-plan7.mjs)');
+} else {
+  console.log('\nWebGPU available — running GPU tests...');
+
+  const hmmerText = loadText('t/hmmer/fn3.hmm');
+  const aaEcho = makeAaEchoTransducer();
+  const prepared = prepareMachine(aaEcho, {});
+  const fused = buildFusedPlan7(parseHmmer(hmmerText), prepared);
+
+  const testSeqs = [
+    { name: 'empty', seq: new Uint32Array(0) },
+    { name: 'A', seq: tokenize('A', prepared.outputAlphabet) },
+    { name: 'ACDE', seq: tokenize('ACDE', prepared.outputAlphabet) },
+    { name: 'VLIWFYH', seq: tokenize('VLIWFYH', prepared.outputAlphabet) },
+  ];
+
+  // Compute CPU references
+  const cpuFwd = testSeqs.map(t => fusedPlan7Forward(fused, t.seq));
+  const cpuVit = testSeqs.map(t => fusedPlan7Viterbi(fused, t.seq));
+
+  // GPU batch Forward
+  console.log('Testing GPU batch Forward...');
+  {
+    const { fusedPlan7BatchGPU } = await import('../gpu/fused-plan7-batch.mjs');
+    const gpuFwd = await fusedPlan7BatchGPU(detected.device, fused,
+      testSeqs.map(t => t.seq), 'logsumexp');
+
+    for (let i = 0; i < testSeqs.length; i++) {
+      if (cpuFwd[i] === -Infinity) {
+        assert(gpuFwd[i] === -Infinity || gpuFwd[i] < -1e30,
+          `GPU batch Forward '${testSeqs[i].name}' is -Inf`);
+      } else {
+        assertClose(gpuFwd[i], cpuFwd[i], GPU_TOL,
+          `GPU batch Forward '${testSeqs[i].name}'`);
+      }
+    }
+  }
+
+  // GPU batch Viterbi
+  console.log('Testing GPU batch Viterbi...');
+  {
+    const { fusedPlan7BatchGPU } = await import('../gpu/fused-plan7-batch.mjs');
+    const gpuVit = await fusedPlan7BatchGPU(detected.device, fused,
+      testSeqs.map(t => t.seq), 'maxplus');
+
+    for (let i = 0; i < testSeqs.length; i++) {
+      if (cpuVit[i] === -Infinity) {
+        assert(gpuVit[i] === -Infinity || gpuVit[i] < -1e30,
+          `GPU batch Viterbi '${testSeqs[i].name}' is -Inf`);
+      } else {
+        assertClose(gpuVit[i], cpuVit[i], GPU_TOL,
+          `GPU batch Viterbi '${testSeqs[i].name}'`);
+      }
+    }
+  }
+
+  // GPU single Forward
+  console.log('Testing GPU single Forward...');
+  {
+    const { fusedPlan7SingleGPU } = await import('../gpu/fused-plan7-single.mjs');
+    const acdeSeq = tokenize('ACDE', prepared.outputAlphabet);
+    const gpuFwd = await fusedPlan7SingleGPU(detected.device, fused, acdeSeq, 'logsumexp');
+    assertClose(gpuFwd, cpuFwd[2], GPU_TOL, `GPU single Forward 'ACDE'`);
+  }
+
+  // GPU single Viterbi
+  console.log('Testing GPU single Viterbi...');
+  {
+    const { fusedPlan7SingleGPU } = await import('../gpu/fused-plan7-single.mjs');
+    const acdeSeq = tokenize('ACDE', prepared.outputAlphabet);
+    const gpuVit = await fusedPlan7SingleGPU(detected.device, fused, acdeSeq, 'maxplus');
+    assertClose(gpuVit, cpuVit[2], GPU_TOL, `GPU single Viterbi 'ACDE'`);
+  }
+
+  // GPU batch-vs-single consistency
+  console.log('Testing GPU batch vs single consistency...');
+  {
+    const { fusedPlan7BatchGPU } = await import('../gpu/fused-plan7-batch.mjs');
+    const { fusedPlan7SingleGPU } = await import('../gpu/fused-plan7-single.mjs');
+    const acdeSeq = tokenize('ACDE', prepared.outputAlphabet);
+
+    const batchResult = await fusedPlan7BatchGPU(detected.device, fused, [acdeSeq], 'logsumexp');
+    const singleResult = await fusedPlan7SingleGPU(detected.device, fused, acdeSeq, 'logsumexp');
+    assertClose(batchResult[0], singleResult, 0.01,
+      `GPU batch[0] matches single for 'ACDE'`);
+  }
+
+  // GPU Viterbi <= Forward
+  console.log('Testing GPU Viterbi <= Forward...');
+  {
+    const { fusedPlan7BatchGPU } = await import('../gpu/fused-plan7-batch.mjs');
+    const seqs = testSeqs.filter(t => t.seq.length > 0).map(t => t.seq);
+    const gpuFwd = await fusedPlan7BatchGPU(detected.device, fused, seqs, 'logsumexp');
+    const gpuVit = await fusedPlan7BatchGPU(detected.device, fused, seqs, 'maxplus');
+
+    for (let i = 0; i < seqs.length; i++) {
+      assert(gpuVit[i] <= gpuFwd[i] + 0.01,
+        `GPU Viterbi (${gpuVit[i]}) <= Forward (${gpuFwd[i]})`);
+    }
+  }
+
+  detected.device.destroy();
 }
 
 // ============================================================

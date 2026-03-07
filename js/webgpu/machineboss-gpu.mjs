@@ -37,7 +37,8 @@ import { viterbi1DProfile } from './cpu/viterbi-1d-profile.mjs';
 let gpuModules = null;
 async function loadGPUModules() {
   if (gpuModules) return gpuModules;
-  const [fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d, fwdProf1d, bwdProf1d, vitProf1d] = await Promise.all([
+  const [fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d, fwdProf1d, bwdProf1d, vitProf1d,
+         fusedBatch, fusedSingle] = await Promise.all([
     import('./gpu/forward-1d.mjs'),
     import('./gpu/backward-1d.mjs'),
     import('./gpu/viterbi-1d.mjs'),
@@ -47,8 +48,11 @@ async function loadGPUModules() {
     import('./gpu/forward-1d-profile.mjs'),
     import('./gpu/backward-1d-profile.mjs'),
     import('./gpu/viterbi-1d-profile.mjs'),
+    import('./gpu/fused-plan7-batch.mjs'),
+    import('./gpu/fused-plan7-single.mjs'),
   ]);
-  gpuModules = { fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d, fwdProf1d, bwdProf1d, vitProf1d };
+  gpuModules = { fwd1d, bwd1d, vit1d, fwd2d, bwd2d, vit2d, fwdProf1d, bwdProf1d, vitProf1d,
+                 fusedBatch, fusedSingle };
   return gpuModules;
 }
 
@@ -351,7 +355,26 @@ export class MachineBoss {
       multihit: options.multihit || false,
       L: options.L || 400,
     });
-    const instance = new MachineBoss(prepared, 'cpu', null);
+
+    let backend, device;
+    const pref = options.backend || 'auto';
+    if (pref === 'cpu') {
+      backend = 'cpu';
+      device = null;
+    } else if (pref === 'webgpu') {
+      const detected = await detectBackend();
+      if (detected.backend !== 'webgpu') {
+        throw new Error('WebGPU is not available. Use { backend: "cpu" } or "auto".');
+      }
+      backend = 'webgpu';
+      device = detected.device;
+    } else {
+      const detected = await detectBackend();
+      backend = detected.backend;
+      device = detected.device;
+    }
+
+    const instance = new MachineBoss(prepared, backend, device);
     instance._fusedPlan7 = fused;
     return instance;
   }
@@ -364,6 +387,15 @@ export class MachineBoss {
    */
   async fusedForward(outputTokens) {
     if (!this._fusedPlan7) throw new Error('Not a fused Plan7 instance; use createFusedPlan7()');
+    if (this.backend === 'webgpu') {
+      try {
+        const gpu = await loadGPUModules();
+        return await gpu.fusedSingle.fusedPlan7SingleGPU(
+          this._device, this._fusedPlan7, outputTokens, 'logsumexp');
+      } catch (e) {
+        // Fall back to CPU
+      }
+    }
     return fusedPlan7Forward(this._fusedPlan7, outputTokens);
   }
 
@@ -375,7 +407,64 @@ export class MachineBoss {
    */
   async fusedViterbi(outputTokens) {
     if (!this._fusedPlan7) throw new Error('Not a fused Plan7 instance; use createFusedPlan7()');
+    if (this.backend === 'webgpu') {
+      try {
+        const gpu = await loadGPUModules();
+        return await gpu.fusedSingle.fusedPlan7SingleGPU(
+          this._device, this._fusedPlan7, outputTokens, 'maxplus');
+      } catch (e) {
+        // Fall back to CPU
+      }
+    }
     return fusedPlan7Viterbi(this._fusedPlan7, outputTokens);
+  }
+
+  /**
+   * Compute fused Plan7+transducer Forward for a batch of sequences.
+   *
+   * @param {Uint32Array[]} outputSeqArray - Array of tokenized output sequences
+   * @returns {Promise<Float64Array>} Array of log-likelihoods
+   */
+  async fusedForwardBatch(outputSeqArray) {
+    if (!this._fusedPlan7) throw new Error('Not a fused Plan7 instance; use createFusedPlan7()');
+    if (this.backend === 'webgpu') {
+      try {
+        const gpu = await loadGPUModules();
+        return await gpu.fusedBatch.fusedPlan7BatchGPU(
+          this._device, this._fusedPlan7, outputSeqArray, 'logsumexp');
+      } catch (e) {
+        // Fall back to CPU
+      }
+    }
+    const results = new Float64Array(outputSeqArray.length);
+    for (let i = 0; i < outputSeqArray.length; i++) {
+      results[i] = fusedPlan7Forward(this._fusedPlan7, outputSeqArray[i]);
+    }
+    return results;
+  }
+
+  /**
+   * Compute fused Plan7+transducer Viterbi for a batch of sequences.
+   *
+   * @param {Uint32Array[]} outputSeqArray - Array of tokenized output sequences
+   * @returns {Promise<Float64Array>} Array of Viterbi scores
+   */
+  async fusedViterbiBatch(outputSeqArray) {
+    if (!this._fusedPlan7) throw new Error('Not a fused Plan7 instance; use createFusedPlan7()');
+    if (this.backend === 'webgpu') {
+      try {
+        const gpu = await loadGPUModules();
+        return await gpu.fusedBatch.fusedPlan7BatchGPU(
+          this._device, this._fusedPlan7, outputSeqArray, 'maxplus');
+      } catch (e) {
+        // Fall back to CPU
+      }
+    }
+    const results = new Float64Array(outputSeqArray.length);
+    for (let i = 0; i < outputSeqArray.length; i++) {
+      results[i] = fusedPlan7Viterbi(this._fusedPlan7, outputSeqArray[i]);
+    }
+    return results;
   }
 
   /**
