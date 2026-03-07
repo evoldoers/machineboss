@@ -270,7 +270,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -290,6 +290,10 @@ test-union:
 
 test-intersection:
 	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json -m --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json t/expect/noise-001-and-101.json
+
+test-intersect-transducer:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json -i --recognize-json t/io/seq001.json t/expect/intersect-echo-r001.json
+	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json -i --recognize-json t/io/seq001.json t/expect/intersect-noise-r001.json
 
 test-brackets:
 	@$(TEST) $(WRAPBOSS) --begin t/machine/bitnoise.json --recognize-json t/io/seq001.json --end -i --recognize-json t/io/seq101.json t/expect/noise-001-and-101.json
@@ -384,7 +388,7 @@ test-dnastore:
 	@$(TEST) $(WRAPBOSS) t/machine/dnastore4.json --output-chars AGTAGTAG --beam-decode t/expect/dnastore-decode.json
 
 # Invalid transducer construction tests
-INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine
+INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-impossible-intersect-both-outputs test-missing-machine
 test-unmatched-begin:
 	@$(TEST) $(WRAPBOSS) --begin -fail
 
@@ -399,6 +403,9 @@ test-missing-machine:
 
 test-impossible-intersect:
 	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --begin --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json --end t/expect/zero.json
+
+test-impossible-intersect-both-outputs:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json -i t/machine/bitnoise.json -fail
 
 # Schema validation tests
 VALID_SCHEMA_TESTS = test-echo-valid test-unitindel2-valid

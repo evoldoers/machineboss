@@ -171,13 +171,17 @@ compMachine.ergodicMachine().advanceSort().processCycles(strategy).ergodicMachin
 
 ## Intersection vs. Composition
 
-Intersection (`Machine::intersect`) is a variant of composition for transducers
-with empty output alphabets (recognizers). The key differences are:
+Intersection (`Machine::intersect`) synchronizes two machines on their shared
+input alphabet. At least one of the two machines must be a recognizer
+(have an empty output alphabet). The other machine may be a transducer,
+in which case its outputs are preserved in the result.
 
-- Both machines must have empty output alphabets (asserted at entry)
+The key differences from composition:
+
+- At least one machine must have an empty output alphabet (asserted at entry; if both have outputs, an error is raised)
 - The shared symbol is the *input* alphabet, not the output-to-input bridge
 - When both machines advance, the input symbols must match (instead of A's output matching B's input)
-- The composed output is always empty
+- Outputs from whichever machine has them are passed through to the result
 
 The same three silent cycle strategies are available for intersection:
 
@@ -202,6 +206,9 @@ boss A.json --compose-fast B.json
 
 # Intersect two recognizers:
 boss --recognize-chars 001 -i --recognize-chars 101
+
+# Intersect a transducer with a recognizer (outputs preserved):
+boss bitnoise.json -i --recognize-chars 001
 
 # Chain multiple compositions:
 boss A.json -m B.json -m C.json

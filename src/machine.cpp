@@ -908,7 +908,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
 
 Machine Machine::intersect (const Machine& first, const Machine& origSecond, SilentCycleStrategy cycleStrategy) {
   LogThisAt(3,"Intersecting " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
-  Assert (first.outputAlphabet().empty() && origSecond.outputAlphabet().empty(), "Attempt to intersect transducers A&B with nonempty output alphabets");
+  Assert (first.outputAlphabet().empty() || origSecond.outputAlphabet().empty(), "Attempt to intersect transducers A&B where both have nonempty output alphabets");
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to intersect transducers A&B where B is not a waiting machine");
 
@@ -938,14 +938,14 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond, Sil
       if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
 	  if (it.inputEmpty())
-	    ms.trans.push_back (MachineTransition (it.in, string(), interState(it.dest,j), it.weight));
+	    ms.trans.push_back (MachineTransition (it.in, it.out, interState(it.dest,j), it.weight));
 	  else
 	    for (const auto& jt: msj.trans)
 	      if (it.in == jt.in)
-		ms.trans.push_back (MachineTransition (it.in, string(), interState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight)));
+		ms.trans.push_back (MachineTransition (it.in, it.out.empty() ? jt.out : it.out, interState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight)));
       } else
 	for (const auto& jt: msj.trans)
-	  ms.trans.push_back (MachineTransition (string(), string(), interState(i,jt.dest), jt.weight));
+	  ms.trans.push_back (MachineTransition (string(), jt.out, interState(i,jt.dest), jt.weight));
     }
 
   LogThisAt(3,"Transducer intersection yielded " << interMachine.nStates() << "-state machine" << endl);
