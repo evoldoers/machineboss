@@ -37,6 +37,7 @@ struct PresetCache {
 
 #include "preset/tkf91root.h"
 #include "preset/tkf91branch.h"
+#include "preset/tkf92branch.h"
 
 #include "preset/tolower.h"
 #include "preset/toupper.h"
@@ -71,6 +72,7 @@ PresetCache::PresetCache() {
 
   addPreset(tkf91root);
   addPreset(tkf91branch);
+  addPreset(tkf92branch);
 
   addPreset(tolower);
   addPreset(toupper);

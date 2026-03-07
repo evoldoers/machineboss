@@ -222,6 +222,9 @@ preset/translate.json: js/translate.js
 preset/translate-spliced.json: js/translate.js
 	node $< -e base -e intron >$@
 
+preset/tkf92branch.json: js/tkf92branch.py python/machineboss/neural/tkf92.py python/machineboss/machine.py
+	python3 $< >$@
+
 preset/%.json: js/%.js
 	node $< >$@
 
@@ -684,7 +687,7 @@ test-regex:
 	@$(TEST) $(WRAPBOSS) --regex '[01]+' t/expect/regex-01plus.json
 
 # Preset load tests
-PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91root tkf91branch tolower toupper hamming31 hamming74
+PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91root tkf91branch tkf92branch tolower toupper hamming31 hamming74
 PRESET_TESTS = $(addprefix test-preset-,$(PRESETS))
 $(PRESET_TESTS): test-preset-%:
 	@$(WRAPBOSS) --preset $* >t/expect/preset-$*.tmp.json 2>/dev/null
