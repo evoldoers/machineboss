@@ -55,14 +55,19 @@ In computational biology, hidden Markov models and pair HMMs
 have been workhorses since the 1980s
 (Churchill, 1989; Krogh et al., 1994; Durbin et al., 1998).
 The promotion of HMMs in biological sequence analysis
-owes much to the group at Cambridge and the nearby Sanger Centre (Hinxton)
-in the 1990s:
-Richard Durbin, Anders Krogh, and Graeme Mitchison
+owes much to two groups in particular.
+At UC Santa Cruz, David Haussler and his collaborators —
+including Anders Krogh, Kevin Karplus, and Kimmen Sjölander —
+pioneered the application of HMMs to protein sequence modeling.
+Krogh et al. (1994) formalized profile HMMs for protein families,
+and Haussler's group at UCSC established
+the theoretical foundations that made these models practical.
+At Cambridge and the nearby Sanger Centre (Hinxton),
+Richard Durbin, Krogh, and Graeme Mitchison
 (with Sean Eddy) wrote the influential textbook
 _Biological Sequence Analysis_ (Durbin et al., 1998),
 which became the standard reference for probabilistic methods in bioinformatics.
-Krogh et al. (1994) formalized profile HMMs for protein families,
-and Sean Eddy's HMMER software made them a practical tool
+Sean Eddy's HMMER software made profile HMMs a practical tool
 for large-scale protein sequence search —
 work that continues to underpin databases like Pfam and InterPro.
 Without HMMER's profile HMMs, GeneWise would not have existed.
@@ -265,9 +270,13 @@ of transducers, composition, and biological sequence analysis.
   *Biological Sequence Analysis: Probabilistic Models of Proteins and Nucleic Acids*.
   Cambridge University Press.
 
-- Krogh, A., Brown, M., Mian, I. S., Sjolander, K., & Haussler, D. (1994).
+- Krogh, A., Brown, M., Mian, I. S., Sjölander, K., & Haussler, D. (1994).
   Hidden Markov models in computational biology: applications to protein modeling.
   *Journal of Molecular Biology*, 235(5), 1501–1531.
+
+- Karplus, K., Barrett, C., & Hughey, R. (1998).
+  Hidden Markov models for detecting remote protein homologies.
+  *Bioinformatics*, 14(10), 846–856.
 
 - Eddy, S. R. (1998).
   Profile hidden Markov models.
