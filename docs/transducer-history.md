@@ -41,13 +41,12 @@ and minimization of weighted finite-state transducers,
 and applied them at scale to speech recognition and natural language processing.
 Their OpenFst library remains a standard reference implementation.
 
-In machine learning, the transducer concept re-emerged in neural sequence-to-sequence models.
-Graves (2012) introduced the Recurrent Neural Network Transducer (RNN-T),
-which combines a transcription network (analogous to the input model)
-with a prediction network (analogous to the language model)
-via a joint network that plays the role of the transducer.
-RNN-T and its successors are now the dominant architecture
-for streaming speech recognition.
+In machine learning, the transducer concept re-emerged in neural sequence-to-sequence models,
+beginning with Graves' Connectionist Temporal Classification (CTC; 2006)
+and culminating in the Recurrent Neural Network Transducer (RNN-T; Graves, 2012).
+These models and their successors became the dominant architecture
+for streaming speech recognition —
+a story told in more detail [below](#neural-transducers-from-ctc-to-neural-tkf).
 
 ## HMMs and profile HMMs in biology
 
@@ -208,6 +207,39 @@ but a compiled code generator like Dynamite, HMMoC, or Machine Boss
 can exploit the specific structure of a model
 for dramatically better cache behavior, loop ordering, and vectorization.
 
+## Evolutionary transducers
+
+The input-to-output structure of a transducer has a natural evolutionary interpretation:
+the input tape represents an ancestral sequence and the output tape a descendant,
+with the transducer modeling the mutational process that transforms one into the other.
+
+This insight was first made precise by Thorne, Kishino, and Felsenstein
+in their TKF91 model (1991), the first evolutionary model to treat insertions
+and deletions as stochastic processes on a continuous-time birth-death chain.
+TKF91 modeled single-residue indels as births and deaths of "links"
+connecting adjacent residues, yielding a tractable likelihood for pairwise alignment
+with a proper evolutionary interpretation of gap penalties.
+TKF92 (Thorne, Kishino, and Felsenstein, 1992) extended this to fragment indels,
+allowing contiguous blocks of residues to be inserted or deleted together.
+
+Holmes and Bruno (2001) connected these evolutionary indel models to the transducer formalism
+in "Evolutionary HMMs: A Bayesian Approach to Multiple Alignment."
+They showed that an evolutionary model on a phylogenetic tree
+can be decomposed into a chain of pairwise transducers —
+one per branch of the tree —
+composed together to produce the joint probability of sequences at the leaves.
+Each branch transducer maps parent to child via substitutions, insertions, and deletions,
+and composition along the tree yields the multiple-sequence likelihood.
+This phylogenetic transducer framework made it possible
+to compute evolutionary likelihoods over trees with indels,
+and to perform Bayesian sampling of alignments and phylogenies
+in packages such as Handel (Holmes, 2003) and StatAlign (Novak et al., 2008).
+
+The key lesson from this line of work is that the transducer is not merely
+a convenient computational abstraction:
+when the input and output represent ancestor and descendant,
+the transducer's weights directly encode the physics of molecular evolution.
+
 ## From GeneWise to Exonerate to miniprot
 
 GeneWise led to Exonerate (Slater and Birney, 2005),
@@ -240,6 +272,57 @@ and GPU acceleration — and developed with the assistance of coding agents —
 we offer the latest chapter in the ongoing story
 of transducers, composition, and biological sequence analysis.
 
+## Neural transducers: from CTC to Neural TKF
+
+The transducer concept re-emerged in a powerful new form
+in neural sequence-to-sequence modeling,
+beginning with Alex Graves' work on Connectionist Temporal Classification
+(CTC; Graves et al., 2006).
+CTC solved the problem of training neural networks on unsegmented sequence data —
+such as speech or handwriting — by marginalizing over all possible alignments
+between the input and output using a forward-backward algorithm
+over a constrained transducer topology.
+CTC's "blank" symbol and monotonic alignment constraint
+make it a special case of a weighted finite-state transducer
+with a particularly simple structure.
+
+Graves (2012) generalized CTC in "Sequence Transduction with Recurrent Neural Networks,"
+introducing the Recurrent Neural Network Transducer (RNN-T).
+RNN-T combines a transcription network (processing the input)
+with a prediction network (modeling the output history)
+via a joint network that computes the transducer's emission weights.
+Unlike CTC, which assumes output symbols are conditionally independent given the input,
+RNN-T's prediction network gives it a language-model component,
+making it a true transducer in the automata-theoretic sense:
+a machine that reads input and writes output,
+with internal state that depends on both.
+
+Jaitly et al. (2015) proposed "A Neural Transducer"
+that further relaxed the monotonicity constraint,
+allowing the model to attend to non-local parts of the input
+while still operating within a transducer framework.
+This and subsequent work (e.g. Transformer Transducer; Zhang et al., 2020)
+cemented neural transducers as the dominant architecture
+for streaming speech recognition in the 2020s,
+replacing the hybrid HMM-DNN systems that had themselves replaced
+Gaussian mixture HMMs.
+
+The full circle from speech to biology was closed by Large and Holmes (2026),
+who showed that neural sequence-to-sequence models
+can be constrained to the topology of evolutionary transducers —
+specifically, variants of the TKF birth-death process —
+yielding "Neural TKF" models
+whose parameters are predicted by neural networks
+but whose structure respects the mathematics of molecular evolution.
+Their nested birth-death models, containing only tens of thousands of parameters,
+proved competitive with unconstrained neural networks
+having tens of millions of parameters
+on protein domain alignment benchmarks.
+This suggests that the transducer formalism —
+whether weighted, probabilistic, or neural —
+remains a powerful inductive bias
+for any domain where sequences are related by local transformations.
+
 ## References
 
 ### Transducers and automata theory
@@ -260,9 +343,17 @@ of transducers, composition, and biological sequence analysis.
   Weighted finite-state transducers in speech recognition.
   *Computer Speech & Language*, 16(1), 69–88.
 
+- Graves, A., Fernández, S., Gomez, F., & Schmidhuber, J. (2006).
+  Connectionist temporal classification: labelling unsegmented sequence data with recurrent neural networks.
+  *Proceedings of the 23rd International Conference on Machine Learning*, 369–376.
+
 - Graves, A. (2012).
   Sequence transduction with recurrent neural networks.
   *arXiv:1211.3711*.
+
+- Jaitly, N., Le, Q. V., Vinyals, O., Sutskever, I., Sussillo, D., & Bengio, S. (2015).
+  A neural transducer.
+  *arXiv:1511.04868*.
 
 ### Biological sequence analysis
 
@@ -281,6 +372,25 @@ of transducers, composition, and biological sequence analysis.
 - Eddy, S. R. (1998).
   Profile hidden Markov models.
   *Bioinformatics*, 14(9), 755–763.
+
+- Thorne, J. L., Kishino, H., & Felsenstein, J. (1991).
+  An evolutionary model for maximum likelihood alignment of DNA sequences.
+  *Journal of Molecular Evolution*, 33(2), 114–124.
+
+- Thorne, J. L., Kishino, H., & Felsenstein, J. (1992).
+  Inching toward reality: an improved likelihood model of sequence evolution.
+  *Journal of Molecular Evolution*, 34(1), 3–16.
+
+- Holmes, I., & Bruno, W. J. (2001).
+  Evolutionary HMMs: a Bayesian approach to multiple alignment.
+  *Bioinformatics*, 17(9), 803–820.
+  [doi:10.1093/bioinformatics/17.9.803](https://doi.org/10.1093/bioinformatics/17.9.803)
+
+- Large, A., & Holmes, I. (2026).
+  Nested birth-death processes are competitive with parameter-heavy neural networks
+  as time-dependent models of protein evolution.
+  *bioRxiv*, 2026.02.02.702952v2.
+  [doi:10.64898/2026.02.02.702952v2](https://doi.org/10.64898/2026.02.02.702952v2)
 
 ### GeneWise, Dynamite, HMMoC, and successors
 
