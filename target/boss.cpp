@@ -30,6 +30,7 @@
 #include "../src/compiler.h"
 #include "../src/ctc.h"
 #include "../src/beam.h"
+#include "../src/beam_align.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -176,6 +177,7 @@ int main (int argc, char** argv) {
       ("train,T", "Baum-Welch parameter fit")
       ("wiggle-room,R", po::value<int>(), "wiggle room (allowed departure from training alignment)")
       ("align,A", "Viterbi sequence alignment")
+      ("beam-align", "beam-search Viterbi alignment (handles cyclic machines)")
       ("viterbi,V", "Viterbi log-likelihood calculation")
       ("loglike,L", "Forward log-likelihood calculation")
       ("counts,C", "Forward-Backward counts (derivatives of log-likelihood with respect to logs of parameters)")
@@ -651,7 +653,7 @@ int main (int argc, char** argv) {
     const bool paramsSpecified = vm.count("params") || vm.count("functions") || vm.count("norms");
     const bool encodingRequested = vm.count("prefix-encode") || vm.count("beam-encode") || vm.count("viterbi-encode") || vm.count("random-encode");
     const bool decodingRequested = vm.count("prefix-decode") || vm.count("cool-decode") || vm.count("viterbi-decode") || vm.count("mcmc-decode") || vm.count("beam-decode");
-    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("viterbi") || vm.count("align") || vm.count("counts");
+    const bool dpRequested = vm.count("train") || vm.count("loglike") || vm.count("viterbi") || vm.count("align") || vm.count("beam-align") || vm.count("counts");
     const bool inferenceRequested = dpRequested || encodingRequested || decodingRequested;
     const bool evalRequested = vm.count("evaluate");
     if (paramsSpecified	&& (evalRequested || !inferenceRequested)) {
@@ -845,6 +847,26 @@ int main (int argc, char** argv) {
 	alignResults.writeJson (cout);
 	cout << endl;
       }
+    }
+
+    // beam-align sequences (handles cyclic machines)
+    if (vm.count("beam-align")) {
+      Require (gotData, "To beam-align sequences, please specify a data file");
+      const EvaluatedMachine eval (machine, params);
+      const size_t bw = vm.count("beam-width") ? vm.at("beam-width").as<size_t>() : DefaultBeamWidth;
+      SeqPairList alignResults;
+      for (const auto& seqPair: data.seqPairs) {
+	if (eval.canTokenize (seqPair)) {
+	  const BeamAlignMatrix beamAlign (eval, seqPair, bw);
+	  const double ll = beamAlign.logLike();
+	  if (ll > -numeric_limits<double>::infinity()) {
+	    const MachineBoundPath bp (beamAlign.path (machine), machine);
+	    alignResults.seqPairs.push_back (SeqPair::seqPairFromPath (bp, seqPair.input.name.c_str(), seqPair.output.name.c_str()));
+	  }
+	}
+      }
+      alignResults.writeJson (cout);
+      cout << endl;
     }
 
     // encode
