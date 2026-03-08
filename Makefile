@@ -753,7 +753,7 @@ WRAPTEST = $(TEST)
 test: $(BOSSTARGET) $(TESTS)
 
 # WebGPU tests (CPU fallback, Node.js)
-WEBGPU_TESTS = test-webgpu-cpu test-webgpu-agreement test-webgpu-fused-plan7 test-webgpu-beam-align
+WEBGPU_TESTS = test-webgpu-cpu test-webgpu-agreement test-webgpu-fused-plan7 test-webgpu-beam-align test-webgpu-machine-json
 
 test-webgpu-cpu:
 	@node js/webgpu/test/test-cpu.mjs
@@ -766,6 +766,9 @@ test-webgpu-fused-plan7:
 
 test-webgpu-beam-align:
 	@node js/webgpu/test/test-beam-align.mjs
+
+test-webgpu-machine-json:
+	@node js/webgpu/test/test-machine-json.mjs
 
 test-webgpu-fused-plan7-gpu:
 	@node --experimental-webgpu js/webgpu/test/test-fused-plan7.mjs 2>/dev/null || echo "WebGPU not available — GPU tests skipped"

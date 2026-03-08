@@ -80,6 +80,26 @@ class EvaluatedMachine:
             self._build_index()
         return [self.transitions[i] for i in self._by_src.get(src, [])]
 
+    def to_machine(self) -> Machine:
+        """Reconstruct a Machine with numeric weights from evaluated transitions."""
+        from .machine import MachineState, MachineTransition
+
+        states = [MachineState() for _ in range(self.n_states)]
+        for t in self.transitions:
+            if t.log_weight < -1e30:
+                continue
+            w = math.exp(t.log_weight)
+            states[t.src].trans.append(MachineTransition(
+                dest=t.dst,
+                input=self.input_tokens[t.in_tok] or None,
+                output=self.output_tokens[t.out_tok] or None,
+                weight=1 if abs(w - 1) < 1e-15 else w,
+            ))
+        # Sort transitions for deterministic output
+        for s in states:
+            s.trans.sort(key=lambda t: (t.input or '', t.output or '', t.dest))
+        return Machine(state=states)
+
     def tokenize_input(self, seq: list[str]) -> list[int]:
         tok_map = {sym: i for i, sym in enumerate(self.input_tokens)}
         return [tok_map[s] for s in seq]

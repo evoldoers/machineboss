@@ -206,6 +206,63 @@ export function tokenize(seq, alphabet) {
 }
 
 /**
+ * Reconstruct machine JSON from a PreparedMachine dense tensor.
+ *
+ * Iterates over logTrans entries above a threshold and creates transitions
+ * with weight = exp(log_weight). Produces canonical JSON form matching
+ * Machine.toJSON() conventions.
+ *
+ * @param {PreparedMachine} prepared
+ * @param {number} [threshold=-1e30] - Ignore transitions with log-weight below this
+ * @returns {Object} Machine JSON object
+ */
+export function toMachineJSON(prepared, threshold = -1e30) {
+  const { nStates: S, nInputTokens: nIn, nOutputTokens: nOut,
+          inputAlphabet, outputAlphabet, logTrans } = prepared;
+
+  // Initialize states with empty transition arrays
+  const states = [];
+  for (let i = 0; i < S; i++) {
+    states.push({ trans: [] });
+  }
+
+  // Extract transitions from dense tensor
+  for (let inIdx = 0; inIdx < nIn; inIdx++) {
+    for (let outIdx = 0; outIdx < nOut; outIdx++) {
+      for (let src = 0; src < S; src++) {
+        for (let dst = 0; dst < S; dst++) {
+          const idx = ((inIdx * nOut + outIdx) * S + src) * S + dst;
+          const lw = logTrans[idx];
+          if (lw < threshold) continue;
+
+          const t = { to: dst };
+          if (inIdx > 0) t.in = inputAlphabet[inIdx];
+          if (outIdx > 0) t.out = outputAlphabet[outIdx];
+          const w = Math.exp(lw);
+          if (Math.abs(w - 1) >= 1e-15) t.weight = w;
+          states[src].trans.push(t);
+        }
+      }
+    }
+  }
+
+  // Sort transitions by (in, out, dst) for deterministic output
+  for (const s of states) {
+    s.trans.sort((a, b) => {
+      const ai = a.in || '', bi = b.in || '';
+      if (ai < bi) return -1;
+      if (ai > bi) return 1;
+      const ao = a.out || '', bo = b.out || '';
+      if (ao < bo) return -1;
+      if (ao > bo) return 1;
+      return a.to - b.to;
+    });
+  }
+
+  return { state: states };
+}
+
+/**
  * Extract the silent transition submatrix logTrans[0][0][src][dst].
  * @param {Float64Array} logTrans
  * @param {number} nOut

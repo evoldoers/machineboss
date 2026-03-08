@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from typing import Any
 
 import jax.numpy as jnp
@@ -30,6 +31,10 @@ class JAXMachine:
     # Dense representation: log_trans[in_tok, out_tok, src, dst]
     # Only built for small machines
     log_trans: jnp.ndarray | None = None
+
+    # Token lists for reverse serialization (index 0 = empty token)
+    input_token_list: list[str] | None = None
+    output_token_list: list[str] | None = None
 
     @classmethod
     def from_evaluated(cls, em: EvaluatedMachine, dense_threshold: int = 100) -> JAXMachine:
@@ -74,7 +79,37 @@ class JAXMachine:
             n_input_tokens=n_in,
             n_output_tokens=n_out,
             log_trans=dense,
+            input_token_list=list(em.input_tokens),
+            output_token_list=list(em.output_tokens),
         )
+
+    def to_machine(self):
+        """Reconstruct a Machine from sparse JAX arrays and token lists."""
+        from ..machine import Machine, MachineState, MachineTransition
+
+        if self.input_token_list is None or self.output_token_list is None:
+            raise ValueError("Token lists not available; cannot reconstruct Machine")
+
+        states = [MachineState() for _ in range(self.n_states)]
+        lw = np.asarray(self.log_weights)
+        src = np.asarray(self.src_states)
+        dst = np.asarray(self.dst_states)
+        itk = np.asarray(self.in_tokens)
+        otk = np.asarray(self.out_tokens)
+
+        for i in range(len(lw)):
+            if lw[i] < -1e30:
+                continue
+            w = math.exp(float(lw[i]))
+            states[int(src[i])].trans.append(MachineTransition(
+                dest=int(dst[i]),
+                input=self.input_token_list[int(itk[i])] or None,
+                output=self.output_token_list[int(otk[i])] or None,
+                weight=1 if abs(w - 1) < 1e-15 else w,
+            ))
+        for s in states:
+            s.trans.sort(key=lambda t: (t.input or '', t.output or '', t.dest))
+        return Machine(state=states)
 
     def has_input(self) -> bool:
         """True if the machine has input transitions (n_input_tokens > 1)."""
