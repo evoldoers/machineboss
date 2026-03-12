@@ -145,40 +145,44 @@ Here is `tutorial/casino-param.json`:
 {% raw %}{"state":
  [{"id": "Fair",
    "trans": [
-     {"out": "1", "to": "Fair", "weight": {"*": ["fairStay", "fairDie"]}},
+     {"out": "1", "to": "Fair", "expr": "$fairStay*$fairDie"},
      ...
-     {"out": "6", "to": "Loaded", "weight": {"*": ["fairSwitch", "fairDie"]}},
-     {"to": "End", "weight": "pEnd"}
+     {"out": "6", "to": "Loaded", "expr": "$fairSwitch*$fairDie"},
+     {"to": "End", "expr": "$pEnd"}
    ]},
   {"id": "Loaded",
    "trans": [
-     {"out": "1", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedPOther"]}},
+     {"out": "1", "to": "Loaded", "expr": "$loadedStay*$loadedPOther"},
      ...
-     {"out": "6", "to": "Loaded", "weight": {"*": ["loadedStay", "loadedP6"]}},
-     {"out": "1", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedPOther"]}},
+     {"out": "6", "to": "Loaded", "expr": "$loadedStay*$loadedP6"},
+     {"out": "1", "to": "Fair", "expr": "$loadedSwitch*$loadedPOther"},
      ...
-     {"out": "6", "to": "Fair", "weight": {"*": ["loadedSwitch", "loadedP6"]}},
-     {"to": "End", "weight": "pEnd"}
+     {"out": "6", "to": "Fair", "expr": "$loadedSwitch*$loadedP6"},
+     {"to": "End", "expr": "$pEnd"}
    ]},
   {"id": "End", "trans": []}
  ],
  "defs": {
-   "pContinue": {"not": "pEnd"},
-   "loadedPOther": {"/": [{"not": "loadedP6"}, 5]},
-   "fairDie": {"/": [1, 6]},
-   "fairStay": {"*": ["pContinue", {"not": "changeToLoadedDie"}]},
-   "fairSwitch": {"*": ["pContinue", "changeToLoadedDie"]},
-   "loadedStay": {"*": ["pContinue", {"not": "changeToFairDie"}]},
-   "loadedSwitch": {"*": ["pContinue", "changeToFairDie"]}
+   "pContinue": {"expr": "!$pEnd"},
+   "loadedPOther": {"expr": "!$loadedP6/5"},
+   "fairDie": {"expr": "1/6"},
+   "fairStay": {"expr": "$pContinue*!$changeToLoadedDie"},
+   "fairSwitch": {"expr": "$pContinue*$changeToLoadedDie"},
+   "loadedStay": {"expr": "$pContinue*!$changeToFairDie"},
+   "loadedSwitch": {"expr": "$pContinue*$changeToFairDie"}
  }
 }{% endraw %}
 ```
 
 The four free parameters are `pEnd`, `changeToLoadedDie`, `changeToFairDie`, and `loadedP6`.
-The `defs` section defines derived quantities:
-`{"not": "pEnd"}` means `1 - pEnd` (probability complement);
-`{"*": [...]}` is multiplication; `{"/": [...]}` is division.
-See the [Expression Language](/expressions/) reference for full details.
+The `defs` section defines derived quantities using the
+[Expression Language](/expressions/): `!$pEnd` means `1 - pEnd` (probability complement),
+`*` is multiplication, `/` is division, and `$name` refers to a parameter.
+
+These `"expr"` strings can alternatively be written as structured JSON in the `"weight"` field,
+e.g. `"expr": "$fairStay*$fairDie"` is equivalent to `"weight": {"*": ["fairStay", "fairDie"]}`,
+and `"expr": "!$pEnd"` is equivalent to `"weight": {"not": "pEnd"}`.
+The expression strings are generally easier to read.
 
 ### Inspecting Parameters
 
