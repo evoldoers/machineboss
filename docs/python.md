@@ -42,18 +42,22 @@ machineboss/
   io.py           File I/O utilities
 
   jax/            JAX subpackage (GPU-accelerated DP)
-    types.py      JAXMachine (sparse + dense tensor representation)
+    trans/        Primary JAX interface — transition-centric DP
+      machine.py    TransMachine (JAX pytree, COO arrays + masks)
+      kernel.py     Core scatter/gather operations
+      dp_1d.py      1D forward/backward/viterbi (simple + optimal)
+      dp_2d.py      2D forward/backward/viterbi (simple + wavefront)
+      fwdback.py    Vectorized forward-backward with expected counts
+      dp_aligned.py Alignment-constrained DP
+      dp_neural.py  Position-dependent (neural) DP
+      parameterized.py  ParameterizedTransMachine
+      dp_fused.py   Fused Plan7 + transducer DP
+      dp_beam.py    Wavefront beam Viterbi
+    types.py      JAXMachine (bridge type for legacy code)
     semiring.py   Log-space semirings (log-sum-exp, max-plus)
     seq.py        Sequence representations (TokenSeq, PSWMSeq)
-    forward.py    Forward algorithm dispatcher
-    backward.py   Backward algorithm dispatcher
-    viterbi.py    Viterbi algorithm dispatcher
-    fwdback.py    Forward-Backward with custom VJP for autodiff
-    fused.py      Fused Plan7 + transducer DP (generic)
+    jax_weight.py   ParameterizedMachine (weight expression compiler)
     fused_plan7.py  Fused Plan7 + transducer DP (optimized)
-    jax_weight.py   Parameterized machines with JAX-compiled weights
-    dp_neural.py    Position-dependent (neural) DP
-    dp_aligned.py   Alignment-constrained DP
 ```
 
 ---
@@ -318,91 +322,136 @@ Constrains DP computation to a sub-region of the sequence pair grid.
 The `machineboss.jax` subpackage provides GPU-accelerated, JIT-compiled, and
 differentiable dynamic programming algorithms using [JAX](https://jax.readthedocs.io/).
 
-All public symbols are re-exported from `machineboss.jax`.
+The primary interface is `TransMachine` — a transition-centric WFST representation
+registered as a JAX pytree, fully compatible with `jit`, `grad`, and `vmap`.
 
-### JAXMachine
+### TransMachine
 
-The `JAXMachine` is the JAX-ready representation of a WFST, built from an `EvaluatedMachine`.
-It stores transitions in both sparse COO format (for large machines) and an optional dense
-4D tensor `log_trans[in_tok, out_tok, src, dst]` (for machines with fewer than 100 states).
+**The Machine IS the list of Transitions.**
+
+`TransMachine` stores a WFST as parallel COO arrays with pre-built boolean masks.
+This is the recommended type for all JAX DP operations.
 
 ```python
 from machineboss.machine import Machine
-from machineboss.eval import EvaluatedMachine
-from machineboss.jax import JAXMachine
+from machineboss.jax.trans import TransMachine, forward_2d
+import jax.numpy as jnp
 
+# Load from JSON and convert
 m = Machine.from_file("preset/jukescantor.json")
-em = EvaluatedMachine.from_machine(m, {"t": 0.5})
-jm = JAXMachine.from_evaluated(em)
+tm = TransMachine.from_machine(m, params={"t": 0.5})
 
-print(jm.machine_type())   # 'transducer'
-print(jm.n_states)         # 2
-print(jm.log_trans.shape)  # (5, 5, 2, 2)
+# Tokenize sequences and compute log-likelihood
+input_seq = jnp.array(tm.to_jax_machine().from_evaluated(
+    EvaluatedMachine.from_machine(m, {"t": 0.5})).tokenize_input(list("ACGT")))
+# or simply use integer token indices directly:
+input_seq = jnp.array([1, 2, 3, 4])   # 1-based token indices
+output_seq = jnp.array([1, 2, 3, 1])
+ll = forward_2d(tm, input_seq, output_seq)
 ```
 
 | Attribute | Shape | Description |
 |---|---|---|
-| `log_weights` | `(T,)` | Transition log-weights |
-| `src_states` | `(T,)` | Source state indices |
-| `dst_states` | `(T,)` | Destination state indices |
-| `in_tokens` | `(T,)` | Input tokens (0 = silent) |
-| `out_tokens` | `(T,)` | Output tokens (0 = silent) |
-| `log_trans` | `(n_in, n_out, S, S)` | Dense tensor (if `n_states <= dense_threshold`) |
+| `src` | `(T,)` int32 | Source state indices |
+| `dst` | `(T,)` int32 | Destination state indices |
+| `in_tok` | `(T,)` int32 | Input tokens (0 = silent) |
+| `out_tok` | `(T,)` int32 | Output tokens (0 = silent) |
+| `log_w` | `(T,)` float32 | Transition log-weights |
+| `silent_mask` | `(T,)` bool | `in_tok==0 & out_tok==0` |
+| `emit_in_mask` | `(T,)` bool | `in_tok>0 & out_tok==0` |
+| `emit_out_mask` | `(T,)` bool | `in_tok==0 & out_tok>0` |
+| `emit_both_mask` | `(T,)` bool | `in_tok>0 & out_tok>0` |
+| `n_states` | int | Number of states |
+| `n_in`, `n_out` | int | Token counts (including empty at 0) |
+| `input_tokens`, `output_tokens` | tuple[str] | Token lists |
+
+#### Constructors
+
+| Method | Description |
+|---|---|
+| `TransMachine.from_machine(m, params=None)` | From a `Machine` (evaluates weight expressions) |
+| `TransMachine.from_evaluated(em)` | From an `EvaluatedMachine` |
+| `TransMachine.from_jax_machine(jm)` | From a `JAXMachine` |
+
+#### Conversions (for C++/JSON interop)
+
+| Method | Description |
+|---|---|
+| `tm.to_machine()` | Reconstruct a `Machine` (JSON-serializable) |
+| `tm.to_jax_machine()` | Convert to `JAXMachine` (legacy bridge) |
+
+#### JAX Pytree
+
+`TransMachine` is a registered JAX pytree. Arrays are children (traced by `jit`/`grad`);
+metadata (n_states, token lists) is aux (static). This means you can pass a `TransMachine`
+directly to `jax.jit`, `jax.grad`, and `jax.vmap`.
+
+```python
+@jax.jit
+def log_prob(tm, in_seq, out_seq):
+    return forward_2d(tm, in_seq, out_seq)
+
+ll = log_prob(tm, input_seq, output_seq)
+```
 
 ---
 
 ### Forward, Backward, Viterbi
 
-The three main DP dispatchers automatically select the best algorithm variant
-based on machine type (generator, recognizer, or transducer) and sequence dimensions.
+All DP functions operate on `TransMachine` and support two strategies:
+- **simple**: sequential `jax.lax.scan` (O(L) or O(Li * Lo))
+- **optimal**: parallel prefix scan (1D, O(log L)) or anti-diagonal wavefront (2D, O(Li + Lo) with vmap)
 
 ```python
-from machineboss.jax import log_forward, log_viterbi, log_backward_matrix
+from machineboss.jax.trans import (
+    forward_1d, backward_1d, viterbi_1d,   # generators/recognizers
+    forward_2d, backward_2d, viterbi_2d,   # transducers
+    forward_2d_matrix,                      # returns full (Li+1, Lo+1, S) grid
+)
 ```
 
-#### `log_forward(machine, input_seq=None, output_seq=None, *, strategy='auto', kernel='auto', length=None)`
+#### 1D DP (generators and recognizers)
 
-Compute log-likelihood by summing over all paths (Forward algorithm).
+```python
+# Generator: output only
+ll = forward_1d(tm, output_seq=jnp.array([1, 2, 3]))
+bp = backward_1d(tm, output_seq=jnp.array([1, 2, 3]))  # (L+1, S)
+vit = viterbi_1d(tm, output_seq=jnp.array([1, 2, 3]))
 
-#### `log_viterbi(machine, input_seq=None, output_seq=None, *, strategy='auto', kernel='auto', length=None)`
+# Recognizer: input only
+ll = forward_1d(tm, input_seq=jnp.array([1, 2, 3]))
+```
 
-Compute log-weight of the most likely path (Viterbi algorithm).
+#### 2D DP (transducers)
 
-#### `log_backward_matrix(machine, input_seq=None, output_seq=None, *, strategy='auto', kernel='auto', length=None)`
-
-Compute the full backward matrix.
+```python
+ll = forward_2d(tm, input_seq, output_seq)
+bp = backward_2d(tm, input_seq, output_seq)  # (Li+1, Lo+1, S)
+vit = viterbi_2d(tm, input_seq, output_seq)
+```
 
 **Parameters:**
 
 | Parameter | Values | Description |
 |---|---|---|
-| `machine` | `JAXMachine` | The machine to run |
-| `input_seq` | `jnp.ndarray` or `None` | 1-based token array (for recognizers and transducers) |
-| `output_seq` | `jnp.ndarray` or `None` | 1-based token array (for generators and transducers) |
-| `strategy` | `'auto'`, `'simple'`, `'optimal'` | `'simple'` uses `jax.lax.scan`; `'optimal'` uses associative scan (1D) or wavefront (2D) |
-| `kernel` | `'auto'`, `'dense'`, `'sparse'` | `'dense'` uses tensor indexing; `'sparse'` uses COO scatter/gather |
-| `length` | `int` or `None` | Real length for padded sequences |
+| `tm` | `TransMachine` | The machine to run |
+| `input_seq` | `jnp.ndarray` or `None` | 1-based token array |
+| `output_seq` | `jnp.ndarray` or `None` | 1-based token array |
+| `semiring` | `LOGSUMEXP`, `MAXPLUS` | Sum-of-paths or best-path (default `LOGSUMEXP`) |
+| `strategy` | `'auto'`, `'simple'`, `'optimal'` | Algorithm variant |
 
-**Automatic strategy selection:**
+---
 
-| Dimensionality | Kernel | Default strategy |
-|---|---|---|
-| 1D | dense | optimal (associative scan, O(log L) depth) |
-| 1D | sparse | simple (sequential scan) |
-| 2D | dense | simple |
-| 2D | sparse | simple |
+### Semirings
+
+Two log-space semirings control whether DP sums over paths (Forward) or maximizes (Viterbi).
 
 ```python
-import jax.numpy as jnp
-from machineboss.jax import JAXMachine, log_forward, log_viterbi
+from machineboss.jax.trans import forward_2d
+from machineboss.jax.semiring import LOGSUMEXP, MAXPLUS
 
-# 2D transducer DP
-ll = log_forward(jm, jnp.array([1, 2, 3, 1]), jnp.array([1, 2, 3, 1]))
-
-# 1D recognizer DP
-em_rec = EvaluatedMachine.from_machine(recognizer_machine)
-jm_rec = JAXMachine.from_evaluated(em_rec)
-ll = log_forward(jm_rec, jnp.array([1, 2, 3]))
+ll = forward_2d(tm, in_seq, out_seq, LOGSUMEXP)   # Forward (default)
+vit = forward_2d(tm, in_seq, out_seq, MAXPLUS)     # Viterbi
 ```
 
 ---
@@ -414,7 +463,7 @@ ll = log_forward(jm_rec, jnp.array([1, 2, 3]))
 A sequence of discrete tokens for standard DP.
 
 ```python
-from machineboss.jax import TokenSeq
+from machineboss.jax.seq import TokenSeq
 
 seq = TokenSeq(tokens=jnp.array([1, 3, 2, 4]))
 ```
@@ -425,7 +474,7 @@ A soft/probabilistic sequence where each position has a log-probability distribu
 over tokens. Used for neural network outputs and profile HMMs.
 
 ```python
-from machineboss.jax import PSWMSeq
+from machineboss.jax.seq import PSWMSeq
 
 # L=3 positions, 5 tokens (including empty at index 0)
 log_probs = jnp.array([[-1e38, 0.0, -2.0, -2.0, -2.0],
@@ -434,83 +483,59 @@ log_probs = jnp.array([[-1e38, 0.0, -2.0, -2.0, -2.0],
 seq = PSWMSeq(log_probs=log_probs)
 ```
 
----
-
-### Semirings
-
-Two log-space semirings control whether DP sums over paths (Forward) or maximizes (Viterbi).
-
-```python
-from machineboss.jax import LOGSUMEXP, MAXPLUS
-
-LOGSUMEXP.plus(a, b)   # jnp.logaddexp(a, b) — for Forward
-MAXPLUS.plus(a, b)      # jnp.maximum(a, b)   — for Viterbi
-```
+Both `TokenSeq` and `PSWMSeq` are accepted by all DP functions via `wrap_seq`.
+Raw `jnp.ndarray` token arrays are automatically wrapped as `TokenSeq`.
 
 ---
 
-### Forward-Backward with Autodiff
+### Forward-Backward with Expected Counts
 
-`fwdback.py` provides `jax.custom_vjp`-compatible functions for differentiable log-likelihood,
-enabling gradient-based parameter optimization.
+Fully vectorized forward-backward that computes per-transition expected counts
+using `vmap` over transitions and position-broadcasting. No Python for-loops.
 
 ```python
-from machineboss.jax.fwdback import log_likelihood_with_counts
+from machineboss.jax.trans import forward_backward, forward_backward_1d
 
-ll, counts = log_likelihood_with_counts(jm, input_seq, output_seq)
+# 2D transducer
+ll, counts = forward_backward(tm, input_seq, output_seq)
 # ll: log-likelihood (scalar)
-# counts: expected transition usage counts (shape (T,))
+# counts: (T,) expected count per transition
+
+# 1D generator
+ll, counts = forward_backward_1d(tm, output_seq=output_seq)
 ```
+
+Supports `strategy='simple'` and `strategy='optimal'` for the underlying
+forward/backward passes. The counts computation itself is always vectorized.
 
 ---
 
 ### Parameterized Machines (Neural DP)
 
-`ParameterizedMachine` compiles weight expressions into JAX-traceable functions,
-enabling gradient flow through machine parameters. This supports neural transducers
-where transition weights are produced by a neural network.
+`ParameterizedTransMachine` compiles weight expressions into JAX-traceable
+functions that produce `log_w` vectors (shape `(T,)`) instead of dense tensors.
+This enables gradient flow through machine parameters for neural transducers.
 
 ```python
-from machineboss.jax.jax_weight import ParameterizedMachine
+from machineboss.jax.trans import ParameterizedTransMachine
+from machineboss.jax.trans import neural_forward_2d
+from machineboss.jax.semiring import LOGSUMEXP
 
 m = Machine.from_file("preset/jukescantor.json")
-pm = ParameterizedMachine.from_machine(m)
+ptm = ParameterizedTransMachine.from_machine(m)
 
-print(pm.free_params)   # {'t'} — params the caller must supply
-print(pm.param_names)   # {'t', 'pNoSub', 'pSub', ...}
-
-# Build log-weight tensor from parameters
-import jax.numpy as jnp
-lt = pm.build_log_trans({"t": jnp.float32(0.5)})
-# lt.shape = (n_in, n_out, S, S)
-```
-
-#### Neural DP Functions
-
-Position-dependent DP where weight parameters can vary at each `(i, j)` position
-in the sequence pair grid. Parameter tensors must be broadcastable to `(Li+1, Lo+1)`.
-
-| Function | Description |
-|---|---|
-| `neural_log_forward(pm, input_pswm, output_pswm, params)` | Forward with PSWM sequences |
-| `neural_log_viterbi(pm, input_pswm, output_pswm, params)` | Viterbi with PSWM sequences |
-| `neural_log_backward_matrix(pm, input_pswm, output_pswm, params)` | Backward with PSWM sequences |
-| `neural_log_forward_tok(pm, input_tokens, output_tokens, params)` | Forward with token arrays |
-| `neural_log_viterbi_tok(pm, input_tokens, output_tokens, params)` | Viterbi with token arrays |
-| `neural_log_backward_matrix_tok(pm, input_tokens, output_tokens, params)` | Backward with token arrays |
-
-```python
-from machineboss.jax.dp_neural import neural_log_forward_tok
+print(ptm.free_params)   # {'t'} — params the caller must supply
 
 # Position-independent params (scalars broadcast to all positions)
-params = {"t": jnp.float32(0.5)}
-ll = neural_log_forward_tok(pm, input_tokens, output_tokens, params)
-
-# Position-dependent params (vary per grid cell)
-# Shape (Li+1, Lo+1) or broadcastable
-params = {"t": jnp.ones((Li+1, Lo+1)) * 0.5}
-ll = neural_log_forward_tok(pm, input_tokens, output_tokens, params)
+params = {"t": jnp.array([[0.5]])}   # shape (1, 1) for broadcasting
+ll = neural_forward_2d(ptm, input_pswm, output_pswm, params, LOGSUMEXP)
 ```
+
+The `ParameterizedMachine` class in `jax_weight.py` provides the same
+functionality but produces dense `(n_in, n_out, S, S)` tensors. Use
+`ParameterizedTransMachine` for the transition-centric interface; use
+`ParameterizedMachine` when you need dense tensors or are working with
+legacy code.
 
 ---
 
@@ -520,16 +545,16 @@ DP along a prescribed alignment path instead of the full `(Li+1, Lo+1)` grid.
 Useful for training on known alignments.
 
 ```python
-from machineboss.jax.dp_aligned import (
-    aligned_log_forward, aligned_log_viterbi,
-    neural_aligned_log_forward, neural_aligned_log_viterbi,
-    MAT, INS, DEL
+from machineboss.jax.trans import (
+    aligned_forward, aligned_viterbi,
+    neural_aligned_forward, neural_aligned_viterbi,
+    validate_alignment, MAT, INS, DEL,
 )
 
 # Alignment: MAT=match (consume both), INS=insert (input only), DEL=delete (output only)
 alignment = jnp.array([MAT, INS, MAT, DEL, MAT])
 
-ll = aligned_log_forward(jm, input_tokens, output_tokens, alignment)
+ll = aligned_forward(tm, input_tokens, output_tokens, alignment, LOGSUMEXP)
 ```
 
 ---
@@ -539,19 +564,15 @@ ll = aligned_log_forward(jm, input_tokens, output_tokens, alignment)
 Avoids the cost of explicitly composing a Plan7 HMM with a transducer
 by interleaving their DP recurrences (GeneWise-style).
 
-#### Generic Fusion (`fused.py`)
-
 ```python
-from machineboss.jax.fused import FusedMachine, fused_log_forward
+from machineboss.jax.trans import fused_forward, fused_viterbi
 
-fm = FusedMachine.build(plan7_em, transducer_em)
-ll = fused_log_forward(fm, output_seq)
+ll = fused_forward(plan7_model, transducer_tm, output_seq)
 ```
 
 #### Plan7-Optimized Fusion (`fused_plan7.py`)
 
-Exploits Plan7's linear chain topology for O(S_td) per node instead of O(S_p7 * S_td).
-Builds directly from an `HmmerModel` without constructing an intermediate `Machine`.
+For direct access to the optimized Plan7 kernel (O(S_td) per node):
 
 ```python
 from machineboss.hmmer import HmmerModel
@@ -567,6 +588,39 @@ ll = fused_plan7_log_forward(fm, output_seq)
 
 ---
 
+### Beam-Viterbi for Cyclic Machines
+
+Wavefront beam search for machines with cycles (TKF92, Plan7) where
+standard Viterbi requires topological sort.
+
+```python
+from machineboss.jax.trans import beam_align
+
+result = beam_align(tm, input_seq, output_seq, beam_width=100)
+print(result.score, result.path)
+```
+
+---
+
+### Bridge Types (JSON/C++ Interop)
+
+The `JAXMachine` type is a bridge between the JSON machine format and JAX arrays.
+It stores transitions in sparse COO format plus an optional dense 4D tensor.
+Use it when interfacing with legacy code or the `log_forward`/`log_viterbi` dispatchers.
+
+```python
+from machineboss.jax import JAXMachine, log_forward
+
+jm = JAXMachine.from_evaluated(em)
+ll = log_forward(jm, input_seq, output_seq)
+
+# Convert between representations
+tm = TransMachine.from_jax_machine(jm)
+jm2 = tm.to_jax_machine()
+```
+
+---
+
 ## Typical Workflows
 
 ### Log-likelihood of a sequence pair
@@ -574,36 +628,50 @@ ll = fused_plan7_log_forward(fm, output_seq)
 ```python
 from machineboss.machine import Machine
 from machineboss.eval import EvaluatedMachine
-from machineboss.jax import JAXMachine, log_forward
+from machineboss.jax.trans import TransMachine, forward_2d
 import jax.numpy as jnp
 
 m = Machine.from_file("preset/jukescantor.json")
-em = EvaluatedMachine.from_machine(m, {"t": 0.5})
-jm = JAXMachine.from_evaluated(em)
+tm = TransMachine.from_machine(m, params={"t": 0.5})
 
+em = EvaluatedMachine.from_machine(m, {"t": 0.5})
 input_seq = jnp.array(em.tokenize_input(list("ACGT")))
 output_seq = jnp.array(em.tokenize_output(list("ACGA")))
-ll = log_forward(jm, input_seq, output_seq)
+ll = forward_2d(tm, input_seq, output_seq)
 ```
 
 ### Gradient-based parameter fitting
 
 ```python
 import jax
-from machineboss.jax.jax_weight import ParameterizedMachine
-from machineboss.jax.dp_neural import neural_log_forward_tok
+import jax.numpy as jnp
+from machineboss.machine import Machine
+from machineboss.jax.trans import ParameterizedTransMachine, neural_forward_2d_tok
+from machineboss.jax.semiring import LOGSUMEXP
 
 m = Machine.from_file("preset/jukescantor.json")
-pm = ParameterizedMachine.from_machine(m)
+ptm = ParameterizedTransMachine.from_machine(m)
 
 def neg_ll(t):
-    params = {"t": t}
-    return -neural_log_forward_tok(pm, input_tokens, output_tokens, params)
+    params = {"t": jnp.array([[t]])}
+    return -neural_forward_2d_tok(ptm, input_tokens, output_tokens, params)
 
 grad_fn = jax.grad(neg_ll)
 t = jnp.float32(1.0)
 for _ in range(100):
     t = t - 0.01 * grad_fn(t)
+```
+
+### Expected transition counts
+
+```python
+from machineboss.jax.trans import TransMachine, forward_backward
+
+m = Machine.from_file("preset/jukescantor.json")
+tm = TransMachine.from_machine(m, params={"t": 0.5})
+
+ll, counts = forward_backward(tm, input_seq, output_seq)
+# counts[i] = expected usage of transition i
 ```
 
 ### HMMER protein search with fused DP
