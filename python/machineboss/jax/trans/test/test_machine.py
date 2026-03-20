@@ -100,3 +100,36 @@ class TestTransMachinePytree:
         assert bitecho_tm.is_transducer()
         assert not bitecho_tm.is_generator()
         assert not bitecho_tm.is_recognizer()
+
+
+class TestTransMachineTokenize:
+    """Test tokenization helpers."""
+
+    def test_tokenize_input(self, bitecho_tm):
+        tokens = bitecho_tm.tokenize_input(list("101"))
+        assert len(tokens) == 3
+        assert all(t > 0 for t in tokens)
+
+    def test_tokenize_output(self, bitecho_tm):
+        tokens = bitecho_tm.tokenize_output(list("010"))
+        assert len(tokens) == 3
+        assert all(t > 0 for t in tokens)
+
+    def test_tokenize_input_string(self, bitecho_tm):
+        arr = bitecho_tm.tokenize_input_string("101")
+        assert arr.shape == (3,)
+        assert arr.dtype == jnp.int32
+
+    def test_tokenize_output_string(self, bitecho_tm):
+        arr = bitecho_tm.tokenize_output_string("010")
+        assert arr.shape == (3,)
+        assert arr.dtype == jnp.int32
+
+    def test_roundtrip_matches_evaluated(self, bitecho_machine):
+        from machineboss.eval import EvaluatedMachine
+        em = EvaluatedMachine.from_machine(bitecho_machine)
+        tm = TransMachine.from_machine(bitecho_machine)
+
+        seq = list("101")
+        assert tm.tokenize_input(seq) == em.tokenize_input(seq)
+        assert tm.tokenize_output(seq) == em.tokenize_output(seq)

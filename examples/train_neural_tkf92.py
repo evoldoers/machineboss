@@ -20,8 +20,8 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from machineboss.jax.jax_weight import ParameterizedMachine
-from machineboss.jax.dp_neural import neural_log_forward_tok
+from machineboss.jax.trans import ParameterizedTransMachine
+from machineboss.jax.trans import neural_forward_2d_tok
 from machineboss.neural.tkf92 import (
     make_tkf92_machine, TKF92Heads, heads_to_dp_params, AA_ALPHA,
 )
@@ -56,11 +56,11 @@ def main():
 
     # Build machine
     machine = make_tkf92_machine()
-    pm = ParameterizedMachine.from_machine(machine)
-    print(f"Machine: {pm.n_states} states, {len(pm.free_params)} free params")
+    ptm = ParameterizedTransMachine.from_machine(machine)
+    print(f"Machine: {ptm.n_states} states, {len(ptm.free_params)} free params")
 
     # Build tokenizer
-    aa_map = {aa: i for i, aa in enumerate(pm.input_tokens)}
+    aa_map = {aa: i for i, aa in enumerate(ptm.input_tokens)}
 
     def tokenize_aa(seq):
         return jnp.array([aa_map.get(c, 0) for c in seq], dtype=jnp.int32)
@@ -88,7 +88,7 @@ def main():
         emb = transformer.apply(all_params["transformer"], msa_onehot)
         t, insRate, delRate, r, pi = heads.apply(all_params["heads"], emb)
         dp_params = heads_to_dp_params(t, insRate, delRate, r, pi)
-        ll = neural_log_forward_tok(pm, in_tok, out_tok, dp_params)
+        ll = neural_forward_2d_tok(ptm, in_tok, out_tok, dp_params)
         return -ll
 
     # Training loop

@@ -241,9 +241,47 @@ def _backward_1d_optimal(tm, input_seq, output_seq, semiring, *, length=None):
 # Public API
 # ============================================================
 
+def _auto_pad_1d(tm, input_seq, output_seq, length):
+    """Auto-pad the active 1D sequence for JIT compilation cache efficiency.
+
+    When length is not explicitly provided, pads the active sequence to a
+    geometric-series bucket so JAX reuses compiled kernels.
+
+    Returns (input_seq, output_seq, length).
+    """
+    from ..seq import pad_length, pad_token_seq, pad_pswm_seq
+
+    if length is not None:
+        return input_seq, output_seq, length
+
+    if input_seq is None:
+        seq = wrap_seq(output_seq, tm.n_out)
+        L = len(seq)
+        padded_L = pad_length(L)
+        if padded_L > L:
+            if isinstance(seq, PSWMSeq):
+                seq, orig_L = pad_pswm_seq(seq, padded_L)
+            else:
+                seq, orig_L = pad_token_seq(seq, padded_L)
+            return None, seq, orig_L
+        return None, seq, None
+    else:
+        seq = wrap_seq(input_seq, tm.n_in)
+        L = len(seq)
+        padded_L = pad_length(L)
+        if padded_L > L:
+            if isinstance(seq, PSWMSeq):
+                seq, orig_L = pad_pswm_seq(seq, padded_L)
+            else:
+                seq, orig_L = pad_token_seq(seq, padded_L)
+            return seq, None, orig_L
+        return seq, None, None
+
+
 def forward_1d(tm: TransMachine, input_seq=None, output_seq=None,
                semiring: LogSemiring = LOGSUMEXP, *,
-               strategy: str = 'auto', length: int | None = None) -> float:
+               strategy: str = 'auto', length: int | None = None,
+               auto_pad: bool = True) -> float:
     """1D Forward algorithm.
 
     Args:
@@ -253,7 +291,11 @@ def forward_1d(tm: TransMachine, input_seq=None, output_seq=None,
         semiring: LOGSUMEXP (default) or MAXPLUS
         strategy: 'simple', 'optimal', or 'auto'
         length: real sequence length for padded sequences
+        auto_pad: pad to geometric bucket for JIT cache reuse (default True)
     """
+    if auto_pad:
+        input_seq, output_seq, length = _auto_pad_1d(
+            tm, input_seq, output_seq, length)
     if strategy == 'simple':
         return _forward_1d_simple(tm, input_seq, output_seq, semiring, length=length)
     elif strategy == 'optimal':
@@ -264,8 +306,12 @@ def forward_1d(tm: TransMachine, input_seq=None, output_seq=None,
 
 def backward_1d(tm: TransMachine, input_seq=None, output_seq=None,
                 semiring: LogSemiring = LOGSUMEXP, *,
-                strategy: str = 'auto', length: int | None = None) -> jnp.ndarray:
+                strategy: str = 'auto', length: int | None = None,
+                auto_pad: bool = True) -> jnp.ndarray:
     """1D Backward algorithm. Returns (L+1, S) matrix."""
+    if auto_pad:
+        input_seq, output_seq, length = _auto_pad_1d(
+            tm, input_seq, output_seq, length)
     if strategy == 'simple':
         return _backward_1d_simple(tm, input_seq, output_seq, semiring, length=length)
     elif strategy == 'optimal':
@@ -275,7 +321,8 @@ def backward_1d(tm: TransMachine, input_seq=None, output_seq=None,
 
 
 def viterbi_1d(tm: TransMachine, input_seq=None, output_seq=None, *,
-               strategy: str = 'auto', length: int | None = None) -> float:
+               strategy: str = 'auto', length: int | None = None,
+               auto_pad: bool = True) -> float:
     """1D Viterbi algorithm."""
     return forward_1d(tm, input_seq, output_seq, MAXPLUS,
-                      strategy=strategy, length=length)
+                      strategy=strategy, length=length, auto_pad=auto_pad)

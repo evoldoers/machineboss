@@ -18,8 +18,8 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from machineboss.jax.jax_weight import ParameterizedMachine
-from machineboss.jax.dp_neural import neural_log_forward_tok
+from machineboss.jax.trans import ParameterizedTransMachine
+from machineboss.jax.trans import neural_forward_2d_tok
 from machineboss.neural.dna_copy import (
     make_dna_copy_machine, DNACopyCNN, onehot_dna, tokenize_dna,
     cnn_params_to_dp_params,
@@ -47,10 +47,10 @@ def main():
 
     # Build machine and compile
     machine = make_dna_copy_machine()
-    pm = ParameterizedMachine.from_machine(machine)
-    print(f"Machine: {pm.n_states} states, free_params={pm.free_params}")
-    print(f"Input alphabet: {pm.input_tokens}")
-    print(f"Output alphabet: {pm.output_tokens}")
+    ptm = ParameterizedTransMachine.from_machine(machine)
+    print(f"Machine: {ptm.n_states} states, free_params={ptm.free_params}")
+    print(f"Input alphabet: {ptm.input_tokens}")
+    print(f"Output alphabet: {ptm.output_tokens}")
 
     # Initialize CNN
     model = DNACopyCNN(hidden=args.hidden)
@@ -68,7 +68,7 @@ def main():
     def loss_fn(cnn_params, input_onehot, input_tokens, output_tokens):
         t, pIns, pDel = model.apply(cnn_params, input_onehot)
         dp_params = cnn_params_to_dp_params(t, pIns, pDel)
-        ll = neural_log_forward_tok(pm, input_tokens, output_tokens, dp_params)
+        ll = neural_forward_2d_tok(ptm, input_tokens, output_tokens, dp_params)
         return -ll
 
     # Training loop
@@ -83,8 +83,8 @@ def main():
         )
 
         x = onehot_dna(anc)
-        in_tok = tokenize_dna(anc, pm)
-        out_tok = tokenize_dna(desc, pm)
+        in_tok = tokenize_dna(anc, ptm)
+        out_tok = tokenize_dna(desc, ptm)
 
         loss, grads = jax.value_and_grad(loss_fn)(cnn_params, x, in_tok, out_tok)
         updates, opt_state = optimizer.update(grads, opt_state)

@@ -228,5 +228,25 @@ class TransMachine:
     def n_transitions(self) -> int:
         return self.src.shape[0]
 
+    # --- Tokenization helpers ---
+
+    def tokenize_input(self, seq: list[str]) -> list[int]:
+        """Convert a list of input symbols to 1-based token indices."""
+        tok_map = {sym: i for i, sym in enumerate(self.input_tokens)}
+        return [tok_map[s] for s in seq]
+
+    def tokenize_output(self, seq: list[str]) -> list[int]:
+        """Convert a list of output symbols to 1-based token indices."""
+        tok_map = {sym: i for i, sym in enumerate(self.output_tokens)}
+        return [tok_map[s] for s in seq]
+
+    def tokenize_input_string(self, s: str) -> jnp.ndarray:
+        """Convert a string to a jnp.array of input token indices."""
+        return jnp.array(self.tokenize_input(list(s)), dtype=jnp.int32)
+
+    def tokenize_output_string(self, s: str) -> jnp.ndarray:
+        """Convert a string to a jnp.array of output token indices."""
+        return jnp.array(self.tokenize_output(list(s)), dtype=jnp.int32)
+
 
 jax.tree_util.register_pytree_node_class(TransMachine)

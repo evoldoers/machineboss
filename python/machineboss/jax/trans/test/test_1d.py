@@ -93,3 +93,32 @@ class TestViterbi1D:
 
         # Viterbi <= Forward (max path <= sum of all paths)
         assert vit <= fwd + 1e-5
+
+
+class TestAutoPad1D:
+    """Test auto-padding produces same results."""
+
+    def test_auto_pad_matches_no_pad(self, repo_root):
+        tm, jm, em = _load_generator(repo_root)
+        if tm is None:
+            pytest.skip("merge-chain.json not found")
+
+        out_seq = jnp.array(em.tokenize_output(list("qqq")))
+
+        result_padded = float(forward_1d(tm, output_seq=out_seq, auto_pad=True))
+        result_unpadded = float(forward_1d(tm, output_seq=out_seq, auto_pad=False))
+
+        assert result_padded == pytest.approx(result_unpadded, abs=1e-4)
+
+    def test_auto_pad_longer_seq(self, repo_root):
+        tm, jm, em = _load_generator(repo_root)
+        if tm is None:
+            pytest.skip("merge-chain.json not found")
+
+        # Longer sequence to trigger actual padding (>4 tokens)
+        out_seq = jnp.array(em.tokenize_output(list("q" * 7)))
+
+        result_padded = float(forward_1d(tm, output_seq=out_seq, auto_pad=True))
+        result_unpadded = float(forward_1d(tm, output_seq=out_seq, auto_pad=False))
+
+        assert result_padded == pytest.approx(result_unpadded, abs=1e-4)
