@@ -2,6 +2,8 @@
 
 Reverse scan over the DP matrix, same 4 transition types as Forward.
 Dispatches to the appropriate engine based on strategy and kernel params.
+
+Accepts both TransMachine (preferred) and JAXMachine (legacy).
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ def log_backward_dense(machine: JAXMachine,
     return backward_2d_dense(machine, input_seq, output_seq, LOGSUMEXP)
 
 
-def log_backward_matrix(machine: JAXMachine,
+def log_backward_matrix(machine,
                         input_seq: jnp.ndarray | None = None,
                         output_seq: jnp.ndarray | None = None,
                         *,
@@ -40,22 +42,34 @@ def log_backward_matrix(machine: JAXMachine,
                         length: int | None = None) -> jnp.ndarray:
     """Backward algorithm — dispatches to appropriate engine.
 
+    Accepts both TransMachine and JAXMachine.
+
     Args:
-        machine: JAXMachine
+        machine: TransMachine or JAXMachine
         input_seq: (Li,) input token indices, TokenSeq, PSWMSeq, or None
         output_seq: (Lo,) output token indices, TokenSeq, PSWMSeq, or None
         strategy: 'simple', 'optimal', or 'auto'
-        kernel: 'dense', 'sparse', or 'auto'
+        kernel: 'dense', 'sparse', or 'auto' (ignored for TransMachine)
         length: real sequence length for padded 1D sequences. If None, uses len(seq).
 
     Returns:
         Backward matrix.
-
-    Raises:
-        ValueError: if sequences don't match the machine type
     """
-    from .forward import _validate_seqs, _auto_pad_1d
+    from .forward import _validate_seqs, _auto_pad_1d, _is_trans_machine
 
+    # TransMachine path
+    if _is_trans_machine(machine):
+        is_1d = (input_seq is None) or (output_seq is None)
+        if is_1d:
+            from .trans.dp_1d import backward_1d
+            return backward_1d(machine, input_seq, output_seq, LOGSUMEXP,
+                               strategy=strategy, length=length)
+        else:
+            from .trans.dp_2d import backward_2d
+            return backward_2d(machine, input_seq, output_seq, LOGSUMEXP,
+                               strategy=strategy)
+
+    # JAXMachine path (legacy)
     _validate_seqs(machine, input_seq, output_seq)
 
     is_1d = (input_seq is None) or (output_seq is None)
@@ -70,7 +84,6 @@ def log_backward_matrix(machine: JAXMachine,
             strategy = 'simple'
 
     if is_1d:
-        # Auto-pad for JIT compilation cache efficiency
         input_seq, output_seq, length = _auto_pad_1d(
             input_seq, output_seq, machine, length)
 

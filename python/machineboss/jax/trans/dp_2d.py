@@ -418,6 +418,51 @@ def _backward_2d_optimal(tm, input_seq, output_seq, semiring):
 
 
 # ============================================================
+# Auto-padding
+# ============================================================
+
+def _auto_pad_2d(tm, input_seq, output_seq):
+    """Auto-pad both sequences to geometric-series buckets for JIT cache reuse.
+
+    Padded tokens are 0 (empty), which produce NEG_INF emission weights
+    for all emitting transitions, so padded positions don't affect the
+    result at the real (Li, Lo) cell.
+
+    Returns (input_seq, output_seq, Li_real, Lo_real) where Li_real/Lo_real
+    are the original lengths (None if no padding was needed).
+    """
+    from ..seq import pad_length, pad_token_seq, pad_pswm_seq
+
+    in_seq = wrap_seq(input_seq, tm.n_in)
+    out_seq = wrap_seq(output_seq, tm.n_out)
+    Li = len(in_seq) if in_seq is not None else 0
+    Lo = len(out_seq) if out_seq is not None else 0
+
+    Li_real = None
+    Lo_real = None
+
+    if Li > 0:
+        Li_padded = pad_length(Li)
+        if Li_padded > Li:
+            if isinstance(in_seq, PSWMSeq):
+                in_seq, Li_real = pad_pswm_seq(in_seq, Li_padded)
+            else:
+                in_seq, Li_real = pad_token_seq(in_seq, Li_padded)
+        input_seq = in_seq
+
+    if Lo > 0:
+        Lo_padded = pad_length(Lo)
+        if Lo_padded > Lo:
+            if isinstance(out_seq, PSWMSeq):
+                out_seq, Lo_real = pad_pswm_seq(out_seq, Lo_padded)
+            else:
+                out_seq, Lo_real = pad_token_seq(out_seq, Lo_padded)
+        output_seq = out_seq
+
+    return input_seq, output_seq, Li_real, Lo_real
+
+
+# ============================================================
 # Public API
 # ============================================================
 
@@ -440,7 +485,8 @@ def forward_2d_matrix(tm: TransMachine, input_seq, output_seq,
 
 def forward_2d(tm: TransMachine, input_seq, output_seq,
                semiring: LogSemiring = LOGSUMEXP, *,
-               strategy: str = 'auto') -> float:
+               strategy: str = 'auto',
+               auto_pad: bool = True) -> float:
     """2D Forward algorithm returning scalar log-likelihood.
 
     Args:
@@ -448,9 +494,21 @@ def forward_2d(tm: TransMachine, input_seq, output_seq,
         input_seq, output_seq: token sequences
         semiring: LOGSUMEXP (default) or MAXPLUS
         strategy: 'simple', 'optimal', or 'auto'
+        auto_pad: pad to geometric bucket for JIT cache reuse (default True)
     """
+    if auto_pad:
+        input_seq, output_seq, Li_real, Lo_real = _auto_pad_2d(
+            tm, input_seq, output_seq)
+    else:
+        Li_real = Lo_real = None
+
     dp = forward_2d_matrix(tm, input_seq, output_seq, semiring, strategy=strategy)
-    return dp[-1, -1, tm.n_states - 1]
+    S = tm.n_states
+
+    # Extract at real lengths (not padded lengths)
+    Li_idx = Li_real if Li_real is not None else dp.shape[0] - 1
+    Lo_idx = Lo_real if Lo_real is not None else dp.shape[1] - 1
+    return dp[Li_idx, Lo_idx, S - 1]
 
 
 def backward_2d(tm: TransMachine, input_seq, output_seq,
@@ -466,6 +524,8 @@ def backward_2d(tm: TransMachine, input_seq, output_seq,
 
 
 def viterbi_2d(tm: TransMachine, input_seq, output_seq, *,
-               strategy: str = 'auto') -> float:
+               strategy: str = 'auto',
+               auto_pad: bool = True) -> float:
     """2D Viterbi algorithm."""
-    return forward_2d(tm, input_seq, output_seq, MAXPLUS, strategy=strategy)
+    return forward_2d(tm, input_seq, output_seq, MAXPLUS,
+                      strategy=strategy, auto_pad=auto_pad)

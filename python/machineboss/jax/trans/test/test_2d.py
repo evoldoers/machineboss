@@ -136,3 +136,40 @@ class TestViterbi2D:
         vit = float(viterbi_2d(bitecho_tm, in_seq, out_seq))
 
         assert vit <= fwd + 1e-5
+
+
+class TestAutoPad2D:
+    """Test 2D auto-padding produces same results."""
+
+    def test_auto_pad_matches_no_pad(self, bitecho_tm, bitecho_em):
+        in_seq = jnp.array(bitecho_em.tokenize_input(list("101")))
+        out_seq = jnp.array(bitecho_em.tokenize_output(list("101")))
+
+        result_padded = float(forward_2d(bitecho_tm, in_seq, out_seq, auto_pad=True))
+        result_unpadded = float(forward_2d(bitecho_tm, in_seq, out_seq, auto_pad=False))
+
+        assert result_padded == pytest.approx(result_unpadded, abs=1e-4)
+
+    def test_auto_pad_longer_seq(self, bitnoise_tm):
+        """Longer sequences that trigger actual padding (>4 tokens)."""
+        # Use bitnoise which has {0, 1} alphabet
+        tok_in = {s: i for i, s in enumerate(bitnoise_tm.input_tokens)}
+        tok_out = {s: i for i, s in enumerate(bitnoise_tm.output_tokens)}
+        in_seq = jnp.array([tok_in['1'], tok_in['0'], tok_in['1'],
+                            tok_in['0'], tok_in['1'], tok_in['0'], tok_in['1']])
+        out_seq = jnp.array([tok_out['0'], tok_out['1'], tok_out['0'],
+                             tok_out['1'], tok_out['0']])
+
+        result_padded = float(forward_2d(bitnoise_tm, in_seq, out_seq, auto_pad=True))
+        result_unpadded = float(forward_2d(bitnoise_tm, in_seq, out_seq, auto_pad=False))
+
+        assert result_padded == pytest.approx(result_unpadded, abs=1e-4)
+
+    def test_viterbi_auto_pad(self, bitecho_tm, bitecho_em):
+        in_seq = jnp.array(bitecho_em.tokenize_input(list("10110")))
+        out_seq = jnp.array(bitecho_em.tokenize_output(list("10110")))
+
+        result_padded = float(viterbi_2d(bitecho_tm, in_seq, out_seq, auto_pad=True))
+        result_unpadded = float(viterbi_2d(bitecho_tm, in_seq, out_seq, auto_pad=False))
+
+        assert result_padded == pytest.approx(result_unpadded, abs=1e-4)

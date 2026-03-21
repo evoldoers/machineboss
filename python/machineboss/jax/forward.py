@@ -1,7 +1,9 @@
 """Log-space Forward algorithm using JAX.
 
 Computes log P(input, output | machine) via the Forward algorithm.
-Dispatches to the appropriate engine based on strategy and kernel params.
+Dispatches to the appropriate engine based on machine type, strategy, and kernel.
+
+Accepts both TransMachine (preferred) and JAXMachine (legacy).
 """
 
 from __future__ import annotations
@@ -52,9 +54,11 @@ def _auto_pad_1d(input_seq, output_seq, machine, length):
     if length is not None:
         return input_seq, output_seq, length
 
+    n_in = machine.n_input_tokens if isinstance(machine, JAXMachine) else machine.n_in
+    n_out = machine.n_output_tokens if isinstance(machine, JAXMachine) else machine.n_out
+
     if input_seq is None:
-        # Generator or transducer without input: pad output_seq
-        seq = wrap_seq(output_seq, machine.n_output_tokens)
+        seq = wrap_seq(output_seq, n_out)
         L = len(seq)
         padded_L = pad_length(L)
         if padded_L > L:
@@ -65,8 +69,7 @@ def _auto_pad_1d(input_seq, output_seq, machine, length):
             return None, seq, orig_L
         return None, seq, None
     else:
-        # Recognizer or transducer without output: pad input_seq
-        seq = wrap_seq(input_seq, machine.n_input_tokens)
+        seq = wrap_seq(input_seq, n_in)
         L = len(seq)
         padded_L = pad_length(L)
         if padded_L > L:
@@ -78,11 +81,8 @@ def _auto_pad_1d(input_seq, output_seq, machine, length):
         return seq, None, None
 
 
-def _validate_seqs(machine: JAXMachine, input_seq, output_seq):
-    """Validate that supplied sequences match the machine type.
-
-    Empty arrays (length 0) are treated as equivalent to None.
-    """
+def _validate_seqs(machine, input_seq, output_seq):
+    """Validate that supplied sequences match the machine type."""
     has_in = _seq_is_nonempty(input_seq)
     has_out = _seq_is_nonempty(output_seq)
 
@@ -101,17 +101,21 @@ def _validate_seqs(machine: JAXMachine, input_seq, output_seq):
             raise ValueError(
                 f"Machine is a recognizer (input-only) but input_seq is None")
     elif machine.is_transducer():
-        # Transducers accept both 1D and 2D usage: either seq can be None
         pass
     else:
-        # Null machine (no input or output)
         if has_in:
             raise ValueError("Machine has no input alphabet but input_seq was provided")
         if has_out:
             raise ValueError("Machine has no output alphabet but output_seq was provided")
 
 
-def log_forward(machine: JAXMachine,
+def _is_trans_machine(machine):
+    """Check if machine is a TransMachine."""
+    from .trans.machine import TransMachine
+    return isinstance(machine, TransMachine)
+
+
+def log_forward(machine,
                 input_seq: jnp.ndarray | None = None,
                 output_seq: jnp.ndarray | None = None,
                 *,
@@ -120,30 +124,39 @@ def log_forward(machine: JAXMachine,
                 length: int | None = None) -> float:
     """Forward algorithm — dispatches to appropriate engine.
 
+    Accepts both TransMachine and JAXMachine.
+
     Args:
-        machine: JAXMachine
+        machine: TransMachine or JAXMachine
         input_seq: (Li,) input token indices, TokenSeq, PSWMSeq, or None
         output_seq: (Lo,) output token indices, TokenSeq, PSWMSeq, or None
         strategy: 'simple', 'optimal', or 'auto'
-        kernel: 'dense', 'sparse', or 'auto'
+        kernel: 'dense', 'sparse', or 'auto' (ignored for TransMachine)
         length: real sequence length for padded 1D sequences. If None, uses len(seq).
 
     Returns:
         Log-likelihood (scalar).
-
-    Raises:
-        ValueError: if sequences don't match the machine type
     """
+    # TransMachine path — use trans/ engines directly
+    if _is_trans_machine(machine):
+        is_1d = (input_seq is None) or (output_seq is None)
+        if is_1d:
+            from .trans.dp_1d import forward_1d
+            return forward_1d(machine, input_seq, output_seq, LOGSUMEXP,
+                              strategy=strategy, length=length)
+        else:
+            from .trans.dp_2d import forward_2d
+            return forward_2d(machine, input_seq, output_seq, LOGSUMEXP,
+                              strategy=strategy)
+
+    # JAXMachine path (legacy)
     _validate_seqs(machine, input_seq, output_seq)
 
-    # Determine dimensionality: 1D only if a sequence is literally None
     is_1d = (input_seq is None) or (output_seq is None)
 
-    # Resolve kernel
     if kernel == 'auto':
         kernel = 'dense' if machine.log_trans is not None else 'sparse'
 
-    # Resolve strategy
     if strategy == 'auto':
         if is_1d and kernel == 'dense':
             strategy = 'optimal'
@@ -151,7 +164,6 @@ def log_forward(machine: JAXMachine,
             strategy = 'simple'
 
     if is_1d:
-        # Auto-pad for JIT compilation cache efficiency
         input_seq, output_seq, length = _auto_pad_1d(
             input_seq, output_seq, machine, length)
 

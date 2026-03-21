@@ -43,6 +43,40 @@ def _boss_loglike(boss_path, machine_file, input_str=None, output_str=None,
     return float(data)
 
 
+class TestDispatcherAcceptsTransMachine:
+    """Test that top-level dispatchers accept TransMachine directly."""
+
+    def test_log_forward_with_transmachine(self, bitecho_tm, bitecho_jm, bitecho_em):
+        in_seq = jnp.array(bitecho_em.tokenize_input(list("10")))
+        out_seq = jnp.array(bitecho_em.tokenize_output(list("10")))
+
+        result_tm = float(log_forward(bitecho_tm, in_seq, out_seq))
+        result_jm = float(log_forward(bitecho_jm, in_seq, out_seq))
+
+        assert result_tm == pytest.approx(result_jm, abs=0.01)
+
+    def test_log_viterbi_with_transmachine(self, bitecho_tm, bitecho_jm, bitecho_em):
+        in_seq = jnp.array(bitecho_em.tokenize_input(list("10")))
+        out_seq = jnp.array(bitecho_em.tokenize_output(list("10")))
+
+        result_tm = float(log_viterbi(bitecho_tm, in_seq, out_seq))
+        result_jm = float(log_viterbi(bitecho_jm, in_seq, out_seq))
+
+        assert result_tm == pytest.approx(result_jm, abs=0.01)
+
+    def test_log_backward_with_transmachine(self, bitecho_tm, bitecho_jm, bitecho_em):
+        in_seq = jnp.array(bitecho_em.tokenize_input(list("10")))
+        out_seq = jnp.array(bitecho_em.tokenize_output(list("10")))
+
+        bp_tm = log_backward_matrix(bitecho_tm, in_seq, out_seq)
+        bp_jm = log_backward_matrix(bitecho_jm, in_seq, out_seq)
+
+        # Compare only finite values
+        finite_mask = (bp_tm > -1e30) | (bp_jm > -1e30)
+        if jnp.any(finite_mask):
+            assert jnp.allclose(bp_tm[finite_mask], bp_jm[finite_mask], atol=0.1)
+
+
 class TestCrossValidation2D:
     """Cross-validate 2D algorithms between trans/ and existing."""
 

@@ -1,7 +1,9 @@
 """Log-space Viterbi algorithm using JAX.
 
 Same structure as Forward but uses max instead of logsumexp.
-Dispatches to the appropriate engine based on strategy and kernel params.
+Dispatches to the appropriate engine based on machine type, strategy, and kernel.
+
+Accepts both TransMachine (preferred) and JAXMachine (legacy).
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ def log_viterbi_dense(machine: JAXMachine,
     return forward_2d_dense(machine, input_seq, output_seq, MAXPLUS)
 
 
-def log_viterbi(machine: JAXMachine,
+def log_viterbi(machine,
                 input_seq: jnp.ndarray | None = None,
                 output_seq: jnp.ndarray | None = None,
                 *,
@@ -40,22 +42,34 @@ def log_viterbi(machine: JAXMachine,
                 length: int | None = None) -> float:
     """Viterbi algorithm — dispatches to appropriate engine.
 
+    Accepts both TransMachine and JAXMachine.
+
     Args:
-        machine: JAXMachine
+        machine: TransMachine or JAXMachine
         input_seq: (Li,) input token indices, TokenSeq, PSWMSeq, or None
         output_seq: (Lo,) output token indices, TokenSeq, PSWMSeq, or None
         strategy: 'simple', 'optimal', or 'auto'
-        kernel: 'dense', 'sparse', or 'auto'
+        kernel: 'dense', 'sparse', or 'auto' (ignored for TransMachine)
         length: real sequence length for padded 1D sequences. If None, uses len(seq).
 
     Returns:
         Log-probability of most likely path (scalar).
-
-    Raises:
-        ValueError: if sequences don't match the machine type
     """
-    from .forward import _validate_seqs, _auto_pad_1d
+    from .forward import _validate_seqs, _auto_pad_1d, _is_trans_machine
 
+    # TransMachine path
+    if _is_trans_machine(machine):
+        is_1d = (input_seq is None) or (output_seq is None)
+        if is_1d:
+            from .trans.dp_1d import viterbi_1d
+            return viterbi_1d(machine, input_seq, output_seq,
+                              strategy=strategy, length=length)
+        else:
+            from .trans.dp_2d import viterbi_2d
+            return viterbi_2d(machine, input_seq, output_seq,
+                              strategy=strategy)
+
+    # JAXMachine path (legacy)
     _validate_seqs(machine, input_seq, output_seq)
 
     is_1d = (input_seq is None) or (output_seq is None)
@@ -70,7 +84,6 @@ def log_viterbi(machine: JAXMachine,
             strategy = 'simple'
 
     if is_1d:
-        # Auto-pad for JIT compilation cache efficiency
         input_seq, output_seq, length = _auto_pad_1d(
             input_seq, output_seq, machine, length)
 
