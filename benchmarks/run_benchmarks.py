@@ -629,6 +629,23 @@ def main():
     timeout = float(args["timeout"])
     n_reps = int(args["n_reps"])
 
+    def _gpu_stats():
+        """Return (bytes_in_use, peak_bytes_in_use) for the first GPU device,
+        or (None, None) if unsupported/unavailable.
+        """
+        if not args["use_gpu"]:
+            return (None, None)
+        try:
+            stats = jax.devices("gpu")[0].memory_stats() or {}
+            return (int(stats.get("bytes_in_use", 0)) if "bytes_in_use" in stats else None,
+                    int(stats.get("peak_bytes_in_use", 0)) if "peak_bytes_in_use" in stats else None)
+        except Exception:
+            return (None, None)
+
+    # Sample GPU allocator state BEFORE warmup so we can subtract out
+    # one-time allocations from imports / machine load.
+    use_before, peak_before = _gpu_stats()
+
     # Warmup / probe
     t0 = time.perf_counter()
     fn()
@@ -646,20 +663,32 @@ def main():
             if elapsed > timeout:
                 break
 
+    use_after, peak_after = _gpu_stats()
+
     out = {
         "mean": float(np.mean(times)),
         "std": float(np.std(times)),
         "n": len(times),
     }
 
-    # Optional: GPU peak bytes from XLA memory stats, where supported.
-    if args["use_gpu"]:
-        try:
-            stats = jax.devices("gpu")[0].memory_stats()
-            if stats and "peak_bytes_in_use" in stats:
-                out["gpu_peak_bytes"] = int(stats["peak_bytes_in_use"])
-        except Exception:
-            pass
+    # GPU memory stats from XLA, where supported.
+    #   gpu_peak_bytes:        peak_bytes_in_use at end of run (cumulative
+    #                          max since the subprocess started, so includes
+    #                          JAX imports + JIT compile + buffers).
+    #   gpu_peak_delta_bytes:  peak growth during warmup + reps
+    #                          (peak_after - peak_before). Isolates the
+    #                          memory the timed run actually needed on top
+    #                          of import/setup overhead.
+    #   gpu_bytes_delta:       bytes_in_use_after - bytes_in_use_before.
+    #                          Residual growth — memory retained by the
+    #                          JIT cache / constants after the run ends.
+    if peak_after is not None:
+        gpu = {"peak_bytes": peak_after}
+        if peak_before is not None:
+            gpu["peak_delta_bytes"] = max(0, peak_after - peak_before)
+        if use_after is not None and use_before is not None:
+            gpu["bytes_delta"] = max(0, use_after - use_before)
+        out["gpu"] = gpu
 
     print(json.dumps(out))
 
@@ -678,11 +707,9 @@ def _time_jax(machine_json, algorithm, input_seq=None, output_seq=None,
     runs warmup + n_reps of the algorithm, and reports JSON timing. The
     parent captures peak RSS via os.wait4 (see _run_measured).
 
-    Returns (mean_s, std_s, n_reps_completed, peak_rss_bytes) or None on
-    error. For GPU runs, peak_rss_bytes is the child process peak RSS
-    (host memory) and an additional gpu_peak_bytes field may be present
-    in the shim's stdout (XLA memory_stats) — we fold it in as a second
-    return slot when available.
+    Returns (mean_s, std_s, n_reps_completed, peak_rss_bytes, gpu_info)
+    or None on error. gpu_info is None (CPU run / no stats) or a dict
+    with keys {peak_bytes, peak_delta_bytes, bytes_delta}.
     """
     # Write shim script to a temp file
     with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
@@ -729,10 +756,8 @@ def _time_jax(machine_json, algorithm, input_seq=None, output_seq=None,
         if "error" in data:
             return None
 
-        # For GPU runs, prefer XLA peak_bytes_in_use when reported; fall back
-        # to host RSS otherwise. Host RSS is still recorded separately.
-        return (data["mean"], data["std"], data["n"], peak_bytes,
-                data.get("gpu_peak_bytes"))
+        gpu_info = data.get("gpu")  # dict or None
+        return (data["mean"], data["std"], data["n"], peak_bytes, gpu_info)
     finally:
         try:
             os.unlink(shim_path)
@@ -906,10 +931,13 @@ def _unpack_timing(timing):
     """Normalize a backend _time_* return tuple.
 
     Accepts 3-, 4-, or 5-tuples and pads missing slots:
-      (mean, std, n)                                -> (_, _, _, 0, None)
-      (mean, std, n, peak_rss)                      -> (_, _, _, peak_rss, None)
-      (mean, std, n, peak_rss, gpu_peak)            -> as-is
-    Returns (mean_s, std_s, n_completed, peak_rss_bytes, gpu_peak_bytes).
+      (mean, std, n)                           -> (_, _, _, 0, None)
+      (mean, std, n, peak_rss)                 -> (_, _, _, peak_rss, None)
+      (mean, std, n, peak_rss, gpu_info_dict)  -> as-is (JAX)
+    Returns (mean_s, std_s, n_completed, peak_rss_bytes, gpu_info)
+    where gpu_info is None or a dict with keys
+    {peak_bytes, peak_delta_bytes, bytes_delta} (only populated for
+    JAX GPU runs when XLA memory_stats supports them).
     """
     if len(timing) == 3:
         mean_s, std_s, n = timing
@@ -917,26 +945,41 @@ def _unpack_timing(timing):
     if len(timing) == 4:
         mean_s, std_s, n, peak = timing
         return (mean_s, std_s, n, peak, None)
-    mean_s, std_s, n, peak, gpu = timing
-    return (mean_s, std_s, n, peak, gpu)
+    mean_s, std_s, n, peak, gpu_info = timing
+    return (mean_s, std_s, n, peak, gpu_info)
 
 
-def _fmt_bytes(peak_rss_bytes, gpu_peak_bytes=None):
-    """Format memory usage for console output."""
-    def _h(n):
-        if n is None:
-            return "?"
-        if n <= 0:
-            return "—"
-        units = [("B", 1), ("KB", 1024), ("MB", 1024**2),
-                 ("GB", 1024**3), ("TB", 1024**4)]
-        for name, scale in reversed(units):
-            if n >= scale:
-                return f"{n/scale:.1f} {name}"
-        return f"{n} B"
-    if gpu_peak_bytes is not None and gpu_peak_bytes > 0:
-        return f"RSS {_h(peak_rss_bytes)}, GPU {_h(gpu_peak_bytes)}"
-    return f"RSS {_h(peak_rss_bytes)}"
+def _h_bytes(n):
+    """Human-readable bytes (e.g. '1.4 GB')."""
+    if n is None:
+        return "?"
+    if n <= 0:
+        return "—"
+    units = [("B", 1), ("KB", 1024), ("MB", 1024**2),
+             ("GB", 1024**3), ("TB", 1024**4)]
+    for name, scale in reversed(units):
+        if n >= scale:
+            return f"{n/scale:.1f} {name}"
+    return f"{n} B"
+
+
+def _fmt_bytes(peak_rss_bytes, gpu_info=None):
+    """Format memory usage for console output (RSS + optional GPU)."""
+    out = f"RSS {_h_bytes(peak_rss_bytes)}"
+    if gpu_info:
+        peak = gpu_info.get("peak_bytes")
+        delta = gpu_info.get("peak_delta_bytes")
+        resid = gpu_info.get("bytes_delta")
+        parts = []
+        if delta is not None and delta > 0:
+            parts.append(f"Δpeak {_h_bytes(delta)}")
+        elif peak is not None and peak > 0:
+            parts.append(f"peak {_h_bytes(peak)}")
+        if resid is not None and resid > 0:
+            parts.append(f"Δuse {_h_bytes(resid)}")
+        if parts:
+            out += ", GPU " + " / ".join(parts)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -1038,7 +1081,10 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
                             "algorithm": algorithm, "S": S, "L": L,
                             "Li": 0, "Lo": L,
                             "mean_seconds": 0.0, "std_seconds": 0.0,
-                            "peak_rss_bytes": 0, "gpu_peak_bytes": None,
+                            "peak_rss_bytes": 0,
+                            "gpu_peak_bytes": None,
+                            "gpu_peak_delta_bytes": None,
+                            "gpu_bytes_delta": None,
                             "n_reps": n_reps, "hardware_id": hw,
                         })
                         continue
@@ -1096,7 +1142,7 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
                         print(f" SKIPPED (backend unavailable)")
                         continue
 
-                    mean_s, std_s, n_completed, peak_bytes, gpu_peak = _unpack_timing(timing)
+                    mean_s, std_s, n_completed, peak_bytes, gpu_info = _unpack_timing(timing)
 
                     if mean_s > timeout:
                         print(f" {mean_s:.2f}s (probe > {timeout}s, skipping larger)")
@@ -1108,20 +1154,24 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
                             "Li": 0, "Lo": L,
                             "mean_seconds": mean_s, "std_seconds": std_s,
                             "peak_rss_bytes": peak_bytes,
-                            "gpu_peak_bytes": gpu_peak,
+                            "gpu_peak_bytes": (gpu_info or {}).get("peak_bytes"),
+                            "gpu_peak_delta_bytes": (gpu_info or {}).get("peak_delta_bytes"),
+                            "gpu_bytes_delta": (gpu_info or {}).get("bytes_delta"),
                             "n_reps": 1, "hardware_id": hw,
                         })
                         continue
 
                     print(f" {mean_s:.4f} +/- {std_s:.4f} s  "
-                          f"[{_fmt_bytes(peak_bytes, gpu_peak)}]")
+                          f"[{_fmt_bytes(peak_bytes, gpu_info)}]")
                     results.append({
                         "problem": "1D", "backend": backend,
                         "algorithm": algorithm, "S": S, "L": L,
                         "Li": 0, "Lo": L,
                         "mean_seconds": mean_s, "std_seconds": std_s,
                         "peak_rss_bytes": peak_bytes,
-                        "gpu_peak_bytes": gpu_peak,
+                        "gpu_peak_bytes": (gpu_info or {}).get("peak_bytes"),
+                        "gpu_peak_delta_bytes": (gpu_info or {}).get("peak_delta_bytes"),
+                        "gpu_bytes_delta": (gpu_info or {}).get("bytes_delta"),
                         "n_reps": n_completed, "hardware_id": hw,
                     })
 
@@ -1152,7 +1202,10 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
                                 "algorithm": algorithm, "S": S,
                                 "L": 0, "Li": Li, "Lo": Lo,
                                 "mean_seconds": 0.0, "std_seconds": 0.0,
-                                "peak_rss_bytes": 0, "gpu_peak_bytes": None,
+                                "peak_rss_bytes": 0,
+                                "gpu_peak_bytes": None,
+                                "gpu_peak_delta_bytes": None,
+                                "gpu_bytes_delta": None,
                                 "n_reps": n_reps, "hardware_id": hw,
                             })
                             continue
@@ -1210,7 +1263,7 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
                             print(f" SKIPPED (backend unavailable)")
                             continue
 
-                        mean_s, std_s, n_completed, peak_bytes, gpu_peak = _unpack_timing(timing)
+                        mean_s, std_s, n_completed, peak_bytes, gpu_info = _unpack_timing(timing)
 
                         if mean_s > timeout:
                             print(f" {mean_s:.2f}s (probe > {timeout}s, skipping larger)")
@@ -1222,20 +1275,24 @@ def run_benchmarks(backends, n_reps, dry_run=False, timeout=60.0):
                                 "L": 0, "Li": Li, "Lo": Lo,
                                 "mean_seconds": mean_s, "std_seconds": std_s,
                                 "peak_rss_bytes": peak_bytes,
-                                "gpu_peak_bytes": gpu_peak,
+                                "gpu_peak_bytes": (gpu_info or {}).get("peak_bytes"),
+                                "gpu_peak_delta_bytes": (gpu_info or {}).get("peak_delta_bytes"),
+                                "gpu_bytes_delta": (gpu_info or {}).get("bytes_delta"),
                                 "n_reps": 1, "hardware_id": hw,
                             })
                             continue
 
                         print(f" {mean_s:.4f} +/- {std_s:.4f} s  "
-                              f"[{_fmt_bytes(peak_bytes, gpu_peak)}]")
+                              f"[{_fmt_bytes(peak_bytes, gpu_info)}]")
                         results.append({
                             "problem": "2D", "backend": backend,
                             "algorithm": algorithm, "S": S,
                             "L": 0, "Li": Li, "Lo": Lo,
                             "mean_seconds": mean_s, "std_seconds": std_s,
                             "peak_rss_bytes": peak_bytes,
-                            "gpu_peak_bytes": gpu_peak,
+                            "gpu_peak_bytes": (gpu_info or {}).get("peak_bytes"),
+                            "gpu_peak_delta_bytes": (gpu_info or {}).get("peak_delta_bytes"),
+                            "gpu_bytes_delta": (gpu_info or {}).get("bytes_delta"),
                             "n_reps": n_completed, "hardware_id": hw,
                         })
 
@@ -1341,11 +1398,18 @@ def _fmt_time(mean, std):
         return f"{mean:.2f} $\\pm$ {std:.2f}"
 
 
-def _fmt_mem_tex(peak_rss_bytes, gpu_peak_bytes=None):
+def _fmt_mem_tex(peak_rss_bytes, gpu_peak_delta_bytes=None,
+                 gpu_peak_bytes=None):
     """Format a memory value for LaTeX.
 
-    Prefers GPU peak when reported (typically for GPU backends), falls back
-    to host RSS otherwise. Returns a human-readable MB/GB string.
+    Preference order (for GPU backends):
+      1. gpu_peak_delta_bytes  — XLA peak growth across the timed run,
+                                 subtracting one-time import / machine
+                                 load overhead (most informative).
+      2. gpu_peak_bytes        — XLA peak_bytes_in_use at end of run
+                                 (fallback when delta unavailable).
+      3. peak_rss_bytes        — child subprocess host RSS (CPU backends).
+    Returns a human-readable MB/GB string.
     """
     def _h(n):
         if n is None or n <= 0:
@@ -1358,6 +1422,8 @@ def _fmt_mem_tex(peak_rss_bytes, gpu_peak_bytes=None):
             return f"{n / 1024:.0f} KB"
         return f"{n} B"
 
+    if gpu_peak_delta_bytes is not None and gpu_peak_delta_bytes > 0:
+        return _h(gpu_peak_delta_bytes)
     if gpu_peak_bytes is not None and gpu_peak_bytes > 0:
         return _h(gpu_peak_bytes)
     return _h(peak_rss_bytes)
@@ -1463,6 +1529,7 @@ def generate_tables(results_dir="results", tables_dir="tables"):
                    r.get("S", 0), r.get("L", 0), r.get("Li", 0), r.get("Lo", 0))
             time_lookup[key] = (r["mean_seconds"], r["std_seconds"])
             mem_lookup[key] = (r.get("peak_rss_bytes", 0),
+                               r.get("gpu_peak_delta_bytes"),
                                r.get("gpu_peak_bytes"))
 
         safe_hw = hw.replace("/", "-").replace(" ", "_")[:40]
