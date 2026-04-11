@@ -5,6 +5,12 @@ Inner jax.vmap over all cells on each diagonal (they are independent:
 match predecessors are on d-2, insert/delete predecessors on d-1).
 JIT-compilable: no Python for-loops in the DP computation.
 
+Carry is just two diagonal slices (d-1 and d-2), each of shape (D_max, S)
+with D_max = min(Li, Lo) + 1. This keeps the scan carry O(min(Li,Lo)*S)
+instead of O(Li*Lo*S), avoiding GPU OOM on large pairs. Diagonals produced
+by the scan are scattered into the full grid after the scan completes
+(backward only — forward returns a scalar).
+
 Complexity: O(Li + Lo) sequential steps, O(min(Li,Lo) * S^2) parallel work per step.
 """
 
@@ -77,6 +83,9 @@ def forward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
                        semiring: LogSemiring) -> float:
     """2D Forward/Viterbi using anti-diagonal wavefront with scan + vmap.
 
+    Carry is only two diagonal slices (d-1 and d-2), each (D_max, S) where
+    D_max = min(Li, Lo) + 1, rather than the full (Li+1, Lo+1, S) grid.
+
     Args:
         machine: JAXMachine with dense log_trans
         input_seq: TokenSeq, PSWMSeq, or jnp.ndarray
@@ -100,13 +109,12 @@ def forward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
 
     silent = log_trans[0, 0]
 
-    # Initialize dp grid
-    dp = jnp.full((Li + 1, Lo + 1, S), NEG_INF)
-    dp = dp.at[0, 0, 0].set(0.0)
-    dp = dp.at[0, 0].set(propagate_silent(dp[0, 0], silent, semiring))
+    # Initial cell at (0, 0): start state = 0, silent-propagated.
+    cell_00 = jnp.full(S, NEG_INF).at[0].set(0.0)
+    cell_00 = propagate_silent(cell_00, silent, semiring)
 
     if Li + Lo == 0:
-        return dp[0, 0, S - 1]
+        return cell_00[S - 1]
 
     # Precompute transition matrices
     all_ins = (_precompute_emit_trans(in_emit, log_trans[:, 0, :, :], semiring)
@@ -116,59 +124,72 @@ def forward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
     all_match = (_precompute_all_match(in_emit, out_emit, log_trans, semiring)
                  if Li > 0 and Lo > 0 else jnp.full((1, 1, S, S), NEG_INF))
 
-    D_max = min(Li + 1, Lo + 1)
+    D_max = min(Li, Lo) + 1
     max_i_idx = max(Li - 1, 0)
     max_o_idx = max(Lo - 1, 0)
 
-    def scan_fn(dp, d):
-        i_min = jnp.maximum(0, d - Lo)
-        js = jnp.arange(D_max)
-        i_vals = i_min + js
+    def _i_min(d):
+        return jnp.maximum(0, d - Lo)
+
+    # Diagonal d=0: single cell (0,0) at local index 0.
+    diag0 = jnp.full((D_max, S), NEG_INF).at[0].set(cell_00)
+    empty_diag = jnp.full((D_max, S), NEG_INF)
+
+    def compute_cell(prev_diag, prev_prev_diag, d, k):
+        """Compute cell k on diagonal d from prev (d-1) and prev_prev (d-2)."""
+        i = _i_min(d) + k
+        o = d - i
+
+        cell = jnp.full(S, NEG_INF)
+
+        # Match predecessor (i-1, o-1) on d-2.
+        m_k = jnp.clip((i - 1) - _i_min(d - 2), 0, D_max - 1)
+        mt = all_match[jnp.clip(i - 1, 0, max_i_idx),
+                       jnp.clip(o - 1, 0, max_o_idx)]
+        mc = emit_step_forward(jnp.full(S, NEG_INF),
+                               prev_prev_diag[m_k], mt, semiring)
+        cell = jnp.where((i > 0) & (o > 0), semiring.plus(cell, mc), cell)
+
+        # Insert predecessor (i-1, o) on d-1.
+        ins_k = jnp.clip((i - 1) - _i_min(d - 1), 0, D_max - 1)
+        it = all_ins[jnp.clip(i - 1, 0, max_i_idx)]
+        ic = emit_step_forward(jnp.full(S, NEG_INF),
+                               prev_diag[ins_k], it, semiring)
+        cell = jnp.where(i > 0, semiring.plus(cell, ic), cell)
+
+        # Delete predecessor (i, o-1) on d-1.
+        del_k = jnp.clip(i - _i_min(d - 1), 0, D_max - 1)
+        dt = all_del[jnp.clip(o - 1, 0, max_o_idx)]
+        dc = emit_step_forward(jnp.full(S, NEG_INF),
+                               prev_diag[del_k], dt, semiring)
+        cell = jnp.where(o > 0, semiring.plus(cell, dc), cell)
+
+        cell = propagate_silent(cell, silent, semiring)
+        return cell
+
+    def scan_fn(carry, d):
+        prev_diag, prev_prev_diag = carry  # (D_max, S) each
+        ks = jnp.arange(D_max)
+        i_vals = _i_min(d) + ks
         o_vals = d - i_vals
 
-        # Validity: within grid and not the initial cell (0,0)
+        # Validity: within grid and not the initial cell (0,0).
         valid = (i_vals <= Li) & (o_vals >= 0) & (o_vals <= Lo)
         valid = valid & ~((i_vals == 0) & (o_vals == 0))
 
-        def compute_cell(i, o):
-            ip = jnp.clip(i - 1, 0, Li)
-            op = jnp.clip(o - 1, 0, Lo)
+        cells = jax.vmap(
+            lambda k: compute_cell(prev_diag, prev_prev_diag, d, k)
+        )(ks)  # (D_max, S)
+        cells = jnp.where(valid[:, None], cells, NEG_INF)
+        return (cells, prev_diag), None
 
-            cell = jnp.full(S, NEG_INF)
+    (final_diag, _), _ = jax.lax.scan(
+        scan_fn, (diag0, empty_diag),
+        jnp.arange(1, Li + Lo + 1))
 
-            # Match from (i-1, o-1)
-            mt = all_match[jnp.clip(i - 1, 0, max_i_idx),
-                           jnp.clip(o - 1, 0, max_o_idx)]
-            mc = emit_step_forward(jnp.full(S, NEG_INF), dp[ip, op], mt, semiring)
-            cell = jnp.where((i > 0) & (o > 0), semiring.plus(cell, mc), cell)
-
-            # Insert from (i-1, o)
-            it = all_ins[jnp.clip(i - 1, 0, max_i_idx)]
-            ic = emit_step_forward(jnp.full(S, NEG_INF),
-                                   dp[ip, jnp.clip(o, 0, Lo)], it, semiring)
-            cell = jnp.where(i > 0, semiring.plus(cell, ic), cell)
-
-            # Delete from (i, o-1)
-            dt = all_del[jnp.clip(o - 1, 0, max_o_idx)]
-            dc = emit_step_forward(jnp.full(S, NEG_INF),
-                                   dp[jnp.clip(i, 0, Li), op], dt, semiring)
-            cell = jnp.where(o > 0, semiring.plus(cell, dc), cell)
-
-            cell = propagate_silent(cell, silent, semiring)
-            return cell
-
-        cells = jax.vmap(compute_cell)(i_vals, o_vals)  # (D_max, S)
-
-        # Write back: padded cells write to (0,0) to avoid collisions
-        i_write = jnp.where(valid, i_vals, 0)
-        o_write = jnp.where(valid, o_vals, 0)
-        vals = jnp.where(valid[:, None], cells, dp[i_write, o_write])
-        dp = dp.at[i_write, o_write].set(vals)
-
-        return dp, None
-
-    dp, _ = jax.lax.scan(scan_fn, dp, jnp.arange(1, Li + Lo + 1))
-    return dp[Li, Lo, S - 1]
+    # (Li, Lo) is the only valid cell on diagonal d = Li+Lo: i_min = Li,
+    # so it sits at local index 0.
+    return final_diag[0, S - 1]
 
 
 # ============================================================
@@ -178,6 +199,10 @@ def forward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
 def backward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
                         semiring: LogSemiring) -> jnp.ndarray:
     """2D Backward using anti-diagonal wavefront with scan + vmap.
+
+    Carry is only two diagonal slices (d+1 and d+2), each (D_max, S).
+    Scanned diagonals are scattered into the full (Li+1, Lo+1, S) grid
+    via linearized indices with a dummy overflow slot.
 
     Args:
         machine: JAXMachine with dense log_trans
@@ -202,12 +227,13 @@ def backward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
 
     silent = log_trans[0, 0]
 
-    # Initialize bp grid
-    bp = jnp.full((Li + 1, Lo + 1, S), NEG_INF)
-    bp = bp.at[Li, Lo, S - 1].set(0.0)
-    bp = bp.at[Li, Lo].set(propagate_silent_backward(bp[Li, Lo], silent, semiring))
+    # Terminal cell at (Li, Lo): final state = S-1, silent-propagated backward.
+    cell_LiLo = jnp.full(S, NEG_INF).at[S - 1].set(0.0)
+    cell_LiLo = propagate_silent_backward(cell_LiLo, silent, semiring)
 
     if Li + Lo == 0:
+        bp = jnp.full((Li + 1, Lo + 1, S), NEG_INF)
+        bp = bp.at[0, 0].set(cell_LiLo)
         return bp
 
     # Precompute transition matrices (same as forward)
@@ -218,59 +244,89 @@ def backward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
     all_match = (_precompute_all_match(in_emit, out_emit, log_trans, semiring)
                  if Li > 0 and Lo > 0 else jnp.full((1, 1, S, S), NEG_INF))
 
-    D_max = min(Li + 1, Lo + 1)
+    D_max = min(Li, Lo) + 1
+    n_diags = Li + Lo  # we scan d = Li+Lo-1 down to 0
     max_i_idx = max(Li - 1, 0)
     max_o_idx = max(Lo - 1, 0)
 
-    def scan_fn(bp, d):
-        i_min = jnp.maximum(0, d - Lo)
-        js = jnp.arange(D_max)
-        i_vals = i_min + js
+    def _i_min(d):
+        return jnp.maximum(0, d - Lo)
+
+    # Terminal diagonal d = Li+Lo: single cell (Li,Lo) at local index 0
+    # (since i_min = max(0, Li+Lo - Lo) = Li).
+    diag_term = jnp.full((D_max, S), NEG_INF).at[0].set(cell_LiLo)
+    empty_diag = jnp.full((D_max, S), NEG_INF)
+
+    def compute_cell(next_diag, next_next_diag, d, k):
+        """Compute backward cell k on diagonal d from next (d+1) and next_next (d+2)."""
+        i = _i_min(d) + k
+        o = d - i
+
+        cell = jnp.full(S, NEG_INF)
+
+        # Match successor (i+1, o+1) on d+2.
+        m_k = jnp.clip((i + 1) - _i_min(d + 2), 0, D_max - 1)
+        mt = all_match[jnp.clip(i, 0, max_i_idx),
+                       jnp.clip(o, 0, max_o_idx)]
+        mc = emit_step_backward(jnp.full(S, NEG_INF),
+                                next_next_diag[m_k], mt, semiring)
+        cell = jnp.where((i < Li) & (o < Lo),
+                         semiring.plus(cell, mc), cell)
+
+        # Insert successor (i+1, o) on d+1.
+        ins_k = jnp.clip((i + 1) - _i_min(d + 1), 0, D_max - 1)
+        it = all_ins[jnp.clip(i, 0, max_i_idx)]
+        ic = emit_step_backward(jnp.full(S, NEG_INF),
+                                next_diag[ins_k], it, semiring)
+        cell = jnp.where(i < Li, semiring.plus(cell, ic), cell)
+
+        # Delete successor (i, o+1) on d+1.
+        del_k = jnp.clip(i - _i_min(d + 1), 0, D_max - 1)
+        dt = all_del[jnp.clip(o, 0, max_o_idx)]
+        dc = emit_step_backward(jnp.full(S, NEG_INF),
+                                next_diag[del_k], dt, semiring)
+        cell = jnp.where(o < Lo, semiring.plus(cell, dc), cell)
+
+        cell = propagate_silent_backward(cell, silent, semiring)
+        return cell
+
+    def scan_fn(carry, d):
+        next_diag, next_next_diag = carry  # (D_max, S) each
+        ks = jnp.arange(D_max)
+        i_vals = _i_min(d) + ks
         o_vals = d - i_vals
-
-        # Validity: within grid and not the terminal cell (Li, Lo)
         valid = (i_vals <= Li) & (o_vals >= 0) & (o_vals <= Lo)
-        valid = valid & ~((i_vals == Li) & (o_vals == Lo))
+        cells = jax.vmap(
+            lambda k: compute_cell(next_diag, next_next_diag, d, k)
+        )(ks)  # (D_max, S)
+        cells = jnp.where(valid[:, None], cells, NEG_INF)
+        return (cells, next_diag), cells
 
-        def compute_cell(i, o):
-            i_next = jnp.clip(i + 1, 0, Li)
-            o_next = jnp.clip(o + 1, 0, Lo)
+    # Scan d from Li+Lo-1 down to 0. Scan output is aligned with scan input,
+    # so all_diags[0] corresponds to d = Li+Lo-1, all_diags[-1] to d = 0.
+    (_, _), all_diags = jax.lax.scan(
+        scan_fn, (diag_term, empty_diag),
+        jnp.arange(n_diags)[::-1])
 
-            cell = jnp.full(S, NEG_INF)
+    # Scatter scanned diagonals into the full (Li+1, Lo+1, S) grid via
+    # linearized indices with a dummy overflow slot. Each valid (i,j)
+    # appears on exactly one diagonal at one local index, so valid flat
+    # indices are unique; invalid slots all write to the dummy slot.
+    n_flat = (Li + 1) * (Lo + 1)
+    d_vals = jnp.arange(n_diags)[::-1]             # aligned with all_diags axis 0
+    k_vals = jnp.arange(D_max)
+    dd, kk = jnp.meshgrid(d_vals, k_vals, indexing='ij')  # (n_diags, D_max)
+    ii = jnp.maximum(0, dd - Lo) + kk
+    jj = dd - ii
+    valid_grid = (ii <= Li) & (jj >= 0) & (jj <= Lo)
+    lin = ii * (Lo + 1) + jj
+    lin_safe = jnp.where(valid_grid, lin, n_flat).ravel()
+    vals_flat = all_diags.reshape(-1, S)
 
-            # Match to (i+1, o+1)
-            mt = all_match[jnp.clip(i, 0, max_i_idx),
-                           jnp.clip(o, 0, max_o_idx)]
-            mc = emit_step_backward(jnp.full(S, NEG_INF),
-                                    bp[i_next, o_next], mt, semiring)
-            cell = jnp.where((i < Li) & (o < Lo),
-                             semiring.plus(cell, mc), cell)
+    bp_flat = jnp.full((n_flat + 1, S), NEG_INF)
+    bp_flat = bp_flat.at[lin_safe].set(vals_flat)
+    bp = bp_flat[:n_flat].reshape(Li + 1, Lo + 1, S)
 
-            # Insert to (i+1, o)
-            it = all_ins[jnp.clip(i, 0, max_i_idx)]
-            ic = emit_step_backward(jnp.full(S, NEG_INF),
-                                    bp[i_next, jnp.clip(o, 0, Lo)], it, semiring)
-            cell = jnp.where(i < Li, semiring.plus(cell, ic), cell)
-
-            # Delete to (i, o+1)
-            dt = all_del[jnp.clip(o, 0, max_o_idx)]
-            dc = emit_step_backward(jnp.full(S, NEG_INF),
-                                    bp[jnp.clip(i, 0, Li), o_next], dt, semiring)
-            cell = jnp.where(o < Lo, semiring.plus(cell, dc), cell)
-
-            cell = propagate_silent_backward(cell, silent, semiring)
-            return cell
-
-        cells = jax.vmap(compute_cell)(i_vals, o_vals)  # (D_max, S)
-
-        # Write back: padded cells write to (Li, Lo) to avoid collisions
-        i_write = jnp.where(valid, i_vals, Li)
-        o_write = jnp.where(valid, o_vals, Lo)
-        vals = jnp.where(valid[:, None], cells, bp[i_write, o_write])
-        bp = bp.at[i_write, o_write].set(vals)
-
-        return bp, None
-
-    # Scan over diagonals in reverse: d from Li+Lo-1 down to 0
-    bp, _ = jax.lax.scan(scan_fn, bp, jnp.arange(Li + Lo)[::-1])
+    # Place terminal cell explicitly (it was the scan initial, not a scan output).
+    bp = bp.at[Li, Lo].set(cell_LiLo)
     return bp
