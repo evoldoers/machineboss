@@ -309,24 +309,36 @@ def backward_2d_optimal(machine: JAXMachine, input_seq, output_seq,
         jnp.arange(n_diags)[::-1])
 
     # Scatter scanned diagonals into the full (Li+1, Lo+1, S) grid via
-    # linearized indices with a dummy overflow slot. Each valid (i,j)
-    # appears on exactly one diagonal at one local index, so valid flat
-    # indices are unique; invalid slots all write to the dummy slot.
-    n_flat = (Li + 1) * (Lo + 1)
-    d_vals = jnp.arange(n_diags)[::-1]             # aligned with all_diags axis 0
-    k_vals = jnp.arange(D_max)
-    dd, kk = jnp.meshgrid(d_vals, k_vals, indexing='ij')  # (n_diags, D_max)
-    ii = jnp.maximum(0, dd - Lo) + kk
-    jj = dd - ii
-    valid_grid = (ii <= Li) & (jj >= 0) & (jj <= Lo)
-    lin = ii * (Lo + 1) + jj
-    lin_safe = jnp.where(valid_grid, lin, n_flat).ravel()
-    vals_flat = all_diags.reshape(-1, S)
+    # fori_loop, one diagonal at a time.  Using jax.lax.fori_loop instead
+    # of a bulk meshgrid scatter avoids XLA compiling a single giant
+    # scatter op with (n_diags * D_max) indices — for large state counts
+    # that causes hundreds of GB of compilation memory.  The fori_loop
+    # body is a small per-diagonal scatter that XLA compiles once and loops.
+    # Invalid entries write to a dummy overflow slot at index n_flat.
+    bp = jnp.full((Li + 1, Lo + 1, S), NEG_INF)
+    bp = bp.at[Li, Lo].set(cell_LiLo)
 
-    bp_flat = jnp.full((n_flat + 1, S), NEG_INF)
-    bp_flat = bp_flat.at[lin_safe].set(vals_flat)
+    # all_diags[idx] corresponds to diagonal d = (Li+Lo-1) - idx
+    n_flat = (Li + 1) * (Lo + 1)
+    bp_flat = jnp.concatenate([bp.reshape(n_flat, S),
+                                jnp.full((1, S), NEG_INF)], axis=0)
+
+    def _scatter_one_diag(idx, bp_flat):
+        d = (Li + Lo - 1) - idx
+        diag_data = all_diags[idx]
+        i_min_d = jnp.maximum(0, d - Lo)
+        ks = jnp.arange(D_max)
+        i_vals = i_min_d + ks
+        j_vals = d - i_vals
+        valid = (i_vals <= Li) & (j_vals >= 0) & (j_vals <= Lo)
+        lin = i_vals * (Lo + 1) + j_vals
+        lin_safe = jnp.where(valid, lin, n_flat)
+        return bp_flat.at[lin_safe].set(diag_data)
+
+    bp_flat = jax.lax.fori_loop(0, n_diags, _scatter_one_diag, bp_flat)
     bp = bp_flat[:n_flat].reshape(Li + 1, Lo + 1, S)
 
-    # Place terminal cell explicitly (it was the scan initial, not a scan output).
+    # Restore terminal cell (may have been overwritten by scatter of
+    # diagonal Li+Lo-1 if terminal sits on the boundary of that diag).
     bp = bp.at[Li, Lo].set(cell_LiLo)
     return bp
