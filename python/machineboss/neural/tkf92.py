@@ -16,7 +16,7 @@ Free parameters:
 Derived: alpha = pNoDeletion, beta = pDescendants, gamma = pOrphans,
 kappa = insRate/delRate (singlet equilibrium continuation), p_singlet =
 r + (1-r) * kappa (TKF92 singlet continuation). The WFST conditional
-P(descendant | ancestor, theta) is recovered by composing tkf91root
+P(descendant | ancestor, theta) is recovered by composing tkf91-root-dna-jc
 (geometric singlet with parameter kappa) with this branch transducer.
 """
 
