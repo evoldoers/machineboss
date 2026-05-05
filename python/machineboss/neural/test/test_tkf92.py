@@ -18,12 +18,12 @@ class TestTKF92Machine:
 
     def test_state_count(self):
         m = make_tkf92_machine()
-        assert m.n_states == 7
+        assert m.n_states == 5
 
     def test_state_names(self):
         m = make_tkf92_machine()
         names = [s.name for s in m.state]
-        assert names == ["begin", "orphan", "wait", "match", "insert", "delete", "end"]
+        assert names == ["begin", "match", "insert", "delete", "end"]
 
     def test_alphabets(self):
         m = make_tkf92_machine()
@@ -40,9 +40,10 @@ class TestTKF92Machine:
 
     def test_n_transitions(self):
         m = make_tkf92_machine()
-        # match: 20×20×2 = 800, insert: 20×2 = 40, delete: 20×2 = 40,
-        # begin: 2, orphan: 2, wait: 3, end: 0
-        assert m.n_transitions == 800 + 40 + 40 + 2 + 2 + 3
+        # 5-state canonical WFST: 4 source states (begin, match, insert, delete)
+        # each with 4 outgoing column types: 20*20 mat + 20 ins + 20 del + 1 fin = 441.
+        # End state has no outgoing transitions.
+        assert m.n_transitions == 4 * (20 * 20 + 20 + 20 + 1)
 
 
 class TestTKF92Forward:

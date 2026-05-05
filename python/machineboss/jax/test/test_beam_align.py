@@ -79,7 +79,7 @@ class TestBeamAlignUnitindel:
 
 
 class TestBeamAlignTKF92:
-    """Test beam-align on TKF92 (cyclic machine)."""
+    """Test beam-align on TKF92."""
 
     @pytest.fixture
     def tkf92_machine(self, repo_root):

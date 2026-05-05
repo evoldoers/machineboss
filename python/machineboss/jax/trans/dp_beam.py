@@ -16,7 +16,7 @@ def beam_align(tm: TransMachine,
                beam_width: int = 100):
     """Wavefront beam-Viterbi alignment.
 
-    Works on cyclic machines (e.g. TKF92, Plan7) where standard Viterbi
+    Works on cyclic machines (e.g. Plan7) where standard Viterbi
     requires topological sort.
 
     Args:

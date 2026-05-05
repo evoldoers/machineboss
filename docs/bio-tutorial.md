@@ -302,20 +302,21 @@ A complete training script is provided in `examples/train_neural_dna_copy.py`.
 ### Example 2: Neural TKF92 Protein Transducer
 
 This example trains an MSA transformer to predict per-position parameters
-for a 7-state TKF92 protein evolution transducer.
+for the 5-state canonical TKF92 protein evolution transducer.
 
-**Machine.** Seven states (begin, orphan, wait, match, insert, delete, end) with F81 amino acid
-substitution and TKF92 fragment extension.
-The TKF92 model extends TKF91 with a fragment extension probability `r`:
-match, insert, and delete states have self-loops with probability `r`,
-allowing runs of operations within a single fragment.
-Free parameters: `t`, `insRate`, `delRate`, `r`, and 20 equilibrium frequencies `pi_0`..`pi_19`
-(24 total per position).
+**Machine.** Five states (begin, match, insert, delete, end) with F81 amino
+acid substitution. The transducer is the conditional WFST `P(descendant |
+ancestor, theta)` derived in `tkf-mixdom/tkf/tkf92-wfst-derivation.tex` by
+dividing the TKF92 Pair HMM by the TKF92 singlet. From every non-end source
+state, transitions go to all four column types (mat, ins, del, fin) with
+weights `t_{a,b}` from the derivation. Free parameters: `t`, `insRate`,
+`delRate`, `r`, and 20 equilibrium frequencies `pi_0`..`pi_19` (24 total
+per position).
 
 ```python
 from machineboss.neural.tkf92 import make_tkf92_machine
 
-machine = make_tkf92_machine()           # 7-state WFST, 20-AA alphabet
+machine = make_tkf92_machine()           # 5-state WFST, 20-AA alphabet
 pm = ParameterizedMachine.from_machine(machine)
 print(len(pm.free_params))              # 24
 ```

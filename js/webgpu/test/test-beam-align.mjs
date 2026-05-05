@@ -79,7 +79,7 @@ console.log('Testing beam-align on bitnoise...');
 }
 
 // ============================================================
-// Test: TKF92 (cyclic machine)
+// Test: TKF92
 // ============================================================
 console.log('Testing beam-align on TKF92...');
 

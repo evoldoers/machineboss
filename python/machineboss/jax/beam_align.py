@@ -28,7 +28,7 @@ def beam_align(machine: JAXMachine,
                beam_width: int = 100) -> BeamAlignResult:
     """Wavefront beam-Viterbi alignment.
 
-    Works on cyclic machines (e.g. TKF92, Plan7) where standard Viterbi
+    Works on cyclic machines (e.g. Plan7) where standard Viterbi
     requires topological sort.
 
     Args:

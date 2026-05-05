@@ -1,14 +1,23 @@
-"""Neural TKF92 protein transducer: MSA transformer → per-position WFST parameters.
+"""Neural TKF92 protein transducer: MSA transformer -> per-position WFST parameters.
 
-A 7-state TKF92 machine (begin, orphan, wait, match, insert, delete, end)
-with F81 amino acid substitution and fragment extension parameter r.
-An MSA transformer produces per-position parameters via parameter heads.
+The TKF92 conditional WFST is the 5-state machine derived in
+tkf-mixdom/tkf/tkf92-wfst-derivation.tex by dividing the TKF92 Pair HMM
+by the TKF92 singlet HMM. States: begin (= sta), match, insert, delete,
+end (= fin). Each non-end state has direct transitions to mat/ins/del/fin
+columns with WFST entries t_{a,b}, eliminating the silent intermediates
+(wait, orphan) of the older Machine Boss form.
 
-The TKF92 model extends TKF91 with a fragment extension probability r:
-each match/insert/delete state has a self-loop with probability r,
-allowing runs of consecutive matches, inserts, or deletes within a
-single "fragment". On termination (probability 1-r), standard TKF91
-transitions apply.
+Free parameters:
+    t                   evolutionary time
+    insRate, delRate    BDI rates (require delRate > insRate)
+    r                   fragment extension probability (= ext)
+    pi_0..pi_19         amino acid equilibrium frequencies (F81 substitution)
+
+Derived: alpha = pNoDeletion, beta = pDescendants, gamma = pOrphans,
+kappa = insRate/delRate (singlet equilibrium continuation), p_singlet =
+r + (1-r) * kappa (TKF92 singlet continuation). The WFST conditional
+P(descendant | ancestor, theta) is recovered by composing tkf91root
+(geometric singlet with parameter kappa) with this branch transducer.
 """
 
 from __future__ import annotations
@@ -24,134 +33,121 @@ N_AA = 20
 
 
 def make_tkf92_machine() -> Machine:
-    """Build a 7-state TKF92 protein transducer with F81 substitution.
+    """Build the canonical 5-state TKF92 protein WFST with F81 substitution.
 
-    States: begin(0), orphan(1), wait(2), match(3), insert(4), delete(5), end(6)
+    States (index, id):
+        0 begin   = sta  (before any column)
+        1 match   = mat  (just emitted an ancestor->descendant match column)
+        2 insert  = ins  (just emitted a descendant-only insertion column)
+        3 delete  = del  (just consumed an ancestor-only deletion column)
+        4 end     = fin
 
-    Free parameters:
-        t         - evolutionary time
-        insRate   - insertion rate (lambda)
-        delRate   - deletion rate (mu), must be > insRate
-        r         - fragment extension probability (0 < r < 1)
-        pi_0..pi_19 - amino acid equilibrium frequencies
-
-    Defs (same as tkf91branch.json + F81 + fragment extension):
-        pNoDeletion, pDeletion, pNoInsertion, pInsertion,
-        delInsRatio, pDescendants, pNoDescendants, pOrphans, pNoOrphans
-        pNoSub, pSub
-
-    Substitution weights use F81 model:
-        P(j|i, t) = pNoSub * delta(i,j) + pSub * pi_j
+    For each non-end source a in {begin, match, insert, delete}, transitions
+    are: a -> match (consume X, emit Y), a -> insert (emit Y), a -> delete
+    (consume X), a -> end. Per-transition weight is t_{a,b} times the column
+    emission weight.
     """
     pi_names = [f"pi_{i}" for i in range(N_AA)]
 
+    # Standard TKF91 quantities + TKF92 singlet additions.
     defs = {
-        "pNoDeletion": {"exp": {"*": [-1, {"*": ["delRate", "t"]}]}},
-        "pDeletion": {"not": "pNoDeletion"},
-        "pNoInsertion": {"exp": {"*": [-1, {"*": ["insRate", "t"]}]}},
-        "pInsertion": {"not": "pNoInsertion"},
-        "delInsRatio": {"/": ["pNoDeletion", "pNoInsertion"]},
-        "pDescendants": {"/": [
+        "pNoDeletion":   {"exp": {"*": [-1, {"*": ["delRate", "t"]}]}},
+        "pDeletion":     {"not": "pNoDeletion"},
+        "pNoInsertion":  {"exp": {"*": [-1, {"*": ["insRate", "t"]}]}},
+        "pInsertion":    {"not": "pNoInsertion"},
+        "delInsRatio":   {"/": ["pNoDeletion", "pNoInsertion"]},
+        "pDescendants":  {"/": [
             {"*": ["insRate", {"not": "delInsRatio"}]},
-            {"-": ["delRate", {"*": ["insRate", "delInsRatio"]}]}
+            {"-": ["delRate", {"*": ["insRate", "delInsRatio"]}]},
         ]},
         "pNoDescendants": {"not": "pDescendants"},
-        "pOrphans": {"not": {"*": [
+        "pOrphans":       {"not": {"*": [
             {"/": ["delRate", "insRate"]},
-            {"/": ["pDescendants", "pDeletion"]}
+            {"/": ["pDescendants", "pDeletion"]},
         ]}},
-        "pNoOrphans": {"not": "pOrphans"},
-        "pNoSub": {"exp": {"*": [-1, "t"]}},
-        "pSub": {"not": "pNoSub"},
+        "pNoOrphans":     {"not": "pOrphans"},
+        "pNoSub":         {"exp": {"*": [-1, "t"]}},
+        "pSub":           {"not": "pNoSub"},
+
+        # TKF92 singlet continuation
+        "kappa":     {"/": ["insRate", "delRate"]},
+        "pSinglet":  {"+": ["r", {"*": [{"not": "r"}, "kappa"]}]},
+
+        # WFST transition entries t_{a,b} from the derivation.
+        # sta row (no fragment-extension factor since fragment cannot extend before any column).
+        "tStaMat": {"*": ["pNoDescendants", "pNoDeletion"]},          # (1-beta)*alpha
+        "tStaIns": "pDescendants",                                     # beta
+        "tStaDel": {"*": ["pNoDescendants", "pDeletion"]},             # (1-beta)*(1-alpha)
+        "tStaFin": "pNoDescendants",                                   # 1-beta
+
+        # mat row
+        "tMatMat": {"/": [
+            {"+": ["r", {"*": [{"not": "r"}, {"*": ["pNoDescendants", {"*": ["kappa", "pNoDeletion"]}]}]}]},
+            "pSinglet",
+        ]},
+        "tMatIns": {"*": [{"not": "r"}, "pDescendants"]},               # (1-r)*beta
+        "tMatDel": {"/": [
+            {"*": [{"not": "r"}, {"*": ["pNoDescendants", {"*": ["kappa", "pDeletion"]}]}]},
+            "pSinglet",
+        ]},
+        "tMatFin": "pNoDescendants",                                    # 1-beta
+
+        # ins row
+        "tInsMat": {"/": [
+            {"*": [{"not": "r"}, {"*": ["pNoDescendants", {"*": ["kappa", "pNoDeletion"]}]}]},
+            "pSinglet",
+        ]},
+        "tInsIns": {"+": ["r", {"*": [{"not": "r"}, "pDescendants"]}]}, # r + (1-r)*beta
+        "tInsDel": "tMatDel",                                            # same as tMatDel
+        "tInsFin": "pNoDescendants",
+
+        # del row (uses gamma = pOrphans instead of beta)
+        "tDelMat": {"/": [
+            {"*": [{"not": "r"}, {"*": ["pNoOrphans", {"*": ["kappa", "pNoDeletion"]}]}]},
+            "pSinglet",
+        ]},
+        "tDelIns": {"*": [{"not": "r"}, "pOrphans"]},                   # (1-r)*gamma
+        "tDelDel": {"/": [
+            {"+": ["r", {"*": [{"not": "r"}, {"*": ["pNoOrphans", {"*": ["kappa", "pDeletion"]}]}]}]},
+            "pSinglet",
+        ]},
+        "tDelFin": "pNoOrphans",                                        # 1-gamma
     }
 
-    # Helper: TKF91 transition weight × (1 - r) for non-self-loop transitions
-    def scaled(w):
-        """Weight w multiplied by (1 - r)."""
-        return {"*": [{"not": "r"}, w]}
+    # F81 emission weight for a match transition X -> Y.
+    def emit_match(X, Y_idx):
+        pj = pi_names[Y_idx]
+        if X == AA_ALPHA[Y_idx]:
+            return {"+": ["pNoSub", {"*": ["pSub", pj]}]}
+        return {"*": ["pSub", pj]}
 
-    # Helper: F81 substitution weight for amino acid pair (i -> j)
-    def f81_weight(j_idx):
-        """F81: pNoSub * delta(i,j) + pSub * pi_j  →  pSame_j or pDiff_j."""
-        pj = pi_names[j_idx]
-        return {"+": ["pNoSub", {"*": ["pSub", pj]}]}
+    # Build outgoing transitions for a source state with row weights
+    # (tMat, tIns, tDel, tFin).
+    def row_trans(t_mat, t_ins, t_del, t_fin):
+        trans = []
+        # source -> match (X | Y)
+        for X in AA_ALPHA:
+            for Y_idx, Y in enumerate(AA_ALPHA):
+                w = {"*": [t_mat, emit_match(X, Y_idx)]}
+                trans.append(MachineTransition(dest=1, input=X, output=Y, weight=w))
+        # source -> insert (eps | Y)
+        for Y_idx, Y in enumerate(AA_ALPHA):
+            w = {"*": [t_ins, pi_names[Y_idx]]}
+            trans.append(MachineTransition(dest=2, output=Y, weight=w))
+        # source -> delete (X | eps)
+        for X in AA_ALPHA:
+            trans.append(MachineTransition(dest=3, input=X, weight=t_del))
+        # source -> end (eps | eps)
+        trans.append(MachineTransition(dest=4, weight=t_fin))
+        return trans
 
-    def f81_diff(j_idx):
-        """F81 for i != j: pSub * pi_j."""
-        return {"*": ["pSub", pi_names[j_idx]]}
+    begin  = MachineState(name="begin",  trans=row_trans("tStaMat", "tStaIns", "tStaDel", "tStaFin"))
+    match  = MachineState(name="match",  trans=row_trans("tMatMat", "tMatIns", "tMatDel", "tMatFin"))
+    insert = MachineState(name="insert", trans=row_trans("tInsMat", "tInsIns", "tInsDel", "tInsFin"))
+    delete = MachineState(name="delete", trans=row_trans("tDelMat", "tDelIns", "tDelDel", "tDelFin"))
+    end    = MachineState(name="end",    trans=[])
 
-    # State 0: begin
-    begin = MachineState(name="begin", trans=[
-        MachineTransition(dest=4, weight="pDescendants"),     # -> insert
-        MachineTransition(dest=2, weight="pNoDescendants"),   # -> wait
-    ])
-
-    # State 1: orphan
-    orphan = MachineState(name="orphan", trans=[
-        MachineTransition(dest=4, weight="pOrphans"),         # -> insert
-        MachineTransition(dest=2, weight="pNoOrphans"),       # -> wait
-    ])
-
-    # State 2: wait
-    wait = MachineState(name="wait", trans=[
-        MachineTransition(dest=3, weight={"not": "pDel"}),    # -> match
-        MachineTransition(dest=5, weight="pDel"),              # -> delete
-        MachineTransition(dest=6),                             # -> end (weight 1)
-    ])
-
-    # Note: wait uses pDel as a convenience alias
-    defs["pDel"] = "pDeletion"
-
-    # State 3: match
-    # Self-loop (fragment extension): match -> match with weight r × F81
-    # Exit transitions: match -> begin with weight (1-r) × TKF91 weight × F81
-    match_trans = []
-    for i_idx, inp in enumerate(AA_ALPHA):
-        for j_idx, out in enumerate(AA_ALPHA):
-            if inp == out:
-                w_sub = f81_weight(j_idx)
-            else:
-                w_sub = f81_diff(j_idx)
-            # Self-loop: fragment extension
-            match_trans.append(MachineTransition(
-                dest=3, weight={"*": ["r", w_sub]},
-                input=inp, output=out))
-            # Exit to begin: (1-r) × substitution weight
-            match_trans.append(MachineTransition(
-                dest=0, weight=scaled(w_sub),
-                input=inp, output=out))
-    match = MachineState(name="match", trans=match_trans)
-
-    # State 4: insert (emit output, equilibrium frequencies)
-    insert_trans = []
-    for j_idx, out in enumerate(AA_ALPHA):
-        pj = pi_names[j_idx]
-        # Self-loop
-        insert_trans.append(MachineTransition(
-            dest=4, weight={"*": ["r", pj]}, output=out))
-        # Exit to begin
-        insert_trans.append(MachineTransition(
-            dest=0, weight=scaled(pj), output=out))
-    insert = MachineState(name="insert", trans=insert_trans)
-
-    # State 5: delete (consume input)
-    delete_trans = []
-    for inp in AA_ALPHA:
-        # Self-loop
-        delete_trans.append(MachineTransition(
-            dest=5, weight="r", input=inp))
-        # Exit to orphan (TKF91: delete -> orphan)
-        delete_trans.append(MachineTransition(
-            dest=1, weight={"not": "r"}, input=inp))
-    delete = MachineState(name="delete", trans=delete_trans)
-
-    # State 6: end
-    end = MachineState(name="end", trans=[])
-
-    return Machine(
-        state=[begin, orphan, wait, match, insert, delete, end],
-        defs=defs,
-    )
+    return Machine(state=[begin, match, insert, delete, end], defs=defs)
 
 
 try:
