@@ -160,6 +160,7 @@ Selected via `--preset NAME` or `-p NAME`.
 | `--eliminate-states` | | Eliminate states with only silent in/out transitions. |
 | `--merge-states` | | Merge states with equivalent outgoing transitions (collapse bubbles). |
 | `--silence-input` | | Clear input labels (machine becomes a generator). |
+| `--phylo-tree FILE` / `--phylo-tree-string STR` | | Treat top-of-stack as a branch transducer; build the [phylogenetic intersection](phylogeny.html) over the given binary Newick tree. See also `--phylo-time-param`, `--phylo-params-out`. |
 | `--silence-output` | | Clear output labels (machine becomes a recognizer). |
 | `--copy-output-to-input` | | Copy output labels to inputs (generator → echo). |
 | `--copy-input-to-output` | | Copy input labels to outputs (recognizer → echo). |
@@ -182,7 +183,7 @@ Selected via `--preset NAME` or `-p NAME`.
 |---|---|---|---|
 | `--compose` | `=>` | Compose two machines (output of first feeds input of second). | Matrix multiplication |
 | `--concatenate` | `.` | Concatenate two machines. | String concatenation |
-| `--intersect` | `&&` | Intersect (shared input, pointwise product). | Pointwise product |
+| `--intersect` | `&&` | Intersect (shared input, pointwise product). When both arguments have non-empty output alphabets, the result emits [pair tokens](composition.html#pair-tokens) — see also `--pair-sep`, `--pair-delim`, `--pair-escape`. | Pointwise product |
 | `--union` | `\|\|` | Union (paths through one or the other). | Pointwise sum |
 | `--loop` | `?+` | Loop: `x(yx)*`. | Kleene closure with spacer |
 | `--flank` | | Flank: `y . x . y`. | |

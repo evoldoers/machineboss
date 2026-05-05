@@ -1,0 +1,8 @@
+{
+  "state": [
+    {"id":"S","trans":[
+      {"in":"0","out":"0","to":"S","weight":"t"},
+      {"in":"1","out":"1","to":"S","weight":"t"}
+    ]}
+  ]
+}

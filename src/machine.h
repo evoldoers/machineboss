@@ -105,6 +105,22 @@ struct Machine {
   static Machine singleTransition (const WeightExpr& weight);
 
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, SilentCycleStrategy cycleStrategy = SumSilentCycles);
+
+  // Pair-token encoding for intersection of two machines that both have
+  // non-empty output alphabets. A pair token has the form a + sep + b. If
+  // either side contains sep, the open delimiter, the close delimiter, or
+  // the escape character, that side is wrapped in delimiters; inside the
+  // wrapping, occurrences of the delimiters or the escape character are
+  // escaped with the escape character.
+  struct PairTokenConfig {
+    string sep    = ":";
+    string open   = "{";
+    string close  = "}";
+    string escape = "\\";
+  };
+  static PairTokenConfig pairTokenConfig;
+  static string encodePairToken (const OutputSymbol& a, const OutputSymbol& b);
+
   static Machine intersect (const Machine& first, const Machine& second, SilentCycleStrategy cycleStrategy = SumSilentCycles);
   static Machine concatenate (const Machine& left, const Machine& right, const char* leftTag = MachineCatLeftTag, const char* rightTag = MachineCatRightTag);  // guaranteed: left's states followed by right's states
 

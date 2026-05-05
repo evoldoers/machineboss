@@ -31,6 +31,7 @@
 #include "../src/ctc.h"
 #include "../src/beam.h"
 #include "../src/beam_align.h"
+#include "../src/phylo_intersect.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -128,6 +129,8 @@ int main (int argc, char** argv) {
       ("silence-output", "silence outputs, converting a machine into a recognizer")
       ("copy-output-to-input", "copy outputs to inputs, converting a generator into an echo machine")
       ("copy-input-to-output", "copy inputs to outputs, converting a recognizer into an echo machine")
+      ("phylo-tree", po::value<string>(), "phylogenetic intersection: take top-of-stack as branch transducer, build a phylo-transducer from the binary Newick tree in the given file")
+      ("phylo-tree-string", po::value<string>(), "like --phylo-tree but with the Newick string given inline")
       ;
 
     po::options_description infixOpts("Infix operators");
@@ -194,6 +197,13 @@ int main (int argc, char** argv) {
       ("viterbi-encode", "find most likely output by Viterbi traceback")
       ("random-encode", "sample random output by stochastic prefix search")
       ("seed", po::value<int>(), "random number seed")
+
+      ("pair-sep", po::value<string>(), "pair-token separator string for intersection of two non-empty-output transducers (default ':')")
+      ("pair-delim", po::value<string>(), "open+close delimiter chars (2 chars) wrapping pair-token sides that contain the separator (default '{}')")
+      ("pair-escape", po::value<string>(), "escape char used inside pair-token wrappings (default '\\\\')")
+
+      ("phylo-time-param", po::value<string>(), "name of the branch transducer's time parameter, replaced per-branch with name[node] by --phylo-tree (default 't')")
+      ("phylo-params-out", po::value<string>(), "write per-branch parameter values (parsed from Newick branch lengths) to specified JSON file")
       ;
 
     po::options_description compOpts("Parser-generator");
@@ -255,6 +265,21 @@ int main (int argc, char** argv) {
       return EXIT_SUCCESS;
     }
     logger.parseLogArgs (vm);
+
+    // pair-token encoding overrides for intersect with two non-empty output alphabets
+    if (vm.count("pair-sep"))    Machine::pairTokenConfig.sep    = vm.at("pair-sep").as<string>();
+    if (vm.count("pair-delim")) {
+      const string d = vm.at("pair-delim").as<string>();
+      if (d.size() != 2) throw runtime_error ("--pair-delim requires exactly 2 characters (open+close)");
+      Machine::pairTokenConfig.open  = d.substr(0,1);
+      Machine::pairTokenConfig.close = d.substr(1,1);
+    }
+    if (vm.count("pair-escape")) Machine::pairTokenConfig.escape = vm.at("pair-escape").as<string>();
+
+    // phylogenetic intersection: time-param name and optional branch-length output
+    const string phyloTimeParam = vm.count("phylo-time-param") ? vm.at("phylo-time-param").as<string>() : string("t");
+    const string phyloParamsOut = vm.count("phylo-params-out") ? vm.at("phylo-params-out").as<string>() : string();
+    ParamAssign phyloBranchLengths;
 
     // random seed
     auto makeRnd = [&] () -> mt19937 {
@@ -573,6 +598,17 @@ int main (int argc, char** argv) {
 	  m = popMachine().projectInputToOutput();
 	} else if (command == "--copy-output-to-input") {
 	  m = popMachine().projectOutputToInput();
+	} else if (command == "--phylo-tree") {
+	  const string nwkPath = getArg();
+	  ifstream nwkIn (nwkPath);
+	  Require (nwkIn, "Newick file not found");
+	  stringstream nwkBuf;
+	  nwkBuf << nwkIn.rdbuf();
+	  const PhyloTree tree = PhyloTree::parseNewick (nwkBuf.str());
+	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths);
+	} else if (command == "--phylo-tree-string") {
+	  const PhyloTree tree = PhyloTree::parseNewick (getArg());
+	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths);
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());
@@ -678,6 +714,13 @@ int main (int argc, char** argv) {
 	   << machine.nConditionedTransitions() << " IO-conditioned), "
 	   << machine.params().size() << " parameters"
 	   << endl;
+
+    // write phylogenetic branch-length parameters if requested
+    if (!phyloParamsOut.empty()) {
+      ofstream out (phyloParamsOut);
+      Require (out, "could not open phylo-params-out file for writing");
+      phyloBranchLengths.writeJson (out);
+    }
 
     // output transducer
     function<void(ostream&)> showMachine = [&](ostream& out) {

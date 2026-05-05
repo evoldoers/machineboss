@@ -906,11 +906,59 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
   return compMachine.ergodicMachine().advanceSort().processCycles(cycleStrategy).ergodicMachine();
 }
 
+// Encode one side of a pair token, wrapping it in delimiters if it contains
+// the separator, either delimiter, or the escape character. Inside the
+// wrapping, occurrences of the delimiters or the escape character are
+// escaped with the escape character.
+static string encodePairSide (const OutputSymbol& s, const Machine::PairTokenConfig& cfg) {
+  if (s.empty()) return string();
+  bool needsWrap = false;
+  for (size_t i = 0; i < s.size() && !needsWrap; ++i) {
+    const char c = s[i];
+    if (cfg.sep.find(c) != string::npos) needsWrap = true;
+    else if (cfg.open.find(c) != string::npos) needsWrap = true;
+    else if (cfg.close.find(c) != string::npos) needsWrap = true;
+    else if (cfg.escape.find(c) != string::npos) needsWrap = true;
+  }
+  if (!needsWrap) return s;
+  string out = cfg.open;
+  for (size_t i = 0; i < s.size(); ++i) {
+    const char c = s[i];
+    if (cfg.open.find(c) != string::npos
+        || cfg.close.find(c) != string::npos
+        || cfg.escape.find(c) != string::npos)
+      out += cfg.escape;
+    out += c;
+  }
+  out += cfg.close;
+  return out;
+}
+
+Machine::PairTokenConfig Machine::pairTokenConfig;
+
+string Machine::encodePairToken (const OutputSymbol& a, const OutputSymbol& b) {
+  if (a.empty() && b.empty()) return string();
+  return encodePairSide (a, pairTokenConfig) + pairTokenConfig.sep + encodePairSide (b, pairTokenConfig);
+}
+
 Machine Machine::intersect (const Machine& first, const Machine& origSecond, SilentCycleStrategy cycleStrategy) {
   LogThisAt(3,"Intersecting " << first.nStates() << "-state transducer with " << origSecond.nStates() << "-state transducer" << endl);
-  Assert (first.outputAlphabet().empty() || origSecond.outputAlphabet().empty(), "Attempt to intersect transducers A&B where both have nonempty output alphabets");
   const Machine second = origSecond.isWaitingMachine() ? origSecond : origSecond.waitingMachine();
   Assert (second.isWaitingMachine(), "Attempt to intersect transducers A&B where B is not a waiting machine");
+
+  // If either machine has an empty output alphabet, the legacy "asymmetric
+  // merge" semantics apply (whichever output is non-empty is preserved).
+  // If both have non-empty output alphabets, emit pair tokens of the form
+  // encode(a) + sep + encode(b) (see PairTokenConfig).
+  const bool dualOutput = !first.outputAlphabet().empty() && !second.outputAlphabet().empty();
+  if (dualOutput)
+    LogThisAt(4,"Both machines have non-empty output alphabets; emitting pair tokens with separator \"" << pairTokenConfig.sep << "\"" << endl);
+
+  auto pairOut = [&](const OutputSymbol& a, const OutputSymbol& b) -> OutputSymbol {
+    if (a.empty() && b.empty()) return string();
+    if (!dualOutput) return a.empty() ? b : a;
+    return encodePairToken (a, b);
+  };
 
   Machine interMachine;
   interMachine.import (first, second);
@@ -938,14 +986,14 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond, Sil
       if (msj.waits() || msj.terminates()) {
 	for (const auto& it: msi.trans)
 	  if (it.inputEmpty())
-	    ms.trans.push_back (MachineTransition (it.in, it.out, interState(it.dest,j), it.weight));
+	    ms.trans.push_back (MachineTransition (it.in, dualOutput && !it.out.empty() ? pairOut (it.out, OutputSymbol()) : it.out, interState(it.dest,j), it.weight));
 	  else
 	    for (const auto& jt: msj.trans)
 	      if (it.in == jt.in)
-		ms.trans.push_back (MachineTransition (it.in, it.out.empty() ? jt.out : it.out, interState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight)));
+		ms.trans.push_back (MachineTransition (it.in, pairOut (it.out, jt.out), interState(it.dest,jt.dest), WeightAlgebra::multiply (it.weight, jt.weight)));
       } else
 	for (const auto& jt: msj.trans)
-	  ms.trans.push_back (MachineTransition (string(), jt.out, interState(i,jt.dest), jt.weight));
+	  ms.trans.push_back (MachineTransition (string(), dualOutput && !jt.out.empty() ? pairOut (OutputSymbol(), jt.out) : jt.out, interState(i,jt.dest), jt.weight));
     }
 
   LogThisAt(3,"Transducer intersection yielded " << interMachine.nStates() << "-state machine" << endl);

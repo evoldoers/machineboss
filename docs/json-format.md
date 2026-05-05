@@ -97,7 +97,7 @@ Instead of a concrete `state` array, a machine JSON object can be one of the fol
 | `compose-sum` | 2 | Composition with silent-cycle summation. |
 | `compose-unsort` | 2 | Composition without sorting. |
 | `concat` | 2 | Concatenation of two machines. |
-| `intersect` | 2 | Intersection (pointwise product). Break silent cycles. |
+| `intersect` | 2 | Intersection (pointwise product). Break silent cycles. If both arguments have non-empty output alphabets, the result emits [pair tokens](composition.html#pair-tokens). |
 | `intersect-sum` | 2 | Intersection with silent-cycle summation. |
 | `intersect-unsort` | 2 | Intersection without sorting. |
 | `union` | 2 | Union (pointwise sum). |

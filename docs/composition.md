@@ -172,16 +172,65 @@ compMachine.ergodicMachine().advanceSort().processCycles(strategy).ergodicMachin
 ## Intersection vs. Composition
 
 Intersection (`Machine::intersect`) synchronizes two machines on their shared
-input alphabet. At least one of the two machines must be a recognizer
-(have an empty output alphabet). The other machine may be a transducer,
-in which case its outputs are preserved in the result.
+input alphabet. Either machine may be a recognizer (empty output alphabet) or
+a transducer (non-empty output alphabet). The result preserves outputs from
+whichever side(s) emit them.
 
 The key differences from composition:
 
-- At least one machine must have an empty output alphabet (asserted at entry; if both have outputs, an error is raised)
 - The shared symbol is the *input* alphabet, not the output-to-input bridge
 - When both machines advance, the input symbols must match (instead of A's output matching B's input)
-- Outputs from whichever machine has them are passed through to the result
+- If at most one machine has a non-empty output alphabet, the result inherits that alphabet directly
+- If both machines have non-empty output alphabets, the result emits **pair tokens** that encode `(outA, outB)` jointly — see [Pair tokens](#pair-tokens) below
+
+### Pair tokens
+
+When intersecting two transducers `A` and `B` with non-empty output
+alphabets, every step of the result corresponds to one column of a pairwise
+alignment of `A`'s and `B`'s outputs (given a shared input). Each column is
+one of:
+
+- `(a, ε)` — `A` emits `a` while `B` is waiting or emitting silently
+- `(ε, b)` — `B` emits `b` while `A` is waiting or emitting silently
+- `(a, b)` — both emit on a joint input-consuming step
+- `(ε, ε)` — neither emits; encoded as a plain ε transition (no token)
+
+Pair tokens are encoded as strings of the form `a + sep + b`, where `sep`
+defaults to `:`. Empty sides become empty strings, so `(a, ε)` is `a:`,
+`(ε, b)` is `:b`, and `(a, b)` is `a:b`.
+
+If either side contains the separator, the open delimiter, the close
+delimiter, or the escape character, that side is wrapped in delimiters
+(default `{` and `}`). Inside the wrapping, occurrences of either delimiter
+or the escape character are escaped with the escape character (default `\`).
+For example, with default settings:
+
+| `(a, b)` | encoded |
+|---|---|
+| `("0", "1")` | `0:1` |
+| `("a:1", "b")` | `{a:1}:b` |
+| `("a{b", "c")` | `{a\{b}:c` |
+| `("a\\b", "c")` | `{a\\b}:c` |
+
+The defaults can be overridden on the command line:
+
+```bash
+boss A.json -i B.json --pair-sep "|"             # use | instead of :
+boss A.json -i B.json --pair-delim "[]"          # wrap with [ and ]
+boss A.json -i B.json --pair-escape "%"          # escape with %
+```
+
+To split pair tokens back into two streams, compose the intersected machine
+with a small "splitter" transducer that maps each pair token to two
+sequential output symbols (one per side). This is left to the caller because
+the right downstream representation depends on the application — for
+example, FASTA output of a multi-way intersection naturally interprets each
+side as one row of a multiple sequence alignment.
+
+For phylogenetic models specifically, see the
+[phylogenetic intersection](phylogeny.html) operator, which builds a
+recursive intersection over a binary tree using pair tokens to encode
+multi-leaf alignment columns at every internal node.
 
 The same three silent cycle strategies are available for intersection:
 

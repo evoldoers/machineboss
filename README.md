@@ -415,8 +415,8 @@ Transducer construction:
                                 protpsw, translate, prot2dna, psw2dna, 
                                 iupacdna, iupacaa, dna2rna, rna2dna, bintern, 
                                 terndna, jukescantor, dnapswnbr, tkf91root, 
-                                tkf91branch, tolower, toupper, hamming31, 
-                                hamming74)
+                                tkf91branch, tkf92branch, tolower, toupper, 
+                                hamming31, hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence &#x27;&lt;&lt;&#x27;
   --generate-one arg            generator for any one of specified characters
   --generate-wild arg           generator for Kleene closure over specified 
@@ -540,6 +540,11 @@ Postfix operators:
                                 into an echo machine
   --copy-input-to-output        copy inputs to outputs, converting a recognizer
                                 into an echo machine
+  --phylo-tree arg              phylogenetic intersection: take top-of-stack as
+                                branch transducer, build a phylo-transducer 
+                                from the binary Newick tree in the given file
+  --phylo-tree-string arg       like --phylo-tree but with the Newick string 
+                                given inline
 
 Infix operators:
   -m [ --compose ]              compose, summing out silent cycles &#x27;=&gt;&#x27;
@@ -592,6 +597,8 @@ Transducer application:
   -R [ --wiggle-room ] arg      wiggle room (allowed departure from training 
                                 alignment)
   -A [ --align ]                Viterbi sequence alignment
+  --beam-align                  beam-search Viterbi alignment (handles cyclic 
+                                machines)
   -V [ --viterbi ]              Viterbi log-likelihood calculation
   -L [ --loglike ]              Forward log-likelihood calculation
   -C [ --counts ]               Forward-Backward counts (derivatives of 
@@ -613,6 +620,18 @@ Transducer application:
   --random-encode               sample random output by stochastic prefix 
                                 search
   --seed arg                    random number seed
+  --pair-sep arg                pair-token separator string for intersection of
+                                two non-empty-output transducers (default &#x27;:&#x27;)
+  --pair-delim arg              open+close delimiter chars (2 chars) wrapping 
+                                pair-token sides that contain the separator 
+                                (default &#x27;{}&#x27;)
+  --pair-escape arg             escape char used inside pair-token wrappings 
+                                (default &#x27;\\&#x27;)
+  --phylo-time-param arg        name of the branch transducer&#x27;s time parameter,
+                                replaced per-branch with name[node] by 
+                                --phylo-tree (default &#x27;t&#x27;)
+  --phylo-params-out arg        write per-branch parameter values (parsed from 
+                                Newick branch lengths) to specified JSON file
 
 Parser-generator:
   --codegen arg                 generate parser code, save to specified 
