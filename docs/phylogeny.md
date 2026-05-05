@@ -1,6 +1,7 @@
 ---
-layout: page
 title: Phylogenetic Intersection
+nav_order: 7.5
+permalink: /phylogeny/
 ---
 
 # Phylogenetic Intersection

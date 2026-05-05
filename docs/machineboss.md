@@ -183,7 +183,7 @@ boss --tkf91-branch-custom-jc 0123        # TKF91 + JC over a 4-character custom
 | `--eliminate-states` | | Eliminate states with only silent in/out transitions. |
 | `--merge-states` | | Merge states with equivalent outgoing transitions (collapse bubbles). |
 | `--silence-input` | | Clear input labels (machine becomes a generator). |
-| `--phylo-tree FILE` / `--phylo-tree-string STR` | | Treat top-of-stack as a branch transducer; build the [phylogenetic intersection](phylogeny.html) over the given binary Newick tree. See also `--phylo-time-param`, `--phylo-params-out`. |
+| `--phylo-tree FILE` / `--phylo-tree-string STR` | | Treat top-of-stack as a branch transducer; build the [phylogenetic intersection](/phylogeny/) over the given binary Newick tree. See also `--phylo-time-param`, `--phylo-params-out`. |
 | `--silence-output` | | Clear output labels (machine becomes a recognizer). |
 | `--copy-output-to-input` | | Copy output labels to inputs (generator → echo). |
 | `--copy-input-to-output` | | Copy input labels to outputs (recognizer → echo). |

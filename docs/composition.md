@@ -228,7 +228,7 @@ example, FASTA output of a multi-way intersection naturally interprets each
 side as one row of a multiple sequence alignment.
 
 For phylogenetic models specifically, see the
-[phylogenetic intersection](phylogeny.html) operator, which builds a
+[phylogenetic intersection](/phylogeny/) operator, which builds a
 recursive intersection over a binary tree using pair tokens to encode
 multi-leaf alignment columns at every internal node.
 
