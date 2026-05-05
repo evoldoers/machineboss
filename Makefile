@@ -222,7 +222,7 @@ preset/translate.json: js/translate.js
 preset/translate-spliced.json: js/translate.js
 	node $< -e base -e intron >$@
 
-preset/tkf92branch.json: js/tkf92branch.py python/machineboss/neural/tkf92.py python/machineboss/machine.py
+preset/tkf92-branch-prot-f81.json: js/tkf92branch.py python/machineboss/neural/tkf92.py python/machineboss/machine.py
 	python3 $< >$@
 
 preset/%.json: js/%.js
@@ -273,7 +273,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -414,9 +414,9 @@ test-phylo-trivial:
 test-phylo-depth3:
 	@$(TEST) $(WRAPBOSS) t/machine/echo-with-time.json --phylo-tree-string '((A,B)C,D)E;' --strip-names t/expect/phylo-depth3.json
 
-# Phylogenetic intersection: TKF91 fork triad (tree (sibling1,sibling2)parent;) with the tkf91branch preset.
+# Phylogenetic intersection: TKF91 fork triad (tree (sibling1,sibling2)parent;) with the tkf91-branch-dna-jc preset.
 test-phylo-tkf91-triad:
-	@$(TEST) $(WRAPBOSS) --preset tkf91branch --phylo-tree t/tree/tkf91-triad.nwk --phylo-time-param time --strip-names t/expect/phylo-tkf91-triad.json
+	@$(TEST) $(WRAPBOSS) --preset tkf91-branch-dna-jc --phylo-tree t/tree/tkf91-triad.nwk --phylo-time-param time --strip-names t/expect/phylo-tkf91-triad.json
 
 # Phylogenetic intersection: end-to-end Forward log-likelihood on the trivial echo.
 test-phylo-trivial-loglike:
@@ -424,7 +424,17 @@ test-phylo-trivial-loglike:
 
 # Phylogenetic intersection: end-to-end Forward log-likelihood on the TKF91 triad with concrete branch lengths.
 test-phylo-tkf91-triad-loglike:
-	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --generate-json t/io/parentA.json -m --begin --preset tkf91branch --phylo-tree t/tree/tkf91-triad.nwk --phylo-time-param time --end --recognize-json t/io/triad-AA.json -P t/io/triad-params.json -L t/expect/phylo-tkf91-triad-loglike.json
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --generate-json t/io/parentA.json -m --begin --preset tkf91-branch-dna-jc --phylo-tree t/tree/tkf91-triad.nwk --phylo-time-param time --end --recognize-json t/io/triad-AA.json -P t/io/triad-params.json -L t/expect/phylo-tkf91-triad-loglike.json
+
+# Confirm CLI generators match the hardcoded presets via Forward log-likelihood equivalence.
+test-tkf91-root-dna-jc-match:
+	@$(TEST) $(WRAPBOSS) --tkf91-root-dna-jc -P t/io/tkf-rate-params.json --output-chars ACGT -L t/expect/tkf91-root-dna-jc-loglike.json
+
+test-tkf91-branch-dna-jc-match:
+	@$(TEST) $(WRAPBOSS) --tkf91-branch-dna-jc -P t/io/tkf91-branch-params.json --input-chars ACGT --output-chars ACGA -L t/expect/tkf91-branch-dna-jc-loglike.json
+
+test-tkf92-branch-prot-f81-match:
+	@$(TEST) $(WRAPBOSS) --tkf92-branch-prot-f81 -P t/io/tkf92-branch-prot-params.json --input-chars ACDE --output-chars ACDE -L t/expect/tkf92-branch-prot-f81-loglike.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine test-phylo-non-binary test-phylo-missing-name test-phylo-duplicate-name
@@ -729,7 +739,7 @@ test-regex:
 	@$(TEST) $(WRAPBOSS) --regex '[01]+' t/expect/regex-01plus.json
 
 # Preset load tests
-PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91root tkf91branch tkf92branch tolower toupper hamming31 hamming74
+PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91-root-dna-jc tkf91-branch-dna-jc tkf92-branch-prot-f81 tolower toupper hamming31 hamming74
 PRESET_TESTS = $(addprefix test-preset-,$(PRESETS))
 $(PRESET_TESTS): test-preset-%:
 	@$(WRAPBOSS) --preset $* >t/expect/preset-$*.tmp.json 2>/dev/null

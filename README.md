@@ -290,8 +290,9 @@ These example machines may be selected using the `--preset` keyword, e.g. `boss 
 | `dnapsw` | A machine that implements [probabilistic Smith-Waterman alignment](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for DNA |
 | `protpsw` | A machine that implements [probabilistic Smith-Waterman alignment](https://www.aaai.org/Papers/ISMB/1996/ISMB96-005.pdf) for proteins |
 | `jukescantor` | A machine that implements the [Jukes-Cantor (1969) substitution model](https://en.wikipedia.org/wiki/Models_of_DNA_evolution) for DNA |
-| `tkf91branch` | A machine that implements the [Thorne-Kishino-Felsenstein (1991) indel model](https://www.ncbi.nlm.nih.gov/pubmed/1920447) for DNA, with Jukes-Cantor as a substitution model |
-| `tkf91root` | A machine that generates sequences from the equilibrium distribution of the Thorne-Kishino-Felsenstein indel model |
+| `tkf91-branch-dna-jc` | A machine that implements the [Thorne-Kishino-Felsenstein (1991) indel model](https://www.ncbi.nlm.nih.gov/pubmed/1920447) for DNA, with Jukes-Cantor as a substitution model |
+| `tkf91-root-dna-jc` | A machine that generates sequences from the equilibrium distribution of the Thorne-Kishino-Felsenstein indel model |
+| `tkf92-branch-prot-f81` | TKF92 branch model for protein with F81 substitution; see [docs/presets](docs/presets.md). Any combination of TKF version, root/branch, alphabet, and substitution model is also available via the parameterised CLI flag `--tkfYY-TTT-AAA-MMM`. |
 | `bintern` | A machine that converts binary digits (in groups of 3) into ternary digits (in group of 2). To handle situations where the input isn't a multiple of 3 bits in length, the machine also outputs an escape code at the end, with any dangling bits converted to ternary |
 | `terndna` | A machine that converts a ternary sequence into a non-repeating DNA sequence. Composed with the `bintern` preset, this can be used to implement the DNA storage code of [Goldman _et al_](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3672958/) |
 | `tolower` | A machine that converts text to lower case |
@@ -414,8 +415,9 @@ Transducer construction:
   -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
                                 protpsw, translate, prot2dna, psw2dna, 
                                 iupacdna, iupacaa, dna2rna, rna2dna, bintern, 
-                                terndna, jukescantor, dnapswnbr, tkf91root, 
-                                tkf91branch, tkf92branch, tolower, toupper, 
+                                terndna, jukescantor, dnapswnbr, 
+                                tkf91-root-dna-jc, tkf91-branch-dna-jc, 
+                                tkf92-branch-prot-f81, tolower, toupper, 
                                 hamming31, hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence &#x27;&lt;&lt;&#x27;
   --generate-one arg            generator for any one of specified characters

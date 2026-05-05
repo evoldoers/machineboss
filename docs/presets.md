@@ -47,14 +47,37 @@ and (for `psw2dna` and `pswint`) the genetic code.
 | Preset | Description |
 |--------|-------------|
 | `jukescantor` | Jukes-Cantor model of DNA sequence divergence |
-| `tkf91root` | TKF91 root model: generates an ancestral sequence with indel and substitution rates |
-| `tkf91branch` | TKF91 branch model: evolves a sequence along a phylogenetic branch |
+| `tkf91-root-dna-jc` | TKF91 root: geometric DNA singlet (Jukes-Cantor equilibrium) |
+| `tkf91-branch-dna-jc` | TKF91 branch transducer: 7-state DNA + Jukes-Cantor substitutions |
+| `tkf92-branch-prot-f81` | TKF92 branch transducer (5-state canonical WFST): protein + F81 substitutions, fragment extension parameter `r`. Per [tkf-mixdom/tkf92-wfst-derivation](https://github.com/ihh/tkf-mixdom) |
 
-The TKF91 (Thorne, Kishino, Felsenstein 1991) model is a continuous-time Markov model of
-sequence evolution with insertions, deletions, and substitutions.
-`tkf91root` is a generator (output only) that produces the root sequence;
-`tkf91branch` is a transducer that evolves an input sequence to an output sequence.
-Together they model pairwise sequence evolution.
+The TKF91 (Thorne, Kishino, Felsenstein 1991) and TKF92 (1992) models are continuous-time
+Markov models of sequence evolution with insertions, deletions, and substitutions; TKF92 adds
+a fragment-extension parameter that clusters indels into runs.
+`tkf91-root-dna-jc` is a generator (output only) that produces the root sequence;
+the `*-branch-*` presets are conditional WFST transducers that evolve an input
+sequence to an output sequence. Together root and branch model pairwise evolution.
+
+### Parameterised CLI generators
+
+Any combination of TKF version, root/branch, alphabet, and substitution model can be
+constructed on the fly via the CLI flag `--tkfYY-TTT-AAA-MMM`:
+
+- `YY` is `91` or `92` (TKF92 adds the fragment-extension parameter `r`).
+- `TTT` is `root` or `branch`.
+- `AAA` is `dna`, `rna`, `prot`, `binary`, `unary`, or `custom` (followed by the alphabet string).
+- `MMM` is `jc` (Jukes-Cantor; uniform π), `f81` (free per-symbol π_X), `k80` (transition/transversion ratio `tsRatio`, DNA/RNA only), `hky85` (free π_X + `tsRatio`, DNA/RNA only), or `id` (no substitution; required for unary alphabet).
+
+```bash
+boss --tkf91-root-dna-jc                   # same as --preset tkf91-root-dna-jc
+boss --tkf91-branch-prot-f81               # TKF91 indel structure + F81 protein substitution
+boss --tkf92-branch-dna-hky85              # TKF92 fork triad + HKY85
+boss --tkf91-branch-custom-jc 0123         # TKF91 + JC over 4-symbol custom alphabet
+```
+
+The closed-form formulas for K80 and HKY85 transition probabilities are encoded directly in
+the resulting WFST's parameter definitions; no numerical eigendecomposition is required at
+inference time.
 
 ## Genetic Code and Translation
 

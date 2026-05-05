@@ -170,18 +170,18 @@ Machine Boss provides it as a two-part model:
 
 ```bash
 # Generate an ancestral sequence
-boss --preset tkf91root --generate-one 20
+boss --preset tkf91-root-dna-jc --generate-one 20
 # Evolve along a branch
-boss --preset tkf91root --preset tkf91branch --generate-one 20
+boss --preset tkf91-root-dna-jc --preset tkf91-branch-dna-jc --generate-one 20
 ```
 
-The `tkf91root` generator produces an ancestral sequence;
-`tkf91branch` evolves an input sequence to an output with insertions, deletions, and substitutions.
+The `tkf91-root-dna-jc` generator produces an ancestral sequence;
+`tkf91-branch-dna-jc` evolves an input sequence to an output with insertions, deletions, and substitutions.
 
 To compute the log-likelihood of an alignment under TKF91:
 
 ```bash
-boss --preset tkf91root --preset tkf91branch \
+boss --preset tkf91-root-dna-jc --preset tkf91-branch-dna-jc \
      --input-chars ACGTACGT --output-chars ACGACGTT -L
 ```
 

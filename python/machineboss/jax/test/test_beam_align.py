@@ -83,10 +83,10 @@ class TestBeamAlignTKF92:
 
     @pytest.fixture
     def tkf92_machine(self, repo_root):
-        m = Machine.from_file(str(repo_root / "preset" / "tkf92branch.json"))
+        m = Machine.from_file(str(repo_root / "preset" / "tkf92-branch-prot-f81.json"))
         base_params = {"t": 0.5, "insRate": 0.01, "delRate": 0.02, "r": 0.3}
-        for i in range(20):
-            base_params[f"pi_{i}"] = 0.05
+        for aa in "ACDEFGHIKLMNPQRSTVWY":
+            base_params[f"pi_{aa}"] = 0.05
         # Resolve defs: evaluate function definitions using base params
         from machineboss.weight import evaluate as eval_weight
         resolved = dict(base_params)
@@ -144,14 +144,14 @@ class TestBeamAlignTKF92:
 
         # Get C++ result — only pass base params (not resolved defs)
         base_params = {"t": 0.5, "insRate": 0.01, "delRate": 0.02, "r": 0.3}
-        for i in range(20):
-            base_params[f"pi_{i}"] = 0.05
+        for aa in "ACDEFGHIKLMNPQRSTVWY":
+            base_params[f"pi_{aa}"] = 0.05
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump(base_params, f)
             params_file = f.name
         try:
             result = subprocess.run(
-                [boss_path, "--preset", "tkf92branch",
+                [boss_path, "--preset", "tkf92-branch-prot-f81",
                  "--functions", params_file,
                  "--input-chars", "AC", "--output-chars", "AC",
                  "--beam-align", "--beam-width", "1000", "-v0"],

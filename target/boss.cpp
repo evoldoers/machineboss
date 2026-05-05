@@ -32,6 +32,7 @@
 #include "../src/beam.h"
 #include "../src/beam_align.h"
 #include "../src/phylo_intersect.h"
+#include "../src/tkf_preset.h"
 
 using namespace std;
 namespace po = boost::program_options;
@@ -249,6 +250,8 @@ int main (int argc, char** argv) {
     alias[string("--or")] = "--union";
 
     const regex presetAlphRegex ("^--(generate|recognize|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
+    // Pattern for parameterised TKF presets: --tkfYY-TTT-AAA-MMM[-<alphabet>] for AAA=custom.
+    const regex tkfPresetRegex ("^--tkf(91|92)-(root|branch)-(dna|rna|prot|binary|unary|custom)-(jc|f81|k80|hky85|id)$");
     map<string,string> presetAlph;
     const string dnaAlphabet = presetAlph[string("dna")] = "ACGT";
     const string rnaAlphabet = presetAlph[string("rna")] = "ACGU";
@@ -357,6 +360,12 @@ int main (int argc, char** argv) {
 	  arg = string("--") + presetAlphMatch.str(1) + "-" + presetAlphMatch.str(2);
 	}
 
+	// Parameterised TKF presets: --tkfYY-TTT-AAA-MMM. For AAA=custom, the
+	// next arg is consumed as the alphabet string. Falls through to the
+	// general --tkfYY-TTT-... handler in the if/else chain below.
+	smatch tkfPresetMatch;
+	bool isTkfPresetArg = regex_search (arg, tkfPresetMatch, tkfPresetRegex);
+
 	if (alias.count (arg))
 	  arg = alias.at (arg);
 
@@ -379,6 +388,18 @@ int main (int argc, char** argv) {
 	  m = MachineLoader::fromFile (getArg());
 	else if (command == "--preset")
 	  m = MachinePresets::makePreset (getArg().c_str());
+	else if (isTkfPresetArg) {
+	  TkfPreset::Spec spec;
+	  spec.version = (tkfPresetMatch.str(1) == "91") ? TkfPreset::Version::TKF91 : TkfPreset::Version::TKF92;
+	  spec.kind    = (tkfPresetMatch.str(2) == "root") ? TkfPreset::Kind::Root : TkfPreset::Kind::Branch;
+	  if (!TkfPreset::parseAlphabetKind (tkfPresetMatch.str(3), spec.alphabetKind))
+	    throw runtime_error ("unknown alphabet kind in TKF preset flag");
+	  if (!TkfPreset::parseModel (tkfPresetMatch.str(4), spec.model))
+	    throw runtime_error ("unknown substitution model in TKF preset flag");
+	  if (spec.alphabetKind == TkfPreset::AlphabetKind::Custom)
+	    spec.customAlphabet = getArg();
+	  m = TkfPreset::build (spec);
+	}
 	else if (command == "--generate-json") {
 	  const NamedInputSeq inSeq = JsonLoader<NamedInputSeq>::fromFile (getArg());
 	  m = Machine::generator (inSeq.seq, inSeq.name);

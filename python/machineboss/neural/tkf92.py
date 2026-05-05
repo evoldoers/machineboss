@@ -47,7 +47,8 @@ def make_tkf92_machine() -> Machine:
     (consume X), a -> end. Per-transition weight is t_{a,b} times the column
     emission weight.
     """
-    pi_names = [f"pi_{i}" for i in range(N_AA)]
+    # Equilibrium-frequency parameters named by amino-acid letter (pi_A, pi_C, ...).
+    pi_names = [f"pi_{aa}" for aa in AA_ALPHA]
 
     # Standard TKF91 quantities + TKF92 singlet additions.
     defs = {
@@ -200,10 +201,10 @@ try:
             "delRate": pad(delRate),
             "r": pad(r),
         }
-        # Split pi: (L, 20) -> 20 × (L,) -> pad each
+        # Split pi: (L, 20) -> 20 × (L,) -> pad each. Names are pi_A, pi_C, ...
         pi_padded = jnp.concatenate([pi[:1], pi], axis=0)  # (Li+1, 20)
-        for j in range(pi.shape[-1]):
-            params[f"pi_{j}"] = pi_padded[:, j:j+1]  # (Li+1, 1)
+        for j, aa in enumerate(AA_ALPHA):
+            params[f"pi_{aa}"] = pi_padded[:, j:j+1]  # (Li+1, 1)
 
         return params
 

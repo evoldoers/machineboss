@@ -72,9 +72,9 @@ that can be passed back via `-P FILE` for inference.
 
 ```bash
 # Build the TKF91 fork triad over (sibling1, sibling2)parent;
-# tkf91branch's time parameter is named "time" (not the default "t"),
+# tkf91-branch-dna-jc's time parameter is named "time" (not the default "t"),
 # so we override --phylo-time-param.
-boss --preset tkf91branch \
+boss --preset tkf91-branch-dna-jc \
      --phylo-tree-string '(sibling1:0.1,sibling2:0.2)parent;' \
      --phylo-time-param time \
      --phylo-params-out triad-params.json
@@ -85,7 +85,7 @@ echo '{"sequence":["A:A"]}' > cols.json
 echo '{"delRate":0.02,"insRate":0.01,"time[sibling1]":0.1,"time[sibling2]":0.2}' > params.json
 
 boss --generate-json parent.json -m \
-     --begin --preset tkf91branch \
+     --begin --preset tkf91-branch-dna-jc \
              --phylo-tree-string '(sibling1,sibling2)parent;' \
              --phylo-time-param time --end \
      --recognize-json cols.json -P params.json -L

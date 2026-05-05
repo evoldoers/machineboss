@@ -121,8 +121,31 @@ Selected via `--preset NAME` or `-p NAME`.
 | `dnapswnbr` | Probabilistic Smith-Waterman for DNA (no between-region model). |
 | `protpsw` | Probabilistic Smith-Waterman for protein. |
 | `jukescantor` | Jukes-Cantor (1969) DNA substitution model. |
-| `tkf91branch` | Thorne-Kishino-Felsenstein (1991) DNA indel model + Jukes-Cantor substitutions. |
-| `tkf91root` | Equilibrium distribution of the TKF91 model. |
+| `tkf91-branch-dna-jc` | Thorne-Kishino-Felsenstein (1991) DNA indel model + Jukes-Cantor substitutions. |
+| `tkf91-root-dna-jc` | Equilibrium distribution of the TKF91 model. |
+| `tkf92-branch-prot-f81` | Thorne-Kishino-Felsenstein (1992) protein indel model with fragment extension + F81 substitutions. The conditional WFST `P(descendant|ancestor)` per [tkf-mixdom/tkf92-wfst-derivation](https://github.com/ihh/tkf-mixdom). |
+
+### Parameterised TKF presets
+
+Generate any TKF model + alphabet + substitution-model combination on the fly with `--tkfYY-TTT-AAA-MMM`:
+
+| Component | Allowed values |
+|---|---|
+| `YY` | `91`, `92` (TKF version; `92` adds a fragment-extension parameter `r`) |
+| `TTT` | `root` (geometric singlet over the alphabet) or `branch` (conditional WFST) |
+| `AAA` | `dna`, `rna`, `prot`, `binary`, `unary`, `custom` |
+| `MMM` | `jc` (Jukes-Cantor; uniform π), `f81` (Felsenstein 81; free π_X), `k80` (Kimura 1980; transition/transversion ratio `tsRatio`, DNA/RNA only), `hky85` (HKY 1985; free π_X + `tsRatio`, DNA/RNA only), `id` (no substitution; required for unary) |
+
+For `AAA=custom`, supply the alphabet string as the next argument: `--tkf91-branch-custom-jc XYZW`.
+
+Examples:
+
+```bash
+boss --tkf91-root-dna-jc                  # equivalent to --preset tkf91-root-dna-jc
+boss --tkf91-branch-prot-f81              # TKF91 indel + F81 substitution on amino acids
+boss --tkf92-branch-dna-hky85             # TKF92 + HKY85 on DNA
+boss --tkf91-branch-custom-jc 0123        # TKF91 + JC over a 4-character custom alphabet
+```
 | `bintern` | Binary (base-2) to ternary (base-3) converter. |
 | `terndna` | Ternary to non-repeating DNA. With `bintern`, implements the Goldman *et al.* DNA storage code. |
 | `tolower` | Convert text to lower case. |

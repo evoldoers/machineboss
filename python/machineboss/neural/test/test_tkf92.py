@@ -35,7 +35,7 @@ class TestTKF92Machine:
         m = make_tkf92_machine()
         pm = ParameterizedMachine.from_machine(m)
         expected = {"t", "insRate", "delRate", "r"}
-        expected |= {f"pi_{i}" for i in range(N_AA)}
+        expected |= {f"pi_{aa}" for aa in AA_ALPHA}
         assert pm.free_params == expected
 
     def test_n_transitions(self):
@@ -61,8 +61,8 @@ class TestTKF92Forward:
             "delRate": jnp.array([[delRate]]),
             "r": jnp.array([[r]]),
         }
-        for i in range(N_AA):
-            params[f"pi_{i}"] = jnp.array([[1.0 / N_AA]])
+        for aa in AA_ALPHA:
+            params[f"pi_{aa}"] = jnp.array([[1.0 / N_AA]])
         return params
 
     def test_forward_finite(self, pm):

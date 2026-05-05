@@ -84,9 +84,9 @@ console.log('Testing beam-align on bitnoise...');
 console.log('Testing beam-align on TKF92...');
 
 {
-  const tkf92 = loadJSON('preset/tkf92branch.json');
+  const tkf92 = loadJSON('preset/tkf92-branch-prot-f81.json');
   const params = { t: 0.5, insRate: 0.01, delRate: 0.02, r: 0.3 };
-  for (let i = 0; i < 20; i++) params[`pi_${i}`] = 0.05;
+  for (const aa of 'ACDEFGHIKLMNPQRSTVWY') params[`pi_${aa}`] = 0.05;
 
   const machine = prepareMachine(tkf92, params);
   const inTok = tokenize('AC', machine.inputAlphabet);
@@ -102,9 +102,9 @@ console.log('Testing beam-align on TKF92...');
 // Test: TKF92 with different sequences
 // ============================================================
 {
-  const tkf92 = loadJSON('preset/tkf92branch.json');
+  const tkf92 = loadJSON('preset/tkf92-branch-prot-f81.json');
   const params = { t: 0.5, insRate: 0.01, delRate: 0.02, r: 0.3 };
-  for (let i = 0; i < 20; i++) params[`pi_${i}`] = 0.05;
+  for (const aa of 'ACDEFGHIKLMNPQRSTVWY') params[`pi_${aa}`] = 0.05;
 
   const machine = prepareMachine(tkf92, params);
   const inTok = tokenize('ACD', machine.inputAlphabet);

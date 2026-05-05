@@ -10,6 +10,9 @@ struct PresetCache {
 };
 
 #define addPreset(NAME) namedPreset[#NAME] = string (preset_##NAME##_json, preset_##NAME##_json + preset_##NAME##_json_len); names.push_back (#NAME);
+// addPresetAs: register a preset whose user-facing name differs from the C identifier
+// (used for hyphenated names like "tkf91-branch-dna-jc" where xxd produces preset_tkf91_branch_dna_jc_json).
+#define addPresetAs(C_NAME, USER_NAME) namedPreset[USER_NAME] = string (preset_##C_NAME##_json, preset_##C_NAME##_json + preset_##C_NAME##_json_len); names.push_back (USER_NAME);
 
 #include "preset/null.h"
 
@@ -35,9 +38,9 @@ struct PresetCache {
 #include "preset/jukescantor.h"
 #include "preset/dnapswnbr.h"
 
-#include "preset/tkf91root.h"
-#include "preset/tkf91branch.h"
-#include "preset/tkf92branch.h"
+#include "preset/tkf91-root-dna-jc.h"
+#include "preset/tkf91-branch-dna-jc.h"
+#include "preset/tkf92-branch-prot-f81.h"
 
 #include "preset/tolower.h"
 #include "preset/toupper.h"
@@ -70,9 +73,9 @@ PresetCache::PresetCache() {
   addPreset(jukescantor);
   addPreset(dnapswnbr);
 
-  addPreset(tkf91root);
-  addPreset(tkf91branch);
-  addPreset(tkf92branch);
+  addPresetAs(tkf91_root_dna_jc,   "tkf91-root-dna-jc");
+  addPresetAs(tkf91_branch_dna_jc, "tkf91-branch-dna-jc");
+  addPresetAs(tkf92_branch_prot_f81, "tkf92-branch-prot-f81");
 
   addPreset(tolower);
   addPreset(toupper);
