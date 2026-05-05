@@ -51,11 +51,13 @@ shape `{...{leaf_1:leaf_2}:...:leaf_d}`, with the wrapping rule
 (introduced by `--intersect`) automatically nesting one extra level of
 braces per intersection. For example:
 
+{% raw %}
 | Tree | Sample column-token |
 |---|---|
 | `(A,B)P;` | `0:1` (A=0, B=1) |
 | `((A,B)C,D)E;` | `{0:1}:1` (A=0, B=1, D=1) |
 | `(((A,B)C,D)E,F)G;` | `{{0:1}:1}:0` (A=0, B=1, D=1, F=0) |
+{% endraw %}
 
 Reading a token: outermost `:` separates the root's two subtrees; each
 side, if itself a pair, is wrapped in `{...}`. Recursing into the
