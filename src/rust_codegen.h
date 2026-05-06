@@ -20,6 +20,13 @@ namespace MachineBoss {
 //
 // where L is a compile-time constant baked into the generated code, and
 // each leaf is a slice of symbol indices into a generated alphabet table.
+//
+// Numerical precision: the emitted Rust uses exact log_sum_exp via
+// (lo - hi).exp().ln_1p(). The default boss build uses an approximate
+// lookup table (LOG_SUM_EXP_LOOKUP_MAX=10) that silently zeros out
+// contributions whose log-prob gap exceeds ~10 nats, so for non-trivial
+// models the emitted Rust is *more accurate* than `boss -L`. Verification
+// tests use a Python exact-lse reference rather than `boss -L`.
 void compileRust (const Machine& m, const std::string& outputDir,
                   bool emitViterbi = true);
 

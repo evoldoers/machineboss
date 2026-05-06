@@ -290,7 +290,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-rust-codegen-echo
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-rust-codegen-echo test-rust-codegen-tkf91
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -463,6 +463,17 @@ test-rust-codegen-echo:
 	  REPO_ROOT=$(CURDIR) python3 t/rust/check_echo.py; \
 	else \
 	  echo "                              test-rust-codegen-echo     skip: cargo not in PATH"; \
+	fi
+
+# Verifies the codegen Forward against a Python-implemented exact-lse Forward
+# over the equivalent --phylo-clamp machine. (boss -L can't be used directly
+# as a reference here because its log_sum_exp_unary uses a lookup table that
+# silently truncates contributions at LOG_SUM_EXP_LOOKUP_MAX=10 nats.)
+test-rust-codegen-tkf91:
+	@if command -v cargo > /dev/null 2>&1; then \
+	  REPO_ROOT=$(CURDIR) python3 t/rust/check_tkf91.py; \
+	else \
+	  echo "                             test-rust-codegen-tkf91     skip: cargo not in PATH"; \
 	fi
 
 # Confirm CLI generators match the hardcoded presets via Forward log-likelihood equivalence.
