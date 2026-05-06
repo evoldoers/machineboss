@@ -117,8 +117,13 @@ LIBTARGETS = $(LIBTARGET)
 
 all: $(BOSS)
 
-install: $(BOSS)
+install: bin/$(BOSS)
+	@test -d $(INSTALL_BIN) || mkdir -p $(INSTALL_BIN)
 	cp bin/$(BOSS) $(INSTALL_BIN)/$(BOSS)
+	@echo
+	@echo "  Installed $(INSTALL_BIN)/$(BOSS)"
+	@echo "  (override the install location with 'make install PREFIX=/path/to/prefix')"
+	@echo
 
 lib: $(LIBTARGET)
 
@@ -147,6 +152,18 @@ install-lib: $(LIBTARGET)
 bin/%: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_DEPS) $(BOOST_OBJ_FILES)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
+	@if [ "$*" = "$(BOSS)" ]; then \
+	  echo ""; \
+	  echo "  Built bin/$(BOSS) successfully."; \
+	  echo ""; \
+	  echo "  To run '$(BOSS)' from any directory, either:"; \
+	  echo "    install systemwide:  sudo make install"; \
+	  echo "                         (override the location with PREFIX=/path)"; \
+	  echo "    or add to your PATH:"; \
+	  echo "      export PATH=\"$(CURDIR)/bin:\$$PATH\"      # bash / zsh"; \
+	  echo "      setenv PATH \"$(CURDIR)/bin:\$$PATH\"      # tcsh / csh"; \
+	  echo ""; \
+	fi
 
 obj/%.o: src/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
