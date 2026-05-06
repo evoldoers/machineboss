@@ -174,13 +174,15 @@ Machine buildSubtree (const PhyloTree& tree, size_t v,
                       const Machine& T, const string& timeParam,
                       bool renameTime,
                       ParamAssign* outParams,
-                      Machine::SilentCycleStrategy strategy);
+                      Machine::SilentCycleStrategy strategy,
+                      const map<string, vguard<string> >* leafClamps);
 
 Machine branchTransducerForChild (const PhyloTree& tree, size_t parentV, size_t childV,
                                   const Machine& T, const string& timeParam,
                                   bool renameTime,
                                   ParamAssign* outParams,
-                                  Machine::SilentCycleStrategy strategy) {
+                                  Machine::SilentCycleStrategy strategy,
+                                  const map<string, vguard<string> >* leafClamps) {
   const PhyloNode& child = tree.nodes[childV];
   Machine Tcopy = T;
   if (renameTime) {
@@ -190,7 +192,7 @@ Machine branchTransducerForChild (const PhyloTree& tree, size_t parentV, size_t 
       outParams->defs[fullName] = WeightAlgebra::doubleConstant (child.branchLength);
     }
   }
-  Machine sub = buildSubtree (tree, childV, T, timeParam, renameTime, outParams, strategy);
+  Machine sub = buildSubtree (tree, childV, T, timeParam, renameTime, outParams, strategy, leafClamps);
   // pre-compose with the branch above the child
   return Machine::compose (Tcopy, sub, true, true, strategy);
 }
@@ -199,20 +201,27 @@ Machine buildSubtree (const PhyloTree& tree, size_t v,
                       const Machine& T, const string& timeParam,
                       bool renameTime,
                       ParamAssign* outParams,
-                      Machine::SilentCycleStrategy strategy) {
+                      Machine::SilentCycleStrategy strategy,
+                      const map<string, vguard<string> >* leafClamps) {
   const PhyloNode& node = tree.nodes[v];
   if (node.children.empty()) {
-    // leaf: identity over T's output alphabet
+    // leaf: either an identity over T's output alphabet, or a recognizer
+    // of an observed sequence if a clamp was supplied for this leaf.
+    if (leafClamps) {
+      auto it = leafClamps->find (node.name);
+      if (it != leafClamps->end())
+        return Machine::recognizer (it->second);
+    }
     return Machine::wildEcho (T.outputAlphabet());
   }
   if (node.children.size() == 1) {
     // degree-1 internal node: descend through the single branch
-    return branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy);
+    return branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy, leafClamps);
   }
   // degree >= 2: fold-left intersect over the children's branch transducers
-  Machine acc = branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy);
+  Machine acc = branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy, leafClamps);
   for (size_t i = 1; i < node.children.size(); ++i) {
-    Machine sib = branchTransducerForChild (tree, v, node.children[i], T, timeParam, renameTime, outParams, strategy);
+    Machine sib = branchTransducerForChild (tree, v, node.children[i], T, timeParam, renameTime, outParams, strategy, leafClamps);
     acc = Machine::intersect (acc, sib, strategy);
   }
   return acc;
@@ -224,7 +233,8 @@ Machine phyloIntersect (const Machine& T,
                         const PhyloTree& tree,
                         const string& timeParam,
                         ParamAssign* branchLengthsOut,
-                        Machine::SilentCycleStrategy strategy) {
+                        Machine::SilentCycleStrategy strategy,
+                        const map<string, vguard<string> >* leafClamps) {
   if (tree.nodes.empty())
     throw runtime_error ("phylo intersection: empty tree");
   if (tree.nodes.size() == 1)
@@ -243,11 +253,22 @@ Machine phyloIntersect (const Machine& T,
       }
   }
 
+  if (leafClamps) {
+    set<string> leafNames;
+    for (size_t i = 0; i < tree.nodes.size(); ++i)
+      if (tree.nodes[i].children.empty())
+        leafNames.insert (tree.nodes[i].name);
+    for (const auto& kv : *leafClamps)
+      if (!leafNames.count (kv.first))
+        throw runtime_error ("phylo intersection: --phylo-clamp leaf \"" + kv.first + "\" is not a leaf in the tree");
+  }
+
   LogThisAt(3,"Phylo intersection: " << tree.nodes.size() << " nodes; "
             << (renameTime ? string("renaming param \"") + timeParam + "\" per branch" : string("no time-param renaming"))
+            << (leafClamps ? string("; ") + to_string(leafClamps->size()) + " leaves clamped" : string())
             << endl);
 
-  return buildSubtree (tree, tree.root, T, timeParam, renameTime, branchLengthsOut, strategy);
+  return buildSubtree (tree, tree.root, T, timeParam, renameTime, branchLengthsOut, strategy, leafClamps);
 }
 
 }  // end namespace MachineBoss

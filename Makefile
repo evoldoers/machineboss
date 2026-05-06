@@ -290,7 +290,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-rust-codegen-echo
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -454,6 +454,16 @@ test-phylo-trivial-loglike:
 # Phylogenetic intersection: end-to-end Forward log-likelihood on the TKF91 triad with concrete branch lengths.
 test-phylo-tkf91-triad-loglike:
 	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --generate-json t/io/parentA.json -m --begin --preset tkf91-branch-dna-jc --phylo-tree t/tree/tkf91-triad.nwk --phylo-time-param time --end --recognize-json t/io/triad-AA.json -P t/io/triad-params.json -L t/expect/phylo-tkf91-triad-loglike.json
+
+# Multidim Rust codegen: emit a Rust crate, compile, run forward+viterbi,
+# and compare against the equivalent --phylo-clamp Forward computed by boss.
+# Skipped silently if `cargo` is not on PATH.
+test-rust-codegen-echo:
+	@if command -v cargo > /dev/null 2>&1; then \
+	  REPO_ROOT=$(CURDIR) python3 t/rust/check_echo.py; \
+	else \
+	  echo "                              test-rust-codegen-echo     skip: cargo not in PATH"; \
+	fi
 
 # Confirm CLI generators match the hardcoded presets via Forward log-likelihood equivalence.
 test-tkf91-root-dna-jc-match:

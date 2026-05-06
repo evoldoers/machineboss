@@ -28,6 +28,7 @@
 #include "../src/jphmm.h"
 #include "../src/csv.h"
 #include "../src/compiler.h"
+#include "../src/rust_codegen.h"
 #include "../src/ctc.h"
 #include "../src/beam.h"
 #include "../src/beam_align.h"
@@ -207,6 +208,7 @@ int main (int argc, char** argv) {
 
       ("phylo-time-param", po::value<string>(), "name of the branch transducer's time parameter, replaced per-branch with name[node] by --phylo-tree (default 't')")
       ("phylo-params-out", po::value<string>(), "write per-branch parameter values (parsed from Newick branch lengths) to specified JSON file")
+      ("phylo-clamp", po::value<string>(), "JSON file mapping leaf names to observed sequences (each a list of symbol strings); replaces wildEcho leaves with recognizers, yielding a no-output machine whose Forward score is the marginal P(observed leaves)")
       ;
 
     po::options_description compOpts("Parser-generator");
@@ -218,6 +220,8 @@ int main (int argc, char** argv) {
       ("showcells", "include debugging output in generated code")
       ("compileviterbi", "compile Viterbi instead of Forward")
       ("wgsl", "generate WGSL compute shader and ES module for WebGPU")
+      ("rust", "generate Rust crate for multidimensional Forward DP on a phylo-composed generator (requires the machine to have been built with --pair-json so output tokens are JSON-decodable)")
+      ("no-viterbi", "with --rust, omit the Viterbi function from the generated crate")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -286,6 +290,24 @@ int main (int argc, char** argv) {
     const string phyloTimeParam = vm.count("phylo-time-param") ? vm.at("phylo-time-param").as<string>() : string("t");
     const string phyloParamsOut = vm.count("phylo-params-out") ? vm.at("phylo-params-out").as<string>() : string();
     ParamAssign phyloBranchLengths;
+    map<string, vguard<string> > phyloLeafClamps;
+    bool havePhyloLeafClamps = false;
+    if (vm.count("phylo-clamp")) {
+      ifstream cin (vm.at("phylo-clamp").as<string>());
+      Require ((bool)cin, "phylo-clamp file not found");
+      json j; cin >> j;
+      Require (j.is_object(), "phylo-clamp file must be a JSON object mapping leaf names to symbol-list arrays");
+      for (auto it = j.begin(); it != j.end(); ++it) {
+        Require (it.value().is_array(), ("phylo-clamp leaf \"" + it.key() + "\" must be an array of symbol strings").c_str());
+        vguard<string> seq;
+        for (const auto& s : it.value()) {
+          Require (s.is_string(), ("phylo-clamp leaf \"" + it.key() + "\" must be an array of symbol strings").c_str());
+          seq.push_back (s.get<string>());
+        }
+        phyloLeafClamps[it.key()] = seq;
+      }
+      havePhyloLeafClamps = true;
+    }
 
     // random seed
     auto makeRnd = [&] () -> mt19937 {
@@ -629,10 +651,14 @@ int main (int argc, char** argv) {
 	  stringstream nwkBuf;
 	  nwkBuf << nwkIn.rdbuf();
 	  const PhyloTree tree = PhyloTree::parseNewick (nwkBuf.str());
-	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths);
+	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
+	                      Machine::SumSilentCycles,
+	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL);
 	} else if (command == "--phylo-tree-string") {
 	  const PhyloTree tree = PhyloTree::parseNewick (getArg());
-	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths);
+	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
+	                      Machine::SumSilentCycles,
+	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL);
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());
@@ -777,11 +803,13 @@ int main (int argc, char** argv) {
       compiler.useMaxReduce = vm.count("compileviterbi");
       compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
-    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") < 2, "Options --cpp32, --cpp64, --js, and --wgsl are mutually incompatible; choose a target language");
+    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") + vm.count("rust") < 2, "Options --cpp32, --cpp64, --js, --wgsl, and --rust are mutually incompatible; choose a target language");
     if (vm.count("codegen")) {
+      const string outputDir = vm.at("codegen").as<string>();
       if (vm.count("wgsl")) {
-	const string outputDir = vm.at("codegen").as<string>();
 	WGSLCompiler::compile (machine, outputDir.c_str());
+      } else if (vm.count("rust")) {
+	compileRust (machine, outputDir, !vm.count("no-viterbi"));
       } else if (vm.count("js")) {
 	JavaScriptCompiler compiler;
 	compileMachine (compiler);

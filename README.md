@@ -646,6 +646,11 @@ Transducer application:
                                 --phylo-tree (default &#x27;t&#x27;)
   --phylo-params-out arg        write per-branch parameter values (parsed from 
                                 Newick branch lengths) to specified JSON file
+  --phylo-clamp arg             JSON file mapping leaf names to observed 
+                                sequences (each a list of symbol strings); 
+                                replaces wildEcho leaves with recognizers, 
+                                yielding a no-output machine whose Forward 
+                                score is the marginal P(observed leaves)
 
 Parser-generator:
   --codegen arg                 generate parser code, save to specified 
@@ -657,6 +662,13 @@ Parser-generator:
   --compileviterbi              compile Viterbi instead of Forward
   --wgsl                        generate WGSL compute shader and ES module for 
                                 WebGPU
+  --rust                        generate Rust crate for multidimensional 
+                                Forward DP on a phylo-composed generator 
+                                (requires the machine to have been built with 
+                                --pair-json so output tokens are 
+                                JSON-decodable)
+  --no-viterbi                  with --rust, omit the Viterbi function from the
+                                generated crate
   --inseq arg                   input sequence type (String, Intvec, Profile)
   --outseq arg                  output sequence type (String, Intvec, Profile)
 

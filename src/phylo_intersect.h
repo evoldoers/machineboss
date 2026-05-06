@@ -47,11 +47,20 @@ struct PhyloTree {
 //
 // branchLengthsOut: if non-null, populated with timeParam[<name>] -> branchLength
 // for every non-root node that carries a branch length in the Newick.
+//
+// leafClamps: if non-null, supplies an observed sequence (as a list of symbol
+// strings, e.g. {"A","C","G"}) for one or more leaf nodes by name. For each
+// clamped leaf, the leaf machine becomes a recognizer of that sequence
+// instead of wildEcho — giving an output-empty machine whose Forward score
+// equals the marginal likelihood of the observed leaves under the model.
+// Useful as an independent verification target for the multidim Forward DP
+// emitted by --codegen-rust.
 Machine phyloIntersect (const Machine& branchTransducer,
                         const PhyloTree& tree,
                         const string& timeParam = "t",
                         ParamAssign* branchLengthsOut = NULL,
-                        Machine::SilentCycleStrategy strategy = Machine::SumSilentCycles);
+                        Machine::SilentCycleStrategy strategy = Machine::SumSilentCycles,
+                        const map<string, vguard<string> >* leafClamps = NULL);
 
 }  // end namespace
 
