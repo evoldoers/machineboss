@@ -3,21 +3,27 @@
 
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include "util.h"
 #include "json.hpp"
 
 namespace MachineBoss {
 
 using namespace std;
-  
+
 // infinity-safe toString method for JSON output
+// Uses setprecision(17) to round-trip IEEE-754 double precision: any
+// double can be reconstructed exactly from its 17-decimal-digit
+// representation. Default cout precision (6 digits) loses precision in
+// log-likelihood outputs that downstream consumers (e.g. evolmoves'
+// boss-oracle harness) need bit-exact for cross-implementation checks.
 inline string toInfinitySafeString (double x) {
   if (x == numeric_limits<double>::infinity())
     return string("\"Infinity\"");
   if (x == -numeric_limits<double>::infinity())
     return string("\"-Infinity\"");
   ostringstream out;
-  out << x;
+  out << setprecision(17) << x;
   return out.str();
 }
 
