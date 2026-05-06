@@ -203,6 +203,7 @@ int main (int argc, char** argv) {
       ("pair-sep", po::value<string>(), "pair-token separator string for intersection of two non-empty-output transducers (default ':')")
       ("pair-delim", po::value<string>(), "open+close delimiter chars (2 chars) wrapping pair-token sides that contain the separator (default '{}')")
       ("pair-escape", po::value<string>(), "escape char used inside pair-token wrappings (default '\\\\')")
+      ("pair-json", "encode pair tokens as two-element JSON arrays; nested intersections produce nested arrays (output is no longer Machine Boss JSON)")
 
       ("phylo-time-param", po::value<string>(), "name of the branch transducer's time parameter, replaced per-branch with name[node] by --phylo-tree (default 't')")
       ("phylo-params-out", po::value<string>(), "write per-branch parameter values (parsed from Newick branch lengths) to specified JSON file")
@@ -271,6 +272,7 @@ int main (int argc, char** argv) {
     logger.parseLogArgs (vm);
 
     // pair-token encoding overrides for intersect with two non-empty output alphabets
+    if (vm.count("pair-json"))   Machine::pairTokenConfig.mode   = Machine::PairTokenConfig::JsonMode;
     if (vm.count("pair-sep"))    Machine::pairTokenConfig.sep    = vm.at("pair-sep").as<string>();
     if (vm.count("pair-delim")) {
       const string d = vm.at("pair-delim").as<string>();

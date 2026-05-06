@@ -290,7 +290,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -330,6 +330,14 @@ test-intersect-pair-escape:
 # Custom separator override.
 test-intersect-pair-custom-sep:
 	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json -i t/machine/bitnoise.json --pair-sep "|" t/expect/intersect-pair-custom-sep.json
+
+# JSON pair-token mode: each side encoded as JSON value, pair as a 2-element JSON array.
+test-intersect-pair-json:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json -i t/machine/bitnoise.json --pair-json t/expect/intersect-pair-json.json
+
+# Iterated intersection in JSON mode produces nested arrays.
+test-intersect-pair-json-3way:
+	@$(TEST) $(WRAPBOSS) t/machine/bitecho.json -i t/machine/bitnoise.json -i t/machine/bitnoise.json --pair-json t/expect/intersect-pair-json-3way.json
 
 test-brackets:
 	@$(TEST) $(WRAPBOSS) --begin t/machine/bitnoise.json --recognize-json t/io/seq001.json --end -i --recognize-json t/io/seq101.json t/expect/noise-001-and-101.json

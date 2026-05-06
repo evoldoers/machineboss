@@ -936,8 +936,22 @@ static string encodePairSide (const OutputSymbol& s, const Machine::PairTokenCon
 
 Machine::PairTokenConfig Machine::pairTokenConfig;
 
+// In JsonMode, each side of the pair is encoded as a JSON value: if the
+// side parses as JSON it is spliced in as that value, otherwise it is
+// embedded as a JSON string. The pair is the two-element array, dumped.
+static json encodePairSideJson (const OutputSymbol& s) {
+  if (s.empty()) return json("");
+  try {
+    return json::parse(s);
+  } catch (...) {
+    return json(s);
+  }
+}
+
 string Machine::encodePairToken (const OutputSymbol& a, const OutputSymbol& b) {
   if (a.empty() && b.empty()) return string();
+  if (pairTokenConfig.mode == PairTokenConfig::JsonMode)
+    return json::array({ encodePairSideJson(a), encodePairSideJson(b) }).dump();
   return encodePairSide (a, pairTokenConfig) + pairTokenConfig.sep + encodePairSide (b, pairTokenConfig);
 }
 

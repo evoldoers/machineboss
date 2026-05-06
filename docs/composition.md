@@ -220,6 +220,25 @@ boss A.json -i B.json --pair-delim "[]"          # wrap with [ and ]
 boss A.json -i B.json --pair-escape "%"          # escape with %
 ```
 
+#### JSON pair tokens
+
+For a more structured encoding, `--pair-json` switches the encoder to emit
+each pair token as a stringified two-element JSON array. Each side is a
+JSON value: if a side already parses as JSON it is spliced in as that
+value, otherwise it is embedded as a JSON string. Iterated intersections
+therefore produce nested arrays.
+
+| `(a, b)` | encoded |
+|---|---|
+| `("0", "1")` | `[0,1]` *(both sides parse as JSON numbers)* |
+| `("A", "B")` | `["A","B"]` |
+| `("A:1", "B")` | `["A:1","B"]` *(no escaping needed in JSON mode)* |
+| three-way `(("A","B"), "C")` | `[["A","B"],"C"]` |
+
+In `--pair-json` mode the resulting machine's output tokens are no longer
+valid Machine Boss JSON tokens — they need to be JSON-parsed by the caller
+to recover the alignment columns.
+
 To split pair tokens back into two streams, compose the intersected machine
 with a small "splitter" transducer that maps each pair token to two
 sequential output symbols (one per side). This is left to the caller because

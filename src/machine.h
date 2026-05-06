@@ -107,12 +107,21 @@ struct Machine {
   static Machine compose (const Machine& first, const Machine& second, bool assignCompositeStateNames = true, bool collapseDegenerateTransitions = true, SilentCycleStrategy cycleStrategy = SumSilentCycles);
 
   // Pair-token encoding for intersection of two machines that both have
-  // non-empty output alphabets. A pair token has the form a + sep + b. If
+  // non-empty output alphabets.
+  //
+  // SeparatorMode (default): a pair token has the form a + sep + b. If
   // either side contains sep, the open delimiter, the close delimiter, or
   // the escape character, that side is wrapped in delimiters; inside the
   // wrapping, occurrences of the delimiters or the escape character are
   // escaped with the escape character.
+  //
+  // JsonMode: each side is encoded as a JSON value and the pair is encoded
+  // as a two-element JSON array, stringified. If a side already parses as
+  // valid JSON it is spliced in as that value; otherwise it is treated as
+  // a JSON string. Iterated intersections produce nested arrays.
   struct PairTokenConfig {
+    enum Mode { SeparatorMode, JsonMode };
+    Mode   mode   = SeparatorMode;
     string sep    = ":";
     string open   = "{";
     string close  = "}";

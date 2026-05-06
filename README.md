@@ -638,6 +638,9 @@ Transducer application:
                                 (default &#x27;{}&#x27;)
   --pair-escape arg             escape char used inside pair-token wrappings 
                                 (default &#x27;\\&#x27;)
+  --pair-json                   encode pair tokens as two-element JSON arrays; 
+                                nested intersections produce nested arrays 
+                                (output is no longer Machine Boss JSON)
   --phylo-time-param arg        name of the branch transducer&#x27;s time parameter,
                                 replaced per-branch with name[node] by 
                                 --phylo-tree (default &#x27;t&#x27;)
