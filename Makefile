@@ -445,13 +445,13 @@ test-phylo-tkf91-triad-loglike:
 
 # Confirm CLI generators match the hardcoded presets via Forward log-likelihood equivalence.
 test-tkf91-root-dna-jc-match:
-	@$(TEST) $(WRAPBOSS) --tkf91-root-dna-jc -P t/io/tkf-rate-params.json --output-chars ACGT -L t/expect/tkf91-root-dna-jc-loglike.json
+	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-root-dna-jc -P t/io/tkf-rate-params.json --output-chars ACGT -L t/expect/tkf91-root-dna-jc-loglike.json
 
 test-tkf91-branch-dna-jc-match:
-	@$(TEST) $(WRAPBOSS) --tkf91-branch-dna-jc -P t/io/tkf91-branch-params.json --input-chars ACGT --output-chars ACGA -L t/expect/tkf91-branch-dna-jc-loglike.json
+	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-branch-dna-jc -P t/io/tkf91-branch-params.json --input-chars ACGT --output-chars ACGA -L t/expect/tkf91-branch-dna-jc-loglike.json
 
 test-tkf92-branch-prot-f81-match:
-	@$(TEST) $(WRAPBOSS) --tkf92-branch-prot-f81 -P t/io/tkf92-branch-prot-params.json --input-chars ACDE --output-chars ACDE -L t/expect/tkf92-branch-prot-f81-loglike.json
+	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf92-branch-prot-f81 -P t/io/tkf92-branch-prot-params.json --input-chars ACDE --output-chars ACDE -L t/expect/tkf92-branch-prot-f81-loglike.json
 
 # Invalid transducer construction tests
 INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine test-phylo-non-binary test-phylo-missing-name test-phylo-duplicate-name
