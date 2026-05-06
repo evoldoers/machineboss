@@ -1,4 +1,4 @@
 {"state": [
-  {"id":"S","trans":[{"in":"0","out":"a{b","to":"S"},
+  {"id":"S","trans":[{"in":"0","out":"a[b","to":"S"},
                      {"in":"1","out":"c\\d","to":"S"}]}
 ]}

@@ -122,9 +122,9 @@ struct Machine {
   struct PairTokenConfig {
     enum Mode { SeparatorMode, JsonMode };
     Mode   mode   = SeparatorMode;
-    string sep    = ":";
-    string open   = "{";
-    string close  = "}";
+    string sep    = ",";
+    string open   = "[";
+    string close  = "]";
     string escape = "\\";
   };
   static PairTokenConfig pairTokenConfig;

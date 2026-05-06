@@ -632,10 +632,10 @@ Transducer application:
                                 search
   --seed arg                    random number seed
   --pair-sep arg                pair-token separator string for intersection of
-                                two non-empty-output transducers (default &#x27;:&#x27;)
+                                two non-empty-output transducers (default &#x27;,&#x27;)
   --pair-delim arg              open+close delimiter chars (2 chars) wrapping 
                                 pair-token sides that contain the separator 
-                                (default &#x27;{}&#x27;)
+                                (default &#x27;[]&#x27;)
   --pair-escape arg             escape char used inside pair-token wrappings 
                                 (default &#x27;\\&#x27;)
   --pair-json                   encode pair tokens as two-element JSON arrays; 

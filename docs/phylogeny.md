@@ -8,30 +8,34 @@ permalink: /phylogeny/
 
 `--phylo-tree FILE` (or `--phylo-tree-string STR`) is a postfix operator
 that takes the top-of-stack machine, treats it as a *branch transducer*
-`T`, and builds a phylogenetic intersection over a binary Newick tree.
-The result is a transducer whose input alphabet is the symbol set at the
-root of the tree, and whose output alphabet is the *pair-token* alphabet
-encoding column-wise observations across all leaves (see
-[Pair tokens](composition.html#pair-tokens) for the encoding convention).
+`T`, and builds a phylogenetic intersection over a Newick tree of
+arbitrary topology.  The result is a transducer whose input alphabet is
+the symbol set at the root of the tree, and whose output alphabet is the
+*pair-token* alphabet encoding column-wise observations across all
+leaves (see [Pair tokens](composition.html#pair-tokens) for the encoding
+convention).
 
 ## Algorithm
 
-For a binary tree, climbing from leaves to root:
+Climbing from leaves to root:
 
 ```
 build(node):
   if node is a leaf:
     return wildEcho(T.outputAlphabet)
-  else (node has children u, w):
+  if node has one child u:
     T_u = T with timeParam renamed timeParam[<u.name>]
-    T_w = T with timeParam renamed timeParam[<w.name>]
-    return intersect(compose(T_u, build(u)),
-                     compose(T_w, build(w)))
+    return compose(T_u, build(u))
+  if node has children u_1, u_2, ..., u_n   (n >= 2):
+    branch_i = compose(T_{u_i}, build(u_i))   # T_{u_i} is T renamed for u_i
+    return intersect(... intersect(branch_1, branch_2) ..., branch_n)
 ```
 
 So every edge of the tree contributes one copy of `T`, parametrised by
 its child node's name; leaves contribute the identity over `T`'s output
-alphabet; internal nodes intersect on their shared parent input.
+alphabet; internal nodes with two or more children intersect their
+descendant branches pairwise (polytomies fold-left into iterated
+intersection); degree-1 internal nodes pass through.
 
 Per-branch parameter renaming is automatic: every reference to
 `timeParam` in a transition weight, every key in `T.funcs.defs` (and
@@ -47,22 +51,28 @@ renaming is done and node names are not required.
 ## Output token structure
 
 The pair-token machinery from `--intersect` cascades naturally through
-recursive intersection: a tree of depth *d* produces output tokens of
-shape `{...{leaf_1:leaf_2}:...:leaf_d}`, with the wrapping rule
-(introduced by `--intersect`) automatically nesting one extra level of
-braces per intersection. For example:
+recursive intersection: a tree contributing *d* intersection operations
+produces output tokens with up to *d* nested wrappings.  With the
+defaults (separator `,`, delimiters `[]`), a tree's column tokens look
+like comma-separated, square-bracket-wrapped JSON-ish values:
 
 {% raw %}
 | Tree | Sample column-token |
 |---|---|
-| `(A,B)P;` | `0:1` (A=0, B=1) |
-| `((A,B)C,D)E;` | `{0:1}:1` (A=0, B=1, D=1) |
-| `(((A,B)C,D)E,F)G;` | `{{0:1}:1}:0` (A=0, B=1, D=1, F=0) |
+| `(A,B)P;` | `0,1` (A=0, B=1) |
+| `(A,B,C)P;` | `[0,1],1` (A=0, B=1, C=1) |
+| `((A,B)C,D)E;` | `[0,1],1` (A=0, B=1, D=1) |
+| `(((A,B)C,D)E,F)G;` | `[[0,1],1],0` (A=0, B=1, D=1, F=0) |
 {% endraw %}
 
-Reading a token: outermost `:` separates the root's two subtrees; each
-side, if itself a pair, is wrapped in `{...}`. Recursing into the
-wrapping reveals the per-leaf symbols in tree order.
+Reading a token: the outermost `,` separates the root's left subtree
+from the rest; each side, if itself a pair, is wrapped in `[...]`.
+Recursing into the wrappings reveals the per-leaf symbols in tree order.
+
+If you'd rather work with structured JSON than wrapped strings, pass
+`--pair-json` to switch the encoder to nested JSON arrays (`[[0,1],1]`
+for the depth-2 example above) — see
+[JSON pair tokens](composition.html#json-pair-tokens).
 
 ## Branch lengths
 
@@ -82,9 +92,9 @@ boss --preset tkf91-branch-dna-jc \
      --phylo-time-param time \
      --phylo-params-out triad-params.json
 
-# Forward log-likelihood: parent="A", joint MSA column = "A:A".
+# Forward log-likelihood: parent="A", joint MSA column = "A,A".
 echo '{"sequence":["A"]}'   > parent.json
-echo '{"sequence":["A:A"]}' > cols.json
+echo '{"sequence":["A,A"]}' > cols.json
 echo '{"delRate":0.02,"insRate":0.01,"time[sibling1]":0.1,"time[sibling2]":0.2}' > params.json
 
 boss --generate-json parent.json -m \
@@ -96,16 +106,15 @@ boss --generate-json parent.json -m \
 
 ## Validation
 
-The Newick tree must be strictly binary (every internal node has
-exactly two children). If the branch transducer has a parameter named
-`timeParam`, every non-root node must have a non-empty name, and node
-names must be unique across the tree. Violations raise an error before
-the intersection is built.
+The Newick tree may be of arbitrary topology: leaves (degree 0),
+degree-1 internal nodes, and polytomies (degree ≥ 2) are all accepted.
+If the branch transducer has a parameter named `timeParam`, every
+non-root node must have a non-empty name, and node names must be unique
+across the tree. Violations raise an error before the intersection is
+built.
 
 ## Limitations
 
-- Strictly binary trees only. Multifurcations require pre-resolution
-  (e.g. by inserting zero-length internal branches).
 - Pair-token decoding back into per-leaf streams is not provided as a
   built-in op; for now, write a downstream "splitter" transducer per
   application. The pair-token nesting carries enough structure to do

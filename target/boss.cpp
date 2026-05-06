@@ -200,8 +200,8 @@ int main (int argc, char** argv) {
       ("random-encode", "sample random output by stochastic prefix search")
       ("seed", po::value<int>(), "random number seed")
 
-      ("pair-sep", po::value<string>(), "pair-token separator string for intersection of two non-empty-output transducers (default ':')")
-      ("pair-delim", po::value<string>(), "open+close delimiter chars (2 chars) wrapping pair-token sides that contain the separator (default '{}')")
+      ("pair-sep", po::value<string>(), "pair-token separator string for intersection of two non-empty-output transducers (default ',')")
+      ("pair-delim", po::value<string>(), "open+close delimiter chars (2 chars) wrapping pair-token sides that contain the separator (default '[]')")
       ("pair-escape", po::value<string>(), "escape char used inside pair-token wrappings (default '\\\\')")
       ("pair-json", "encode pair tokens as two-element JSON arrays; nested intersections produce nested arrays (output is no longer Machine Boss JSON)")
 

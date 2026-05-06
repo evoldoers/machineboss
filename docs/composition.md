@@ -196,27 +196,30 @@ one of:
 - `(ε, ε)` — neither emits; encoded as a plain ε transition (no token)
 
 Pair tokens are encoded as strings of the form `a + sep + b`, where `sep`
-defaults to `:`. Empty sides become empty strings, so `(a, ε)` is `a:`,
-`(ε, b)` is `:b`, and `(a, b)` is `a:b`.
+defaults to `,`. Empty sides become empty strings, so `(a, ε)` is `a,`,
+`(ε, b)` is `,b`, and `(a, b)` is `a,b`. The default delimiters and
+separator together mimic a JSON 2-tuple (without quoting): a non-colliding
+pair like `("0", "1")` is `0,1`; a colliding pair like `("0,0", "1")` is
+`[0\,0],1`.
 
 If either side contains the separator, the open delimiter, the close
 delimiter, or the escape character, that side is wrapped in delimiters
-(default `{` and `}`). Inside the wrapping, occurrences of either delimiter
+(default `[` and `]`). Inside the wrapping, occurrences of either delimiter
 or the escape character are escaped with the escape character (default `\`).
 For example, with default settings:
 
 | `(a, b)` | encoded |
 |---|---|
-| `("0", "1")` | `0:1` |
-| `("a:1", "b")` | `{a:1}:b` |
-| `("a{b", "c")` | `{a\{b}:c` |
-| `("a\\b", "c")` | `{a\\b}:c` |
+| `("0", "1")` | `0,1` |
+| `("a,1", "b")` | `[a\,1],b` |
+| `("a[b", "c")` | `[a\[b],c` |
+| `("a\\b", "c")` | `[a\\b],c` |
 
 The defaults can be overridden on the command line:
 
 ```bash
-boss A.json -i B.json --pair-sep "|"             # use | instead of :
-boss A.json -i B.json --pair-delim "[]"          # wrap with [ and ]
+boss A.json -i B.json --pair-sep ":"             # use : instead of ,
+boss A.json -i B.json --pair-delim "{}"          # wrap with { and }
 boss A.json -i B.json --pair-escape "%"          # escape with %
 ```
 
@@ -232,7 +235,7 @@ therefore produce nested arrays.
 |---|---|
 | `("0", "1")` | `[0,1]` *(both sides parse as JSON numbers)* |
 | `("A", "B")` | `["A","B"]` |
-| `("A:1", "B")` | `["A:1","B"]` *(no escaping needed in JSON mode)* |
+| `("A,1", "B")` | `["A,1","B"]` *(no escaping needed in JSON mode)* |
 | three-way `(("A","B"), "C")` | `[["A","B"],"C"]` |
 
 In `--pair-json` mode the resulting machine's output tokens are no longer

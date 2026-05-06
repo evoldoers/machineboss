@@ -205,11 +205,17 @@ Machine buildSubtree (const PhyloTree& tree, size_t v,
     // leaf: identity over T's output alphabet
     return Machine::wildEcho (T.outputAlphabet());
   }
-  if (node.children.size() != 2)
-    throw runtime_error ("phylo intersection: non-binary node \"" + node.name + "\" has " + to_string(node.children.size()) + " children (expected 2)");
-  Machine left  = branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy);
-  Machine right = branchTransducerForChild (tree, v, node.children[1], T, timeParam, renameTime, outParams, strategy);
-  return Machine::intersect (left, right, strategy);
+  if (node.children.size() == 1) {
+    // degree-1 internal node: descend through the single branch
+    return branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy);
+  }
+  // degree >= 2: fold-left intersect over the children's branch transducers
+  Machine acc = branchTransducerForChild (tree, v, node.children[0], T, timeParam, renameTime, outParams, strategy);
+  for (size_t i = 1; i < node.children.size(); ++i) {
+    Machine sib = branchTransducerForChild (tree, v, node.children[i], T, timeParam, renameTime, outParams, strategy);
+    acc = Machine::intersect (acc, sib, strategy);
+  }
+  return acc;
 }
 
 }  // anonymous

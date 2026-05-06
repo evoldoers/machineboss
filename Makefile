@@ -290,7 +290,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -321,11 +321,11 @@ test-intersect-dual-output:
 
 # Pair-token side wrapping when an output symbol contains the separator.
 test-intersect-pair-collision:
-	@$(TEST) $(WRAPBOSS) t/machine/bit-emit-colon.json -i t/machine/bitnoise.json t/expect/intersect-pair-collision.json
+	@$(TEST) $(WRAPBOSS) t/machine/bit-emit-comma.json -i t/machine/bitnoise.json t/expect/intersect-pair-collision.json
 
 # Pair-token escape inside delimiters when a symbol contains delimiter or escape chars.
 test-intersect-pair-escape:
-	@$(TEST) $(WRAPBOSS) t/machine/bit-emit-tricky.json -i t/machine/bitnoise.json t/expect/intersect-pair-escape.json
+	@$(TEST) $(WRAPBOSS) t/machine/bit-emit-bracket.json -i t/machine/bitnoise.json t/expect/intersect-pair-escape.json
 
 # Custom separator override.
 test-intersect-pair-custom-sep:
@@ -439,6 +439,10 @@ test-phylo-trivial:
 test-phylo-depth3:
 	@$(TEST) $(WRAPBOSS) t/machine/echo-with-time.json --phylo-tree-string '((A,B)C,D)E;' --strip-names t/expect/phylo-depth3.json
 
+# Phylogenetic intersection: polytomy (3 children) — folded as iterated intersection.
+test-phylo-polytomy:
+	@$(TEST) $(WRAPBOSS) t/machine/echo-with-time.json --phylo-tree-string '(A,B,C)P;' --strip-names t/expect/phylo-polytomy.json
+
 # Phylogenetic intersection: TKF91 fork triad (tree (sibling1,sibling2)parent;) with the tkf91-branch-dna-jc preset.
 test-phylo-tkf91-triad:
 	@$(TEST) $(WRAPBOSS) --preset tkf91-branch-dna-jc --phylo-tree t/tree/tkf91-triad.nwk --phylo-time-param time --strip-names t/expect/phylo-tkf91-triad.json
@@ -462,7 +466,7 @@ test-tkf92-branch-prot-f81-match:
 	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf92-branch-prot-f81 -P t/io/tkf92-branch-prot-params.json --input-chars ACDE --output-chars ACDE -L t/expect/tkf92-branch-prot-f81-loglike.json
 
 # Invalid transducer construction tests
-INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine test-phylo-non-binary test-phylo-missing-name test-phylo-duplicate-name
+INVALID_CONSTRUCT_TESTS = test-unmatched-begin test-unmatched-end test-empty-brackets test-impossible-intersect test-missing-machine test-phylo-missing-name test-phylo-duplicate-name
 test-unmatched-begin:
 	@$(TEST) $(WRAPBOSS) --begin -fail
 
@@ -477,9 +481,6 @@ test-missing-machine:
 
 test-impossible-intersect:
 	@$(TEST) $(WRAPBOSS) t/machine/bitnoise.json --begin --recognize-json t/io/seq001.json -i --recognize-json t/io/seq101.json --end t/expect/zero.json
-
-test-phylo-non-binary:
-	@$(TEST) $(WRAPBOSS) t/machine/echo-with-time.json --phylo-tree-string '(A,B,C)P;' -fail
 
 test-phylo-missing-name:
 	@$(TEST) $(WRAPBOSS) t/machine/echo-with-time.json --phylo-tree-string '(A,)P;' -fail
