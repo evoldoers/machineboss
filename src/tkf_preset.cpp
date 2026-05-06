@@ -281,6 +281,29 @@ static SubModel makeSubModel (const Spec& spec, const vguard<string>& alph) {
   throw runtime_error ("unknown substitution model");
 }
 
+// ---------- Constraints helper ----------
+//
+// Populate cons.{rate,prob,norm} so that --use-defaults, normalisation, and
+// training operations have sensible defaults for every free parameter.
+
+static void addConstraintsForSpec (Machine& m, const Spec& spec, const vguard<string>& alph) {
+  // Rate parameters (default 1).
+  m.cons.rate.push_back (timeParamName (spec.version));
+  m.cons.rate.push_back ("insRate");
+  m.cons.rate.push_back ("delRate");
+  if (spec.model == Model::HKY85)
+    m.cons.rate.push_back ("tsRatio");
+  // TKF92 fragment-extension is a probability (default 0.5).
+  if (spec.version == Version::TKF92)
+    m.cons.prob.push_back ("r");
+  // Free pi parameters (default uniform 1/n) — only for F81 and HKY85.
+  if (spec.model == Model::F81 || spec.model == Model::HKY85) {
+    vguard<string> piGroup;
+    for (const auto& s: alph) piGroup.push_back (string("pi_") + s);
+    m.cons.norm.push_back (piGroup);
+  }
+}
+
 // ---------- TKF BDI defs ----------
 //
 // Common TKF91/TKF92 derived quantities: pNoDeletion, pDescendants, etc.
@@ -338,8 +361,15 @@ static Machine buildRoot (const Spec& spec, const vguard<string>& alph, const Su
   m.state[0].trans.push_back (MachineTransition (string(), string(), 1,
                                                   WeightAlgebra::param ("pNoExtend")));
 
+  // Roots have no time parameter, but otherwise the same constraint structure as branches.
+  if (spec.model == Model::HKY85) m.cons.rate.push_back ("tsRatio");
   m.cons.rate.push_back ("insRate");
   m.cons.rate.push_back ("delRate");
+  if (spec.model == Model::F81 || spec.model == Model::HKY85) {
+    vguard<string> piGroup;
+    for (const auto& s: alph) piGroup.push_back (string("pi_") + s);
+    m.cons.norm.push_back (piGroup);
+  }
   return m;
 }
 
@@ -402,9 +432,7 @@ static Machine buildTkf91Branch (const Spec& spec, const vguard<string>& alph, c
   for (const auto& a: alph)
     m.state[5].trans.push_back (MachineTransition (a, string(), 1, WeightAlgebra::one()));
 
-  m.cons.rate.push_back (timeParamName (spec.version));
-  m.cons.rate.push_back ("insRate");
-  m.cons.rate.push_back ("delRate");
+  addConstraintsForSpec (m, spec, alph);
   return m;
 }
 
@@ -518,9 +546,7 @@ static Machine buildTkf92Branch (const Spec& spec, const vguard<string>& alph, c
   rowFor (2, "tInsMat", "tInsIns", "tInsDel", "tInsFin");
   rowFor (3, "tDelMat", "tDelIns", "tDelDel", "tDelFin");
 
-  m.cons.rate.push_back ("t");
-  m.cons.rate.push_back ("insRate");
-  m.cons.rate.push_back ("delRate");
+  addConstraintsForSpec (m, spec, alph);
   return m;
 }
 

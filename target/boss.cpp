@@ -85,6 +85,7 @@ int main (int argc, char** argv) {
       ("hmmer-plan7", po::value<string>(), "create Plan7 generator from HMMER3 model file (single-hit with N/C flanks)")
       ("hmmer-multihit", po::value<string>(), "create Plan7 generator from HMMER3 model file (multi-hit with J loop)")
       ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
+      ("tkfYY-TTT-AAA-MMM", "build a TKF-family transducer from scratch. YY in {91,92}; TTT in {root,branch}; AAA in {dna,rna,prot,binary,unary,custom} (custom takes the alphabet string as the next argument); MMM in {jc,f81,k80,hky85,id} (k80/hky85 require a nucleotide alphabet). Examples: --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85, --tkf91-branch-custom-jc XYZW")
       ;
 
     po::options_description postfixOpts("Postfix operators");
