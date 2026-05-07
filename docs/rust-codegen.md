@@ -44,7 +44,6 @@ pub struct Params {
     pub t_Y_:     f64,                 //               X→Y
     pub t_C_:     f64,                 //               Y→C
     pub t_D_:     f64,                 //               Y→D
-    // … plus a vestigial unused `t` field; see Notes below.
 }
 
 pub fn forward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64;
@@ -136,8 +135,6 @@ fn main() {
         t_Y_: 0.05,  // X → Y
         t_C_: 0.15,  // Y → C
         t_D_: 0.18,  // Y → D
-        // Unused (root-side HKY85 def references an unrelated `t`)
-        t: 0.0,
     };
     let a: Vec<u32> = "ACGT".chars().map(idx).collect();
     let b: Vec<u32> = "ACG" .chars().map(idx).collect();
@@ -198,9 +195,5 @@ One-time costs for the quartet:
     branch transducer.
   - **Leaf order** is determined by left-to-right traversal of the tree.
     For `(A,B,(C,D)Y)X;` that's `A, B, C, D` — `leaves[0]` is A, etc.
-  - **Vestigial `t` field**: the root machine's HKY85 substitution defs
-    reference a parameter `t` that is never reachable from any transition
-    (it's pruned at composition). The current codegen still includes `t`
-    in `Params`. Set it to anything; it has no effect.
   - **`pi_*` constraints**: HKY85 stationary frequencies must sum to 1.
     The Rust crate does not enforce this; the caller is responsible.

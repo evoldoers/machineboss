@@ -84,7 +84,6 @@ fn main() {
     let p = Params {
         delRate: 0.06, insRate: 0.05, r: 0.4, tsRatio: 2.0,
         pi_A: 0.30, pi_C: 0.20, pi_G: 0.25, pi_T: 0.25,
-        t: 0.0,
         t_A_: 0.10, t_B_: 0.20, t_Y_: 0.05, t_C_: 0.15, t_D_: 0.18,
     };
     println!("# leaves of length n at each tip; uniform deterministic random sequences");

@@ -196,7 +196,6 @@ fn main() {
     let p = Params {
         delRate: 0.06, insRate: 0.05, r: 0.4, tsRatio: 2.0,
         pi_A: 0.30, pi_C: 0.20, pi_G: 0.25, pi_T: 0.25,
-        t: 0.0,
         t_A_: 0.10, t_B_: 0.20, t_C_: 0.15,
     };
     let a: Vec<u32> = "ACG".chars().map(idx).collect();

@@ -356,15 +356,20 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   std::map<std::string,int> symIdx;
   for (size_t i = 0; i < alph.size(); ++i) symIdx[alph[i]] = (int)i;
 
-  // Free parameters: all params referenced anywhere, minus those defined in funcs.defs.
+  // Free parameters: walk only REACHABLE param names. Start from params
+  // referenced in transition weights, then transitively descend into the
+  // expressions of any referenced def. Any param that isn't reachable from
+  // a transition (e.g. `t` referenced only by an unused root-side HKY85 def
+  // that was pruned away by composition) is dropped — it shouldn't clutter
+  // the generated Params struct.
   std::set<std::string> defNames;
   for (const auto& d : sorted.funcs.defs) defNames.insert (d.first);
 
-  std::set<std::string> referenced;
+  std::set<std::string> reachable;     // all reachable param names (def + free)
   std::function<void(WeightExpr)> collectParams = [&](WeightExpr w) {
     if (!w) return;
     switch (w->type) {
-      case Param: referenced.insert (*w->args.param); break;
+      case Param: reachable.insert (*w->args.param); break;
       case Mul: case Div: case Add: case Sub: case Pow:
         collectParams (w->args.binary.l);
         collectParams (w->args.binary.r);
@@ -373,12 +378,21 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
       default: break;
     }
   };
-  for (const auto& d : sorted.funcs.defs) collectParams (d.second);
   for (StateIndex s = 0; s < (StateIndex)N; ++s)
     for (const auto& t : states[s].trans)
       collectParams (t.weight);
+  // Iterate to fixed point: each newly-reached def name pulls in its
+  // expression's parameter references.
+  for (size_t prev = 0; prev != reachable.size(); ) {
+    prev = reachable.size();
+    std::vector<std::string> snap (reachable.begin(), reachable.end());
+    for (const auto& nm : snap) {
+      auto it = sorted.funcs.defs.find (nm);
+      if (it != sorted.funcs.defs.end()) collectParams (it->second);
+    }
+  }
   std::set<std::string> freeParams;
-  for (const auto& p : referenced) if (!defNames.count(p)) freeParams.insert (p);
+  for (const auto& p : reachable) if (!defNames.count(p)) freeParams.insert (p);
 
   // Bucket transitions and accumulate weight expressions per bucket.
   std::map<BucketKey, WeightExpr> buckets;
@@ -493,6 +507,16 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   {
     VmEmitter vm;
     auto topoOrder = topoSortDefs (sorted.funcs.defs);
+    // Drop unreachable defs from the topological order: their nodes would
+    // never be referenced by a transition's weight, but visiting them
+    // unconditionally would still emit instructions (and bloat the VM
+    // tables). Keep only defs that appear in the reachable set.
+    {
+      std::vector<std::string> filtered;
+      for (const auto& n : topoOrder)
+        if (reachable.count (n)) filtered.push_back (n);
+      topoOrder.swap (filtered);
+    }
 
     // Free params get sequential slots into a runtime params array.
     std::vector<std::string> paramSlotOrder;
