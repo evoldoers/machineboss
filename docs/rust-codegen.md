@@ -48,10 +48,24 @@ pub struct Params {
 
 pub fn forward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64;
 pub fn viterbi(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64;
+
+// Amortized forms — call precompute_log_weights once, reuse for many
+// `forward_with_log_weights` / `viterbi_with_log_weights` calls.
+pub fn precompute_log_weights(p: &Params) -> Vec<f64>;
+pub fn forward_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64;
+pub fn viterbi_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64;
 ```
 
 Each `leaves[i]` is a slice of symbol indices into `ALPHABET`. For DNA the
 mapping is `A=0, C=1, G=2, T=3` (sorted alphabetically).
+
+The two-step API is useful when running many DP calls under the same
+parameter set (e.g. a length sweep, a benchmark, or sampling many leaf
+configurations). `precompute_log_weights` runs the bytecode VM once and
+returns a flat `Vec<f64>` of all log-weights; `forward_with_log_weights`
+then skips that prelude and only does the cell loop. On the TKF92 quartet
+the prelude is ~6 ms — negligible at long sequence lengths but a
+worthwhile saving across many short calls.
 
 ## Numerical precision
 

@@ -581,7 +581,12 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
     // reads can be a single array index. Then walk nodes in topological
     // order (which is just sequential because nodes were emitted in
     // post-order), filling vals[i] from vals[VM_ARG_A[i]] and vals[VM_ARG_B[i]].
-    f << "fn compute_log_weights(p: &Params) -> Vec<f64> {\n";
+    f << "/// Compute the log-weight of every transition bucket from the\n";
+    f << "/// supplied parameters. Callers making many `forward` / `viterbi`\n";
+    f << "/// calls with the same `Params` (e.g. benchmark sweeps) can call\n";
+    f << "/// this once and reuse the result via `forward_with_log_weights` /\n";
+    f << "/// `viterbi_with_log_weights`.\n";
+    f << "pub fn precompute_log_weights(p: &Params) -> Vec<f64> {\n";
     f << "    let pvals: [f64; " << paramSlotOrder.size() << "] = [\n";
     for (const auto& pn : paramSlotOrder)
       f << "        p." << paramRustName[pn] << ",\n";
@@ -689,8 +694,10 @@ fn max2(a: f64, b: f64) -> f64 {
   // The body iterates cells in lex order, processes emitting transitions
   // (each consumes a single cell-position offset), then processes silent
   // transitions in dst-state order.
+  // The DP body assumes `lw: &[f64]` is in scope (the wrapper functions
+  // provide it: either by calling precompute_log_weights, or by accepting
+  // a precomputed slice).
   auto emitDpBody = [&](std::ofstream& f, const char* reduce) {
-    f << "    let lw = compute_log_weights(p);\n";
     f << "    let lens: [usize; NUM_LEAVES] = [";
     for (size_t i = 0; i < L; ++i) f << (i ? ", " : "") << "leaves[" << i << "].len()";
     f << "];\n";
@@ -778,13 +785,34 @@ fn max2(a: f64, b: f64) -> f64 {
     f << "    }\n";
   };
 
-  f << "pub fn forward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+  // Body-taking-precomputed-lw variants (the meat).
+  f << "/// Forward log-likelihood with precomputed log-weights.\n";
+  f << "/// `lw` must be the result of `precompute_log_weights(p)` for the\n";
+  f << "/// `Params` you want to evaluate at; pass it instead of `Params`\n";
+  f << "/// when amortizing the prelude across many calls.\n";
+  f << "pub fn forward_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
   emitDpBody (f, "lse");
   f << "}\n\n";
 
   if (emitViterbi) {
-    f << "pub fn viterbi(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+    f << "/// Viterbi log-likelihood with precomputed log-weights.\n";
+    f << "pub fn viterbi_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
     emitDpBody (f, "max2");
+    f << "}\n\n";
+  }
+
+  // Convenience wrappers: compute weights and forward in a single call.
+  f << "/// Forward log-likelihood (computes log-weights internally).\n";
+  f << "#[inline]\n";
+  f << "pub fn forward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+  f << "    forward_with_log_weights(&precompute_log_weights(p), leaves)\n";
+  f << "}\n\n";
+
+  if (emitViterbi) {
+    f << "/// Viterbi log-likelihood (computes log-weights internally).\n";
+    f << "#[inline]\n";
+    f << "pub fn viterbi(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+    f << "    viterbi_with_log_weights(&precompute_log_weights(p), leaves)\n";
     f << "}\n";
   }
 
