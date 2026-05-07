@@ -48,12 +48,24 @@ PTok fromJson (const json& j) {
   return t;
 }
 
-// Parse a token string under JSON-mode encoding into a PTok.
+// Parse a token string into a PTok. For pair-token outputs (--pair-json),
+// the string is JSON. For L=1 phylo (no intersection performed), output
+// tokens are bare symbols like "A" with no JSON encoding — treat those as
+// leaf-symbol tokens.
 PTok parseTokenJson (const std::string& s) {
   if (s.empty()) {
     PTok t; t.isLeaf = true; t.leaf = ""; return t;
   }
-  return fromJson (json::parse (s));
+  // Heuristic: only attempt JSON parse if the token looks like a JSON
+  // value. Otherwise treat it as a bare symbol string. This keeps L=1
+  // phylo machines (single-leaf trees, where no pair-token encoding is
+  // performed) working.
+  const char c = s[0];
+  if (c == '[' || c == '"' || c == '-' || (c >= '0' && c <= '9')) {
+    try { return fromJson (json::parse (s)); }
+    catch (const json::exception&) { /* fall through to literal */ }
+  }
+  PTok t; t.isLeaf = true; t.leaf = s; return t;
 }
 
 // Merge two PTok shapes: at each position, the deeper structure wins.
