@@ -53,7 +53,9 @@ def main():
     check_rs = os.path.join(crate, 'examples', 'check.rs')
     os.makedirs(os.path.dirname(check_rs), exist_ok=True)
     with open(check_rs, 'w') as f:
-        f.write('''use phylo_dp::{forward, viterbi, Params, ALPHABET};
+        f.write('''use phylo_dp::{forward, viterbi, precompute_log_weights,
+                 forward_with_log_weights, viterbi_with_log_weights,
+                 Params, ALPHABET};
 fn idx(c: char) -> u32 {
     let s = c.to_string();
     ALPHABET.iter().position(|x| *x == s).unwrap() as u32
@@ -62,7 +64,18 @@ fn main() {
     let p = Params { delRate: 0.01, insRate: 0.005, time_A_: 0.3, time_B_: 0.2 };
     let a: Vec<u32> = "ACGT".chars().map(idx).collect();
     let b: Vec<u32> = "ACG".chars().map(idx).collect();
-    println!("{} {}", forward(&p, [&a, &b]), viterbi(&p, [&a, &b]));
+    let f = forward(&p, [&a, &b]);
+    let v = viterbi(&p, [&a, &b]);
+    // Amortized API consistency: precompute + *_with_log_weights must
+    // give bit-exact equality with the convenience wrappers.
+    let lw = precompute_log_weights(&p);
+    let f2 = forward_with_log_weights(&lw, [&a, &b]);
+    let v2 = viterbi_with_log_weights(&lw, [&a, &b]);
+    assert_eq!(f.to_bits(), f2.to_bits(),
+        "forward != forward_with_log_weights (f={} f2={})", f, f2);
+    assert_eq!(v.to_bits(), v2.to_bits(),
+        "viterbi != viterbi_with_log_weights (v={} v2={})", v, v2);
+    println!("{} {}", f, v);
 }
 ''')
     out = run(['cargo', 'run', '--release', '--example', 'check', '--quiet'], cwd=crate)
