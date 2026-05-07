@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Regression: codegen handles L=1 (single-leaf) phylo trees.
+"""Regression: codegen handles L=1 (single-leaf and chain) phylo trees.
 
 When the tree has only one leaf, no `intersect` happens during the phylo
 build, so output tokens are bare symbols (e.g. `A`) rather than JSON-
 encoded pair tokens. The codegen's pair-token parser must accept that.
 
-Verifies the L=1 codegen against `boss --phylo-clamp -L` (allowing for
-boss's log_sum_exp lookup-table tolerance).
+Verifies two L=1 topologies — `(A)X;` (single branch) and `((A)Y)X;`
+(chain via degree-1 internal node) — against the exact-lse Python multidim
+Forward reference.
 """
 
 import os, sys, subprocess, tempfile, json
+sys.path.insert(0, os.path.dirname(__file__))
+from _phylo_ref import multidim_forward
 
 REPO = os.environ.get('REPO_ROOT', os.getcwd())
 BOSS = os.path.join(REPO, 'bin', 'boss')
@@ -21,46 +24,59 @@ def run(cmd, cwd=None):
         sys.exit(1)
     return r.stdout
 
+CASES = [
+    {
+        'name': 'single (A)X;',
+        'tree': '(A)X;',
+        'params': {'insRate': 0.005, 'delRate': 0.01, 'time[A]': 0.3},
+        'rust_params': 'Params { delRate: 0.01, insRate: 0.005, time_A_: 0.3 }',
+        'leaf': 'ACGT',
+    },
+    {
+        'name': 'chain ((A)Y)X;',
+        'tree': '((A)Y)X;',
+        'params': {'insRate': 0.005, 'delRate': 0.01,
+                   'time[A]': 0.2, 'time[Y]': 0.15},
+        'rust_params': 'Params { delRate: 0.01, insRate: 0.005, time_A_: 0.2, time_Y_: 0.15 }',
+        'leaf': 'ACG',
+    },
+]
+
 def main():
-    workdir = tempfile.mkdtemp(prefix='single_leaf_')
-    crate = os.path.join(workdir, 'crate')
-    clamp = os.path.join(workdir, 'clamp.json')
-    params = os.path.join(workdir, 'params.json')
-    with open(clamp, 'w') as f: json.dump({'A': ['A', 'C', 'G', 'T']}, f)
-    with open(params, 'w') as f:
-        json.dump({'insRate': 0.005, 'delRate': 0.01, 'time[A]': 0.3}, f)
+    for case in CASES:
+        print(f"--- {case['name']} ---")
+        workdir = tempfile.mkdtemp(prefix='single_')
+        crate = os.path.join(workdir, 'crate')
 
-    open_args = ['--pair-json', '--tkf91-root-dna-jc',
-                 '-m', '--begin', '--tkf91-branch-dna-jc',
-                 '--phylo-tree-string', '(A)X;', '--phylo-time-param', 'time',
-                 '--end']
+        open_args = ['--pair-json', '--tkf91-root-dna-jc',
+                     '-m', '--begin', '--tkf91-branch-dna-jc',
+                     '--phylo-tree-string', case['tree'],
+                     '--phylo-time-param', 'time', '--end']
 
-    run([BOSS] + open_args + ['--codegen', crate, '--rust'])
+        run([BOSS] + open_args + ['--codegen', crate, '--rust'])
+        machine_json = run([BOSS] + open_args)
+        ref = multidim_forward(machine_json, case['params'], [list(case['leaf'])])
 
-    out = run([BOSS] + open_args[:-1] + ['--phylo-clamp', clamp, '--end',
-                                          '-P', params, '-L'])
-    ref = json.loads(out)[0][2]
-
-    check_rs = os.path.join(crate, 'examples', 'check.rs')
-    os.makedirs(os.path.dirname(check_rs), exist_ok=True)
-    with open(check_rs, 'w') as f:
-        f.write('''use phylo_dp::{forward, Params, ALPHABET};
-fn idx(c: char) -> u32 { ALPHABET.iter().position(|x| x.chars().next() == Some(c)).unwrap() as u32 }
-fn main() {
-    let p = Params { delRate: 0.01, insRate: 0.005, time_A_: 0.3 };
-    let a: Vec<u32> = "ACGT".chars().map(idx).collect();
-    println!("{}", forward(&p, [&a]));
-}
+        check_rs = os.path.join(crate, 'examples', 'check.rs')
+        os.makedirs(os.path.dirname(check_rs), exist_ok=True)
+        with open(check_rs, 'w') as f:
+            f.write(f'''use phylo_dp::{{forward, Params, ALPHABET}};
+fn idx(c: char) -> u32 {{ ALPHABET.iter().position(|x| x.chars().next() == Some(c)).unwrap() as u32 }}
+fn main() {{
+    let p = {case['rust_params']};
+    let a: Vec<u32> = "{case['leaf']}".chars().map(idx).collect();
+    println!("{{}}", forward(&p, [&a]));
+}}
 ''')
-    run(['cargo', 'build', '--release', '--example', 'check', '--quiet'], cwd=crate)
-    out = run(['cargo', 'run', '--release', '--example', 'check', '--quiet'], cwd=crate).strip()
-    fwd = float(out)
+        run(['cargo', 'build', '--release', '--example', 'check', '--quiet'], cwd=crate)
+        out = run(['cargo', 'run', '--release', '--example', 'check', '--quiet'], cwd=crate).strip()
+        fwd = float(out)
 
-    print(f"forward = {fwd:.15f}")
-    print(f"boss -L = {ref:.15f}")
-    # boss -L's log_sum_exp lookup table introduces ~1e-11 error; codegen is exact.
-    if abs(fwd - ref) > 1e-9:
-        print(f"FAIL: |fwd - boss-L| = {abs(fwd-ref):.3e} > 1e-9"); sys.exit(1)
+        print(f"  forward = {fwd:.15f}")
+        print(f"  ref     = {ref:.15f}")
+        print(f"  |fwd-ref| = {abs(fwd-ref):.3e}")
+        if abs(fwd - ref) > 1e-9:
+            print("  FAIL"); sys.exit(1)
     print("OK")
 
 if __name__ == '__main__':
