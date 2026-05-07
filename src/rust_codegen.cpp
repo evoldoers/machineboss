@@ -618,15 +618,45 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
     f << "    (" << e.src << ", " << e.dst << ", " << e.weightIndex << "),\n";
   f << "];\n\n";
 
-  f << "const EMITTING_TRANSITIONS: &[(u32, u32, [u8; " << L << "], [i32; " << L << "], u32)] = &[\n";
-  for (const auto& e : emitting) {
-    f << "    (" << e.src << ", " << e.dst << ", [";
-    for (size_t i = 0; i < L; ++i) f << (i ? ", " : "") << (int)e.deltas[i];
-    f << "], [";
-    for (size_t i = 0; i < L; ++i) f << (i ? ", " : "") << e.symIdx[i];
-    f << "], " << e.weightIndex << "),\n";
+  // Shard emitting transitions by their delta vector. There are at most
+  // 2^L distinct delta vectors; many are unused. The DP inner loop checks
+  // delta-vector feasibility ONCE per shard, hoisting it out of the
+  // per-transition loop.
+  std::map<std::vector<uint8_t>, std::vector<size_t>> emitByDelta;
+  for (size_t i = 0; i < emitting.size(); ++i)
+    emitByDelta[emitting[i].deltas].push_back (i);
+
+  std::vector<std::vector<uint8_t>> deltaVecs;
+  deltaVecs.reserve (emitByDelta.size());
+  for (const auto& kv : emitByDelta) deltaVecs.push_back (kv.first);
+
+  f << "const NUM_DELTA: usize = " << deltaVecs.size() << ";\n";
+  f << "const DELTA_VEC: [[u8; " << L << "]; NUM_DELTA] = [";
+  for (size_t d = 0; d < deltaVecs.size(); ++d) {
+    f << (d ? ", " : "\n    ") << "[";
+    for (size_t k = 0; k < L; ++k) f << (k ? ", " : "") << (int)deltaVecs[d][k];
+    f << "]";
   }
-  f << "];\n\n";
+  f << "\n];\n\n";
+
+  // Per-shard transition table: (src, dst, syms[L], weight_idx). Symbols
+  // are emitted as i32 with -1 in non-emitting positions; the inner loop
+  // only inspects positions where the delta vector says to.
+  for (size_t d = 0; d < deltaVecs.size(); ++d) {
+    const auto& bucket = emitByDelta.at (deltaVecs[d]);
+    f << "const EMIT_SHARD_" << d << ": &[(u32, u32, [i32; " << L << "], u32)] = &[\n";
+    for (size_t idx : bucket) {
+      const Entry& e = emitting[idx];
+      f << "    (" << e.src << ", " << e.dst << ", [";
+      for (size_t k = 0; k < L; ++k) f << (k ? ", " : "") << e.symIdx[k];
+      f << "], " << e.weightIndex << "),\n";
+    }
+    f << "];\n";
+  }
+  f << "const EMIT_SHARDS: [&[(u32, u32, [i32; " << L << "], u32)]; NUM_DELTA] = [";
+  for (size_t d = 0; d < deltaVecs.size(); ++d)
+    f << (d ? ", " : "\n    ") << "EMIT_SHARD_" << d;
+  f << "\n];\n\n";
 
   // ----- DP runner template (parameterised over reduce op) -----
   // We emit two functions, forward (reduce = log_sum_exp) and viterbi
@@ -688,26 +718,40 @@ fn max2(a: f64, b: f64) -> f64 {
     f << "        let cell: usize = ";
     for (size_t i = 0; i < L; ++i) f << (i ? " + " : "") << "idx[" << i << "] * strides[" << i << "]";
     f << ";\n";
-    f << "        // Emitting transitions into this cell.\n";
-    f << "        for &(src, dst, deltas, syms, widx) in EMITTING_TRANSITIONS.iter() {\n";
-    f << "            let mut ok = true;\n";
+    f << "        // Emitting transitions into this cell, sharded by delta vector.\n";
+    f << "        for d_idx in 0..NUM_DELTA {\n";
+    f << "            let dvec = unsafe { *DELTA_VEC.get_unchecked(d_idx) };\n";
+    // Compute per-shard prev cell (subtract strides[k] for each emitting
+    // position) and feasibility (idx[k] >= 1 for each emitting position).
     f << "            let mut prev = cell;\n";
+    f << "            let mut feasible = true;\n";
     f << "            for k in 0..NUM_LEAVES {\n";
-    f << "                if deltas[k] == 1 {\n";
-    f << "                    if idx[k] == 0 { ok = false; break; }\n";
-    f << "                    unsafe {\n";
-    f << "                        if *leaves[k].get_unchecked(idx[k] - 1) as i32 != syms[k] { ok = false; break; }\n";
-    f << "                    }\n";
+    f << "                if dvec[k] == 1 {\n";
+    f << "                    if idx[k] == 0 { feasible = false; break; }\n";
     f << "                    prev -= strides[k];\n";
     f << "                }\n";
     f << "            }\n";
-    f << "            if ok {\n";
-    f << "                unsafe {\n";
-    f << "                    let sv = *g.get_unchecked((src as usize) * total + prev);\n";
-    f << "                    if sv != f64::NEG_INFINITY {\n";
-    f << "                        let dst_off = (dst as usize) * total + cell;\n";
-    f << "                        let dv = *g.get_unchecked(dst_off);\n";
-    f << "                        *g.get_unchecked_mut(dst_off) = " << reduce << "(dv, sv + *lw.get_unchecked(widx as usize));\n";
+    f << "            if !feasible { continue; }\n";
+    // Cache the observed leaf symbols at the predecessor positions for this
+    // shard. Since dvec is a per-shard constant, the compiler can specialize
+    // these reads once and lift them out of the inner transition loop.
+    f << "            let observed: [i32; NUM_LEAVES] = unsafe {[\n";
+    for (size_t i = 0; i < L; ++i)
+      f << "                if dvec[" << i << "] == 1 { *leaves[" << i << "].get_unchecked(idx[" << i << "] - 1) as i32 } else { -1 },\n";
+    f << "            ]};\n";
+    f << "            for &(src, dst, syms, widx) in unsafe { EMIT_SHARDS.get_unchecked(d_idx) }.iter() {\n";
+    f << "                let mut sym_ok = true;\n";
+    f << "                for k in 0..NUM_LEAVES {\n";
+    f << "                    if dvec[k] == 1 && observed[k] != syms[k] { sym_ok = false; break; }\n";
+    f << "                }\n";
+    f << "                if sym_ok {\n";
+    f << "                    unsafe {\n";
+    f << "                        let sv = *g.get_unchecked((src as usize) * total + prev);\n";
+    f << "                        if sv != f64::NEG_INFINITY {\n";
+    f << "                            let dst_off = (dst as usize) * total + cell;\n";
+    f << "                            let dv = *g.get_unchecked(dst_off);\n";
+    f << "                            *g.get_unchecked_mut(dst_off) = " << reduce << "(dv, sv + *lw.get_unchecked(widx as usize));\n";
+    f << "                        }\n";
     f << "                    }\n";
     f << "                }\n";
     f << "            }\n";

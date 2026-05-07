@@ -158,18 +158,22 @@ with TKF92+HKY85, leaves of equal length n (release build, macOS x86\_64):
 
 | n  | forward (ms) | viterbi (ms) |
 | -- | ------------ | ------------ |
-| 2  |       70     |       84     |
-| 3  |      177     |      226     |
-| 5  |      997     |     1241     |
-| 8  |     5754     |     6577     |
-| 10 |    13535     |    16817     |
+| 2  |       40     |       19     |
+| 3  |       98     |       70     |
+| 5  |      627     |      408     |
+| 8  |     3943     |     2587     |
+| 10 |    10215     |     6228     |
 
 Scaling is O(L⁴) — DP grid is (n+1)⁴ cells × 1249 states × 211 248 emitting
-transitions per cell-update.
+transitions per cell-update. The inner loop is sharded by delta vector so
+feasibility checks (does the predecessor cell exist?) hoist out of the
+per-transition loop; this gives Viterbi a ~60% speedup over a naive
+unsharded version because `max` is cheap enough that the predicate cost
+dominates, and Forward a ~25% speedup.
 
 One-time costs for the quartet:
   - codegen:  ~18 s  (boss writes the crate)
-  - rustc:    ~50 s  (release build with `lto = true`)
+  - rustc:    ~36 s  (release build with `lto = true`)
 
 ## Verification
 
