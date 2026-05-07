@@ -113,6 +113,15 @@ non-root node must have a non-empty name, and node names must be unique
 across the tree. Violations raise an error before the intersection is
 built.
 
+## Multidimensional Forward via Rust codegen
+
+For a faster (and more numerically precise) Forward / Viterbi over a
+phylogenetic composition, see [Rust Codegen](/rust-codegen/). It emits a
+self-contained Rust crate that computes a multidimensional DP indexed by
+one axis per leaf, with the tree topology and per-branch parameters
+specialised at codegen time. Detailed instructions for the TKF92 +
+HKY85 quartet on `(A,B,(C,D)Y)X;` are provided there.
+
 ## Limitations
 
 - Pair-token decoding back into per-leaf streams is not provided as a

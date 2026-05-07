@@ -280,6 +280,8 @@ Machine Boss can generate standalone C++, JavaScript, or WGSL (WebGPU) code impl
 | `--cpp32` | Generate C++ code (32-bit). |
 | `--js` | Generate JavaScript code. |
 | `--wgsl` | Generate WGSL compute shader and ES module for WebGPU. |
+| `--rust` | Generate a Rust crate implementing multidimensional Forward / Viterbi for a phylogenetic composition; see [Rust Codegen](/rust-codegen/). |
+| `--no-viterbi` | With `--rust`, omit the Viterbi function from the generated crate. |
 | `--inseq TYPE` | Input sequence type: `String`, `Intvec`, or `Profile`. |
 | `--outseq TYPE` | Output sequence type: `String`, `Intvec`, or `Profile`. |
 | `--showcells` | Include debugging output in generated code. |

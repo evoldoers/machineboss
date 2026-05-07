@@ -42,6 +42,8 @@ Both tokenized sequences and position-specific weight matrices (PSWMs/profiles) 
 - **[Expression Language](https://machineboss.org/expressions/)** &mdash; the weight expression mini-language used in `--weight`, `--weight-input`, `--weight-output`, and the `"expr"` field in JSON transitions
 - **[JSON Output Formats](https://machineboss.org/json-output/)** &mdash; documentation for all JSON output formats (machine, parameters, log-likelihood, alignment, counts, encoding, decoding)
 - **[Composition Algorithm](https://machineboss.org/composition/)** &mdash; detailed description of the transducer composition algorithm
+- **[Phylogenetic Intersection](https://machineboss.org/phylogeny/)** &mdash; build phylo-composed transducers over a Newick tree
+- **[Rust Codegen](https://machineboss.org/rust-codegen/)** &mdash; emit a Rust crate computing multidimensional Forward / Viterbi for a phylogenetic composition (e.g. TKF92 + HKY85 quartet)
 - **[WebGPU API](https://machineboss.org/webgpu/)** &mdash; GPU-accelerated inference in the browser via WebGPU with JavaScript CPU fallback
 
 ## Citation

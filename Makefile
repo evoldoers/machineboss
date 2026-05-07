@@ -476,6 +476,28 @@ test-rust-codegen-tkf91:
 	  echo "                             test-rust-codegen-tkf91     skip: cargo not in PATH"; \
 	fi
 
+# -- MANUAL Rust codegen tests (NOT in default `make test`) -------------------
+# These exercise the Rust codegen on larger phylo machines (TKF92 + HKY85).
+# They take a minute or more wall time (cargo compile dominates), so they
+# are intentionally kept out of the default test list. Run individually:
+#   make test-rust-codegen-tkf92-triad      # full reference comparison
+#   make test-rust-codegen-tkf92-quartet    # smoke + length-sweep timings
+.PHONY: test-rust-codegen-tkf92-triad test-rust-codegen-tkf92-quartet
+
+test-rust-codegen-tkf92-triad:
+	@if command -v cargo > /dev/null 2>&1; then \
+	  REPO_ROOT=$(CURDIR) python3 t/rust/check_tkf92_triad.py; \
+	else \
+	  echo "test-rust-codegen-tkf92-triad: skip (cargo not in PATH)"; \
+	fi
+
+test-rust-codegen-tkf92-quartet:
+	@if command -v cargo > /dev/null 2>&1; then \
+	  REPO_ROOT=$(CURDIR) python3 t/rust/check_tkf92_quartet.py; \
+	else \
+	  echo "test-rust-codegen-tkf92-quartet: skip (cargo not in PATH)"; \
+	fi
+
 # Confirm CLI generators match the hardcoded presets via Forward log-likelihood equivalence.
 test-tkf91-root-dna-jc-match:
 	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-root-dna-jc -P t/io/tkf-rate-params.json --output-chars ACGT -L t/expect/tkf91-root-dna-jc-loglike.json

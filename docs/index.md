@@ -33,6 +33,7 @@ with a pure JavaScript CPU fallback for environments without WebGPU support.
 - **[Composition Algorithm](/composition/)** --- detailed description of the transducer composition algorithm
 - **[WebGPU API](/webgpu/)** --- GPU-accelerated inference in the browser via WebGPU with JavaScript CPU fallback
 - **[Python/JAX API](/python/)** --- differentiable dynamic programming with JAX
+- **[Rust Codegen](/rust-codegen/)** --- emit a self-contained Rust crate computing multidimensional Forward / Viterbi for a phylogenetic composition
 - **[Presets Reference](/presets/)** --- built-in preset transducers
 - **[C++ Library API](/library-api/)** --- convenience functions for embedding Machine Boss
 

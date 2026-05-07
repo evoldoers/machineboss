@@ -140,68 +140,110 @@ std::string sanitize (const std::string& s) {
   return r;
 }
 
-class RustExpr {
-public:
-  // funcVar: maps def-name -> Rust local variable name (e.g. "pSame" -> "def_pSame")
-  // paramVar: maps free-param-name -> Rust expression (e.g. "time[A]" -> "p.time__A")
-  std::map<std::string,std::string> funcVar;
-  std::map<std::string,std::string> paramVar;
+// VM-bytecode emitter. The naive approach of inlining each weight expression
+// as a Rust expression — even with CSE — produces hundreds of MB of source
+// for a TKF92 quartet (after silent-cycle geomsum reductions). Rustc cannot
+// compile that. We instead emit each unique sub-expression as one entry in
+// a small, register-machine-style program represented as flat static arrays
+// (OPCODES / ARG_A / ARG_B / CONSTS), and the runtime evaluator is a single
+// straight-line loop. Compile time is then dominated by reading data tables,
+// which scales linearly.
+//
+// Opcodes:
+//   0 = PushConst, arg_a = index into CONSTS (no arg_b)
+//   1 = PushParam, arg_a = index into a runtime params array
+//   2 = Mul, arg_a/b = node indices
+//   3 = Add
+//   4 = Sub
+//   5 = Div
+//   6 = Pow
+//   7 = Log, arg_a = node index (no arg_b)
+//   8 = Exp, arg_a = node index
+//
+// CSE is performed across ALL defs and weights globally (one pass), so
+// structurally identical sub-expressions share a node.
+struct VmInstr { uint8_t opcode; uint32_t a; uint32_t b; };
 
-  // Wrap with parentheses if needed based on operator precedence.
-  // Precedence: 0 = full expr, 1 = +/-, 2 = */, 3 = unary, 4 = atom
-  std::string emit (WeightExpr w, int parentPrec = 0) const {
-    if (!w) return "1.0";
-    std::ostringstream o;
-    auto wrap = [&](int myPrec, const std::string& s) -> std::string {
-      if (myPrec < parentPrec) return "(" + s + ")";
-      return s;
-    };
+class VmEmitter {
+public:
+  std::map<std::string, uint32_t> funcNode;   // def-name -> node index
+  std::map<std::string, uint32_t> paramSlot;  // free-param-name -> param-array index
+  std::map<WeightExpr, uint32_t> nodeOfExpr;  // pointer-keyed memo
+  std::map<std::string, uint32_t> nodeByKey;  // structural-key memo
+  std::map<double, uint32_t> nodeByConst;     // constant value -> node
+  std::vector<double> consts;
+  std::vector<VmInstr> instr;
+
+  uint32_t emitConst (double v) {
+    auto it = nodeByConst.find (v);
+    if (it != nodeByConst.end()) return it->second;
+    uint32_t cidx = (uint32_t) consts.size();
+    consts.push_back (v);
+    uint32_t nidx = (uint32_t) instr.size();
+    instr.push_back ({ 0, cidx, 0 });
+    nodeByConst[v] = nidx;
+    return nidx;
+  }
+
+  uint32_t visit (WeightExpr w) {
+    if (!w) return emitConst (1.0);
+    auto pit = nodeOfExpr.find (w);
+    if (pit != nodeOfExpr.end()) return pit->second;
+    uint32_t result = (uint32_t) -1;
     switch (w->type) {
-      case Null: return "1.0";
-      case Int: {
-        o << w->args.intValue << ".0_f64";
-        return o.str();
-      }
-      case Dbl: {
-        o << std::setprecision(17) << w->args.doubleValue << "_f64";
-        return o.str();
-      }
+      case Null: result = emitConst (1.0); break;
+      case Int:  result = emitConst ((double) w->args.intValue); break;
+      case Dbl:  result = emitConst (w->args.doubleValue); break;
       case Param: {
         const std::string& name = *w->args.param;
-        auto it = funcVar.find (name);
-        if (it != funcVar.end()) return it->second;
-        auto it2 = paramVar.find (name);
-        if (it2 != paramVar.end()) return it2->second;
+        auto fit = funcNode.find (name);
+        if (fit != funcNode.end()) { result = fit->second; break; }
+        auto sit = paramSlot.find (name);
+        if (sit != paramSlot.end()) {
+          uint32_t nidx = (uint32_t) instr.size();
+          instr.push_back ({ 1, sit->second, 0 });
+          result = nidx;
+          break;
+        }
         throw std::runtime_error ("rust-codegen: unbound parameter \"" + name + "\"");
       }
-      case Mul: {
-        std::string s = emit (w->args.binary.l, 2) + " * " + emit (w->args.binary.r, 2);
-        return wrap (2, s);
+      case Mul: case Add: case Sub: case Div: case Pow: {
+        uint32_t l = visit (w->args.binary.l);
+        uint32_t r = visit (w->args.binary.r);
+        uint8_t op = (w->type == Mul ? 2 :
+                      w->type == Add ? 3 :
+                      w->type == Sub ? 4 :
+                      w->type == Div ? 5 : 6);
+        std::ostringstream k;
+        k << (int)op << ":" << l << "," << r;
+        const std::string key = k.str();
+        auto kit = nodeByKey.find (key);
+        if (kit != nodeByKey.end()) { result = kit->second; break; }
+        uint32_t nidx = (uint32_t) instr.size();
+        instr.push_back ({ op, l, r });
+        nodeByKey[key] = nidx;
+        result = nidx;
+        break;
       }
-      case Div: {
-        std::string s = emit (w->args.binary.l, 2) + " / " + emit (w->args.binary.r, 3);
-        return wrap (2, s);
+      case Log: case Exp: {
+        uint32_t a = visit (w->args.arg);
+        uint8_t op = (w->type == Log ? 7 : 8);
+        std::ostringstream k;
+        k << (int)op << ":" << a;
+        const std::string key = k.str();
+        auto kit = nodeByKey.find (key);
+        if (kit != nodeByKey.end()) { result = kit->second; break; }
+        uint32_t nidx = (uint32_t) instr.size();
+        instr.push_back ({ op, a, 0 });
+        nodeByKey[key] = nidx;
+        result = nidx;
+        break;
       }
-      case Add: {
-        std::string s = emit (w->args.binary.l, 1) + " + " + emit (w->args.binary.r, 1);
-        return wrap (1, s);
-      }
-      case Sub: {
-        std::string s = emit (w->args.binary.l, 1) + " - " + emit (w->args.binary.r, 2);
-        return wrap (1, s);
-      }
-      case Pow: {
-        std::string s = emit (w->args.binary.l, 4) + ".powf(" + emit (w->args.binary.r, 0) + ")";
-        return s;
-      }
-      case Log: {
-        return emit (w->args.arg, 4) + ".ln()";
-      }
-      case Exp: {
-        return emit (w->args.arg, 4) + ".exp()";
-      }
+      default:
+        throw std::runtime_error ("rust-codegen: unknown WeightExpr type");
     }
-    throw std::runtime_error ("rust-codegen: unknown WeightExpr type");
+    nodeOfExpr[w] = result;
+    return result;
   }
 };
 
@@ -442,26 +484,107 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   }
   f << "        }\n    }\n}\n\n";
 
-  // compute_log_weights: emit defs in topological order, then evaluate each
-  // bucket's weight expression and take ln().
+  // compute_log_weights: emit a VM-bytecode program of unique sub-expressions
+  // (one node per unique value, globally CSE'd), then a runtime evaluator.
+  // This decouples the generated source size from model complexity — large
+  // models (e.g. TKF92 quartet) end up with O(unique-nodes) data tables
+  // rather than O(weight-expression-bytes) source code. Rustc compiles
+  // huge static arrays linearly, so this scales.
   {
-    RustExpr re;
-    for (const auto& p : freeParams)
-      re.paramVar[p] = "p." + paramRustName[p];
+    VmEmitter vm;
     auto topoOrder = topoSortDefs (sorted.funcs.defs);
-    for (const auto& n : topoOrder)
-      re.funcVar[n] = "def_" + sanitize(n);
 
-    f << "fn compute_log_weights(p: &Params) -> [f64; " << weightsInOrder.size() << "] {\n";
+    // Free params get sequential slots into a runtime params array.
+    std::vector<std::string> paramSlotOrder;
+    for (const auto& p : freeParams) {
+      vm.paramSlot[p] = (uint32_t) paramSlotOrder.size();
+      paramSlotOrder.push_back (p);
+    }
+
+    // Visit defs in topological order, populating funcNode so subsequent
+    // references to the def name resolve to the def's already-built node.
     for (const auto& n : topoOrder) {
-      WeightExpr e = sorted.funcs.defs.at(n);
-      f << "    let " << re.funcVar[n] << ": f64 = " << re.emit (e, 0) << ";\n";
+      uint32_t nidx = vm.visit (sorted.funcs.defs.at(n));
+      vm.funcNode[n] = nidx;
     }
-    f << "    [\n";
-    for (size_t i = 0; i < weightsInOrder.size(); ++i) {
-      f << "        ({ " << re.emit (weightsInOrder[i], 0) << " }).ln(),\n";
+
+    // Visit each weight expression; collect the resulting node index per weight.
+    const size_t W = weightsInOrder.size();
+    std::vector<uint32_t> weightNode (W);
+    for (size_t i = 0; i < W; ++i)
+      weightNode[i] = vm.visit (weightsInOrder[i]);
+
+    // Emit data tables.
+    f << "// VM tables — see compute_log_weights for the evaluator.\n";
+    f << "const VM_NUM_NODES: usize = " << vm.instr.size() << ";\n";
+    f << "const VM_OPCODES: [u8; VM_NUM_NODES] = [";
+    for (size_t i = 0; i < vm.instr.size(); ++i) {
+      if (i % 32 == 0) f << "\n    ";
+      f << (int) vm.instr[i].opcode << ",";
     }
-    f << "    ]\n}\n\n";
+    f << "\n];\n\n";
+
+    f << "const VM_ARG_A: [u32; VM_NUM_NODES] = [";
+    for (size_t i = 0; i < vm.instr.size(); ++i) {
+      if (i % 16 == 0) f << "\n    ";
+      f << vm.instr[i].a << ",";
+    }
+    f << "\n];\n\n";
+
+    f << "const VM_ARG_B: [u32; VM_NUM_NODES] = [";
+    for (size_t i = 0; i < vm.instr.size(); ++i) {
+      if (i % 16 == 0) f << "\n    ";
+      f << vm.instr[i].b << ",";
+    }
+    f << "\n];\n\n";
+
+    f << "const VM_CONSTS: [f64; " << vm.consts.size() << "] = [";
+    for (size_t i = 0; i < vm.consts.size(); ++i) {
+      if (i % 4 == 0) f << "\n    ";
+      f << std::setprecision(17) << vm.consts[i] << "_f64,";
+    }
+    f << "\n];\n\n";
+
+    // For each weight, the node whose value (after .ln()) becomes the log-weight.
+    f << "const WEIGHT_NODE: [u32; " << W << "] = [";
+    for (size_t i = 0; i < W; ++i) {
+      if (i % 16 == 0) f << "\n    ";
+      f << weightNode[i] << ",";
+    }
+    f << "\n];\n\n";
+
+    // The evaluator. Pre-flatten Params into a stack array so VM_OP=1
+    // reads can be a single array index. Then walk nodes in topological
+    // order (which is just sequential because nodes were emitted in
+    // post-order), filling vals[i] from vals[VM_ARG_A[i]] and vals[VM_ARG_B[i]].
+    f << "fn compute_log_weights(p: &Params) -> Vec<f64> {\n";
+    f << "    let pvals: [f64; " << paramSlotOrder.size() << "] = [\n";
+    for (const auto& pn : paramSlotOrder)
+      f << "        p." << paramRustName[pn] << ",\n";
+    f << "    ];\n";
+    f << "    let mut vals = vec![0.0_f64; VM_NUM_NODES];\n";
+    f << "    for i in 0..VM_NUM_NODES {\n";
+    f << "        let a = unsafe { *VM_ARG_A.get_unchecked(i) } as usize;\n";
+    f << "        let b = unsafe { *VM_ARG_B.get_unchecked(i) } as usize;\n";
+    f << "        vals[i] = unsafe { match *VM_OPCODES.get_unchecked(i) {\n";
+    f << "            0 => *VM_CONSTS.get_unchecked(a),\n";
+    f << "            1 => *pvals.get_unchecked(a),\n";
+    f << "            2 => vals.get_unchecked(a) * vals.get_unchecked(b),\n";
+    f << "            3 => vals.get_unchecked(a) + vals.get_unchecked(b),\n";
+    f << "            4 => vals.get_unchecked(a) - vals.get_unchecked(b),\n";
+    f << "            5 => vals.get_unchecked(a) / vals.get_unchecked(b),\n";
+    f << "            6 => vals.get_unchecked(a).powf(*vals.get_unchecked(b)),\n";
+    f << "            7 => vals.get_unchecked(a).ln(),\n";
+    f << "            8 => vals.get_unchecked(a).exp(),\n";
+    f << "            _ => core::hint::unreachable_unchecked(),\n";
+    f << "        }};\n";
+    f << "    }\n";
+    f << "    let mut out = vec![0.0_f64; " << W << "];\n";
+    f << "    for i in 0.." << W << " {\n";
+    f << "        out[i] = unsafe { vals.get_unchecked(*WEIGHT_NODE.get_unchecked(i) as usize) }.ln();\n";
+    f << "    }\n";
+    f << "    out\n";
+    f << "}\n\n";
   }
 
   // Emit constant tables for silent and emitting transitions.
