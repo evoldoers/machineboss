@@ -222,3 +222,10 @@ One-time costs for the quartet:
     For `(A,B,(C,D)Y)X;` that's `A, B, C, D` — `leaves[0]` is A, etc.
   - **`pi_*` constraints**: HKY85 stationary frequencies must sum to 1.
     The Rust crate does not enforce this; the caller is responsible.
+  - **Alphabet scaling**: codegen output size grows with both the number
+    of states and the number of distinct emission profiles, so wide
+    alphabets (e.g. 20-AA protein with `tkf92-branch-prot-f81`) emit much
+    larger crates than DNA — a 3-leaf protein tree currently produces a
+    300+ MB `lib.rs` and takes ~5 minutes to `cargo build`. Correctness is
+    unaffected; the bottleneck is `rustc` compile time of the data tables.
+    The DNA quartet stays comfortably within ~40 MB / ~50 s.
