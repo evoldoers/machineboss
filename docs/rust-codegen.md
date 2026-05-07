@@ -74,8 +74,11 @@ The default `boss` build uses an approximate lookup table
 (`LOG_SUM_EXP_LOOKUP_MAX = 10`) that silently zeros out contributions whose
 log-prob gap exceeds ~10 nats; for non-trivial models the emitted Rust is
 **more accurate** than `boss -L`. The verification tests (`check_tkf91.py`,
-`check_tkf92_triad.py`) confirm agreement with an independent exact-lse
-Python implementation to floating-point precision (~1e-15).
+`check_tkf92_triad.py`) compare against an independent exact-lse Python
+implementation. We observe agreement to floating-point noise (`|fwd-ref|`
+in the 1e-15 range on macOS x86_64) and the tests enforce a 1e-12
+tolerance to leave headroom for platform variation in the order of
+floating-point operations.
 
 ## How the codegen scales
 
@@ -186,11 +189,15 @@ transitions per cell-update. Two structural optimizations apply:
     cell exist?) hoist out of the per-transition loop. This gives Viterbi
     a ~60% speedup over a naive unsharded version (since `max` is cheap
     enough that the predicate cost dominates) and Forward a ~25% speedup.
-  - **lse cutoff** — `log_sum_exp(a, b)` returns `max(a, b)` exactly when
-    `|a - b| > 36` nats, since `exp(-36) ≈ 2.3e-16` is below f64's
-    relative epsilon and adds nothing observable. This skips two
+  - **lse cutoff** — `log_sum_exp(a, b)` returns `max(a, b)` when
+    `|a - b| > 36` nats, since the contribution `log1p(exp(-|a-b|)) ≈
+    exp(-36) ≈ 2.3e-16` is smaller than `ulp(hi)` for any cell value
+    `hi ≪ -5` (log-probabilities in this DP are deeply negative, so
+    `ulp(hi) > 1.78e-15`); the addition is then a no-op. This skips two
     transcendental calls (`exp` and `ln_1p`) for negligible contributions
-    and gives Forward another ~16% speedup.
+    and gives Forward another ~16% speedup. (The cutoff would not be
+    safe for an algorithm whose accumulators stay near zero — but for
+    phylo-composed generators they do not.)
 
 One-time costs for the quartet:
   - codegen:  ~18 s  (boss writes the crate)
@@ -200,11 +207,12 @@ One-time costs for the quartet:
 
   - `make test-rust-codegen-echo` — trivial echo branch transducer; codegen
     Forward matches `boss --phylo-clamp -L` to floating-point precision.
-  - `make test-rust-codegen-tkf91` — TKF91 + JC on `(A,B)P;`. Matches an
-    exact-lse Python Forward over the clamped machine to ~1e-15.
+  - `make test-rust-codegen-tkf91` — TKF91 + JC on `(A,B)P;`. Compared
+    against an exact-lse Python Forward; observed `|fwd-ref|` ≈ 0 in our
+    runs, enforced tolerance 1e-12.
   - `make test-rust-codegen-tkf92-triad` *(manual, not in default test set)* —
     TKF92 + HKY85 on `(A,B,C)X;`. Full Forward reference comparison via
-    Python multidim DP. Matches to ~1e-15.
+    Python multidim DP. Observed `|fwd-ref|` ≈ 1.8e-15, enforced 1e-12.
   - `make test-rust-codegen-tkf92-quartet` *(manual, not in default test set)* —
     TKF92 + HKY85 on `(A,B,(C,D)Y)X;`. End-to-end smoke test plus the length
     sweep table above.

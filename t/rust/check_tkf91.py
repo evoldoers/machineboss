@@ -8,7 +8,9 @@ so for non-trivial models the Rust Forward is *more accurate* than `boss -L`.
 
 This test compares the codegen Forward against the equivalent multidimensional
 Forward DP implemented in Python (with exact log_sum_exp), running on the same
-phylo-composed machine. They must agree to floating-point precision (~1e-13).
+phylo-composed machine. We observe agreement to floating-point noise
+(~1e-15) and enforce a 1e-12 tolerance to leave headroom for platform
+variation in the order of floating-point operations.
 """
 
 import os, sys, subprocess, json, tempfile, math
@@ -71,7 +73,7 @@ fn main() {
     print(f"ref     = {ref:.15f}  (Python multidim Forward, exact lse)")
     print(f"|fwd-ref| = {abs(fwd-ref):.3e}")
 
-    tol = 1e-9
+    tol = 1e-12
     fail = False
     if abs(fwd - ref) > tol:
         print(f"FAIL: Rust Forward != exact-lse reference"); fail = True

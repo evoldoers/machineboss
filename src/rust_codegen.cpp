@@ -679,10 +679,18 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   // We emit two functions, forward (reduce = log_sum_exp) and viterbi
   // (reduce = max), sharing the same DP body via a generic helper.
   f << R"RUST(
-// log_sum_exp(a, b) = log(exp(a) + exp(b)). The early return when the gap
-// between hi and lo exceeds 36 nats is exact in f64: exp(-36) ≈ 2.3e-16 is
-// below f64's relative epsilon (2.2e-16), so log1p(exp(lo - hi)) rounds to
-// 0.0 and `hi + 0.0 == hi` regardless of hi's magnitude.
+// log_sum_exp(a, b) = log(exp(a) + exp(b)). When the gap between hi and lo
+// exceeds 36 nats, the contribution log1p(exp(d)) ≈ exp(d) ≈ 2.3e-16 is
+// smaller than the ULP of any cell value `hi` realistically encountered
+// in this DP (log-probabilities are deeply negative — typically below -5,
+// where ulp(hi) ≥ 2^-49 ≈ 1.78e-15 > exp(-36)), so `hi + log1p(exp(d))`
+// rounds back to `hi`. We skip the two transcendental calls in that case.
+//
+// (Note: this is NOT a universal "below f64 epsilon" claim — for very
+// small |hi|, e.g. hi = 0, the contribution exp(-36) IS representable and
+// `0 + exp(-36) != 0`. But the DP only reaches that regime in pathological
+// cases where the entire likelihood is ~1, which doesn't occur for the
+// phylo-composed generators this codegen targets.)
 const LSE_CUTOFF: f64 = -36.0;
 
 #[inline(always)]

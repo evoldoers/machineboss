@@ -74,7 +74,7 @@ fn main() {
     print(f"ref     = {ref:.15f}")
     print(f"|fwd-ref| = {abs(fwd - ref):.3e}")
 
-    if abs(fwd - ref) > 1e-9: sys.exit("FAIL: Rust Forward != reference")
+    if abs(fwd - ref) > 1e-12: sys.exit("FAIL: Rust Forward != reference")
     if fwd + 1e-12 < vit: sys.exit("FAIL: Forward < Viterbi")
     print("OK")
 

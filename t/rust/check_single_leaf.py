@@ -75,7 +75,7 @@ fn main() {{
         print(f"  forward = {fwd:.15f}")
         print(f"  ref     = {ref:.15f}")
         print(f"  |fwd-ref| = {abs(fwd-ref):.3e}")
-        if abs(fwd - ref) > 1e-9:
+        if abs(fwd - ref) > 1e-12:
             print("  FAIL"); sys.exit(1)
     print("OK")
 
