@@ -158,18 +158,25 @@ with TKF92+HKY85, leaves of equal length n (release build, macOS x86\_64):
 
 | n  | forward (ms) | viterbi (ms) |
 | -- | ------------ | ------------ |
-| 2  |       40     |       19     |
-| 3  |       98     |       70     |
-| 5  |      627     |      408     |
-| 8  |     3943     |     2587     |
-| 10 |    10215     |     6228     |
+| 2  |       38     |       18     |
+| 3  |       87     |       66     |
+| 5  |      550     |      410     |
+| 8  |     3983     |     2655     |
+| 10 |     8647     |     6606     |
 
 Scaling is O(L⁴) — DP grid is (n+1)⁴ cells × 1249 states × 211 248 emitting
-transitions per cell-update. The inner loop is sharded by delta vector so
-feasibility checks (does the predecessor cell exist?) hoist out of the
-per-transition loop; this gives Viterbi a ~60% speedup over a naive
-unsharded version because `max` is cheap enough that the predicate cost
-dominates, and Forward a ~25% speedup.
+transitions per cell-update. Two structural optimizations apply:
+
+  - **Delta-vector sharding** — emitting transitions are grouped by their
+    per-leaf delta vector, so feasibility checks (does the predecessor
+    cell exist?) hoist out of the per-transition loop. This gives Viterbi
+    a ~60% speedup over a naive unsharded version (since `max` is cheap
+    enough that the predicate cost dominates) and Forward a ~25% speedup.
+  - **lse cutoff** — `log_sum_exp(a, b)` returns `max(a, b)` exactly when
+    `|a - b| > 36` nats, since `exp(-36) ≈ 2.3e-16` is below f64's
+    relative epsilon and adds nothing observable. This skips two
+    transcendental calls (`exp` and `ln_1p`) for negligible contributions
+    and gives Forward another ~16% speedup.
 
 One-time costs for the quartet:
   - codegen:  ~18 s  (boss writes the crate)

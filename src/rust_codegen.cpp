@@ -662,12 +662,20 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   // We emit two functions, forward (reduce = log_sum_exp) and viterbi
   // (reduce = max), sharing the same DP body via a generic helper.
   f << R"RUST(
+// log_sum_exp(a, b) = log(exp(a) + exp(b)). The early return when the gap
+// between hi and lo exceeds 36 nats is exact in f64: exp(-36) ≈ 2.3e-16 is
+// below f64's relative epsilon (2.2e-16), so log1p(exp(lo - hi)) rounds to
+// 0.0 and `hi + 0.0 == hi` regardless of hi's magnitude.
+const LSE_CUTOFF: f64 = -36.0;
+
 #[inline(always)]
 fn lse(a: f64, b: f64) -> f64 {
     if a == f64::NEG_INFINITY { return b; }
     if b == f64::NEG_INFINITY { return a; }
     let (hi, lo) = if a >= b { (a, b) } else { (b, a) };
-    hi + (lo - hi).exp().ln_1p()
+    let d = lo - hi;
+    if d <= LSE_CUTOFF { return hi; }
+    hi + d.exp().ln_1p()
 }
 
 #[inline(always)]
