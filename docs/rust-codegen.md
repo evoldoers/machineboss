@@ -47,13 +47,51 @@ pub struct Params {
 }
 
 pub fn forward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64;
+pub fn backward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64;
 pub fn viterbi(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64;
 
+// Full Forward / Backward DP matrices (for posterior calculations).
+pub fn forward_matrix(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> DPMatrix;
+pub fn backward_matrix(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> DPMatrix;
+
+// Forward-Backward expected transition counts (one entry per bucketed
+// transition; bucket order = silents first, then emittings in shard
+// order).
+pub fn forward_backward_counts(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> FBResult;
+
+// Per-cell posteriors. `f` and `b` come from forward_matrix/backward_matrix.
+pub fn state_log_posterior(f: &DPMatrix, b: &DPMatrix,
+                           state: u32, idx: [usize; NUM_LEAVES]) -> f64;
+pub fn silent_transition_log_posterior(f: &DPMatrix, b: &DPMatrix, lw: &[f64],
+                                       bucket: usize, idx: [usize; NUM_LEAVES]) -> f64;
+pub fn emitting_transition_log_posterior(f: &DPMatrix, b: &DPMatrix,
+                                         leaves: [&[u32]; NUM_LEAVES], lw: &[f64],
+                                         shard: usize, i: usize,
+                                         idx: [usize; NUM_LEAVES]) -> f64;
+
 // Amortized forms — call precompute_log_weights once, reuse for many
-// `forward_with_log_weights` / `viterbi_with_log_weights` calls.
+// `*_with_log_weights` calls.
 pub fn precompute_log_weights(p: &Params) -> Vec<f64>;
-pub fn forward_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64;
-pub fn viterbi_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64;
+pub fn forward_with_log_weights(lw: &[f64], leaves: ...) -> f64;
+pub fn backward_with_log_weights(lw: &[f64], leaves: ...) -> f64;
+pub fn viterbi_with_log_weights(lw: &[f64], leaves: ...) -> f64;
+pub fn forward_matrix_with_log_weights(lw: &[f64], leaves: ...) -> DPMatrix;
+pub fn backward_matrix_with_log_weights(lw: &[f64], leaves: ...) -> DPMatrix;
+pub fn forward_backward_counts_with_log_weights(lw: &[f64], leaves: ...) -> FBResult;
+```
+
+The codegen also writes a `machine.json` next to `Cargo.toml`. This is
+the bucketed composed machine in standard Machine Boss JSON shape, with
+each transition carrying an `__C<idx>__` placeholder in its
+`expected_count` field. The Rust crate embeds it via `include_str!` and
+`FBResult::to_machine_json(&mut out)` substitutes the placeholders with
+numeric counts:
+
+```rust
+let fb = forward_backward_counts(&p, [&a, &b]);
+let mut s = String::new();
+fb.to_machine_json(&mut s);   // s is now valid JSON, parseable
+println!("{}", s);
 ```
 
 Each `leaves[i]` is a slice of symbol indices into `ALPHABET`. For DNA the

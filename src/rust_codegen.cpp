@@ -407,7 +407,10 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   for (const auto& p : reachable) if (!defNames.count(p)) freeParams.insert (p);
 
   // Bucket transitions and accumulate weight expressions per bucket.
-  std::map<BucketKey, WeightExpr> buckets;
+  // Also remember each bucket's original output token (all originals in
+  // the same bucket share the same encoded out — they have identical
+  // deltas+syms — so any one is fine; we use the first seen).
+  std::map<BucketKey, std::pair<WeightExpr, std::string>> buckets;
   for (StateIndex s = 0; s < (StateIndex)N; ++s) {
     for (const auto& t : states[s].trans) {
       BucketKey k;
@@ -425,13 +428,20 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
         }
       }
       auto it = buckets.find (k);
-      if (it == buckets.end()) buckets[k] = t.weight;
-      else it->second = WeightAlgebra::add (it->second, t.weight);
+      if (it == buckets.end()) buckets[k] = std::make_pair (t.weight, t.out);
+      else it->second.first = WeightAlgebra::add (it->second.first, t.weight);
     }
   }
 
   // Split buckets into silent (all deltas == 0) and emitting.
-  struct Entry { StateIndex src, dst; std::vector<uint8_t> deltas; std::vector<int> symIdx; size_t weightIndex; };
+  struct Entry {
+    StateIndex src, dst;
+    std::vector<uint8_t> deltas;
+    std::vector<int> symIdx;
+    size_t weightIndex;
+    std::string outToken;  // raw encoded pair-token from the original transition
+    WeightExpr summedWeight;  // for machine.json emission
+  };
   std::vector<Entry> silent, emitting;
   std::vector<WeightExpr> weightsInOrder;
   for (auto& kv : buckets) {
@@ -439,7 +449,9 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
     e.src = kv.first.src; e.dst = kv.first.dst;
     e.deltas = kv.first.deltas; e.symIdx = kv.first.symIdx;
     e.weightIndex = weightsInOrder.size();
-    weightsInOrder.push_back (kv.second);
+    e.outToken = kv.second.second;
+    e.summedWeight = kv.second.first;
+    weightsInOrder.push_back (kv.second.first);
     bool isSilent = true;
     for (uint8_t d : e.deltas) if (d) { isSilent = false; break; }
     if (isSilent) silent.push_back (e); else emitting.push_back (e);
@@ -633,10 +645,36 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
     f << "}\n\n";
   }
 
+  // ---- Bucket-index assignment ----
+  //
+  // Every bucket (silent or emitting) gets a unique global index in the
+  // expected_counts vector emitted by forward_backward_counts:
+  //   silent[i]               ->  i
+  //   emitting (shard d, j)   ->  silent.size() + EMIT_SHARD_BUCKET_OFFSET[d] + j
+  // Constants below let runtime code translate (shard, idx) -> global bucket.
+  f << "pub const NUM_SILENT: usize = " << silent.size() << ";\n";
+  f << "pub const NUM_EMIT: usize = " << emitting.size() << ";\n";
+  f << "pub const NUM_BUCKETS: usize = " << (silent.size() + emitting.size()) << ";\n\n";
+
   // Emit constant tables for silent and emitting transitions.
-  // Layout: silent -> [(src, dst, weight_idx)]; emitting -> [(src, dst, deltas[L], syms[L], weight_idx)]
+  // Layout:
+  //   SILENT_TRANSITIONS:     [(src, dst, weight_idx)] sorted by dst ASCENDING
+  //                           (forward silent closure: process in topo dst-order
+  //                           so each dst's inbounds are visited before reads).
+  //   SILENT_TRANSITIONS_BWD: [(src, dst, weight_idx)] sorted by src DESCENDING
+  //                           (backward silent closure: process in reverse src-
+  //                           order so each src's outbounds are finalised first).
   f << "const SILENT_TRANSITIONS: &[(u32, u32, u32)] = &[\n";
   for (const auto& e : silent)
+    f << "    (" << e.src << ", " << e.dst << ", " << e.weightIndex << "),\n";
+  f << "];\n\n";
+
+  std::vector<Entry> silentBwd = silent;
+  std::sort (silentBwd.begin(), silentBwd.end(), [](const Entry& a, const Entry& b) {
+    return a.src > b.src;  // descending
+  });
+  f << "const SILENT_TRANSITIONS_BWD: &[(u32, u32, u32)] = &[\n";
+  for (const auto& e : silentBwd)
     f << "    (" << e.src << ", " << e.dst << ", " << e.weightIndex << "),\n";
   f << "];\n\n";
 
@@ -652,8 +690,8 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
   deltaVecs.reserve (emitByDelta.size());
   for (const auto& kv : emitByDelta) deltaVecs.push_back (kv.first);
 
-  f << "const NUM_DELTA: usize = " << deltaVecs.size() << ";\n";
-  f << "const DELTA_VEC: [[u8; " << L << "]; NUM_DELTA] = [";
+  f << "pub const NUM_DELTA: usize = " << deltaVecs.size() << ";\n";
+  f << "pub const DELTA_VEC: [[u8; " << L << "]; NUM_DELTA] = [";
   for (size_t d = 0; d < deltaVecs.size(); ++d) {
     f << (d ? ", " : "\n    ") << "[";
     for (size_t k = 0; k < L; ++k) f << (k ? ", " : "") << (int)deltaVecs[d][k];
@@ -680,9 +718,19 @@ void compileRust (const Machine& m, const std::string& outputDir, bool emitViter
     f << (d ? ", " : "\n    ") << "EMIT_SHARD_" << d;
   f << "\n];\n\n";
 
-  // ----- DP runner template (parameterised over reduce op) -----
-  // We emit two functions, forward (reduce = log_sum_exp) and viterbi
-  // (reduce = max), sharing the same DP body via a generic helper.
+  // Cumulative offsets for global bucket indexing of emitting transitions.
+  // EMIT_SHARD_BUCKET_OFFSET[d] = number of emitting transitions in shards 0..d-1
+  // (relative to NUM_SILENT — add NUM_SILENT for the global bucket index).
+  // Length NUM_DELTA + 1 so EMIT_SHARD_BUCKET_OFFSET[NUM_DELTA] == NUM_EMIT.
+  f << "const EMIT_SHARD_BUCKET_OFFSET: [usize; NUM_DELTA + 1] = [";
+  size_t accum = 0;
+  for (size_t d = 0; d < deltaVecs.size(); ++d) {
+    f << (d ? ", " : "\n    ") << accum;
+    accum += emitByDelta.at (deltaVecs[d]).size();
+  }
+  f << ", " << accum << "\n];\n\n";
+
+  // ----- DP runtime helpers -----
   f << R"RUST(
 // log_sum_exp(a, b) = log(exp(a) + exp(b)). When the gap between hi and lo
 // exceeds 36 nats, the contribution log1p(exp(d)) ≈ exp(d) ≈ 2.3e-16 is
@@ -713,25 +761,67 @@ fn max2(a: f64, b: f64) -> f64 {
     if a >= b { a } else { b }
 }
 
+/// A populated Forward or Backward DP matrix.
+///
+/// `data[state * total + cell]` is the log-probability of being in `state`
+/// at multi-cell `idx` (where `cell = sum_k idx[k] * strides[k]`).
+/// `log_likelihood` is f[end_state, full] for a Forward matrix or
+/// b[start_state, 0] for a Backward matrix; the two should agree to
+/// floating-point noise on the same input.
+pub struct DPMatrix {
+    pub data: Vec<f64>,
+    pub strides: [usize; NUM_LEAVES],
+    pub lens: [usize; NUM_LEAVES],
+    pub total: usize,
+    pub log_likelihood: f64,
+}
+
+impl DPMatrix {
+    /// Linear cell offset for a multi-index. `idx[k]` runs 0..=lens[k].
+    #[inline(always)]
+    pub fn cell(&self, idx: [usize; NUM_LEAVES]) -> usize {
+        let mut c = 0usize;
+        for k in 0..NUM_LEAVES { c += idx[k] * self.strides[k]; }
+        c
+    }
+    /// Log-prob of being in `state` at multi-index `idx`.
+    #[inline(always)]
+    pub fn at(&self, state: u32, idx: [usize; NUM_LEAVES]) -> f64 {
+        self.data[(state as usize) * self.total + self.cell(idx)]
+    }
+}
+
+/// Result of forward_backward_counts: total log-likelihood, and the
+/// expected number of times each transition bucket fires (one entry per
+/// global bucket index in [0..NUM_BUCKETS): silents first, then emitting
+/// in shard order).
+pub struct FBResult {
+    pub log_likelihood: f64,
+    pub expected_counts: Vec<f64>,
+}
+
+#[inline]
+fn make_strides(leaves: [&[u32]; NUM_LEAVES]) -> ([usize; NUM_LEAVES], [usize; NUM_LEAVES], usize) {
+    let mut lens: [usize; NUM_LEAVES] = [0; NUM_LEAVES];
+    for k in 0..NUM_LEAVES { lens[k] = leaves[k].len(); }
+    let mut total: usize = 1;
+    for k in 0..NUM_LEAVES { total *= lens[k] + 1; }
+    let mut strides: [usize; NUM_LEAVES] = [1; NUM_LEAVES];
+    if NUM_LEAVES > 0 {
+        for k in (0..NUM_LEAVES-1).rev() { strides[k] = strides[k+1] * (lens[k+1] + 1); }
+    }
+    (strides, lens, total)
+}
+
 )RUST";
 
-  // Generate the DP function body, parametrised by reducer.
-  // The body iterates cells in lex order, processes emitting transitions
-  // (each consumes a single cell-position offset), then processes silent
-  // transitions in dst-state order.
-  // The DP body assumes `lw: &[f64]` is in scope (the wrapper functions
-  // provide it: either by calling precompute_log_weights, or by accepting
-  // a precomputed slice).
-  auto emitDpBody = [&](std::ofstream& f, const char* reduce) {
-    f << "    let lens: [usize; NUM_LEAVES] = [";
-    for (size_t i = 0; i < L; ++i) f << (i ? ", " : "") << "leaves[" << i << "].len()";
-    f << "];\n";
-    f << "    let total: usize = ";
-    for (size_t i = 0; i < L; ++i) f << (i ? " * " : "") << "(lens[" << i << "] + 1)";
-    f << ";\n";
-    // strides[k] = product of (lens[k+1]+1)...(lens[L-1]+1); strides[L-1] = 1
-    f << "    let mut strides: [usize; NUM_LEAVES] = [1; NUM_LEAVES];\n";
-    f << "    for k in (0..NUM_LEAVES-1).rev() { strides[k] = strides[k+1] * (lens[k+1] + 1); }\n";
+  // ----- Forward fill body (shared by forward_matrix_with_log_weights
+  // and viterbi_with_log_weights, parameterised over the reduce op).
+  // Iterates cells in lex order; for each cell processes emitting
+  // transitions (sharded by delta vector) then silent transitions in
+  // topological dst-state order.
+  auto emitForwardFillBody = [&](std::ofstream& f, const char* reduce) {
+    f << "    let (strides, lens, total) = make_strides(leaves);\n";
     f << "    let mut g = vec![f64::NEG_INFINITY; NUM_STATES * total];\n";
     f << "    g[(START_STATE as usize) * total + 0] = 0.0;\n";
     f << "    // Silent closure at cell 0.\n";
@@ -745,24 +835,21 @@ fn max2(a: f64, b: f64) -> f64 {
     f << "            }\n";
     f << "        }\n";
     f << "    }\n";
-    // Iterate cells in lex order (skipping origin). We use L nested loops.
     f << "    let mut idx: [usize; NUM_LEAVES] = [0; NUM_LEAVES];\n";
     f << "    loop {\n";
-    f << "        // advance idx in lex order\n";
+    f << "        let mut advanced = false;\n";
     f << "        let mut k = NUM_LEAVES;\n";
-    f << "        loop {\n";
-    f << "            if k == 0 { return g[(END_STATE as usize) * total + total - 1]; }\n";
+    f << "        while k > 0 {\n";
     f << "            k -= 1;\n";
-    f << "            if idx[k] < lens[k] { idx[k] += 1; for j in (k+1)..NUM_LEAVES { idx[j] = 0; } break; }\n";
+    f << "            if idx[k] < lens[k] { idx[k] += 1; for j in (k+1)..NUM_LEAVES { idx[j] = 0; } advanced = true; break; }\n";
     f << "        }\n";
+    f << "        if !advanced { break; }\n";
     f << "        let cell: usize = ";
     for (size_t i = 0; i < L; ++i) f << (i ? " + " : "") << "idx[" << i << "] * strides[" << i << "]";
     f << ";\n";
     f << "        // Emitting transitions into this cell, sharded by delta vector.\n";
     f << "        for d_idx in 0..NUM_DELTA {\n";
     f << "            let dvec = unsafe { *DELTA_VEC.get_unchecked(d_idx) };\n";
-    // Compute per-shard prev cell (subtract strides[k] for each emitting
-    // position) and feasibility (idx[k] >= 1 for each emitting position).
     f << "            let mut prev = cell;\n";
     f << "            let mut feasible = true;\n";
     f << "            for k in 0..NUM_LEAVES {\n";
@@ -772,9 +859,6 @@ fn max2(a: f64, b: f64) -> f64 {
     f << "                }\n";
     f << "            }\n";
     f << "            if !feasible { continue; }\n";
-    // Cache the observed leaf symbols at the predecessor positions for this
-    // shard. Since dvec is a per-shard constant, the compiler can specialize
-    // these reads once and lift them out of the inner transition loop.
     f << "            let observed: [i32; NUM_LEAVES] = unsafe {[\n";
     for (size_t i = 0; i < L; ++i)
       f << "                if dvec[" << i << "] == 1 { *leaves[" << i << "].get_unchecked(idx[" << i << "] - 1) as i32 } else { -1 },\n";
@@ -796,7 +880,6 @@ fn max2(a: f64, b: f64) -> f64 {
     f << "                }\n";
     f << "            }\n";
     f << "        }\n";
-    f << "        // Silent closure (in topological dst-state order).\n";
     f << "        for &(src, dst, widx) in SILENT_TRANSITIONS.iter() {\n";
     f << "            unsafe {\n";
     f << "                let sv = *g.get_unchecked((src as usize) * total + cell);\n";
@@ -810,42 +893,436 @@ fn max2(a: f64, b: f64) -> f64 {
     f << "    }\n";
   };
 
-  // Body-taking-precomputed-lw variants (the meat).
-  f << "/// Forward log-likelihood with precomputed log-weights.\n";
-  f << "/// `lw` must be the result of `precompute_log_weights(p)` for the\n";
-  f << "/// `Params` you want to evaluate at; pass it instead of `Params`\n";
-  f << "/// when amortizing the prelude across many calls.\n";
-  f << "pub fn forward_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
-  emitDpBody (f, "lse");
+  // ----- Backward fill body. Iterates cells in REVERSE lex order; for
+  // each cell processes silent transitions in REVERSE src-state order
+  // (so b[dst] at this cell is finalised before b[src] reads it), then
+  // pulls in contributions from emitting transitions out to LATER cells.
+  auto emitBackwardFillBody = [&](std::ofstream& f) {
+    f << "    let (strides, lens, total) = make_strides(leaves);\n";
+    f << "    let mut g = vec![f64::NEG_INFINITY; NUM_STATES * total];\n";
+    f << "    let final_cell: usize = total - 1;\n";
+    f << "    g[(END_STATE as usize) * total + final_cell] = 0.0;\n";
+    f << "    // Silent closure at the final cell, in reverse src-order.\n";
+    f << "    for &(src, dst, widx) in SILENT_TRANSITIONS_BWD.iter() {\n";
+    f << "        unsafe {\n";
+    f << "            let dv = *g.get_unchecked((dst as usize) * total + final_cell);\n";
+    f << "            if dv != f64::NEG_INFINITY {\n";
+    f << "                let src_off = (src as usize) * total + final_cell;\n";
+    f << "                let sv = *g.get_unchecked(src_off);\n";
+    f << "                *g.get_unchecked_mut(src_off) = lse(sv, dv + *lw.get_unchecked(widx as usize));\n";
+    f << "            }\n";
+    f << "        }\n";
+    f << "    }\n";
+    // Iterate cells in reverse lex order (start at lens, descend).
+    f << "    let mut idx: [usize; NUM_LEAVES] = lens;\n";
+    f << "    loop {\n";
+    f << "        // descend idx (returns false if we just processed origin)\n";
+    f << "        let mut decremented = false;\n";
+    f << "        let mut k = NUM_LEAVES;\n";
+    f << "        while k > 0 {\n";
+    f << "            k -= 1;\n";
+    f << "            if idx[k] > 0 { idx[k] -= 1; for j in (k+1)..NUM_LEAVES { idx[j] = lens[j]; } decremented = true; break; }\n";
+    f << "        }\n";
+    f << "        if !decremented { break; }\n";
+    f << "        let cell: usize = ";
+    for (size_t i = 0; i < L; ++i) f << (i ? " + " : "") << "idx[" << i << "] * strides[" << i << "]";
+    f << ";\n";
+    f << "        // Emitting transitions out of this cell to later cell idx+delta.\n";
+    f << "        for d_idx in 0..NUM_DELTA {\n";
+    f << "            let dvec = unsafe { *DELTA_VEC.get_unchecked(d_idx) };\n";
+    f << "            let mut next = cell;\n";
+    f << "            let mut feasible = true;\n";
+    f << "            for k in 0..NUM_LEAVES {\n";
+    f << "                if dvec[k] == 1 {\n";
+    f << "                    if idx[k] == lens[k] { feasible = false; break; }\n";
+    f << "                    next += strides[k];\n";
+    f << "                }\n";
+    f << "            }\n";
+    f << "            if !feasible { continue; }\n";
+    f << "            // For backward, the consumed observation is at position idx[k] (0-based) — the next char.\n";
+    f << "            let observed: [i32; NUM_LEAVES] = unsafe {[\n";
+    for (size_t i = 0; i < L; ++i)
+      f << "                if dvec[" << i << "] == 1 { *leaves[" << i << "].get_unchecked(idx[" << i << "]) as i32 } else { -1 },\n";
+    f << "            ]};\n";
+    f << "            for &(src, dst, syms, widx) in unsafe { EMIT_SHARDS.get_unchecked(d_idx) }.iter() {\n";
+    f << "                let mut sym_ok = true;\n";
+    f << "                for k in 0..NUM_LEAVES {\n";
+    f << "                    if dvec[k] == 1 && observed[k] != syms[k] { sym_ok = false; break; }\n";
+    f << "                }\n";
+    f << "                if sym_ok {\n";
+    f << "                    unsafe {\n";
+    f << "                        let dv = *g.get_unchecked((dst as usize) * total + next);\n";
+    f << "                        if dv != f64::NEG_INFINITY {\n";
+    f << "                            let src_off = (src as usize) * total + cell;\n";
+    f << "                            let sv = *g.get_unchecked(src_off);\n";
+    f << "                            *g.get_unchecked_mut(src_off) = lse(sv, dv + *lw.get_unchecked(widx as usize));\n";
+    f << "                        }\n";
+    f << "                    }\n";
+    f << "                }\n";
+    f << "            }\n";
+    f << "        }\n";
+    f << "        // Silent closure at this cell, in reverse src-order.\n";
+    f << "        for &(src, dst, widx) in SILENT_TRANSITIONS_BWD.iter() {\n";
+    f << "            unsafe {\n";
+    f << "                let dv = *g.get_unchecked((dst as usize) * total + cell);\n";
+    f << "                if dv != f64::NEG_INFINITY {\n";
+    f << "                    let src_off = (src as usize) * total + cell;\n";
+    f << "                    let sv = *g.get_unchecked(src_off);\n";
+    f << "                    *g.get_unchecked_mut(src_off) = lse(sv, dv + *lw.get_unchecked(widx as usize));\n";
+    f << "                }\n";
+    f << "            }\n";
+    f << "        }\n";
+    f << "    }\n";
+  };
+
+  // ----- Forward matrix + scalar wrappers -----
+  f << "/// Forward DP matrix with precomputed log-weights.\n";
+  f << "pub fn forward_matrix_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> DPMatrix {\n";
+  emitForwardFillBody (f, "lse");
+  f << "    let log_likelihood = g[(END_STATE as usize) * total + (total - 1)];\n";
+  f << "    DPMatrix { data: g, strides, lens, total, log_likelihood }\n";
   f << "}\n\n";
 
-  if (emitViterbi) {
-    f << "/// Viterbi log-likelihood with precomputed log-weights.\n";
-    f << "pub fn viterbi_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
-    emitDpBody (f, "max2");
-    f << "}\n\n";
-  }
+  f << "/// Forward DP matrix.\n";
+  f << "#[inline]\n";
+  f << "pub fn forward_matrix(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> DPMatrix {\n";
+  f << "    forward_matrix_with_log_weights(&precompute_log_weights(p), leaves)\n";
+  f << "}\n\n";
 
-  // Convenience wrappers: compute weights and forward in a single call.
+  f << "/// Forward log-likelihood with precomputed log-weights.\n";
+  f << "#[inline]\n";
+  f << "pub fn forward_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+  f << "    forward_matrix_with_log_weights(lw, leaves).log_likelihood\n";
+  f << "}\n\n";
+
   f << "/// Forward log-likelihood (computes log-weights internally).\n";
   f << "#[inline]\n";
   f << "pub fn forward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
   f << "    forward_with_log_weights(&precompute_log_weights(p), leaves)\n";
   f << "}\n\n";
 
+  // ----- Backward matrix + scalar wrappers -----
+  f << "/// Backward DP matrix with precomputed log-weights.\n";
+  f << "pub fn backward_matrix_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> DPMatrix {\n";
+  emitBackwardFillBody (f);
+  f << "    let log_likelihood = g[(START_STATE as usize) * total + 0];\n";
+  f << "    DPMatrix { data: g, strides, lens, total, log_likelihood }\n";
+  f << "}\n\n";
+
+  f << "/// Backward DP matrix.\n";
+  f << "#[inline]\n";
+  f << "pub fn backward_matrix(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> DPMatrix {\n";
+  f << "    backward_matrix_with_log_weights(&precompute_log_weights(p), leaves)\n";
+  f << "}\n\n";
+
+  f << "/// Backward log-likelihood with precomputed log-weights.\n";
+  f << "/// Equals `forward_with_log_weights(lw, leaves)` to floating-point noise.\n";
+  f << "#[inline]\n";
+  f << "pub fn backward_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+  f << "    backward_matrix_with_log_weights(lw, leaves).log_likelihood\n";
+  f << "}\n\n";
+
+  f << "/// Backward log-likelihood (computes log-weights internally).\n";
+  f << "#[inline]\n";
+  f << "pub fn backward(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+  f << "    backward_with_log_weights(&precompute_log_weights(p), leaves)\n";
+  f << "}\n\n";
+
+  // ----- Viterbi (uses forward fill body with max2 reducer) -----
   if (emitViterbi) {
+    f << "/// Viterbi log-likelihood with precomputed log-weights.\n";
+    f << "pub fn viterbi_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
+    emitForwardFillBody (f, "max2");
+    f << "    g[(END_STATE as usize) * total + (total - 1)]\n";
+    f << "}\n\n";
+
     f << "/// Viterbi log-likelihood (computes log-weights internally).\n";
     f << "#[inline]\n";
     f << "pub fn viterbi(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> f64 {\n";
     f << "    viterbi_with_log_weights(&precompute_log_weights(p), leaves)\n";
-    f << "}\n";
+    f << "}\n\n";
+  }
+
+  // ----- Posterior helpers -----
+  f << R"RUST(
+/// Log-posterior of being in `state` at multi-index `idx`, given Forward
+/// matrix `f` and Backward matrix `b` (both run on the same params and
+/// leaves). Uses `f.log_likelihood` as the partition function.
+#[inline]
+pub fn state_log_posterior(
+    f: &DPMatrix, b: &DPMatrix,
+    state: u32, idx: [usize; NUM_LEAVES],
+) -> f64 {
+    f.at(state, idx) + b.at(state, idx) - f.log_likelihood
+}
+
+/// Log-posterior of the silent transition at `SILENT_TRANSITIONS[bucket]`
+/// firing at multi-index `idx`. (`bucket` is the per-silent index, not
+/// the global bucket index — same as the array offset in
+/// SILENT_TRANSITIONS.) Returns -inf if either endpoint is unreachable.
+pub fn silent_transition_log_posterior(
+    f: &DPMatrix, b: &DPMatrix, lw: &[f64],
+    bucket: usize, idx: [usize; NUM_LEAVES],
+) -> f64 {
+    let (src, dst, widx) = SILENT_TRANSITIONS[bucket];
+    let cell = f.cell(idx);
+    let fv = f.data[(src as usize) * f.total + cell];
+    let bv = b.data[(dst as usize) * b.total + cell];
+    if fv == f64::NEG_INFINITY || bv == f64::NEG_INFINITY { return f64::NEG_INFINITY; }
+    fv + lw[widx as usize] + bv - f.log_likelihood
+}
+
+/// Log-posterior of an emitting bucket firing at multi-index `idx`.
+/// `shard` indexes into EMIT_SHARDS, `i` is the offset within that shard.
+/// "Firing at idx" means: state `src` at cell idx-delta transitions via
+/// this bucket to state `dst` at cell idx, consuming observed[k][idx[k]-1]
+/// for each k where deltas[k]==1. Returns -inf if infeasible (predecessor
+/// out of range or symbols don't match).
+pub fn emitting_transition_log_posterior(
+    f: &DPMatrix, b: &DPMatrix, leaves: [&[u32]; NUM_LEAVES], lw: &[f64],
+    shard: usize, i: usize, idx: [usize; NUM_LEAVES],
+) -> f64 {
+    let dvec = DELTA_VEC[shard];
+    let mut prev = idx;
+    for k in 0..NUM_LEAVES {
+        if dvec[k] == 1 {
+            if prev[k] == 0 { return f64::NEG_INFINITY; }
+            prev[k] -= 1;
+        }
+    }
+    let (src, dst, syms, widx) = EMIT_SHARDS[shard][i];
+    for k in 0..NUM_LEAVES {
+        if dvec[k] == 1 && leaves[k][idx[k] - 1] as i32 != syms[k] {
+            return f64::NEG_INFINITY;
+        }
+    }
+    let fv = f.at(src, prev);
+    let bv = b.at(dst, idx);
+    if fv == f64::NEG_INFINITY || bv == f64::NEG_INFINITY { return f64::NEG_INFINITY; }
+    fv + lw[widx as usize] + bv - f.log_likelihood
+}
+
+/// Global bucket index for an emitting bucket: NUM_SILENT + offset.
+#[inline]
+pub fn emit_bucket_index(shard: usize, i: usize) -> usize {
+    NUM_SILENT + EMIT_SHARD_BUCKET_OFFSET[shard] + i
+}
+
+)RUST";
+
+  // ----- Forward-Backward expected counts -----
+  f << R"RUST(
+/// Forward-Backward expected transition counts: for each bucket b,
+///   E[count(b)] = exp( lse_over_cells( f[src,prev] + lw[b] + b[dst,cell] ) − Z )
+/// where Z = forward log-likelihood. Returned vector has length NUM_BUCKETS,
+/// indexed in [0..NUM_SILENT) for silent buckets and [NUM_SILENT..NUM_BUCKETS)
+/// for emitting buckets in shard order.
+pub fn forward_backward_counts_with_log_weights(lw: &[f64], leaves: [&[u32]; NUM_LEAVES]) -> FBResult {
+    let f = forward_matrix_with_log_weights(lw, leaves);
+    let bm = backward_matrix_with_log_weights(lw, leaves);
+    let log_z = f.log_likelihood;
+    let total = f.total;
+    let strides = f.strides;
+    let lens = f.lens;
+    let mut log_count = vec![f64::NEG_INFINITY; NUM_BUCKETS];
+
+    // We sweep cells in lex order. At each cell:
+    //  - Silent buckets (src,dst,widx): contribution at this cell is
+    //    f[src,cell] + lw[widx] + b[dst,cell].
+    //  - Emitting buckets at shard d: contribution at this cell is
+    //    f[src, cell - delta] + lw[widx] + b[dst, cell], when feasible
+    //    (idx[k] >= 1 for emitting positions, and observed match).
+    //
+    // We accumulate via lse into log_count[bucket].
+    let mut idx: [usize; NUM_LEAVES] = [0; NUM_LEAVES];
+    loop {
+        let cell: usize = {
+            let mut c = 0usize;
+            for k in 0..NUM_LEAVES { c += idx[k] * strides[k]; }
+            c
+        };
+        // Silent contributions at this cell.
+        for (bi, &(src, dst, widx)) in SILENT_TRANSITIONS.iter().enumerate() {
+            let fv = f.data[(src as usize) * total + cell];
+            let bv = bm.data[(dst as usize) * total + cell];
+            if fv != f64::NEG_INFINITY && bv != f64::NEG_INFINITY {
+                let term = fv + lw[widx as usize] + bv;
+                log_count[bi] = lse(log_count[bi], term);
+            }
+        }
+        // Emitting contributions, sharded by delta vector.
+        for d_idx in 0..NUM_DELTA {
+            let dvec = DELTA_VEC[d_idx];
+            let mut prev = cell;
+            let mut feasible = true;
+            for k in 0..NUM_LEAVES {
+                if dvec[k] == 1 {
+                    if idx[k] == 0 { feasible = false; break; }
+                    prev -= strides[k];
+                }
+            }
+            if !feasible { continue; }
+            let mut observed: [i32; NUM_LEAVES] = [-1; NUM_LEAVES];
+            for k in 0..NUM_LEAVES {
+                if dvec[k] == 1 { observed[k] = leaves[k][idx[k] - 1] as i32; }
+            }
+            let bucket_base = NUM_SILENT + EMIT_SHARD_BUCKET_OFFSET[d_idx];
+            for (i, &(src, dst, syms, widx)) in EMIT_SHARDS[d_idx].iter().enumerate() {
+                let mut sym_ok = true;
+                for k in 0..NUM_LEAVES {
+                    if dvec[k] == 1 && observed[k] != syms[k] { sym_ok = false; break; }
+                }
+                if !sym_ok { continue; }
+                let fv = f.data[(src as usize) * total + prev];
+                let bv = bm.data[(dst as usize) * total + cell];
+                if fv != f64::NEG_INFINITY && bv != f64::NEG_INFINITY {
+                    let term = fv + lw[widx as usize] + bv;
+                    let bidx = bucket_base + i;
+                    log_count[bidx] = lse(log_count[bidx], term);
+                }
+            }
+        }
+        // advance idx
+        let mut advanced = false;
+        let mut k = NUM_LEAVES;
+        while k > 0 {
+            k -= 1;
+            if idx[k] < lens[k] { idx[k] += 1; for j in (k+1)..NUM_LEAVES { idx[j] = 0; } advanced = true; break; }
+        }
+        if !advanced { break; }
+    }
+
+    let mut expected_counts = vec![0.0_f64; NUM_BUCKETS];
+    for i in 0..NUM_BUCKETS {
+        if log_count[i] == f64::NEG_INFINITY { expected_counts[i] = 0.0; }
+        else { expected_counts[i] = (log_count[i] - log_z).exp(); }
+    }
+    FBResult { log_likelihood: log_z, expected_counts }
+}
+
+/// Forward-Backward expected transition counts (computes log-weights internally).
+#[inline]
+pub fn forward_backward_counts(p: &Params, leaves: [&[u32]; NUM_LEAVES]) -> FBResult {
+    forward_backward_counts_with_log_weights(&precompute_log_weights(p), leaves)
+}
+
+)RUST";
+
+  // ----- machine.json template + counts_to_machine_json helper -----
+  // The codegen also writes machine.json next to lib.rs; the helper below
+  // weaves expected_counts into it via `__C<idx>__` sentinel substitution.
+  f << "/// Bucketed-machine JSON template (the same shape as the standard\n";
+  f << "/// Machine Boss JSON). Each transition has an `expected_count`\n";
+  f << "/// field whose value is a `__C<idx>__` placeholder which the\n";
+  f << "/// `counts_to_machine_json` helper substitutes with the value\n";
+  f << "/// from `FBResult::expected_counts[idx]`.\n";
+  f << "pub const MACHINE_JSON: &str = include_str!(\"../machine.json\");\n\n";
+
+  f << R"RUST(
+impl FBResult {
+    /// Render the codegen's bucketed machine as JSON, with the
+    /// `expected_count` field on each transition filled in from
+    /// `self.expected_counts`. Output is appended to `out`.
+    pub fn to_machine_json(&self, out: &mut String) {
+        let template = MACHINE_JSON;
+        out.reserve(template.len() + self.expected_counts.len() * 24);
+        let mut last = 0usize;
+        let bytes = template.as_bytes();
+        let mut i = 0usize;
+        while i + 4 < bytes.len() {
+            // Match marker pattern "__C<digits>__".
+            if bytes[i] == b'_' && bytes[i+1] == b'_' && bytes[i+2] == b'C' {
+                let nstart = i + 3;
+                let mut nend = nstart;
+                while nend < bytes.len() && bytes[nend].is_ascii_digit() { nend += 1; }
+                if nend > nstart && nend + 1 < bytes.len() && bytes[nend] == b'_' && bytes[nend+1] == b'_' {
+                    let n: usize = std::str::from_utf8(&bytes[nstart..nend]).unwrap().parse().unwrap();
+                    out.push_str(&template[last..i]);
+                    use std::fmt::Write;
+                    write!(out, "{}", self.expected_counts[n]).ok();
+                    last = nend + 2;
+                    i = last;
+                    continue;
+                }
+            }
+            i += 1;
+        }
+        out.push_str(&template[last..]);
+    }
+}
+
+)RUST";
+
+  // ---- Write machine.json next to lib.rs ----
+  //
+  // This is the bucketed-composed machine in standard Machine Boss JSON
+  // shape. Each transition has an `expected_count` field whose value is
+  // a `__C<global_bucket_idx>__` placeholder that gets substituted by
+  // FBResult::to_machine_json at runtime.
+  //
+  // Bucket index assignment (matches NUM_BUCKETS layout above):
+  //   silents in declaration order:    0..NUM_SILENT
+  //   emittings in shard order:        NUM_SILENT..NUM_BUCKETS
+  {
+    // Group buckets by source state for emission as state[].trans[].
+    std::vector<std::vector<std::pair<size_t, bool>>> byState (N);  // (entry_idx, isEmitting)
+    for (size_t i = 0; i < silent.size(); ++i)
+      byState[silent[i].src].push_back ({i, false});
+    // Build flat emit list in shard order to match the global bucket index.
+    std::vector<size_t> emitFlat;
+    for (size_t d = 0; d < deltaVecs.size(); ++d)
+      for (size_t idx : emitByDelta.at (deltaVecs[d]))
+        emitFlat.push_back (idx);
+    for (size_t i = 0; i < emitFlat.size(); ++i)
+      byState[emitting[emitFlat[i]].src].push_back ({i, true});
+
+    std::ofstream mj (outputDir + "/machine.json");
+    mj << std::setprecision(17);
+    mj << "{\"state\":\n [";
+    for (StateIndex s = 0; s < (StateIndex)N; ++s) {
+      if (s) mj << ",\n  ";
+      mj << "{\"n\":" << s;
+      if (!byState[s].empty()) {
+        mj << ",\n   \"trans\":[";
+        bool first = true;
+        for (const auto& kv : byState[s]) {
+          if (!first) mj << ",\n            ";
+          first = false;
+          const Entry& e = kv.second ? emitting[emitFlat[kv.first]] : silent[kv.first];
+          const size_t globalIdx = kv.second
+              ? (silent.size() + kv.first)
+              : kv.first;
+          mj << "{\"to\":" << e.dst;
+          if (!e.outToken.empty())
+            mj << ",\"out\":" << json(e.outToken).dump();
+          mj << ",\"weight\":" << WeightAlgebra::toJsonString (e.summedWeight);
+          mj << ",\"expected_count\":__C" << globalIdx << "__";
+          mj << "}";
+        }
+        mj << "]";
+      }
+      mj << "}";
+    }
+    mj << "\n ]";
+    // Defs and cons (carried over from the composed machine, useful for
+    // anyone wanting to evaluate the symbolic weight expressions).
+    if (!sorted.funcs.defs.empty()) {
+      mj << ",\n \"defs\":\n  ";
+      WeightAlgebra::toJsonStream (mj, sorted.funcs.defs);
+    }
+    if (!sorted.cons.empty()) {
+      mj << ",\n \"cons\":\n  ";
+      sorted.cons.writeJson (mj);
+    }
+    mj << "\n}\n";
   }
 
   LogThisAt(2,"Wrote Rust crate to " << outputDir
             << " (states=" << N << ", leaves=" << L
             << ", alphabet=" << alph.size()
             << ", silent=" << silent.size() << ", emitting=" << emitting.size()
-            << ", weights=" << weightsInOrder.size() << ")" << std::endl);
+            << ", weights=" << weightsInOrder.size()
+            << ", buckets=" << (silent.size() + emitting.size()) << ")" << std::endl);
 }
 
 }  // namespace MachineBoss
