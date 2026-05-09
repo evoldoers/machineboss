@@ -113,7 +113,8 @@ visiting only the reachable states of the product.
 It is said that Birney, who did the majority of his work on GeneWise and GenomeWise
 at the Sanger Centre and was already publishing on the topic as an undergraduate,
 was notorious among his peers for having cited his own 1996
-"PairWise and SearchWise" paper (Birney, 1996) in his undergraduate final examination.
+"PairWise and SearchWise" paper (Birney, Thompson & Gibson, 1996,
+*Nucleic Acids Research*) in his undergraduate final examination.
 
 The resulting GeneWise program became a cornerstone of eukaryotic genome annotation
 and was used extensively in the annotation of the human genome.
@@ -394,9 +395,10 @@ for any domain where sequences are related by local transformations.
 
 ### GeneWise, Dynamite, HMMoC, and successors
 
-- Birney, E. (1996).
+- Birney, E., Thompson, J. D., & Gibson, T. J. (1996).
   PairWise and SearchWise: finding the optimal alignment in a simultaneous comparison of a protein profile against all DNA translation frames.
-  *Unpublished undergraduate thesis*.
+  *Nucleic Acids Research*, 24(14), 2730–2739.
+  [doi:10.1093/nar/24.14.2730](https://doi.org/10.1093/nar/24.14.2730)
 
 - Birney, E., & Durbin, R. (1997).
   Dynamite: a flexible code generating language for dynamic programming methods used in sequence comparison.
