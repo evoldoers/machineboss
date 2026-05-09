@@ -12,7 +12,9 @@ make
 ~~~~
 
 (htslib is *not* required — we use only `kseq.h`, which is vendored as
-a single header in `ext/htslib/`.)
+a single header in `ext/htslib/`. zlib is also linked, for transparent
+reading of gzipped FASTA, but it ships pre-installed on macOS and most
+Linux distributions and so is not listed above.)
 
 ### Testing
 

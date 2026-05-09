@@ -61,7 +61,7 @@ BOOST_FLAGS =
 BOOST_LIBS =
 ifneq (,$(BOOST_PREFIX))
 BOOST_FLAGS := -I$(BOOST_PREFIX)/include
-BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_regex -lboost_$(BOOST_PROGRAM_OPTIONS)
+BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_$(BOOST_PROGRAM_OPTIONS)
 endif
 
 # install dir

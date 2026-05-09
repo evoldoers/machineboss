@@ -1,18 +1,13 @@
 #ifndef REGEXMACROS_INCLUDED
 #define REGEXMACROS_INCLUDED
 
-#ifdef USE_BOOST_REGEX
-#include <boost/regex.hpp>
-using namespace boost;
-#else
 #include <regex>
 using namespace std;
-#endif
 
-// POSIX basic regular expressions are used for maximum compatibility,
-// since g++ does not stably support ECMAScript regexes yet,
-// so we resort to boost where clang is not available
-// (e.g. Amazon EC2 AMI/yum, at time of writing: 8/25/2015).
+// POSIX basic regular expressions are used for maximum compatibility.
+// (Originally machineboss could fall back to boost::regex when std::regex
+//  was unstable in older libstdc++; that's no longer needed and the
+//  USE_BOOST_REGEX switch has been removed.)
 
 // These macros use an ultra-minimal subset of POSIX basic syntax:
 // character classes [], ranges a-z, repetition *, wildcards ., groups \\( \\)
