@@ -14,7 +14,7 @@ propagated to all implementations, benchmarks, and documentation.
 ## Build
 
 ```bash
-brew install gsl boost htslib pkgconfig   # macOS deps
+brew install gsl boost pkgconfig          # macOS deps (kseq.h is vendored, no htslib needed)
 make                                       # builds bin/boss
 npm install                                # needed for tests
 make test                                  # runs full test suite
@@ -27,7 +27,7 @@ Compiler: clang++ (preferred) or g++, C++11. Links against GSL, Boost (regex, pr
 
 - `src/` — C++ source files (core library + headers)
 - `target/boss.cpp` — main entry point for the `boss` CLI
-- `ext/` — vendored dependencies (nlohmann_json, valijson, cpp-peglib, cpp-httplib, htslib/kseq, fast5, compat)
+- `ext/` — vendored dependencies (nlohmann_json, valijson, cpp-peglib, cpp-httplib, kseq, fast5, compat)
 - `schema/` — JSON Schema files for the transducer format and related data structures
 - `preset/` — preset machine JSON files (translate, dnapsw, protpsw, etc.)
 - `data/` — parameter data files (codon tables, substitution matrices)

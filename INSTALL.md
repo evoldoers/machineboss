@@ -7,10 +7,12 @@ On Mac:
 ~~~~
 brew install gsl
 brew install boost
-brew install htslib
 brew install pkgconfig
 make
 ~~~~
+
+(htslib is *not* required — we use only `kseq.h`, which is vendored as
+a single header in `ext/htslib/`.)
 
 ### Testing
 
