@@ -206,6 +206,180 @@ fn main() {
 cargo run --release --example run
 ```
 
+## Posterior probabilities
+
+Once you have run Forward and Backward, three classes of posterior are
+straightforward to read off the matrices.
+
+### The arithmetic
+
+Let `f[s, c]` be the Forward log-prob of being in state `s` at multi-cell
+`c = (i_0, …, i_{L-1})` and `b[s, c]` the Backward log-prob of completing
+the model from there to the end. Both are populated by `forward_matrix`
+and `backward_matrix`, with `f.log_likelihood == b.log_likelihood` to
+floating-point noise — call this scalar `Z` (the partition function).
+All posteriors below are obtained from `(f, b, Z)` with no further DP.
+
+| Quantity | Formula |
+|---|---|
+| State posterior at cell `c`, state `s` | `exp(f[s,c] + b[s,c] − Z)` |
+| Silent transition `(src→dst, w)` firing at cell `c` | `exp(f[src,c] + log w + b[dst,c] − Z)` |
+| Emitting bucket `(src→dst, δ, σ, w)` firing at cell `c` | `exp(f[src, c−δ] + log w + b[dst,c] − Z)` *(when feasible: predecessor cell exists and observed[k][i_k − 1] == σ_k for each k with δ_k = 1)* |
+| Expected count of bucket `t` | `Σ_c P(t fires at c) = exp(lse_c(...) − Z)` |
+
+The codegen exposes one helper per row, all returning the **log** of
+the quantity (`f64::NEG_INFINITY` for an infeasible transition):
+
+```rust
+state_log_posterior(f, b, state, idx)                            // row 1
+silent_transition_log_posterior(f, b, lw, bucket, idx)           // row 2
+emitting_transition_log_posterior(f, b, leaves, lw, shard, i, idx) // row 3
+forward_backward_counts(p, leaves) -> FBResult                   // row 4
+```
+
+`bucket` indexes into `SILENT_TRANSITIONS` (range `0..NUM_SILENT`).
+Emitting transitions are addressed by `(shard, i)` where `shard` is
+the delta-vector index `0..NUM_DELTA` and `i` is the offset within that
+shard. The global bucket index used by `FBResult::expected_counts` is
+`bucket` for silents, `NUM_SILENT + EMIT_SHARD_BUCKET_OFFSET[shard] + i`
+for emittings (or call `emit_bucket_index(shard, i)`).
+
+### State posteriors
+
+```rust
+use phylo_dp::{forward_matrix, backward_matrix, state_log_posterior,
+               Params, NUM_STATES, NUM_LEAVES};
+
+let p = Params { /* ... */ };
+let leaves = [&a[..], &b[..]];
+let f  = forward_matrix(&p, leaves);
+let bm = backward_matrix(&p, leaves);
+
+// Marginal probability of passing through each state at multi-index idx:
+let idx = [3usize, 2usize];     // example: 3 chars consumed at A, 2 at B
+let mut marginal = vec![0.0; NUM_STATES];
+for s in 0..NUM_STATES {
+    let lp = state_log_posterior(&f, &bm, s as u32, idx);
+    marginal[s] = if lp.is_finite() { lp.exp() } else { 0.0 };
+}
+// Sanity: at the origin and final cells the marginal sums to 1
+// (start state always reached at origin, end state at full).
+```
+
+A useful sanity check (and a default-set regression test):
+`Σ_s state_log_posterior(f, b, s, [0;L]).exp() == 1` and the same at
+`idx = [len_0, …, len_{L-1}]`. The check_forward_backward.py test asserts
+both within `1e-9`.
+
+### Transition posteriors
+
+```rust
+use phylo_dp::{
+    SILENT_TRANSITIONS, EMIT_SHARDS, DELTA_VEC, NUM_DELTA,
+    silent_transition_log_posterior, emitting_transition_log_posterior,
+    precompute_log_weights,
+};
+
+let lw = precompute_log_weights(&p);
+
+// Marginal probability that a *specific* silent transition fires somewhere
+// in the alignment, marginalised over alignment cells.
+fn silent_total(p_idx: usize, fm: &DPMatrix, bm: &DPMatrix, lw: &[f64], lens: [usize; NUM_LEAVES]) -> f64 {
+    let mut idx = [0usize; NUM_LEAVES];
+    let mut total = 0.0;
+    loop {
+        let lp = silent_transition_log_posterior(fm, bm, lw, p_idx, idx);
+        if lp.is_finite() { total += lp.exp(); }
+        // advance idx through every cell in lex order ...
+        let mut k = NUM_LEAVES;
+        let mut advanced = false;
+        while k > 0 {
+            k -= 1;
+            if idx[k] < lens[k] { idx[k] += 1; for j in (k+1)..NUM_LEAVES { idx[j] = 0; } advanced = true; break; }
+        }
+        if !advanced { break; }
+    }
+    total
+}
+```
+
+This `silent_total` is exactly `expected_counts[p_idx]`, so in practice you
+should call `forward_backward_counts(&p, leaves)` and read the value out.
+The per-cell helper is only worth using when you need a position-specific
+posterior — e.g. a heatmap of "where in the alignment does insertion
+happen most?".
+
+For an emitting bucket, the per-cell posterior captures column-specific
+information about *where* a particular emission profile fires:
+
+```rust
+let shard = 5; let i = 17;            // e.g. some specific (delta, syms) pair
+let idx   = [4usize, 3usize, 4usize]; // post-emission cell
+let lp = emitting_transition_log_posterior(&f, &bm, leaves, &lw, shard, i, idx);
+let p  = if lp.is_finite() { lp.exp() } else { 0.0 };
+// `p` is the probability that this bucket consumed the leaf characters
+// observed[k][idx[k] - 1] for each k where DELTA_VEC[shard][k] == 1,
+// at this particular alignment cell.
+```
+
+### Expected transition counts and `machine.json`
+
+For aggregate per-transition counts (summed over all alignment cells),
+use `forward_backward_counts`:
+
+```rust
+let fb = forward_backward_counts(&p, leaves);
+println!("log P(observed leaves) = {}", fb.log_likelihood);
+println!("counts.len() = {}", fb.expected_counts.len());
+
+// Render the bucketed machine + counts as a JSON document. The shape
+// mirrors the Machine Boss JSON format, with each transition carrying
+// an `expected_count` field; this is the JSON you'd use to drive
+// downstream tooling (parameter-fitting, visualisation, etc.).
+let mut out = String::new();
+fb.to_machine_json(&mut out);
+std::fs::write("counts.json", &out).unwrap();
+```
+
+The emitted JSON looks like
+
+```json
+{
+  "state": [
+    {"n": 0,
+     "trans": [
+       {"to": 5, "weight": "pNoDescendants[A]", "expected_count": 0.234},
+       {"to": 7, "out": "[\"A\",\"\"],\"\"", "weight": {"*": [...]}, "expected_count": 1.018e-3}
+     ]},
+    …
+  ],
+  "defs": { … },
+  "cons": { … }
+}
+```
+
+— so it parses with any JSON library, drops in to `boss` (with
+`expected_count` as an unrecognized field), and is suitable as a basis
+for parameter re-estimation: each transition's expected count is the
+sufficient statistic for one EM update of its weight. Bucket granularity
+matches what `boss --counts` produces on the same composed machine, so
+you can cross-check by piping the machine through `boss --counts -P …`
+and comparing the `expected_count` fields transition-for-transition.
+
+### Numerical notes
+
+  - All four helpers return **log** posteriors. Convert with `.exp()`.
+    Infeasible transitions (predecessor cell out of range, or observed
+    symbols don't match) return `f64::NEG_INFINITY`.
+  - The lse cutoff for cell-level posteriors is *not* applied — these
+    helpers compute single (cell, transition) terms, not lse'd sums, so
+    there's no cutoff to skip. Only `forward_backward_counts` and the
+    matrix DPs apply the cutoff.
+  - Forward and Backward should agree to ~1e-15 on the same inputs; if
+    they diverge, your `lw` is inconsistent (e.g. you ran Forward with
+    one `Params` and Backward with another). The default-set test
+    `test-rust-codegen-forward-backward` enforces this invariant.
+
 ## Performance — quartet length sweep
 
 Wall-clock per call to `forward` / `viterbi` on the (A,B,(C,D)Y)X; tree

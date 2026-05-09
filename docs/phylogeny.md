@@ -122,6 +122,14 @@ one axis per leaf, with the tree topology and per-branch parameters
 specialised at codegen time. Detailed instructions for the TKF92 +
 HKY85 quartet on `(A,B,(C,D)Y)X;` are provided there.
 
+The Rust crate also exposes the **Backward** matrix and a small set of
+helpers for **posterior probabilities** — state posteriors at any
+alignment cell, transition posteriors at any cell (silent or emitting),
+and Forward-Backward expected transition counts — plus a JSON helper
+that emits a Machine Boss-shaped JSON document with the counts attached
+per transition. See [Posterior probabilities](/rust-codegen/#posterior-probabilities)
+in the Rust codegen page for the math, the API, and worked examples.
+
 ## Limitations
 
 - Pair-token decoding back into per-leaf streams is not provided as a
