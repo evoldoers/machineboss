@@ -210,6 +210,7 @@ int main (int argc, char** argv) {
       ("phylo-params-out", po::value<string>(), "write per-branch parameter values (parsed from Newick branch lengths) to specified JSON file")
       ("phylo-clamp", po::value<string>(), "JSON file mapping leaf names to observed sequences (each a list of symbol strings); replaces wildEcho leaves with recognizers, yielding a no-output machine whose Forward score is the marginal P(observed leaves)")
       ("phylo-no-felsenstein", "disable Felsenstein-style sharing of intermediate sub-expressions in phylo-composed transition weights (default: enabled). Restores the older transition-exploded form, useful for cross-checking and benchmarking")
+      ("phylo-skeleton", "build the phylo-intersect over a unary-alphabet skeleton of the branch transducer (every emit symbol replaced with '*', emit weights set to 1). Yields a structurally-correct phylo machine with the |Σ|^k column blow-up collapsed into single placeholder transitions. Intended as a fast topology-only pass; the resulting machine carries no per-symbol weights and is not directly usable for inference.")
       ;
 
     po::options_description compOpts("Parser-generator");
@@ -653,13 +654,15 @@ int main (int argc, char** argv) {
 	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
 	                      Machine::SumSilentCycles,
 	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL,
-	                      !vm.count("phylo-no-felsenstein"));
+	                      !vm.count("phylo-no-felsenstein"),
+	                      vm.count("phylo-skeleton") > 0);
 	} else if (command == "--phylo-tree-string") {
 	  const PhyloTree tree = PhyloTree::parseNewick (getArg());
 	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
 	                      Machine::SumSilentCycles,
 	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL,
-	                      !vm.count("phylo-no-felsenstein"));
+	                      !vm.count("phylo-no-felsenstein"),
+	                      vm.count("phylo-skeleton") > 0);
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());

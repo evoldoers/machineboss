@@ -642,6 +642,15 @@ Here are some examples of files that fit these schemas:
                                 transition weights (default: enabled). Restores
                                 the older transition-exploded form, useful for
                                 cross-checking and benchmarking
+      --phylo-skeleton          build the phylo-intersect over a unary-alphabet
+                                skeleton of the branch transducer (every emit
+                                symbol replaced with &#x27;*&#x27;, emit weights set to
+                                1). Yields a structurally-correct phylo machine
+                                with the |Σ|^k column blow-up collapsed into
+                                single placeholder transitions. Intended as a
+                                fast topology-only pass; the resulting machine
+                                carries no per-symbol weights and is not
+                                directly usable for inference.
       --codegen arg             generate parser code, save to specified
                                 directory
       --cpp64                   generate C++ dynamic programming code (64-bit)

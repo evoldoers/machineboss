@@ -165,6 +165,24 @@ bool machineHasParam (const Machine& m, const string& name) {
   return m.params().count (name) > 0;
 }
 
+// Replace every non-empty input/output symbol with `placeholder` and every
+// emit weight with 1. Silent transitions are untouched. The result has the
+// same state set and same per-state out-degree shape, but emit transitions
+// of T that differed only in their alphabet symbols collapse into a single
+// transition once the machine is round-tripped through a TransAccumulator
+// (via Machine::compose, which is what phyloIntersect does next).
+Machine skeletoniseBranch (const Machine& m, const string& placeholder) {
+  Machine out = m;
+  const WeightExpr one = WeightAlgebra::doubleConstant (1);
+  for (auto& s: out.state)
+    for (auto& t: s.trans) {
+      if (!t.in.empty())  t.in  = placeholder;
+      if (!t.out.empty()) t.out = placeholder;
+      if (!t.in.empty() || !t.out.empty()) t.weight = one;
+    }
+  return out;
+}
+
 }  // anonymous
 
 // ----- The phylogenetic intersection -----
@@ -236,13 +254,32 @@ Machine phyloIntersect (const Machine& T,
                         ParamAssign* branchLengthsOut,
                         Machine::SilentCycleStrategy strategy,
                         const map<string, vguard<string> >* leafClamps,
-                        bool felsenstein) {
+                        bool felsenstein,
+                        bool skeleton) {
   if (tree.nodes.empty())
     throw runtime_error ("phylo intersection: empty tree");
   if (tree.nodes.size() == 1)
     throw runtime_error ("phylo intersection: tree has only one node (need at least one branch)");
 
-  const bool renameTime = machineHasParam (T, timeParam);
+  // In skeleton mode, replace T's emit alphabet with a single placeholder
+  // and clamp leaf observations to the same placeholder (length-only). The
+  // recursion below is unchanged. Felsenstein hoisting on a skeleton has
+  // nothing to factor (weights are constant 1) so we skip it.
+  Machine T_use = T;
+  map<string, vguard<string> > skeletonClamps;
+  const map<string, vguard<string> >* leafClamps_use = leafClamps;
+  if (skeleton) {
+    const string placeholder = "*";
+    T_use = skeletoniseBranch (T, placeholder);
+    if (leafClamps) {
+      for (const auto& kv: *leafClamps)
+        skeletonClamps[kv.first] = vguard<string> (kv.second.size(), placeholder);
+      leafClamps_use = &skeletonClamps;
+    }
+    felsenstein = false;
+  }
+
+  const bool renameTime = machineHasParam (T_use, timeParam);
   if (renameTime) {
     set<string> seen;
     for (size_t i = 0; i < tree.nodes.size(); ++i)
@@ -255,22 +292,23 @@ Machine phyloIntersect (const Machine& T,
       }
   }
 
-  if (leafClamps) {
+  if (leafClamps_use) {
     set<string> leafNames;
     for (size_t i = 0; i < tree.nodes.size(); ++i)
       if (tree.nodes[i].children.empty())
         leafNames.insert (tree.nodes[i].name);
-    for (const auto& kv : *leafClamps)
+    for (const auto& kv : *leafClamps_use)
       if (!leafNames.count (kv.first))
         throw runtime_error ("phylo intersection: --phylo-clamp leaf \"" + kv.first + "\" is not a leaf in the tree");
   }
 
   LogThisAt(3,"Phylo intersection: " << tree.nodes.size() << " nodes; "
             << (renameTime ? string("renaming param \"") + timeParam + "\" per branch" : string("no time-param renaming"))
-            << (leafClamps ? string("; ") + to_string(leafClamps->size()) + " leaves clamped" : string())
+            << (leafClamps_use ? string("; ") + to_string(leafClamps_use->size()) + " leaves clamped" : string())
+            << (skeleton ? string("; skeleton mode") : string())
             << endl);
 
-  Machine m = buildSubtree (tree, tree.root, T, timeParam, renameTime, branchLengthsOut, strategy, leafClamps);
+  Machine m = buildSubtree (tree, tree.root, T_use, timeParam, renameTime, branchLengthsOut, strategy, leafClamps_use);
   if (felsenstein)
     m = hoistSharedSubexpressions (m);
   return m;

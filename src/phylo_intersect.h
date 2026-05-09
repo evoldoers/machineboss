@@ -60,13 +60,28 @@ struct PhyloTree {
 // composed machine to factor shared sub-expressions in transition weights
 // into named entries in funcs.defs (Felsenstein-style pruning). Set false
 // to keep the older transition-exploded form, e.g. for cross-checking.
+//
+// skeleton: if true, perform the recursive intersect/compose on a unary-
+// alphabet "skeleton" of T — every non-empty input/output symbol replaced
+// with the placeholder "*" and every emit weight replaced with 1. The
+// returned machine has the correct state-and-transition topology of the
+// full phylo composition (each of the M_skel emit transitions is the
+// stand-in for an entire |Σ|^k column-emission family of the full M),
+// but does NOT carry the per-symbol substitution weights — it is intended
+// as a fast structural pass for inspection or as the first half of a two-
+// stage pipeline whose second stage (per-column symbol expansion via
+// Felsenstein pruning) will be added later. Use --phylo-skeleton on the
+// CLI. leafClamps in skeleton mode clamp leaf length only (each observed
+// symbol is replaced by "*"); felsenstein is ignored when skeleton is
+// true (no per-symbol weights to hoist).
 Machine phyloIntersect (const Machine& branchTransducer,
                         const PhyloTree& tree,
                         const string& timeParam = "t",
                         ParamAssign* branchLengthsOut = NULL,
                         Machine::SilentCycleStrategy strategy = Machine::SumSilentCycles,
                         const map<string, vguard<string> >* leafClamps = NULL,
-                        bool felsenstein = true);
+                        bool felsenstein = true,
+                        bool skeleton = false);
 
 }  // end namespace
 

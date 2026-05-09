@@ -143,6 +143,40 @@ identical to floating-point precision in either mode (and bit-exact under
 boss's lookup-table log-sum-exp), so the legacy form is only useful for
 cross-checking and for inspecting the raw transition-weight expressions.
 
+## Unary skeleton (structural-only fast path)
+
+`--phylo-skeleton` runs the recursive intersect/compose over a unary-
+alphabet "skeleton" of the branch transducer. Every emit symbol is replaced
+with a single placeholder `*` and every emit weight is set to 1, so the
+|Σ|^k column-emission family at each emit-class collapses into a single
+placeholder transition during composition. The resulting machine has the
+same accessible state set as the full phylo machine (same topology) and
+the same per-leaf emit/silent pattern in its pair-tokens, but carries no
+per-symbol substitution weights.
+
+Concrete savings on a TKF92 + F81 protein binary tree `(A,B)P;` with
+`--phylo-no-felsenstein`:
+
+| | Full | Skeleton | Speedup |
+|---|---|---|---|
+| Wall time           | 1.7 s   | 0.03 s | ~57× |
+| `machine.json` size | 16 MB   | 8.8 KB | ~1800× |
+| Transitions         | 106 340 | 92     | ~1156× |
+| States              | 25      | 25     | (identical topology) |
+
+On the protein quartet `((A,B)P,(C,D)Q)R;` the full path requires gigabytes
+of intermediate machine; the skeleton finishes in 0.5 s producing a 2.4 MB
+machine with ~3.9 K states.
+
+The skeleton path is currently intended as a fast topology-only pass (e.g.
+to inspect state-set growth, to sanity-check pair-token shapes for new
+trees, or to drive future per-column symbol expansion). It is not a drop-in
+replacement for inference: you cannot compute a Forward log-likelihood from
+the skeleton output directly, since the per-symbol weights are not present.
+A follow-up will add a Felsenstein-pruning expansion pass that recovers the
+full inference-ready machine from the skeleton at a fraction of the legacy
+cost.
+
 ## Multidimensional Forward via Rust codegen
 
 For a faster (and more numerically precise) Forward / Viterbi over a
