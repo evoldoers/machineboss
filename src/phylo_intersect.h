@@ -55,12 +55,18 @@ struct PhyloTree {
 // equals the marginal likelihood of the observed leaves under the model.
 // Useful as an independent verification target for the multidim Forward DP
 // emitted by --codegen-rust.
+//
+// felsenstein: if true (default), call hoistSharedSubexpressions on the
+// composed machine to factor shared sub-expressions in transition weights
+// into named entries in funcs.defs (Felsenstein-style pruning). Set false
+// to keep the older transition-exploded form, e.g. for cross-checking.
 Machine phyloIntersect (const Machine& branchTransducer,
                         const PhyloTree& tree,
                         const string& timeParam = "t",
                         ParamAssign* branchLengthsOut = NULL,
                         Machine::SilentCycleStrategy strategy = Machine::SumSilentCycles,
-                        const map<string, vguard<string> >* leafClamps = NULL);
+                        const map<string, vguard<string> >* leafClamps = NULL,
+                        bool felsenstein = true);
 
 }  // end namespace
 

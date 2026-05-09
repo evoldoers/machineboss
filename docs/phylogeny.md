@@ -113,6 +113,36 @@ non-root node must have a non-empty name, and node names must be unique
 across the tree. Violations raise an error before the intersection is
 built.
 
+## Felsenstein-style sub-expression sharing
+
+After the recursive intersect/compose has built the phylo machine, every
+transition's weight is a complex algebraic expression — typically a sum of
+products with one term per parent character, repeated across many
+transitions that share the same sub-tree contribution. By default the
+phylo build pipes the resulting machine through a **value-based common
+sub-expression elimination** pass that hoists shared sub-expressions into
+auto-named entries in `funcs.defs` (with names `_phy0`, `_phy1`, ...) and
+replaces every occurrence with a parameter reference. This is the same
+optimization Felsenstein pruning uses in tree-likelihood DP: gather the
+intermediate sum-products once, store them as named intermediates, and
+have transitions reference them by name.
+
+Concrete savings on a TKF92 + F81 protein binary tree `(A,B)P;`:
+
+| | Felsenstein on (default) | Felsenstein off |
+|---|---|---|
+| `machine.json` size | 6.9 MB | 16.0 MB |
+| emitted `lib.rs`   | 3.3 MB |  4.9 MB |
+| `cargo build --release` | 3.7 s | 4.5 s |
+
+The savings grow with model complexity (alphabet size × tree depth):
+the TKF92 protein quartet is the biggest current beneficiary.
+
+To disable, pass `--phylo-no-felsenstein`. The Forward log-likelihood is
+identical to floating-point precision in either mode (and bit-exact under
+boss's lookup-table log-sum-exp), so the legacy form is only useful for
+cross-checking and for inspecting the raw transition-weight expressions.
+
 ## Multidimensional Forward via Rust codegen
 
 For a faster (and more numerically precise) Forward / Viterbi over a

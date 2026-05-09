@@ -445,7 +445,10 @@ One-time costs for the quartet:
   - **Alphabet scaling**: codegen output size grows with both the number
     of states and the number of distinct emission profiles, so wide
     alphabets (e.g. 20-AA protein with `tkf92-branch-prot-f81`) emit much
-    larger crates than DNA — a 3-leaf protein tree currently produces a
-    300+ MB `lib.rs` and takes ~5 minutes to `cargo build`. Correctness is
-    unaffected; the bottleneck is `rustc` compile time of the data tables.
-    The DNA quartet stays comfortably within ~40 MB / ~50 s.
+    larger crates than DNA. The default
+    [Felsenstein-style sub-expression sharing](/phylogeny/#felsenstein-style-sub-expression-sharing)
+    on the phylo composition shrinks both `lib.rs` and `machine.json`
+    (33% / 57% smaller on a TKF92+F81 protein binary tree, more on
+    deeper trees), but the DP grid itself still scales as alphabet × L
+    so very wide alphabets remain expensive. The DNA quartet stays
+    comfortably within ~40 MB / ~50 s.

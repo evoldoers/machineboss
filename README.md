@@ -405,273 +405,259 @@ Here are some examples of files that fit these schemas:
 
 <pre><code>
 <code>
-
-General options:
   -h [ --help ]                 display this help message
   -v [ --verbose ] arg (=2)     verbosity level
   -d [ --debug ] arg            log specified function
   -b [ --monochrome ]           log in black &amp; white
-
-Transducer construction:
   -l [ --load ] arg             load machine from file
-  -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw, 
-                                protpsw, translate, prot2dna, psw2dna, 
-                                iupacdna, iupacaa, dna2rna, rna2dna, bintern, 
-                                terndna, jukescantor, dnapswnbr, 
-                                tkf91-root-dna-jc, tkf91-branch-dna-jc, 
-                                tkf92-branch-prot-f81, tolower, toupper, 
-                                hamming31, hamming74)
+  -p [ --preset ] arg           select preset (null, compdna, comprna, dnapsw,
+                                protpsw, translate, prot2dna, psw2dna, iupacdna,
+                                iupacaa, dna2rna, rna2dna, bintern, terndna,
+                                jukescantor, dnapswnbr, tkf91-root-dna-jc,
+                                tkf91-branch-dna-jc, tkf92-branch-prot-f81,
+                                tolower, toupper, hamming31, hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence &#x27;&lt;&lt;&#x27;
-  --generate-one arg            generator for any one of specified characters
-  --generate-wild arg           generator for Kleene closure over specified 
+      --generate-one arg        generator for any one of specified characters
+      --generate-wild arg       generator for Kleene closure over specified
                                 characters
-  --generate-iid arg            as --generate-wild, but followed by 
+      --generate-iid arg        as --generate-wild, but followed by
                                 --weight-output &#x27;$p%&#x27;
-  --generate-uniform arg        as --generate-iid, but weights outputs by 
+      --generate-uniform arg    as --generate-iid, but weights outputs by
                                 1/(output alphabet size)
-  --generate-fasta arg          generator for FASTA-format sequence
-  --generate-csv arg            create generator from CSV file
-  --generate-json arg           sequence generator for JSON-format sequence
+      --generate-fasta arg      generator for FASTA-format sequence
+      --generate-csv arg        create generator from CSV file
+      --generate-json arg       sequence generator for JSON-format sequence
   -a [ --recognize-chars ] arg  recognizer for explicit character sequence &#x27;&gt;&gt;&#x27;
-  --recognize-one arg           recognizer for any one of specified characters
-  --recognize-wild arg          recognizer for Kleene closure over specified 
+      --recognize-one arg       recognizer for any one of specified characters
+      --recognize-wild arg      recognizer for Kleene closure over specified
                                 characters
-  --recognize-iid arg           as --recognize-wild, but followed by 
+      --recognize-iid arg       as --recognize-wild, but followed by
                                 --weight-input &#x27;$p%&#x27;
-  --recognize-uniform arg       as --recognize-iid, but weights outputs by 
+      --recognize-uniform arg   as --recognize-iid, but weights outputs by
                                 1/(input alphabet size)
-  --recognize-fasta arg         recognizer for FASTA-format sequence
-  --recognize-csv arg           create recognizer from CSV file
-  --recognize-merge-csv arg     create recognizer from CSV file, merging 
-                                consecutively repeated characters as in Graves 
+      --recognize-fasta arg     recognizer for FASTA-format sequence
+      --recognize-csv arg       create recognizer from CSV file
+      --recognize-merge-csv arg create recognizer from CSV file, merging
+                                consecutively repeated characters as in Graves
                                 (2006) &#x27;Connectionist Temporal Classification&#x27;
-  --recognize-json arg          sequence recognizer for JSON-format sequence
-  --echo-one arg                identity for any one of specified characters
-  --echo-wild arg               identity for Kleene closure over specified 
+      --recognize-json arg      sequence recognizer for JSON-format sequence
+      --echo-one arg            identity for any one of specified characters
+      --echo-wild arg           identity for Kleene closure over specified
                                 characters
-  --echo-chars arg              identity for explicit character sequence
-  --echo-fasta arg              identity for FASTA-format sequence
-  --echo-json arg               identity for JSON-format sequence
+      --echo-chars arg          identity for explicit character sequence
+      --echo-fasta arg          identity for FASTA-format sequence
+      --echo-json arg           identity for JSON-format sequence
   -w [ --weight ] arg           weighted null transition &#x27;#&#x27;
   -X [ --regex ] arg            create text recognizer from regular expression
-  -H [ --hmmer ] arg            create generator from HMMER3 model file in 
-                                local alignment mode
-  --hmmer-global arg            create generator from HMMER3 model file in 
+  -H [ --hmmer ] arg            create generator from HMMER3 model file in local
+                                alignment mode
+      --hmmer-global arg        create generator from HMMER3 model file in
                                 global alignment mode
-  --hmmer-plan7 arg             create Plan7 generator from HMMER3 model file 
+      --hmmer-plan7 arg         create Plan7 generator from HMMER3 model file
                                 (single-hit with N/C flanks)
-  --hmmer-multihit arg          create Plan7 generator from HMMER3 model file 
+      --hmmer-multihit arg      create Plan7 generator from HMMER3 model file
                                 (multi-hit with J loop)
   -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
                                 multiple alignment
-  --tkfYY-TTT-AAA-MMM           build a TKF-family transducer from scratch. YY 
-                                in {91,92}; TTT in {root,branch}; AAA in 
-                                {dna,rna,prot,binary,unary,custom} (custom 
-                                takes the alphabet string as the next 
-                                argument); MMM in {jc,f81,k80,hky85,id} 
-                                (k80/hky85 require a nucleotide alphabet). 
-                                Examples: --tkf91-branch-dna-jc, 
-                                --tkf92-branch-dna-hky85, 
+      --tkfYY-TTT-AAA-MMM       build a TKF-family transducer from scratch. YY
+                                in {91,92}; TTT in {root,branch}; AAA in
+                                {dna,rna,prot,binary,unary,custom} (custom takes
+                                the alphabet string as the next argument); MMM
+                                in {jc,f81,k80,hky85,id} (k80/hky85 require a
+                                nucleotide alphabet). Examples:
+                                --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85,
                                 --tkf91-branch-custom-jc XYZW
-
-Postfix operators:
   -z [ --zero-or-one ]          union with null &#x27;?&#x27;
   -k [ --kleene-star ]          Kleene star &#x27;*&#x27;
   -K [ --kleene-plus ]          Kleene plus &#x27;+&#x27;
-  --count-copies arg            Kleene star with dummy counting parameter
-  --repeat arg                  repeat N times
+      --count-copies arg        Kleene star with dummy counting parameter
+      --repeat arg              repeat N times
   -e [ --reverse ]              reverse
   -r [ --revcomp ]              reverse-complement &#x27;~&#x27;
-  --flank-input-wild            add flanking delete states: partially match 
+      --flank-input-wild        add flanking delete states: partially match
                                 input
-  --flank-output-wild           add flanking insert states: partially match 
+      --flank-output-wild       add flanking insert states: partially match
                                 output
-  --flank-either-wild           add flanking insert or delete states: partially
+      --flank-either-wild       add flanking insert or delete states: partially
                                 match either input or output at each end
-  --flank-both-wild             add flanking insert &amp; delete states: partially 
+      --flank-both-wild         add flanking insert &amp; delete states: partially
                                 match input and/or output
-  --flank-input-geom arg        like --flank-input-wild, but flanking input 
-                                sequence is uniform IID with 
+      --flank-input-geom arg    like --flank-input-wild, but flanking input
+                                sequence is uniform IID with
                                 geometrically-distributed length, parameterized
                                 using specified expression
-  --flank-output-geom arg       like --flank-output-wild, but flanking output 
-                                sequence is uniform IID with 
+      --flank-output-geom arg   like --flank-output-wild, but flanking output
+                                sequence is uniform IID with
                                 geometrically-distributed length, parameterized
                                 using specified expression
-  --double-strand               union of machine with its reverse complement
+      --double-strand           union of machine with its reverse complement
   -t [ --transpose ]            transpose: swap input/output
-  --downsample-size arg         keep only specified proportion of transitions, 
-                                discarding those with lowest posterior 
+      --downsample-size arg     keep only specified proportion of transitions,
+                                discarding those with lowest posterior
                                 probability
-  --downsample-prob arg         keep only transitions above specified posterior
+      --downsample-prob arg     keep only transitions above specified posterior
                                 probability threshold
-  --downsample-path arg         stochastically sample specified number of 
-                                paths, discard unsampled transitions
-  --downsample-frac arg         sample paths until specified fraction of 
+      --downsample-path arg     stochastically sample specified number of paths,
+                                discard unsampled transitions
+      --downsample-frac arg     sample paths until specified fraction of
                                 transitions covered
-  --joint-norm                  normalize jointly (outgoing transition weights 
+      --joint-norm              normalize jointly (outgoing transition weights
                                 sum to 1)
-  --cond-norm                   normalize conditionally (outgoing transition 
+      --cond-norm               normalize conditionally (outgoing transition
                                 weights for each input symbol sum to 1)
-  --sort                        topologically sort, eliminating silent cycles
-  --sort-fast                   topologically sort, breaking silent cycles 
+      --sort                    topologically sort, eliminating silent cycles
+      --sort-fast               topologically sort, breaking silent cycles
                                 (faster than --sort, but destructive)
-  --sort-cyclic                 topologically sort if possible, but preserve 
+      --sort-cyclic             topologically sort if possible, but preserve
                                 silent cycles
-  --decode-sort                 topologically sort non-outputting transition 
+      --decode-sort             topologically sort non-outputting transition
                                 graph
-  --encode-sort                 topologically sort non-inputting transition 
+      --encode-sort             topologically sort non-inputting transition
                                 graph
-  --full-sort                   topologically sort entire transition graph, not
+      --full-sort               topologically sort entire transition graph, not
                                 just silent transitions
   -n [ --eliminate ]            eliminate all silent transitions
-  --eliminate-states            eliminate all states whose only outgoing (or 
+      --eliminate-states        eliminate all states whose only outgoing (or
                                 incoming) transition is silent
-  --merge-states                merge states with equivalent outgoing 
+      --merge-states            merge states with equivalent outgoing
                                 transitions (collapse bubbles)
-  --strip-names                 remove all state names. Some algorithms (e.g. 
+      --strip-names             remove all state names. Some algorithms (e.g.
                                 composition of large transducers) are faster if
                                 states are unnamed
-  --pad                         pad with &quot;dummy&quot; start &amp; end states
-  --reciprocal                  element-wise reciprocal: invert all weight 
+      --pad                     pad with &quot;dummy&quot; start &amp; end states
+      --reciprocal              element-wise reciprocal: invert all weight
                                 expressions
-  --weight-input arg            multiply input weights by specified JSON 
-                                expression (% expands to input symbol, # to 
+      --weight-input arg        multiply input weights by specified JSON
+                                expression (% expands to input symbol, # to
                                 input alphabet size)
-  --weight-output arg           multiply output weights by specified JSON 
-                                expression (% expands to output symbol, # to 
+      --weight-output arg       multiply output weights by specified JSON
+                                expression (% expands to output symbol, # to
                                 output alphabet size)
-  --weight-input-geom arg       place geometric distribution with specified 
+      --weight-input-geom arg   place geometric distribution with specified
                                 parameter over input length
-  --weight-output-geom arg      place geometric distribution with specified 
+      --weight-output-geom arg  place geometric distribution with specified
                                 parameter over output length
-  --silence-input               silence inputs, converting a machine into a 
+      --silence-input           silence inputs, converting a machine into a
                                 generator
-  --silence-output              silence outputs, converting a machine into a 
+      --silence-output          silence outputs, converting a machine into a
                                 recognizer
-  --copy-output-to-input        copy outputs to inputs, converting a generator 
+      --copy-output-to-input    copy outputs to inputs, converting a generator
                                 into an echo machine
-  --copy-input-to-output        copy inputs to outputs, converting a recognizer
+      --copy-input-to-output    copy inputs to outputs, converting a recognizer
                                 into an echo machine
-  --phylo-tree arg              phylogenetic intersection: take top-of-stack as
-                                branch transducer, build a phylo-transducer 
-                                from the binary Newick tree in the given file
-  --phylo-tree-string arg       like --phylo-tree but with the Newick string 
+      --phylo-tree arg          phylogenetic intersection: take top-of-stack as
+                                branch transducer, build a phylo-transducer from
+                                the binary Newick tree in the given file
+      --phylo-tree-string arg   like --phylo-tree but with the Newick string
                                 given inline
-
-Infix operators:
   -m [ --compose ]              compose, summing out silent cycles &#x27;=&gt;&#x27;
-  --compose-fast                compose, breaking silent cycles (faster, 
+      --compose-fast            compose, breaking silent cycles (faster,
                                 destructive)
-  --compose-cyclic              compose, leaving silent cycles
+      --compose-cyclic          compose, leaving silent cycles
   -c [ --concatenate ]          concatenate &#x27;.&#x27;
   -i [ --intersect ]            intersect, summing out silent cycles &#x27;&amp;&amp;&#x27;
-  --intersect-fast              intersect, breaking silent cycles (faster, 
+      --intersect-fast          intersect, breaking silent cycles (faster,
                                 destructive)
-  --intersect-cyclic            intersect, leaving silent cycles
+      --intersect-cyclic        intersect, leaving silent cycles
   -u [ --union ]                union &#x27;||&#x27;
   -o [ --loop ]                 loop: x &#x27;?+&#x27; y = x(y.x)*
   -f [ --flank ]                flank: y . x . y
-
-Miscellaneous:
   -B [ --begin ]                left bracket &#x27;(&#x27;
   -E [ --end ]                  right bracket &#x27;)&#x27;
-
-Transducer application:
   -S [ --save ] arg             save machine to file
   -G [ --graphviz ]             write machine in Graphviz DOT format
-  --dot-no-merge                show each transition as a separate edge in DOT 
+      --dot-no-merge            show each transition as a separate edge in DOT
                                 output
-  --dot-show-io                 always show in/out labels (disable abbreviating
+      --dot-show-io             always show in/out labels (disable abbreviating
                                 a/a to a) in DOT output
-  --stats                       show model statistics (#states, #transitions, 
+      --stats                   show model statistics (#states, #transitions,
                                 #params)
-  --evaluate                    evaluate all transition weights in final 
-                                machine
-  --define-exprs                define and re-use repeated (sub)expressions, 
-                                for compactness
-  --show-params                 show unbound parameters in final machine
-  -U [ --use-defaults ]         use defaults (uniform distributions, unit 
-                                rates) for unbound parameters; this option is 
-                                implicit when training
-  --name-states                 use state id, rather than number, to identify 
+      --evaluate                evaluate all transition weights in final machine
+      --define-exprs            define and re-use repeated (sub)expressions, for
+                                compactness
+      --show-params             show unbound parameters in final machine
+  -U [ --use-defaults ]         use defaults (uniform distributions, unit rates)
+                                for unbound parameters; this option is implicit
+                                when training
+      --name-states             use state id, rather than number, to identify
                                 transition destinations
   -P [ --params ] arg           load parameters (JSON)
   -F [ --functions ] arg        load functions &amp; constants (JSON)
   -N [ --constraints ] arg      load normalization constraints (JSON)
   -D [ --data ] arg             load sequence-pairs (JSON)
   -I [ --input-fasta ] arg      load input sequence(s) from FASTA file
-  --input-json arg              load input sequence from JSON file
-  --input-chars arg             specify input character sequence explicitly
+      --input-json arg          load input sequence from JSON file
+      --input-chars arg         specify input character sequence explicitly
   -O [ --output-fasta ] arg     load output sequence(s) from FASTA file
-  --output-json arg             load output sequence from JSON file
-  --output-chars arg            specify output character sequence explicitly
+      --output-json arg         load output sequence from JSON file
+      --output-chars arg        specify output character sequence explicitly
   -T [ --train ]                Baum-Welch parameter fit
-  -R [ --wiggle-room ] arg      wiggle room (allowed departure from training 
+  -R [ --wiggle-room ] arg      wiggle room (allowed departure from training
                                 alignment)
   -A [ --align ]                Viterbi sequence alignment
-  --beam-align                  beam-search Viterbi alignment (handles cyclic 
+      --beam-align              beam-search Viterbi alignment (handles cyclic
                                 machines)
   -V [ --viterbi ]              Viterbi log-likelihood calculation
   -L [ --loglike ]              Forward log-likelihood calculation
-  -C [ --counts ]               Forward-Backward counts (derivatives of 
-                                log-likelihood with respect to logs of 
+  -C [ --counts ]               Forward-Backward counts (derivatives of
+                                log-likelihood with respect to logs of
                                 parameters)
   -Z [ --beam-decode ]          find most likely input by beam search
-  --beam-width arg              number of sequences to track during beam search
+      --beam-width arg          number of sequences to track during beam search
                                 (default 100)
-  --prefix-decode               find most likely input by CTC prefix search
-  --prefix-backtrack arg        specify max backtracking length for CTC prefix 
+      --prefix-decode           find most likely input by CTC prefix search
+      --prefix-backtrack arg    specify max backtracking length for CTC prefix
                                 search
-  --viterbi-decode              find most likely input by Viterbi traceback
-  --cool-decode                 find most likely input by simulated annealing
-  --mcmc-decode                 find most likely input by MCMC search
-  --decode-steps arg            simulated annealing steps per initial symbol
+      --viterbi-decode          find most likely input by Viterbi traceback
+      --cool-decode             find most likely input by simulated annealing
+      --mcmc-decode             find most likely input by MCMC search
+      --decode-steps arg        simulated annealing steps per initial symbol
   -Y [ --beam-encode ]          find most likely output by beam search
-  --prefix-encode               find most likely output by CTC prefix search
-  --viterbi-encode              find most likely output by Viterbi traceback
-  --random-encode               sample random output by stochastic prefix 
-                                search
-  --seed arg                    random number seed
-  --pair-sep arg                pair-token separator string for intersection of
+      --prefix-encode           find most likely output by CTC prefix search
+      --viterbi-encode          find most likely output by Viterbi traceback
+      --random-encode           sample random output by stochastic prefix search
+      --seed arg                random number seed
+      --pair-sep arg            pair-token separator string for intersection of
                                 two non-empty-output transducers (default &#x27;,&#x27;)
-  --pair-delim arg              open+close delimiter chars (2 chars) wrapping 
-                                pair-token sides that contain the separator 
+      --pair-delim arg          open+close delimiter chars (2 chars) wrapping
+                                pair-token sides that contain the separator
                                 (default &#x27;[]&#x27;)
-  --pair-escape arg             escape char used inside pair-token wrappings 
+      --pair-escape arg         escape char used inside pair-token wrappings
                                 (default &#x27;\\&#x27;)
-  --pair-json                   encode pair tokens as two-element JSON arrays; 
-                                nested intersections produce nested arrays 
+      --pair-json               encode pair tokens as two-element JSON arrays;
+                                nested intersections produce nested arrays
                                 (output is no longer Machine Boss JSON)
-  --phylo-time-param arg        name of the branch transducer&#x27;s time parameter,
-                                replaced per-branch with name[node] by 
+      --phylo-time-param arg    name of the branch transducer&#x27;s time parameter,
+                                replaced per-branch with name[node] by
                                 --phylo-tree (default &#x27;t&#x27;)
-  --phylo-params-out arg        write per-branch parameter values (parsed from 
+      --phylo-params-out arg    write per-branch parameter values (parsed from
                                 Newick branch lengths) to specified JSON file
-  --phylo-clamp arg             JSON file mapping leaf names to observed 
-                                sequences (each a list of symbol strings); 
-                                replaces wildEcho leaves with recognizers, 
-                                yielding a no-output machine whose Forward 
-                                score is the marginal P(observed leaves)
-
-Parser-generator:
-  --codegen arg                 generate parser code, save to specified 
+      --phylo-clamp arg         JSON file mapping leaf names to observed
+                                sequences (each a list of symbol strings);
+                                replaces wildEcho leaves with recognizers,
+                                yielding a no-output machine whose Forward score
+                                is the marginal P(observed leaves)
+      --phylo-no-felsenstein    disable Felsenstein-style sharing of
+                                intermediate sub-expressions in phylo-composed
+                                transition weights (default: enabled). Restores
+                                the older transition-exploded form, useful for
+                                cross-checking and benchmarking
+      --codegen arg             generate parser code, save to specified
                                 directory
-  --cpp64                       generate C++ dynamic programming code (64-bit)
-  --cpp32                       generate C++ dynamic programming code (32-bit)
-  --js                          generate JavaScript dynamic programming code
-  --showcells                   include debugging output in generated code
-  --compileviterbi              compile Viterbi instead of Forward
-  --wgsl                        generate WGSL compute shader and ES module for 
+      --cpp64                   generate C++ dynamic programming code (64-bit)
+      --cpp32                   generate C++ dynamic programming code (32-bit)
+      --js                      generate JavaScript dynamic programming code
+      --showcells               include debugging output in generated code
+      --compileviterbi          compile Viterbi instead of Forward
+      --wgsl                    generate WGSL compute shader and ES module for
                                 WebGPU
-  --rust                        generate Rust crate for multidimensional 
-                                Forward DP on a phylo-composed generator 
-                                (requires the machine to have been built with 
-                                --pair-json so output tokens are 
-                                JSON-decodable)
-  --no-viterbi                  with --rust, omit the Viterbi function from the
+      --rust                    generate Rust crate for multidimensional Forward
+                                DP on a phylo-composed generator (requires the
+                                machine to have been built with --pair-json so
+                                output tokens are JSON-decodable)
+      --no-viterbi              with --rust, omit the Viterbi function from the
                                 generated crate
-  --inseq arg                   input sequence type (String, Intvec, Profile)
-  --outseq arg                  output sequence type (String, Intvec, Profile)
+      --inseq arg               input sequence type (String, Intvec, Profile)
+      --outseq arg              output sequence type (String, Intvec, Profile)
 
 </code></pre>

@@ -3,6 +3,7 @@
 #include <set>
 
 #include "phylo_intersect.h"
+#include "felsenstein.h"
 #include "logger.h"
 #include "util.h"
 
@@ -234,7 +235,8 @@ Machine phyloIntersect (const Machine& T,
                         const string& timeParam,
                         ParamAssign* branchLengthsOut,
                         Machine::SilentCycleStrategy strategy,
-                        const map<string, vguard<string> >* leafClamps) {
+                        const map<string, vguard<string> >* leafClamps,
+                        bool felsenstein) {
   if (tree.nodes.empty())
     throw runtime_error ("phylo intersection: empty tree");
   if (tree.nodes.size() == 1)
@@ -268,7 +270,10 @@ Machine phyloIntersect (const Machine& T,
             << (leafClamps ? string("; ") + to_string(leafClamps->size()) + " leaves clamped" : string())
             << endl);
 
-  return buildSubtree (tree, tree.root, T, timeParam, renameTime, branchLengthsOut, strategy, leafClamps);
+  Machine m = buildSubtree (tree, tree.root, T, timeParam, renameTime, branchLengthsOut, strategy, leafClamps);
+  if (felsenstein)
+    m = hoistSharedSubexpressions (m);
+  return m;
 }
 
 }  // end namespace MachineBoss

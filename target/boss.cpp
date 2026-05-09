@@ -209,6 +209,7 @@ int main (int argc, char** argv) {
       ("phylo-time-param", po::value<string>(), "name of the branch transducer's time parameter, replaced per-branch with name[node] by --phylo-tree (default 't')")
       ("phylo-params-out", po::value<string>(), "write per-branch parameter values (parsed from Newick branch lengths) to specified JSON file")
       ("phylo-clamp", po::value<string>(), "JSON file mapping leaf names to observed sequences (each a list of symbol strings); replaces wildEcho leaves with recognizers, yielding a no-output machine whose Forward score is the marginal P(observed leaves)")
+      ("phylo-no-felsenstein", "disable Felsenstein-style sharing of intermediate sub-expressions in phylo-composed transition weights (default: enabled). Restores the older transition-exploded form, useful for cross-checking and benchmarking")
       ;
 
     po::options_description compOpts("Parser-generator");
@@ -651,12 +652,14 @@ int main (int argc, char** argv) {
 	  const PhyloTree tree = PhyloTree::parseNewick (nwkBuf.str());
 	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
 	                      Machine::SumSilentCycles,
-	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL);
+	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL,
+	                      !vm.count("phylo-no-felsenstein"));
 	} else if (command == "--phylo-tree-string") {
 	  const PhyloTree tree = PhyloTree::parseNewick (getArg());
 	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
 	                      Machine::SumSilentCycles,
-	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL);
+	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL,
+	                      !vm.count("phylo-no-felsenstein"));
 	} else if (command == "--hmmer") {
 	  HmmerModel hmmer;
 	  ifstream infile (getArg());
