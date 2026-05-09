@@ -860,7 +860,7 @@ Machine Machine::compose (const Machine& first, const Machine& origSecond, bool 
       const StateIndex i = compState2i(c,jStates), j = compState2j(c,jStates);
       plogName.logProgress (k / (double) keptState.size(), "state %ld/%ld", k, keptState.size());
       MachineState& ms = comp[k];
-      ms.name = StateName ({first.state[i].name, second.state[j].name});
+      ms.name = json::array ({first.state[i].name, second.state[j].name});
     }
   }
 
@@ -989,7 +989,7 @@ Machine Machine::intersect (const Machine& first, const Machine& origSecond, Sil
     for (StateIndex j = 0; j < second.nStates(); ++j) {
       MachineState& ms = inter[interState(i,j)];
       if (assignStateNames)
-	ms.name = StateName ({first.state[i].name, second.state[j].name});
+	ms.name = json::array ({first.state[i].name, second.state[j].name});
     }
 
   for (StateIndex i = 0; i < first.nStates(); ++i)
