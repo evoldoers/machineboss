@@ -154,7 +154,7 @@ class TestBeamAlignTKF92:
                 [boss_path, "--preset", "tkf92-branch-prot-f81",
                  "--functions", params_file,
                  "--input-chars", "AC", "--output-chars", "AC",
-                 "--beam-align", "--beam-width", "1000", "-v0"],
+                 "--beam-align", "--beam-width", "1000", "-v", "0"],
                 capture_output=True, text=True
             )
             assert result.returncode == 0, f"C++ failed: {result.stderr}"

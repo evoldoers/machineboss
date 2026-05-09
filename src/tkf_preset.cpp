@@ -334,15 +334,37 @@ static void addTkfBdiDefs (ParamDefs& defs, Version version) {
   defs["pNoDescendants"] = WeightAlgebra::negate (WeightAlgebra::param ("pDescendants"));
 }
 
-// ---------- Root machine: 1 emit + 1 stop. Geometric singlet. ----------
+// ---------- Root machine: TKF91-flavour or TKF92-flavour ----------
 //
-// Matches preset/tkf91-root-dna-jc.json: emit "out" symbols with weight pExtend*pi_<sym>,
-// and a silent transition to the stop state with weight pNoExtend.
+// TKF91 root (geometric):
+//   P(L=k) = κ^k (1−κ)
+//   2-state machine: emit-or-stop (single emit state with self-loops + stop edge).
 //
-// For Identity model on Unary alphabet, pi_X = 1 implicitly; we still need a
-// pExtend / pNoExtend pair to define the singlet length distribution.
+// TKF92 root (ν-modified geometric, κ = insRate/delRate, ν = r):
+//   P(L=0) = 1−κ
+//   P(L≥1) = κ · ν^(k−1) · (1−ν)
+//   4-state machine: begin → emit → decide → stop, where decide either loops
+//   back to emit (with weight ν) or goes to stop (with weight 1−ν). The two
+//   distinct length-0 (begin → stop directly) and length≥1 (begin → emit
+//   first, then geometric-with-ν tail) regimes are exactly what the
+//   ihh/tkf-mixdom derivation specifies for the TKF92 singlet.
+//
+// `pi_X` defaults to 1/|alphabet| for JC/K80/Identity, and is a free
+// stationary-frequency parameter for F81/HKY85.
 
-static Machine buildRoot (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+static void addRootConstraints (Machine& m, const Spec& spec, const vguard<string>& alph) {
+  if (spec.model == Model::HKY85) m.cons.rate.push_back ("tsRatio");
+  m.cons.rate.push_back ("insRate");
+  m.cons.rate.push_back ("delRate");
+  if (spec.version == Version::TKF92) m.cons.prob.push_back ("r");
+  if (spec.model == Model::F81 || spec.model == Model::HKY85) {
+    vguard<string> piGroup;
+    for (const auto& s: alph) piGroup.push_back (string("pi_") + s);
+    m.cons.norm.push_back (piGroup);
+  }
+}
+
+static Machine buildTkf91Root (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
   Machine m;
   m.state.resize(2);
   m.state[0].name = json("emit");
@@ -361,16 +383,52 @@ static Machine buildRoot (const Spec& spec, const vguard<string>& alph, const Su
   m.state[0].trans.push_back (MachineTransition (string(), string(), 1,
                                                   WeightAlgebra::param ("pNoExtend")));
 
-  // Roots have no time parameter, but otherwise the same constraint structure as branches.
-  if (spec.model == Model::HKY85) m.cons.rate.push_back ("tsRatio");
-  m.cons.rate.push_back ("insRate");
-  m.cons.rate.push_back ("delRate");
-  if (spec.model == Model::F81 || spec.model == Model::HKY85) {
-    vguard<string> piGroup;
-    for (const auto& s: alph) piGroup.push_back (string("pi_") + s);
-    m.cons.norm.push_back (piGroup);
-  }
+  addRootConstraints (m, spec, alph);
   return m;
+}
+
+static Machine buildTkf92Root (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  // 4 states:
+  //   0 begin    silent → emit (κ);  silent → stop (1−κ)
+  //   1 emit     emit X (π_X) → decide
+  //   2 decide   silent → emit (ν);  silent → stop (1−ν)
+  //   3 stop     end
+  Machine m;
+  m.state.resize(4);
+  m.state[0].name = json("begin");
+  m.state[1].name = json("emit");
+  m.state[2].name = json("decide");
+  m.state[3].name = json("stop");
+
+  m.funcs.defs = sm.defs;
+  m.funcs.defs["pExtend"]   = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
+                                                      WeightAlgebra::param ("delRate"));
+  m.funcs.defs["pNoExtend"] = WeightAlgebra::negate (WeightAlgebra::param ("pExtend"));
+  m.funcs.defs["pNoR"]      = WeightAlgebra::negate (WeightAlgebra::param ("r"));
+
+  // begin → emit (κ);  begin → stop (1−κ)
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 1,
+                                                  WeightAlgebra::param ("pExtend")));
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 3,
+                                                  WeightAlgebra::param ("pNoExtend")));
+  // emit → decide, emitting X with weight π_X
+  for (size_t k = 0; k < alph.size(); ++k) {
+    WeightExpr pi = piExpr (spec.model, alph.size(), alph[k]);
+    m.state[1].trans.push_back (MachineTransition (string(), alph[k], 2, pi));
+  }
+  // decide → emit (ν);  decide → stop (1−ν)
+  m.state[2].trans.push_back (MachineTransition (string(), string(), 1,
+                                                  WeightAlgebra::param ("r")));
+  m.state[2].trans.push_back (MachineTransition (string(), string(), 3,
+                                                  WeightAlgebra::param ("pNoR")));
+
+  addRootConstraints (m, spec, alph);
+  return m;
+}
+
+static Machine buildRoot (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  if (spec.version == Version::TKF91) return buildTkf91Root (spec, alph, sm);
+  return buildTkf92Root (spec, alph, sm);
 }
 
 // ---------- TKF91 branch: 7-state structure ----------

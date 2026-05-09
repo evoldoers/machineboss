@@ -47,8 +47,9 @@ and (for `psw2dna` and `pswint`) the genetic code.
 | Preset | Description |
 |--------|-------------|
 | `jukescantor` | Jukes-Cantor model of DNA sequence divergence |
-| `tkf91-root-dna-jc` | TKF91 root: geometric DNA singlet (Jukes-Cantor equilibrium) |
+| `tkf91-root-dna-jc` | TKF91 root: geometric DNA singlet, P(L=k)=κ^k(1−κ) with κ=insRate/delRate |
 | `tkf91-branch-dna-jc` | TKF91 branch transducer: 7-state DNA + Jukes-Cantor substitutions |
+| `tkf92-root-prot-f81` | TKF92 root: ν-modified geometric protein singlet, P(L=0)=1−κ, P(L≥1)=κ·ν^(k−1)·(1−ν), with ν=`r`. F81 equilibrium |
 | `tkf92-branch-prot-f81` | TKF92 branch transducer (5-state canonical WFST): protein + F81 substitutions, fragment extension parameter `r`. Per [tkf-mixdom/tkf92-wfst-derivation](https://github.com/ihh/tkf-mixdom) |
 
 The TKF91 (Thorne, Kishino, Felsenstein 1991) and TKF92 (1992) models are continuous-time

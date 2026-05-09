@@ -15,7 +15,8 @@ class TestBossWrapper:
     def test_help(self, boss):
         # --help returns exit code 0 with usage info
         out = boss.run("--help")
-        assert "options" in out.lower()
+        assert "--help" in out
+        assert "verbose" in out
 
     def test_generate_chars(self, boss):
         result = boss.run_json("--generate-chars", "ACG")
