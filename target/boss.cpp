@@ -7,7 +7,7 @@
 #include <deque>
 #include <random>
 #include <regex>
-#include <boost/program_options.hpp>
+#include "../src/argparse.h"
 
 #include "../src/vguard.h"
 #include "../src/logger.h"
@@ -36,9 +36,9 @@
 #include "../src/tkf_preset.h"
 
 using namespace std;
-namespace po = boost::program_options;
-
 using namespace MachineBoss;
+namespace po = MachineBoss::argparse;
+using MachineBoss::argparse::value;
 
 int main (int argc, char** argv) {
 
@@ -264,9 +264,8 @@ int main (int argc, char** argv) {
     const string aaAlphabet = presetAlph[string("aa")] = "ACDEFGHIKLMNPQRSTVWY";
 
     po::variables_map vm;
-    po::parsed_options parsed = po::command_line_parser(argc,argv).options(parseOpts).allow_unregistered().run();
-    po::store (parsed, vm);
-    po::notify(vm);    
+    po::parsed_options parsed;
+    po::parse (argc, argv, parseOpts, vm, parsed);
       
     // parse args
     if (vm.count("help")) {
@@ -331,8 +330,7 @@ int main (int argc, char** argv) {
       return machine;
     };
 
-    const vector<string> argVec = po::collect_unrecognized (parsed.options, po::include_positional);
-    deque<string> args (argVec.begin(), argVec.end());
+    deque<string> args (parsed.unrecognized.begin(), parsed.unrecognized.end());
     while (!args.empty()) {
       function<Machine(const string&)> nextMachineForCommand;
       auto pushNextMachine = [&]() {

@@ -5,7 +5,7 @@
 /// @brief Public API for the Machine Boss WFST library.
 ///
 /// Include this single header to access all public functionality.
-/// Link with: -lboss -lgsl -lgslcblas -lboost_regex -lz
+/// Link with: -lboss -lgsl -lgslcblas -lz
 
 // --- Core types ---
 #include "machine.h"      // Machine, MachineState, MachineTransition, MachinePath

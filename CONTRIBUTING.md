@@ -5,7 +5,7 @@
 ### C++
 
 ```bash
-brew install gsl boost htslib pkg-config   # macOS
+brew install gsl pkg-config                # macOS (kseq.h vendored, no Boost/htslib needed)
 make
 npm install
 make test

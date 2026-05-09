@@ -40,7 +40,7 @@ void Logger::colorOff() {
   useAnsiColor = false;
 }
 
-void Logger::parseLogArgs (boost::program_options::variables_map& vm) {
+void Logger::parseLogArgs (argparse::VariablesMap& vm) {
   setVerbose (vm.at("verbose").as<int>());
   if (vm.count("debug"))
     for (const auto& x: vm.at("debug").as<vector<string> >())

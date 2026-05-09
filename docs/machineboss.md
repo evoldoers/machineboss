@@ -35,7 +35,7 @@ Bioinformatics (2020).
 ### From source (macOS)
 
 ```bash
-brew install gsl boost htslib pkgconfig
+brew install gsl pkgconfig                # kseq.h vendored, no Boost/htslib needed
 make
 # optionally:
 npm install    # needed for tests

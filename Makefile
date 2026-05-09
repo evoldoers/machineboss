@@ -38,31 +38,9 @@ ifeq (, $(GSL_LIBS))
 GSL_LIBS = -L$(GSL_PREFIX)/lib -lgsl -lgslcblas
 endif
 
-BOOST_PROGRAM_OPTIONS = program_options
-BOOST_OBJ_FILES =
-BOOST_DEPS =
-# Try to figure out where Boost is
-# NB pkg-config support for Boost is lacking; see https://svn.boost.org/trac/boost/ticket/1094
-BOOST_PREFIX = /usr
-ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
-BOOST_PREFIX = /usr/local
-ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
-BOOST_PREFIX = $(shell ls -lrt -d -1 /usr/local/homebrew/Cellar/boost/*)
-ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
-BOOST_PREFIX = $(shell ls -lrt -d -1 /opt/homebrew/Cellar/boost/*)
-ifeq (,$(wildcard $(BOOST_PREFIX)/include/boost/regex.h))
-BOOST_PREFIX =
-endif
-endif
-endif
-endif
-
-BOOST_FLAGS =
-BOOST_LIBS =
-ifneq (,$(BOOST_PREFIX))
-BOOST_FLAGS := -I$(BOOST_PREFIX)/include
-BOOST_LIBS := -L$(BOOST_PREFIX)/lib -lboost_$(BOOST_PROGRAM_OPTIONS)
-endif
+# Boost was previously a dependency (regex + program_options); regex now
+# uses std::regex, and program_options was replaced by the in-tree
+# src/argparse.{h,cpp}. Build no longer references libboost_*.
 
 # install dir
 PREFIX = /usr/local
@@ -77,8 +55,8 @@ else
 BUILD_FLAGS =
 endif
 
-ALL_FLAGS = $(GSL_FLAGS) $(BOOST_FLAGS) $(BUILD_FLAGS)
-ALL_LIBS = $(GSL_LIBS) $(BOOST_LIBS) $(BUILD_LIBS)
+ALL_FLAGS = $(GSL_FLAGS) $(BUILD_FLAGS)
+ALL_LIBS = $(GSL_LIBS) $(BUILD_LIBS)
 
 ifneq (,$(IS_DEBUG))
 CPP_FLAGS = -std=c++11 -g -DUSE_VECTOR_GUARDS -DDEBUG
@@ -149,9 +127,9 @@ install-lib: $(LIBTARGET)
 	cp $(LIBTARGET) $(INSTALL_LIB)
 
 # Main build rules
-bin/%: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS) $(BOOST_DEPS) $(BOOST_OBJ_FILES)
+bin/%: $(OBJ_FILES) obj/%.o target/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
+	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES)
 	@if [ "$*" = "$(BOSS)" ]; then \
 	  echo ""; \
 	  echo "  Built bin/$(BOSS) successfully."; \
@@ -173,9 +151,9 @@ obj/%.o: target/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(CPP) $(CPP_FLAGS) -c -o $@ $<
 
-t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp $(GSL_DEPS) $(BOOST_OBJ_FILES)
+t/bin/%: $(OBJ_FILES) obj/%.o t/src/%.cpp $(GSL_DEPS)
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES) $(BOOST_OBJ_FILES)
+	$(CPP) $(LD_FLAGS) -o $@ obj/$*.o $(OBJ_FILES) $(GSL_OBJ_FILES)
 
 t/codegen/%: $(OBJ_FILES) obj/%.o
 	$(MAKE) `ls $(dir t/src/$*)computeForward*.cpp | python3 -c "import sys; [print(l.strip().replace('t/src','obj').replace('.cpp','.o')) for l in sys.stdin]"`

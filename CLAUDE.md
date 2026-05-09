@@ -14,14 +14,14 @@ propagated to all implementations, benchmarks, and documentation.
 ## Build
 
 ```bash
-brew install gsl boost pkgconfig          # macOS deps (kseq.h is vendored, no htslib needed)
+brew install gsl pkgconfig                # macOS deps (kseq.h vendored; Boost removed; argparse in-tree)
 make                                       # builds bin/boss
 npm install                                # needed for tests
 make test                                  # runs full test suite
 make clean                                 # removes build artifacts
 ```
 
-Compiler: clang++ (preferred) or g++, C++11. Links against GSL, Boost (regex, program_options), and zlib.
+Compiler: clang++ (preferred) or g++, C++11. Links against GSL and zlib.
 
 ## Project Layout
 

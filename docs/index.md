@@ -49,7 +49,7 @@ with a pure JavaScript CPU fallback for environments without WebGPU support.
 Machine Boss can be compiled from C++ source:
 
 ```bash
-brew install gsl boost htslib pkgconfig   # macOS deps
+brew install gsl pkgconfig                # macOS deps (kseq.h vendored, no Boost/htslib needed)
 make                                       # builds bin/boss
 npm install                                # needed for tests
 make test                                  # runs full test suite

@@ -25,7 +25,7 @@ Include the umbrella header and link against the library:
 
 ```bash
 clang++ -std=c++11 myprogram.cpp -I/usr/local/include/machineboss -L/usr/local/lib \
-    -lboss -lgsl -lgslcblas -lboost_regex -lz
+    -lboss -lgsl -lgslcblas -lz
 ```
 
 ## Quick Start

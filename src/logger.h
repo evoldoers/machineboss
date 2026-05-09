@@ -12,7 +12,7 @@
 #include <chrono>
 #include <iostream>
 #include <sstream>
-#include <boost/program_options.hpp>
+#include "argparse.h"
 #include "util.h"
 #include "vguard.h"
 
@@ -41,7 +41,7 @@ public:
   void addTag (const string& tag);
   void setVerbose (int v);
   void colorOff();
-  void parseLogArgs (boost::program_options::variables_map& vm);
+  void parseLogArgs (argparse::VariablesMap& vm);
   
   inline bool testVerbosity (int v) {
     return verbosity >= v;
