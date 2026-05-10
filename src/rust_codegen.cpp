@@ -2951,12 +2951,302 @@ mod tests {
 )RUST";
   }
 
+  // src/phylo.rs — Newick parser + buildSubtree recursion.
+  // Mirrors the public surface of src/phylo_intersect.cpp: parse a Newick
+  // string into a PhyloTree, then walk it recursively, calling
+  // machine::compose / intersect / rename_for_branch to produce M_full.
+  {
+    std::ofstream f (outputDir + "/src/phylo.rs");
+    f << R"RUST(//! Newick parser + phylo-intersect recursion. Rust port of
+//! `src/phylo_intersect.cpp`. Given a branch transducer T (already parsed
+//! into a `Machine`), a Newick tree, and the time-parameter name, returns
+//! the phylo-composed Machine that mirrors the legacy `phyloIntersect`.
+
+use serde_json::Value;
+use crate::machine::{Machine, State, Transition, compose, intersect, rename_for_branch};
+
+#[derive(Debug, Clone)]
+pub struct PhyloNode {
+    pub name: String,
+    pub children: Vec<usize>,
+    pub parent: Option<usize>,
+    pub branch_length: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PhyloTree {
+    pub nodes: Vec<PhyloNode>,
+    pub root: usize,
+}
+
+impl PhyloTree {
+    pub fn parse_newick(s: &str) -> Self {
+        let mut p = NewickParser { src: s.as_bytes(), pos: 0,
+                                    nodes: Vec::new() };
+        let root = p.parse_subtree(None);
+        p.skip_ws();
+        if p.pos < p.src.len() && p.src[p.pos] == b';' { p.pos += 1; }
+        PhyloTree { nodes: p.nodes, root }
+    }
+
+    pub fn is_leaf(&self, i: usize) -> bool { self.nodes[i].children.is_empty() }
+}
+
+struct NewickParser<'a> {
+    src: &'a [u8],
+    pos: usize,
+    nodes: Vec<PhyloNode>,
+}
+
+impl<'a> NewickParser<'a> {
+    fn skip_ws(&mut self) {
+        while self.pos < self.src.len() && (self.src[self.pos] as char).is_whitespace() {
+            self.pos += 1;
+        }
+    }
+    fn peek(&mut self, c: u8) -> bool {
+        self.skip_ws();
+        self.pos < self.src.len() && self.src[self.pos] == c
+    }
+    fn consume(&mut self, c: u8) -> bool {
+        if self.peek(c) { self.pos += 1; true } else { false }
+    }
+    fn expect(&mut self, c: u8) {
+        if !self.consume(c) {
+            panic!("Newick parse error: expected '{}' at position {}", c as char, self.pos);
+        }
+    }
+    fn is_name_char(c: u8) -> bool {
+        !matches!(c, b'(' | b')' | b',' | b':' | b';' | b'\'' | b'[' | b']')
+            && !(c as char).is_whitespace()
+    }
+    fn parse_name(&mut self) -> String {
+        self.skip_ws();
+        let mut name = String::new();
+        if self.pos < self.src.len() && self.src[self.pos] == b'\'' {
+            self.pos += 1;
+            while self.pos < self.src.len() && self.src[self.pos] != b'\'' {
+                name.push(self.src[self.pos] as char);
+                self.pos += 1;
+            }
+            if self.pos == self.src.len() {
+                panic!("Newick parse error: unterminated quoted name");
+            }
+            self.pos += 1;
+        } else {
+            while self.pos < self.src.len() && Self::is_name_char(self.src[self.pos]) {
+                name.push(self.src[self.pos] as char);
+                self.pos += 1;
+            }
+        }
+        name
+    }
+    fn parse_branch_length(&mut self) -> Option<f64> {
+        self.skip_ws();
+        if !self.consume(b':') { return None; }
+        self.skip_ws();
+        let start = self.pos;
+        if self.pos < self.src.len() && (self.src[self.pos] == b'+' || self.src[self.pos] == b'-') {
+            self.pos += 1;
+        }
+        while self.pos < self.src.len() {
+            let c = self.src[self.pos];
+            if (c as char).is_ascii_digit() || c == b'.' || c == b'e' || c == b'E'
+                || c == b'+' || c == b'-' {
+                self.pos += 1;
+            } else { break; }
+        }
+        if self.pos == start {
+            panic!("Newick parse error: expected branch length number at position {}", start);
+        }
+        let s = std::str::from_utf8(&self.src[start..self.pos]).unwrap();
+        Some(s.parse().expect("Newick parse error: bad branch length"))
+    }
+    fn parse_subtree(&mut self, parent: Option<usize>) -> usize {
+        let self_idx = self.nodes.len();
+        self.nodes.push(PhyloNode {
+            name: String::new(),
+            children: Vec::new(),
+            parent,
+            branch_length: None,
+        });
+        self.skip_ws();
+        if self.peek(b'(') {
+            self.expect(b'(');
+            let first = self.parse_subtree(Some(self_idx));
+            self.nodes[self_idx].children.push(first);
+            while self.peek(b',') {
+                self.expect(b',');
+                let next = self.parse_subtree(Some(self_idx));
+                self.nodes[self_idx].children.push(next);
+            }
+            self.expect(b')');
+        }
+        let nm = self.parse_name();
+        self.nodes[self_idx].name = nm;
+        if let Some(bl) = self.parse_branch_length() {
+            self.nodes[self_idx].branch_length = Some(bl);
+        }
+        self_idx
+    }
+}
+
+// ---- Helpers for buildSubtree -------------------------------------------
+
+/// Sorted set of distinct non-empty output symbols across all transitions.
+pub fn output_alphabet(m: &Machine) -> Vec<String> {
+    let mut set: std::collections::BTreeSet<String> = Default::default();
+    for s in &m.state {
+        for t in &s.trans {
+            if !t.out_sym.is_empty() {
+                set.insert(t.out_sym.clone());
+            }
+        }
+    }
+    set.into_iter().collect()
+}
+
+/// Mirror of `Machine::wildEcho(symbols)`: 1-state machine with a self-loop
+/// transition (sym → sym, weight 1) for each symbol.
+pub fn wild_echo(symbols: &[String]) -> Machine {
+    let mut trans = Vec::with_capacity(symbols.len());
+    for sym in symbols {
+        trans.push(Transition {
+            to: 0,
+            in_sym: sym.clone(),
+            out_sym: sym.clone(),
+            weight: Value::from(1.0_f64),
+        });
+    }
+    let id = Value::Array(symbols.iter().map(|s| Value::String(s.clone())).collect());
+    Machine {
+        state: vec![State { id, trans }],
+        defs: Default::default(),
+        cons: Default::default(),
+    }
+}
+
+// ---- Phylo recursion ----------------------------------------------------
+
+fn branch_transducer_for_child(tree: &PhyloTree, child_v: usize,
+                               t: &Machine, time_param: &str,
+                               rename_time: bool) -> Machine {
+    let child = &tree.nodes[child_v];
+    let t_copy = if rename_time {
+        rename_for_branch(t, time_param, &child.name)
+    } else {
+        t.clone()
+    };
+    let sub = build_subtree(tree, child_v, t, time_param, rename_time);
+    compose(&t_copy, &sub)
+}
+
+fn build_subtree(tree: &PhyloTree, v: usize,
+                 t: &Machine, time_param: &str, rename_time: bool) -> Machine {
+    let node = &tree.nodes[v];
+    if node.children.is_empty() {
+        // Leaf: wildEcho over T's output alphabet. (Leaf clamps not yet
+        // ported — clamped-leaf workflow is a follow-up.)
+        return wild_echo(&output_alphabet(t));
+    }
+    if node.children.len() == 1 {
+        return branch_transducer_for_child(tree, node.children[0],
+                                            t, time_param, rename_time);
+    }
+    // Degree ≥ 2: fold-left intersect.
+    let mut acc = branch_transducer_for_child(tree, node.children[0],
+                                               t, time_param, rename_time);
+    for &c in &node.children[1..] {
+        let sib = branch_transducer_for_child(tree, c, t, time_param, rename_time);
+        acc = intersect(&acc, &sib);
+    }
+    acc
+}
+
+/// Top-level entry point: build the phylo-composed Machine from a branch
+/// transducer T, a parsed PhyloTree, and the per-branch time-parameter
+/// name. Mirrors `phyloIntersect` in src/phylo_intersect.cpp (without leaf
+/// clamps and without `phylo-no-felsenstein` switching, both of which are
+/// follow-ups).
+pub fn phylo_intersect(t: &Machine, tree: &PhyloTree, time_param: &str) -> Machine {
+    let rename_time = t.has_param(time_param);
+    if rename_time {
+        // Validate that every non-root node has a non-empty unique name
+        // (matches the C++ guard in phyloIntersect).
+        let mut seen = std::collections::HashSet::new();
+        for (i, n) in tree.nodes.iter().enumerate() {
+            if i == tree.root { continue; }
+            assert!(!n.name.is_empty(),
+                    "phylo: branch transducer has parameter \"{}\" but node {} has no name",
+                    time_param, i);
+            assert!(seen.insert(n.name.clone()),
+                    "phylo: duplicate node name \"{}\"", n.name);
+        }
+    }
+    build_subtree(tree, tree.root, t, time_param, rename_time)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn newick_parse_binary() {
+        let tree = PhyloTree::parse_newick("(A:0.1,B:0.2)P;");
+        assert_eq!(tree.nodes.len(), 3);
+        let p = &tree.nodes[tree.root];
+        assert_eq!(p.name, "P");
+        assert_eq!(p.children.len(), 2);
+        assert_eq!(tree.nodes[p.children[0]].name, "A");
+        assert_eq!(tree.nodes[p.children[0]].branch_length, Some(0.1));
+        assert_eq!(tree.nodes[p.children[1]].name, "B");
+        assert_eq!(tree.nodes[p.children[1]].branch_length, Some(0.2));
+    }
+
+    #[test]
+    fn newick_parse_quartet() {
+        let tree = PhyloTree::parse_newick("((A,B)P,(C,D)Q)R;");
+        assert_eq!(tree.nodes.len(), 7);
+        let r = &tree.nodes[tree.root];
+        assert_eq!(r.name, "R");
+        assert_eq!(r.children.len(), 2);
+    }
+
+    #[test]
+    fn wild_echo_shape() {
+        let alph = vec!["A".to_string(), "C".to_string(), "G".to_string(), "T".to_string()];
+        let we = wild_echo(&alph);
+        assert_eq!(we.n_states(), 1);
+        assert_eq!(we.state[0].trans.len(), 4);
+        for t in &we.state[0].trans {
+            assert_eq!(t.in_sym, t.out_sym);
+            assert_eq!(t.to, 0);
+        }
+    }
+
+    #[test]
+    fn output_alphabet_is_sorted_unique() {
+        let m = Machine::from_json(&serde_json::json!({
+            "state": [
+                {"id": 0, "trans": [
+                    {"to": 1, "in": "x", "out": "B"},
+                    {"to": 1, "in": "x", "out": "A"},
+                    {"to": 1, "in": "x", "out": "B"}
+                ]},
+                {"id": 1}
+            ]
+        }));
+        assert_eq!(output_alphabet(&m), vec!["A".to_string(), "B".to_string()]);
+    }
+}
+)RUST";
+  }
+
   // src/lib.rs — bake the JSON inputs as `&'static str` consts, expose
-  // the weight_algebra module, expose a stub `prebuild()` that panics.
-  // Subsequent increments will replace the stub with a Rust port of the
-  // WFST algebra (Machine + compose / intersect / waitingMachine /
-  // ergodicMachine + phylo recursion) so prebuild() can materialise
-  // M_full's per-symbol DP tables in shape with M_skel.
+  // the weight_algebra / machine / phylo modules, plus the stub
+  // `prebuild()`. Increment 6 will wire prebuild() to materialise the per-
+  // symbol DP tables (EMIT_SHARDS, SILENT_TRANSITIONS, lw[]) by calling
+  // phylo::phylo_intersect on the baked T + tree.
   {
     std::ofstream f (outputDir + "/src/lib.rs");
     f << "// Auto-generated by Machine Boss --phylo-skeleton --codegen --rust.\n"
@@ -2966,6 +3256,7 @@ mod tests {
          "\n"
          "pub mod weight_algebra;\n"
          "pub mod machine;\n"
+         "pub mod phylo;\n"
          "\n"
          "/// Canonical branch transducer T (no per-branch time-parameter\n"
          "/// renaming). Format is the standard Machine Boss machine JSON.\n"

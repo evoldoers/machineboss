@@ -61,6 +61,33 @@ use serde_json::Value;
 #[test] #[should_panic(expected = "not yet implemented")]
 fn prebuild_panics() { phylo_skeleton::prebuild(); }
 
+#[test] fn phylo_intersect_runs_on_baked_t_and_tree() {
+    // End-to-end smoke: parse the baked T_JSON + TREE_NEWICK, run the
+    // Rust phylo_intersect, verify the result has the expected shape
+    // (every state has a 2-array id from intersect, a non-zero state count,
+    // and at least one emit transition).
+    use phylo_skeleton::machine::Machine;
+    use phylo_skeleton::phylo::{PhyloTree, phylo_intersect};
+    let t_json: Value = serde_json::from_str(T_JSON).expect("T_JSON parses");
+    let t = Machine::from_json(&t_json);
+    let tree = PhyloTree::parse_newick(TREE_NEWICK);
+    let m = phylo_intersect(&t, &tree, TIME_PARAM);
+    assert!(m.n_states() > 0);
+    // Every state should have a 2-element-array id (from compose's array
+    // state-name convention).
+    if let Value::Array(a) = &m.state[0].id {
+        assert_eq!(a.len(), 2);
+    } else {
+        panic!("state 0 id not a 2-array: {:?}", m.state[0].id);
+    }
+    // At least one emit transition should exist (the phylo machine emits
+    // pair-tokens for the leaves).
+    let emit_count: usize = m.state.iter()
+        .map(|s| s.trans.iter().filter(|t| !t.out_sym.is_empty()).count())
+        .sum();
+    assert!(emit_count > 0, "no emit transitions in phylo machine");
+}
+
 #[test] fn compose_t_with_self_state_count_matches_cpp() {
     // Smoke check that the Rust compose runs end-to-end on the baked T and
     // produces SOMETHING sensible. We don't compare to C++ M_full here
