@@ -1586,6 +1586,384 @@ mod tests {
 )RUST";
   }
 
+  // src/machine.rs — Machine struct + JSON ingest + rename_for_branch.
+  // Mirrors src/machine.h's Machine + src/phylo_intersect.cpp's
+  // renameForBranch.
+  {
+    std::ofstream f (outputDir + "/src/machine.rs");
+    f << R"RUST(//! Machine (WFST) struct + JSON ingest + per-branch parameter renaming.
+//!
+//! Mirrors `src/machine.h`'s `Machine` and `src/phylo_intersect.cpp`'s
+//! `renameForBranch`. JSON shape (subset of the Machine Boss schema):
+//!
+//! ```text
+//! { "state": [ { "id": <Value>, "trans": [ { "to": <usize|String>,
+//!                                            "in": <String?>,
+//!                                            "out": <String?>,
+//!                                            "weight": <WeightExpr?> },
+//!                                          ... ] }, ... ],
+//!   "defs": { "name": <WeightExpr>, ... },
+//!   "cons": { "rate": [...], "prob": [...], "norm": [[...], ...] } }
+//! ```
+
+use std::collections::HashMap;
+use serde_json::{Value, Map};
+
+use crate::weight_algebra;
+
+#[derive(Debug, Clone)]
+pub struct Transition {
+    pub to: usize,
+    pub in_sym: String,
+    pub out_sym: String,
+    /// JSON WeightExpr; evaluate via `weight_algebra::evaluate`.
+    pub weight: Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct State {
+    /// Original `id` field (may be a string, array, or nested object).
+    pub id: Value,
+    pub trans: Vec<Transition>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Constraints {
+    pub rate: Vec<String>,
+    pub prob: Vec<String>,
+    pub norm: Vec<Vec<String>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Machine {
+    pub state: Vec<State>,
+    pub defs: HashMap<String, Value>,
+    pub cons: Constraints,
+}
+
+impl Machine {
+    /// Parse a Machine from its JSON representation.
+    pub fn from_json(v: &Value) -> Self {
+        let states_arr = v.get("state")
+            .and_then(|s| s.as_array())
+            .expect("Machine JSON must have a `state` array");
+
+        // Build a name -> index map first; transition `to` may reference state
+        // names (string/array) rather than indices.
+        let mut name_to_idx: HashMap<String, usize> = HashMap::new();
+        for (i, s) in states_arr.iter().enumerate() {
+            // Prefer explicit `n` (numeric) over `id` for index resolution.
+            if let Some(n) = s.get("n").and_then(|x| x.as_u64()) {
+                if (n as usize) != i {
+                    // honour explicit n; but for our purposes we just use i.
+                }
+            }
+            // Stringify `id` as a hashable name (Value's Display happens to be
+            // the JSON serialisation, which is what the C++ code does too).
+            if let Some(id) = s.get("id") {
+                name_to_idx.insert(id.to_string(), i);
+                // Also accept the bare string form for plain string ids.
+                if let Some(s_str) = id.as_str() {
+                    name_to_idx.insert(s_str.to_string(), i);
+                }
+            }
+            name_to_idx.insert(format!("{}", i), i);
+        }
+
+        let mut state = Vec::with_capacity(states_arr.len());
+        for s in states_arr.iter() {
+            let id = s.get("id").cloned().unwrap_or(Value::Null);
+            let trans_arr = s.get("trans").and_then(|t| t.as_array());
+            let mut trans = Vec::new();
+            if let Some(arr) = trans_arr {
+                for t in arr.iter() {
+                    let to = resolve_to(&t.get("to").expect("trans missing `to`"),
+                                        &name_to_idx);
+                    let in_sym = t.get("in").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                    let out_sym = t.get("out").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                    let weight = t.get("weight").cloned().unwrap_or(Value::from(1.0_f64));
+                    trans.push(Transition { to, in_sym, out_sym, weight });
+                }
+            }
+            state.push(State { id, trans });
+        }
+
+        let defs = if let Some(d) = v.get("defs").and_then(|d| d.as_object()) {
+            d.iter().map(|(k, val)| (k.clone(), val.clone())).collect()
+        } else {
+            HashMap::new()
+        };
+
+        let cons = parse_cons(v.get("cons"));
+
+        Machine { state, defs, cons }
+    }
+
+    /// Number of states.
+    pub fn n_states(&self) -> usize { self.state.len() }
+
+    /// Whether this machine references a free param named `name` anywhere
+    /// (transition weights or def values, transitively via def chains).
+    pub fn has_param(&self, name: &str) -> bool {
+        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        for s in &self.state {
+            for t in &s.trans {
+                if walk_for_name(&t.weight, name, &self.defs, &mut seen) {
+                    return true;
+                }
+            }
+        }
+        for v in self.defs.values() {
+            if walk_for_name(v, name, &self.defs, &mut seen) { return true; }
+        }
+        false
+    }
+}
+
+fn resolve_to(to: &Value, name_to_idx: &HashMap<String, usize>) -> usize {
+    if let Some(n) = to.as_u64() { return n as usize; }
+    if let Some(s) = to.as_str() {
+        if let Some(i) = name_to_idx.get(s) { return *i; }
+    }
+    let key = to.to_string();
+    *name_to_idx.get(&key)
+        .unwrap_or_else(|| panic!("Cannot resolve `to` reference: {}", key))
+}
+
+fn parse_cons(v: Option<&Value>) -> Constraints {
+    let mut c = Constraints::default();
+    let Some(obj) = v.and_then(|v| v.as_object()) else { return c; };
+    if let Some(arr) = obj.get("rate").and_then(|a| a.as_array()) {
+        c.rate = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
+    }
+    if let Some(arr) = obj.get("prob").and_then(|a| a.as_array()) {
+        c.prob = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
+    }
+    if let Some(arr) = obj.get("norm").and_then(|a| a.as_array()) {
+        for g in arr.iter() {
+            if let Some(group) = g.as_array() {
+                let names: Vec<String> = group.iter()
+                    .filter_map(|x| x.as_str().map(String::from))
+                    .collect();
+                c.norm.push(names);
+            }
+        }
+    }
+    c
+}
+
+fn walk_for_name<'a>(v: &'a Value, target: &str, defs: &'a HashMap<String, Value>,
+                     seen: &mut std::collections::HashSet<&'a str>) -> bool {
+    match v {
+        Value::String(s) => {
+            if s == target { return true; }
+            if seen.contains(s.as_str()) { return false; }
+            if let Some(d) = defs.get(s) {
+                seen.insert(s.as_str());
+                return walk_for_name(d, target, defs, seen);
+            }
+            false
+        }
+        Value::Object(map) => {
+            for val in map.values() {
+                if walk_for_name(val, target, defs, seen) { return true; }
+            }
+            false
+        }
+        Value::Array(arr) => arr.iter().any(|x| walk_for_name(x, target, defs, seen)),
+        _ => false,
+    }
+}
+
+/// Substitute parameter names according to `subst` recursively in a
+/// WeightExpr JSON value. Only string-valued names are substituted; numbers,
+/// booleans, and structural ops are preserved verbatim.
+pub fn bind(expr: &Value, subst: &HashMap<String, String>) -> Value {
+    match expr {
+        Value::String(s) => {
+            if let Some(replacement) = subst.get(s) {
+                Value::String(replacement.clone())
+            } else {
+                Value::String(s.clone())
+            }
+        }
+        Value::Object(map) => {
+            let mut out = Map::new();
+            for (k, v) in map.iter() {
+                out.insert(k.clone(), bind(v, subst));
+            }
+            Value::Object(out)
+        }
+        Value::Array(arr) => {
+            Value::Array(arr.iter().map(|x| bind(x, subst)).collect())
+        }
+        other => other.clone(),
+    }
+}
+
+/// Mirror of `phylo_intersect.cpp::renameForBranch`. Returns a copy of `m`
+/// where (a) every transition-weight reference to `time_param` or to a
+/// def-key is replaced with the suffixed name `<orig>[<node_name>]`, (b)
+/// every def's value is similarly substituted and its key suffixed, and
+/// (c) `cons.rate` / `cons.prob` / `cons.norm` entries equal to
+/// `time_param` are suffixed.
+pub fn rename_for_branch(m: &Machine, time_param: &str, node_name: &str) -> Machine {
+    let suffix = format!("[{}]", node_name);
+    let mut subst: HashMap<String, String> = HashMap::new();
+    subst.insert(time_param.to_string(), format!("{}{}", time_param, suffix));
+    for k in m.defs.keys() {
+        subst.insert(k.clone(), format!("{}{}", k, suffix));
+    }
+
+    // Rewrite every transition weight.
+    let mut new_state = Vec::with_capacity(m.state.len());
+    for s in &m.state {
+        let mut nt = Vec::with_capacity(s.trans.len());
+        for t in &s.trans {
+            nt.push(Transition {
+                to: t.to,
+                in_sym: t.in_sym.clone(),
+                out_sym: t.out_sym.clone(),
+                weight: bind(&t.weight, &subst),
+            });
+        }
+        new_state.push(State { id: s.id.clone(), trans: nt });
+    }
+
+    // Rewrite defs (rebind values, suffix keys).
+    let mut new_defs: HashMap<String, Value> = HashMap::new();
+    for (k, v) in m.defs.iter() {
+        new_defs.insert(format!("{}{}", k, suffix), bind(v, &subst));
+    }
+
+    // Rewrite cons. Only entries equal to time_param are suffixed; def keys
+    // do not appear in cons.
+    let mut new_cons = Constraints::default();
+    let rename_vec = |v: &[String]| -> Vec<String> {
+        v.iter().map(|s| if s == time_param { format!("{}{}", time_param, suffix) } else { s.clone() }).collect()
+    };
+    new_cons.rate = rename_vec(&m.cons.rate);
+    new_cons.prob = rename_vec(&m.cons.prob);
+    new_cons.norm = m.cons.norm.iter().map(|g| rename_vec(g)).collect();
+
+    Machine { state: new_state, defs: new_defs, cons: new_cons }
+}
+
+/// Convenience: evaluate a transition's weight against a Params map and the
+/// machine's defs. (Wraps `weight_algebra::evaluate`.)
+pub fn eval_weight(m: &Machine, weight: &Value, params: &weight_algebra::Params) -> f64 {
+    weight_algebra::evaluate(weight, params, &m.defs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn tiny_machine_json() -> Value {
+        json!({
+            "state": [
+                { "id": "begin",
+                  "trans": [
+                      { "to": 1, "weight": "pSame" },
+                      { "to": 2, "in": "x", "out": "y", "weight": {"*": ["pDiff", "time"]} }
+                  ]
+                },
+                { "id": "mid",
+                  "trans": [ { "to": 2 } ]
+                },
+                { "id": "end" }
+            ],
+            "defs": {
+                "pSame": {"+": ["pNoSub", {"*": ["pSub", 0.25]}]},
+                "pNoSub": {"exp": {"*": [-1.0, "time"]}},
+                "pSub": {"not": "pNoSub"},
+                "pDiff": {"*": ["pSub", 0.25]}
+            },
+            "cons": {
+                "rate": ["time", "delRate"],
+                "prob": [],
+                "norm": [["pi_A", "pi_C", "pi_G", "pi_T"]]
+            }
+        })
+    }
+
+    #[test]
+    fn parse_basic() {
+        let m = Machine::from_json(&tiny_machine_json());
+        assert_eq!(m.n_states(), 3);
+        assert_eq!(m.state[0].trans.len(), 2);
+        assert_eq!(m.state[0].trans[0].to, 1);
+        assert_eq!(m.state[0].trans[1].in_sym, "x");
+        assert_eq!(m.state[0].trans[1].out_sym, "y");
+        assert_eq!(m.defs.len(), 4);
+        assert_eq!(m.cons.rate, vec!["time".to_string(), "delRate".to_string()]);
+    }
+
+    #[test]
+    fn has_param_walks_defs() {
+        let m = Machine::from_json(&tiny_machine_json());
+        assert!(m.has_param("time"));     // referenced by pNoSub
+        assert!(!m.has_param("absent"));
+    }
+
+    #[test]
+    fn rename_for_branch_suffixes_keys_and_refs() {
+        let m = Machine::from_json(&tiny_machine_json());
+        let m_a = rename_for_branch(&m, "time", "A");
+
+        // Defs are renamed: pSame -> pSame[A], etc.
+        assert!(m_a.defs.contains_key("pSame[A]"));
+        assert!(m_a.defs.contains_key("pNoSub[A]"));
+        assert!(!m_a.defs.contains_key("pSame"));
+
+        // Inside pSame[A], references to pNoSub / pSub are suffixed.
+        let psame = m_a.defs.get("pSame[A]").unwrap();
+        let psame_str = psame.to_string();
+        assert!(psame_str.contains("pNoSub[A]"), "pSame[A] body: {}", psame_str);
+        assert!(psame_str.contains("pSub[A]"),   "pSame[A] body: {}", psame_str);
+
+        // pNoSub[A] body references time[A] (since `time` was the time-param).
+        let pnosub = m_a.defs.get("pNoSub[A]").unwrap().to_string();
+        assert!(pnosub.contains("time[A]"), "pNoSub[A] body: {}", pnosub);
+
+        // Transition weights have references substituted: state[0].trans[0]
+        // had weight "pSame" -> "pSame[A]"; trans[1] had {"*": ["pDiff", "time"]}
+        // -> {"*": ["pDiff[A]", "time[A]"]}.
+        let w0 = m_a.state[0].trans[0].weight.to_string();
+        assert_eq!(w0, "\"pSame[A]\"");
+        let w1 = m_a.state[0].trans[1].weight.to_string();
+        assert!(w1.contains("pDiff[A]"));
+        assert!(w1.contains("time[A]"));
+
+        // cons: time -> time[A]; delRate stays; norm group stays.
+        assert_eq!(m_a.cons.rate, vec!["time[A]".to_string(), "delRate".to_string()]);
+        assert_eq!(m_a.cons.norm[0],
+                   vec!["pi_A".to_string(), "pi_C".to_string(),
+                        "pi_G".to_string(), "pi_T".to_string()]);
+    }
+
+    #[test]
+    fn rename_for_branch_evaluates_consistently() {
+        // Evaluating pSame on T at (time=0.5, ...) should equal evaluating
+        // pSame[A] on T_renamed at (time[A]=0.5, ...).
+        let m   = Machine::from_json(&tiny_machine_json());
+        let m_a = rename_for_branch(&m, "time", "A");
+
+        let mut p0 = weight_algebra::Params::new();
+        p0.insert("time".into(), 0.5);
+        let v0 = weight_algebra::evaluate(&Value::String("pSame".into()), &p0, &m.defs);
+
+        let mut p1 = weight_algebra::Params::new();
+        p1.insert("time[A]".into(), 0.5);
+        let v1 = weight_algebra::evaluate(&Value::String("pSame[A]".into()), &p1, &m_a.defs);
+
+        assert!((v0 - v1).abs() < 1e-15, "v0={} v1={}", v0, v1);
+    }
+}
+)RUST";
+  }
+
   // src/lib.rs — bake the JSON inputs as `&'static str` consts, expose
   // the weight_algebra module, expose a stub `prebuild()` that panics.
   // Subsequent increments will replace the stub with a Rust port of the
@@ -1600,6 +1978,7 @@ mod tests {
          "#![allow(dead_code)]\n"
          "\n"
          "pub mod weight_algebra;\n"
+         "pub mod machine;\n"
          "\n"
          "/// Canonical branch transducer T (no per-branch time-parameter\n"
          "/// renaming). Format is the standard Machine Boss machine JSON.\n"

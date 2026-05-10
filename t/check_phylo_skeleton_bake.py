@@ -61,6 +61,39 @@ use serde_json::Value;
 #[test] #[should_panic(expected = "not yet implemented")]
 fn prebuild_panics() { phylo_skeleton::prebuild(); }
 
+#[test] fn baked_t_renames_for_branch() {
+    // Parse T_JSON, rename for branch "X", check defs/cons are suffixed and
+    // that pSame[X] evaluates against time[X] to the same value as pSame
+    // evaluates against time on the unrenamed T (consistency of bind/eval).
+    use phylo_skeleton::machine::{Machine, rename_for_branch};
+    let t_json: Value = serde_json::from_str(T_JSON).expect("T_JSON parses");
+    let t = Machine::from_json(&t_json);
+    let t_x = rename_for_branch(&t, TIME_PARAM, "X");
+
+    // Defs renamed
+    assert!(t_x.defs.contains_key("pSame[X]"));
+    assert!(t_x.defs.contains_key("pNoSub[X]"));
+    assert!(!t_x.defs.contains_key("pSame"));
+
+    // cons.rate has time -> time[X]
+    let time_x = format!("{}[X]", TIME_PARAM);
+    assert!(t_x.cons.rate.contains(&time_x), "cons.rate: {:?}", t_x.cons.rate);
+
+    // Evaluate pSame on T at time=0.5 vs pSame[X] on T_x at time[X]=0.5.
+    let mut p0 = Params::new();
+    p0.insert(TIME_PARAM.into(), 0.5);
+    p0.insert("insRate".into(), 0.005);
+    p0.insert("delRate".into(), 0.01);
+    let v0 = evaluate(&Value::String("pSame".into()), &p0, &t.defs);
+
+    let mut p1 = Params::new();
+    p1.insert(time_x.clone(), 0.5);
+    p1.insert("insRate".into(), 0.005);
+    p1.insert("delRate".into(), 0.01);
+    let v1 = evaluate(&Value::String("pSame[X]".into()), &p1, &t_x.defs);
+    assert!((v0 - v1).abs() < 1e-15, "v0={} v1={}", v0, v1);
+}
+
 #[test] fn baked_tkf91_defs_evaluate() {
     // TKF91-DNA-JC defs at time[A]=0.5, time[B]=0.3, insRate=0.005,
     // delRate=0.01; reference values pre-computed in Python (see
