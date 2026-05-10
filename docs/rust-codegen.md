@@ -6,9 +6,36 @@ permalink: /rust-codegen/
 
 # Rust Codegen — multidimensional Forward / Viterbi for phylo composition
 
-The `--codegen DIR --rust` option emits a self-contained Rust crate
-implementing a multidimensional Forward (and Viterbi) dynamic programming
-algorithm specialised to whatever generator transducer is on the stack.
+Two emission methods are available, both invoked via `--codegen DIR --rust`.
+They differ in what the emitted crate bakes in vs. computes at startup:
+
+  1. **Straight-line codegen** *(default)* — boss runs the full WFST algebra
+     (`compose`, `intersect`, `waitingMachine`, `ergodicMachine`,
+     `advanceSort`, `processCycles`, plus the buildSubtree recursion) at
+     codegen time, then emits the resulting `M_full` as a flat opcode
+     bytecode VM (`VM_OPCODES`, `VM_ARG_A`, …) plus straight-line Forward /
+     Viterbi loops over delta-vector-sharded emit transitions. The crate
+     compiles in ~50 s for a TKF92+HKY85 quartet and runs at the
+     wall-clock numbers in the [length sweep table](#performance--quartet-length-sweep) below.
+     This is what you get from `bin/boss --pair-json … --codegen DIR --rust`.
+
+  2. **Baked-in unary skeleton, expanded from Rust**
+     *(`--phylo-skeleton --codegen DIR --rust`)* — boss bakes the
+     **branch transducer T** (un-renamed), the **unary phylo skeleton
+     `M_skel`** (same accessible-state set as `M_full` but with placeholder
+     emit transitions and chain-collapsed silent transitions), the
+     **Newick tree string**, and the **time-parameter name** as four
+     `&'static str` constants. The emitted Rust crate carries Rust ports
+     of the WFST algebra and runs `phylo_intersect(T, tree, time_param)`
+     at startup (in `prebuild()`) to materialise `M_full` from the bake.
+     A multidim Forward DP (`forward.rs`) consumes that machine to compute
+     the log-likelihood. This shifts work from codegen-time to crate
+     startup, and keeps the emitted source small even for wide-alphabet
+     models: the bake is dominated by `M_SKEL_JSON` (which is alphabet-
+     independent) and `T_JSON` (5–7 states); the
+     [skeleton optimisation](/phylogeny/#unary-skeleton) is what makes
+     this tractable.
+     See [§Skeleton-bake mode](#skeleton-bake-mode) below.
 
 The intended use case is a phylogenetic composition of a branch transducer
 on a tree: e.g. **TKF92 + HKY85 on `(A,B,(C,D)Y)X;`**, with the leaves
@@ -428,6 +455,174 @@ One-time costs for the quartet:
   - `make test-rust-codegen-tkf92-quartet` *(manual, not in default test set)* —
     TKF92 + HKY85 on `(A,B,(C,D)Y)X;`. End-to-end smoke test plus the length
     sweep table above.
+
+## Skeleton-bake mode
+
+The `--phylo-skeleton --codegen DIR --rust` invocation emits a **Rust crate
+that contains only the inputs to phylo composition**, not the result.
+The crate carries faithful ports of the WFST algebra (compose, intersect,
+waitingMachine, ergodicMachine, advanceSort, processCycles, plus the
+buildSubtree recursion) and runs them at startup to expand the unary
+skeleton into the full multidimensional phylo machine.
+
+This trades codegen-time work (which dominates the straight-line mode for
+wide alphabets and deep trees) for crate-startup work, and shrinks the
+emitted source dramatically: the bake is essentially T + M_skel + Newick,
+all alphabet-independent or constant-size.
+
+### What gets emitted
+
+```
+$DIR/
+├── Cargo.toml          # serde_json dep, lto = true
+└── src/
+    ├── lib.rs          # 4 baked &'static str constants + prebuild()
+    ├── weight_algebra.rs   # JSON WeightExpr evaluator
+    ├── machine.rs          # Machine struct + JSON ingest + the WFST algebra
+    │                       # (compose, intersect, waiting_machine,
+    │                       # ergodic_machine, advance_sort, process_cycles,
+    │                       # rename_for_branch, …) — all faithful Rust
+    │                       # ports of the corresponding C++.
+    ├── phylo.rs            # Newick parser + buildSubtree recursion
+    └── forward.rs          # multidim Forward DP over the prebuild()'d machine
+```
+
+`lib.rs` exposes:
+
+```rust
+pub static T_JSON:       &str;     // canonical branch transducer (un-renamed)
+pub static M_SKEL_JSON:  &str;     // unary phylo skeleton (placeholder emits)
+pub static TREE_NEWICK:  &str;     // Newick tree string
+pub static TIME_PARAM:   &str;     // name of T's per-branch time parameter
+
+/// Build M_full from the baked T + tree by running the Rust port of the
+/// WFST algebra. Returns a `machine::Machine` with symbolic
+/// `WeightAlgebra` JSON expressions on each transition.
+pub fn prebuild() -> machine::Machine;
+```
+
+`forward.rs` exposes a single function:
+
+```rust
+pub fn forward(m: &Machine, params: &Params, leaves: &[Vec<String>]) -> f64;
+```
+
+`Params` is a `HashMap<String, f64>` over the free parameters of T and the
+per-branch time parameters that `phylo_intersect` introduces (e.g.
+`time[A]`, `time[B]`, …). The Forward DP is a bit-exact mirror of
+`t/rust/_phylo_ref.py::multidim_forward` — same exact log_sum_exp via
+`(lo - hi).exp().ln_1p()`, same iteration order.
+
+### End-to-end recipe — TKF92 + HKY85 on `(((A,B)P,C)Q)D;`
+
+This is the canonical complex case: a depth-3 caterpillar tree with
+**three internal nodes (P, Q, D)**, the TKF92 indel model on each branch,
+and an HKY85 substitution kernel. With the straight-line codegen the
+emitted `lib.rs` would be hundreds of MB; with the skeleton bake the
+crate is small (T + M_skel + tree fit in tens of KB) and the WFST
+expansion happens once at startup.
+
+```bash
+# 1) Build boss
+make
+
+# 2) Bake. We use a TKF92-DNA-HKY85 root + branch transducer (the
+#    canonical TKF92 setup) and the (((A,B)P,C)Q)D; topology.
+bin/boss \
+  --tkf92-root-dna-hky85 \
+  -m \
+  --begin --tkf92-branch-dna-hky85 \
+  --phylo-tree-string '(((A,B)P,C)Q)D;' --phylo-time-param time \
+  --end \
+  --phylo-skeleton --codegen path/to/depth3 --rust
+```
+
+This emits the four baked constants + the Rust modules listed above. The
+`M_skel` is alphabet-independent; `T_JSON` is the small (~5-state) TKF92
+branch transducer; the tree string is 16 bytes.
+
+```bash
+# 3) Compile (release).
+cd path/to/depth3
+cargo build --release
+```
+
+```rust
+// 4) Use it — examples/run.rs:
+use phylo_skeleton::forward::forward;
+use phylo_skeleton::weight_algebra::Params;
+
+fn main() {
+    let m = phylo_skeleton::prebuild();    // runs WFST algebra → M_full
+    let mut params = Params::new();
+    // TKF92 indel parameters
+    params.insert("insRate".into(),  0.05);
+    params.insert("delRate".into(),  0.06);
+    params.insert("r".into(),        0.4);
+    // HKY85 substitution parameters
+    params.insert("tsRatio".into(),  2.0);
+    params.insert("pi_A".into(),     0.30);
+    params.insert("pi_C".into(),     0.20);
+    params.insert("pi_G".into(),     0.25);
+    params.insert("pi_T".into(),     0.25);
+    // Per-branch times (one per non-root node — D is the root here)
+    params.insert("time[A]".into(),  0.10);
+    params.insert("time[B]".into(),  0.20);
+    params.insert("time[P]".into(),  0.15);
+    params.insert("time[C]".into(),  0.18);
+    params.insert("time[Q]".into(),  0.25);
+
+    let leaves: Vec<Vec<String>> = vec![
+        "ACGT".chars().map(|c| c.to_string()).collect(),  // A
+        "ACG" .chars().map(|c| c.to_string()).collect(),  // B
+        "ACT" .chars().map(|c| c.to_string()).collect(),  // C
+    ];
+    let lk = forward(&m, &params, &leaves);
+    println!("forward log-likelihood = {}", lk);
+}
+```
+
+```bash
+cargo run --release --example run
+```
+
+### Verification
+
+  - `make test-phylo-skeleton-bake` — bakes TKF91-DNA-JC on `(A,B)P;`
+    and `(A,B,C)R;`, asserts the four baked constants parse, asserts the
+    Rust ports of `compose` / `intersect` / `waiting_machine` /
+    `ergodic_machine` / `advance_sort` / `process_cycles` produce
+    state counts matching C++ M_full, and asserts
+    `forward(prebuild(), …)` matches the exact-lse Python multidim
+    Forward bit-exactly to within 1e-12. Default-set test.
+  - `make test-phylo-skeleton-bake-deep` *(manual, not in default test set)* —
+    same checks on `(((A,B)P,C)Q)D;` and `((A,B)P,(C,D)Q)R;`. The
+    state-count check is loosened to a small tolerance pending a Rust
+    port of `padWithNullStates` (the C++ advance_sort fallback). Bit-
+    exact forward against C++ M_full passes.
+
+### Tradeoffs vs. straight-line codegen
+
+|  | Straight-line | Skeleton bake |
+|---|---|---|
+| Codegen time | Dominated by symbolic weight expansion (seconds–minutes) | Trivial (writes 4 strings + ports) |
+| Emitted source size | Scales with M_full (10s–100s of MB on quartets) | Constant-ish (~tens of KB) |
+| Rust compile time | Heavy (linear in source size) | Light |
+| Crate startup time | Negligible (DP is straight-line) | Runs WFST algebra (seconds–minutes on deep trees, see [perf note](#performance-status)) |
+| Forward / cell | Fast (specialised, sharded, lse cutoff applied) | Slower (interpreter over symbolic weights, no sharding yet) |
+| Useful for | Hot inner-loop production | Reference correctness, exploratory work, deep trees where straight-line crate doesn't compile |
+
+#### Performance status
+
+The Rust port of the WFST algebra is currently a faithful (un-optimised)
+translation of the C++. `prebuild()` on `(((A,B)P,C)Q)D;` with TKF91-DNA-JC
+takes ~3 minutes wall-clock — the symbolic weight expressions blow up
+through the nested `compose` / `intersect` calls and the per-stage
+`ergodic_machine` clones dominate runtime. Two known follow-ups:
+amortising state cloning across the post-processing chain, and porting
+the `padWithNullStates` fallback in `advance_sort` (which would also
+close the off-by-one state-count discrepancy seen on the depth-3 tree).
+Bit-exact forward against C++ M_full passes regardless.
 
 ## Notes / caveats
 

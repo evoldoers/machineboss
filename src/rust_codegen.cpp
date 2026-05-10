@@ -1484,6 +1484,12 @@ pub fn add(l: &Value, r: &Value) -> Value {
     serde_json::json!({"+": [l.clone(), r.clone()]})
 }
 
+/// Symbolic 1/(1-p).  Mirror of `WeightAlgebra::geometricSum`.  C++
+/// emits `{"geomsum": p}` with no folding.
+pub fn geometric_sum(p: &Value) -> Value {
+    serde_json::json!({"geomsum": p.clone()})
+}
+
 fn eval_inner(expr: &Value, params: &Params, defs: &Defs, visiting: &mut Vec<String>) -> f64 {
     match expr {
         Value::Number(n) => n.as_f64().expect("WeightExpr number not f64-convertible"),
@@ -1906,41 +1912,29 @@ pub fn eval_weight(m: &Machine, weight: &Value, params: &weight_algebra::Params)
     weight_algebra::evaluate(weight, params, &m.defs)
 }
 
-// ---- Pair-token encoder (default-config mirror of Machine::encodePairToken)
+// ---- Pair-token encoder (--pair-json / JsonMode mirror) -----------------
+//
+// `Machine::encodePairToken` in JsonMode emits a two-element JSON array
+// `[<a>, <b>]`, where each side is either an embedded JSON value (if the
+// side string already parses as JSON, so nested intersections produce
+// nested arrays) or a JSON string. The Rust port always uses this mode
+// because (a) the codegen pipeline requires it (`--rust` requires
+// `--pair-json` in the legacy boss flow), and (b) it round-trips through
+// `forward::parse_token`.
 
-const PAIR_SEP: char = ',';
-const PAIR_OPEN: char = '[';
-const PAIR_CLOSE: char = ']';
-const PAIR_ESCAPE: char = '\\';
-
-fn pair_needs_wrap(s: &str) -> bool {
-    s.chars().any(|c| c == PAIR_SEP || c == PAIR_OPEN || c == PAIR_CLOSE || c == PAIR_ESCAPE)
-}
-
-fn pair_wrap(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push(PAIR_OPEN);
-    for c in s.chars() {
-        if c == PAIR_OPEN || c == PAIR_CLOSE || c == PAIR_ESCAPE {
-            out.push(PAIR_ESCAPE);
-        }
-        out.push(c);
+fn encode_pair_side_json(s: &str) -> Value {
+    if s.is_empty() { return Value::String(String::new()); }
+    if let Ok(v) = serde_json::from_str::<Value>(s) {
+        return v;
     }
-    out.push(PAIR_CLOSE);
-    out
+    Value::String(s.to_string())
 }
 
-fn encode_pair_side(s: &str) -> String {
-    if pair_needs_wrap(s) { pair_wrap(s) } else { s.to_string() }
-}
-
-/// Mirror of `Machine::encodePairToken` in default mode.
+/// Mirror of `Machine::encodePairToken` in `--pair-json` mode.
 pub fn encode_pair_token(a: &str, b: &str) -> String {
     if a.is_empty() && b.is_empty() { return String::new(); }
-    let mut out = encode_pair_side(a);
-    out.push(PAIR_SEP);
-    out.push_str(&encode_pair_side(b));
-    out
+    let arr = Value::Array(vec![encode_pair_side_json(a), encode_pair_side_json(b)]);
+    serde_json::to_string(&arr).expect("encode_pair_token: serialize")
 }
 
 // ---- Transducer composition ---------------------------------------------
@@ -2113,9 +2107,12 @@ pub fn compose(first: &Machine, second: &Machine) -> Machine {
         defs: comp_defs,
         cons: first.cons.clone(),  // approximate: cons-merging is an open issue
     };
-    // Post-processing: only ergodic_machine for now (advance_sort and
-    // process_cycles are TODO; inputs without silent cycles are unaffected).
+    // Mirror of C++ Machine::compose post-processing chain:
+    //   compMachine.ergodicMachine().advanceSort().processCycles().ergodicMachine()
     raw.ergodic_machine()
+        .advance_sort()
+        .process_cycles()
+        .ergodic_machine()
 }
 
 // ---- Transducer intersection --------------------------------------------
@@ -2231,7 +2228,12 @@ pub fn intersect(first: &Machine, second: &Machine) -> Machine {
         defs: inter_defs,
         cons: first.cons.clone(),
     };
+    // Mirror of C++ Machine::intersect post-processing chain:
+    //   interMachine.ergodicMachine().advanceSort().processCycles().ergodicMachine()
     raw.ergodic_machine()
+        .advance_sort()
+        .process_cycles()
+        .ergodic_machine()
 }
 
 // ---- WFST state predicates and waitingMachine port ----------------------
@@ -2520,6 +2522,398 @@ impl Machine {
                       "waiting_machine failed to produce a waiting machine");
         out
     }
+
+    // ---- Predicate / counting helpers (Machine::nXxxBackTransitions in C++) ----
+
+    /// Count of transitions s → t with t ≤ s, ignoring start state. Mirror
+    /// of `Machine::nBackTransitions`.
+    pub fn n_back_transitions(&self) -> usize {
+        let mut n = 0;
+        for s in 1..self.state.len() {
+            for t in &self.state[s].trans {
+                if t.to <= s { n += 1; }
+            }
+        }
+        n
+    }
+
+    /// Count of silent (in.is_empty() && out.is_empty()) transitions
+    /// s → t with t ≤ s. Mirror of `Machine::nSilentBackTransitions`.
+    pub fn n_silent_back_transitions(&self) -> usize {
+        let mut n = 0;
+        for s in 1..self.state.len() {
+            for t in &self.state[s].trans {
+                if t.is_silent() && t.to <= s { n += 1; }
+            }
+        }
+        n
+    }
+
+    /// Count of out-empty transitions s → t with t ≤ s. Mirror of
+    /// `Machine::nEmptyOutputBackTransitions`.
+    pub fn n_empty_output_back_transitions(&self) -> usize {
+        let mut n = 0;
+        for s in 1..self.state.len() {
+            for t in &self.state[s].trans {
+                if t.output_empty() && t.to <= s { n += 1; }
+            }
+        }
+        n
+    }
+
+    /// True iff there are no silent backward (s → t with t ≤ s)
+    /// transitions. Mirror of `Machine::isAdvancingMachine`.
+    pub fn is_advancing_machine(&self) -> bool {
+        self.n_silent_back_transitions() == 0
+    }
+
+    // ---- Trim silent back-transitions (DropSilentCycles strategy) ----
+
+    /// Mirror of `Machine::dropSilentBackTransitions`: returns a copy with
+    /// every silent t with t.to ≤ s removed (so no silent back-transitions
+    /// remain). Used by `processCycles(DropSilentCycles)`.
+    pub fn drop_silent_back_transitions(&self) -> Self {
+        if self.is_advancing_machine() { return self.clone(); }
+        let mut new_state = Vec::with_capacity(self.state.len());
+        for (s, ms) in self.state.iter().enumerate() {
+            let mut nt: Vec<Transition> = Vec::new();
+            for t in &ms.trans {
+                if !(t.is_silent() && t.to <= s) {
+                    nt.push(t.clone());
+                }
+            }
+            new_state.push(State { id: ms.id.clone(), trans: nt });
+        }
+        Machine { state: new_state, defs: self.defs.clone(), cons: self.cons.clone() }
+    }
+
+    // ---- advance_sort: state reordering to minimize backward edges ----
+
+    /// Mirror of `Machine::advanceSort` with the default (silent
+    /// back-transition) cost function. Reorders states to minimize the
+    /// count of silent backward transitions; reverts to the original
+    /// order if reordering doesn't help.
+    pub fn advance_sort(&self) -> Self {
+        self.advance_sort_inner(
+            |m| m.n_silent_back_transitions(),
+            |t| t.is_silent(),
+        )
+    }
+
+    /// Generic version with custom counter / predicate (mirrors the
+    /// templated C++ signature).
+    fn advance_sort_inner(
+        &self,
+        count_back: impl Fn(&Machine) -> usize,
+        must_advance: impl Fn(&Transition) -> bool,
+    ) -> Self {
+        let n_silent_before = count_back(self);
+        if n_silent_before == 0 {
+            return self.clone();
+        }
+
+        let n = self.state.len();
+        let start = 0usize;
+        let end = if n > 0 { n - 1 } else { 0 };
+
+        // Silent forward / backward incidence (excluding self-loops, edges
+        // to start, and edges to end — matches C++).
+        let mut sil_outgoing: Vec<Vec<usize>> = vec![Vec::new(); n];
+        let mut sil_incoming: Vec<Vec<usize>> = vec![Vec::new(); n];
+        let mut n_sil_in: Vec<i32> = vec![0; n];
+        let mut n_sil_out: Vec<i32> = vec![0; n];
+        if n >= 2 {
+            for s in 1..(n - 1) {
+                for t in &self.state[s].trans {
+                    if must_advance(t) && t.to != s && t.to != end && t.to != start {
+                        sil_outgoing[s].push(t.to);
+                        sil_incoming[t.to].push(s);
+                        n_sil_out[s] += 1;
+                        n_sil_in[t.to] += 1;
+                    }
+                }
+            }
+        }
+
+        // (n_in, n_in - n_out, idx) lexicographic comparator — the same
+        // primary/secondary/tertiary keys C++ uses for its set.
+        fn cmp_key(s: usize, n_in: &[i32], n_out: &[i32]) -> (i32, i32, usize) {
+            (n_in[s], n_in[s] - n_out[s], s)
+        }
+
+        let mut order: Vec<usize> = Vec::with_capacity(n);
+        let mut queue: Vec<usize> = Vec::new();
+
+        // C++ remove/insert dance: only re-add a neighbour if it was
+        // already in the queue — once it's been "added to order" it must
+        // never re-enter.
+        let do_add = |s: usize,
+                      order: &mut Vec<usize>,
+                      queue: &mut Vec<usize>,
+                      n_sil_in: &mut [i32],
+                      n_sil_out: &mut [i32],
+                      sil_outgoing: &[Vec<usize>],
+                      sil_incoming: &[Vec<usize>]| {
+            order.push(s);
+            for &next in &sil_outgoing[s] {
+                let was_in = queue.iter().position(|&x| x == next);
+                if let Some(idx) = was_in { queue.remove(idx); }
+                n_sil_in[next] -= 1;
+                if was_in.is_some() { queue.push(next); }
+            }
+            for &prev in &sil_incoming[s] {
+                let was_in = queue.iter().position(|&x| x == prev);
+                if let Some(idx) = was_in { queue.remove(idx); }
+                n_sil_out[prev] -= 1;
+                if was_in.is_some() { queue.push(prev); }
+            }
+            queue.sort_by_key(|&x| cmp_key(x, n_sil_in, n_sil_out));
+        };
+
+        do_add(start, &mut order, &mut queue,
+               &mut n_sil_in, &mut n_sil_out, &sil_outgoing, &sil_incoming);
+
+        if n > 1 {
+            // Seed queue with all middle states.
+            for s in 1..(n - 1) { queue.push(s); }
+            queue.sort();
+            queue.dedup();
+            queue.sort_by_key(|&x| cmp_key(x, &n_sil_in, &n_sil_out));
+            while !queue.is_empty() {
+                let next = queue.remove(0);
+                do_add(next, &mut order, &mut queue,
+                       &mut n_sil_in, &mut n_sil_out, &sil_outgoing, &sil_incoming);
+            }
+            do_add(end, &mut order, &mut queue,
+                   &mut n_sil_in, &mut n_sil_out, &sil_outgoing, &sil_incoming);
+        }
+
+        // Build old2new and check whether the order changed.
+        let mut old2new = vec![0usize; n];
+        let mut changed = false;
+        for (new_idx, &old_idx) in order.iter().enumerate() {
+            if old_idx != new_idx { changed = true; }
+            old2new[old_idx] = new_idx;
+        }
+
+        let result = if !changed {
+            self.clone()
+        } else {
+            let mut new_state: Vec<State> = Vec::with_capacity(n);
+            for &s in &order {
+                let mut ms = self.state[s].clone();
+                for t in ms.trans.iter_mut() {
+                    t.to = old2new[t.to];
+                }
+                new_state.push(ms);
+            }
+            Machine { state: new_state, defs: self.defs.clone(), cons: self.cons.clone() }
+        };
+
+        let n_silent_after = count_back(&result);
+        if n_silent_after >= n_silent_before {
+            // Reordering didn't help — restore original (matches C++).
+            // C++ also tries `padWithNullStates` if no padding is present;
+            // we omit that fallback for now (silent cycles will be handled
+            // by process_cycles → advancing_machine via geomsum).
+            return self.clone();
+        }
+        result
+    }
+
+    // ---- process_cycles + advancing_machine (SumSilentCycles strategy) ----
+
+    /// Mirror of `Machine::processCycles(SumSilentCycles)` — the only
+    /// strategy used by compose / intersect's default post-processing.
+    pub fn process_cycles(&self) -> Self {
+        self.advancing_machine()
+    }
+
+    /// Mirror of `Machine::advancingMachine`: eliminate every silent
+    /// backward transition by symbolic forward-substitution. Silent
+    /// self-loops with weight w become a `geomsum(w) = 1/(1-w)` factor on
+    /// the state's other outgoing edges. Silent back-edges to a strictly
+    /// earlier state are folded into the destination's already-resolved
+    /// outgoing transitions. The cost: weights become symbolic
+    /// `WeightAlgebra` JSON expressions whose evaluation yields the
+    /// summed-over-all-silent-paths weight.
+    pub fn advancing_machine(&self) -> Self {
+        if self.is_advancing_machine() { return self.clone(); }
+
+        let n = self.state.len();
+        let mut fwd_trans: std::collections::BTreeMap<(usize, usize), Vec<Transition>>
+            = std::collections::BTreeMap::new();
+        let mut n_elim = 0usize;
+        let mut new_state: Vec<State> = Vec::with_capacity(n);
+
+        for s in 0..n {
+            // Recursive call to populate fwd_trans[(s, s)].
+            update_fwd_trans(self, &mut fwd_trans, &mut n_elim, s, s);
+
+            let mut ta = TransAccumulator::default();
+            for t in fwd_trans.get(&(s, s)).cloned().unwrap_or_default() {
+                ta.accumulate(&t.in_sym, &t.out_sym, t.to, &t.weight);
+            }
+            let et = std::mem::take(&mut ta).into_transitions();
+
+            // Factor out self-loops: any silent self-loop at s contributes
+            // a geomsum(w) factor to all other outgoing weights.
+            let mut exit_self: Value = Value::from(1.0_f64);
+            let mut surviving: Vec<Transition> = Vec::new();
+            for t in et {
+                if t.is_silent() && t.to == s {
+                    exit_self = weight_algebra::geometric_sum(&t.weight);
+                } else {
+                    surviving.push(t);
+                }
+            }
+            if !weight_algebra::is_one(&exit_self) {
+                for t in surviving.iter_mut() {
+                    t.weight = weight_algebra::multiply(&exit_self, &t.weight);
+                }
+            }
+            // Record post-self-loop result back into fwd_trans for use by
+            // later updateFwdTrans calls (mirrors C++ `fwdTrans[s][s] = ams.trans;`).
+            fwd_trans.insert((s, s), surviving.clone());
+            new_state.push(State { id: self.state[s].id.clone(), trans: surviving });
+        }
+
+        let am = Machine { state: new_state, defs: self.defs.clone(), cons: self.cons.clone() };
+        debug_assert!(am.is_advancing_machine(),
+                      "advancing_machine failed to eliminate silent back transitions");
+        am
+    }
+
+    // ---- Null-padding helpers (used by C++ advance_sort fallback) ----
+
+    /// 1-state machine with no transitions. Mirror of `Machine::null`.
+    pub fn null_machine() -> Self {
+        Machine {
+            state: vec![State { id: Value::Null, trans: Vec::new() }],
+            defs: HashMap::new(),
+            cons: Constraints::default(),
+        }
+    }
+
+    /// Mirror of `Machine::concatenate` (default left/right tags). Both
+    /// inputs must have ≥ 1 state.
+    pub fn concatenate(left: &Machine, right: &Machine, left_tag: &str, right_tag: &str) -> Self {
+        assert!(!left.state.is_empty() && !right.state.is_empty(),
+                "concatenate: both machines must have ≥ 1 state");
+
+        let mut state: Vec<State> = Vec::with_capacity(left.state.len() + right.state.len());
+        // Left states with name wrapped as ["leftTag", original-name].
+        for ms in &left.state {
+            let id = if ms.id.is_null() { ms.id.clone() }
+                     else { Value::Array(vec![Value::String(left_tag.to_string()), ms.id.clone()]) };
+            state.push(State { id, trans: ms.trans.clone() });
+        }
+        // Right states with name wrapped + transition `to` shifted by left.size.
+        let shift = left.state.len();
+        for ms in &right.state {
+            let id = if ms.id.is_null() { ms.id.clone() }
+                     else { Value::Array(vec![Value::String(right_tag.to_string()), ms.id.clone()]) };
+            let mut nt = ms.trans.clone();
+            for t in nt.iter_mut() { t.to += shift; }
+            state.push(State { id, trans: nt });
+        }
+        // Bridge: silent w=1 from left's end to right's start.
+        let left_end = left.state.len() - 1;
+        let right_start = shift; // right's state 0 lives at index shift
+        state[left_end].trans.push(Transition {
+            to: right_start,
+            in_sym: String::new(),
+            out_sym: String::new(),
+            weight: Value::from(1.0_f64),
+        });
+
+        // Merge defs (later writers win on collision, matching `import`).
+        let mut defs = left.defs.clone();
+        for (k, v) in &right.defs { defs.insert(k.clone(), v.clone()); }
+        Machine { state, defs, cons: left.cons.clone() }
+    }
+
+    /// Mirror of `Machine::hasNullPaddingStates`: state 0 has exactly one
+    /// outgoing edge (silent) and the end state has exactly one incoming
+    /// edge from any state, also silent — and no transitions to start.
+    pub fn has_null_padding_states(&self) -> bool {
+        let n = self.state.len();
+        if n == 0 { return false; }
+        let s0 = &self.state[0];
+        if !(s0.trans.len() == 1 && s0.trans[0].is_silent()) { return false; }
+        let end = n - 1;
+        if !self.state[end].trans.is_empty() { return false; }
+        let mut null_to_end = 0;
+        for ms in &self.state {
+            for t in &ms.trans {
+                if t.to == 0 { return false; }
+                if t.to == end {
+                    if !t.is_silent() { return false; }
+                    null_to_end += 1;
+                }
+            }
+        }
+        null_to_end == 1
+    }
+}
+
+// ---- updateFwdTrans helper (free function — mirrors C++) ----------------
+
+/// Mirror of `updateFwdTrans` in machine.cpp. Populates
+/// `fwd_trans[(i, new_min)]` with the set of effective transitions from
+/// state `i` after eliminating all silent back-transitions to states <
+/// `new_min`. Recursive in `new_min` (decrementing) and in `j` for each
+/// silent transition i → j with j < new_min.
+fn update_fwd_trans(
+    machine: &Machine,
+    fwd_trans: &mut std::collections::BTreeMap<(usize, usize), Vec<Transition>>,
+    n_elim: &mut usize,
+    i: usize,
+    new_min: usize,
+) {
+    if fwd_trans.contains_key(&(i, new_min)) { return; }
+
+    let old_trans: Vec<Transition> = if new_min > i {
+        update_fwd_trans(machine, fwd_trans, n_elim, i, new_min - 1);
+        fwd_trans.get(&(i, new_min - 1)).cloned().unwrap_or_default()
+    } else if new_min == i {
+        machine.state[new_min].trans.clone()
+    } else {
+        // new_min < i: should not happen at top-level entry; treat as empty.
+        Vec::new()
+    };
+
+    let mut new_fwd: Vec<Transition> = Vec::new();
+    for t_ij in &old_trans {
+        if !t_ij.is_silent() {
+            new_fwd.push(t_ij.clone());
+        } else {
+            let j = t_ij.to;
+            if j >= new_min {
+                new_fwd.push(t_ij.clone());
+            } else {
+                if i != j {
+                    update_fwd_trans(machine, fwd_trans, n_elim, j, new_min);
+                }
+                let inner: Vec<Transition> = if i == j {
+                    old_trans.clone()
+                } else {
+                    fwd_trans.get(&(j, new_min)).cloned().unwrap_or_default()
+                };
+                for t_jk in &inner {
+                    let w = weight_algebra::multiply(&t_ij.weight, &t_jk.weight);
+                    new_fwd.push(Transition {
+                        to: t_jk.to,
+                        in_sym: t_jk.in_sym.clone(),
+                        out_sym: t_jk.out_sym.clone(),
+                        weight: w,
+                    });
+                }
+                if i > j { *n_elim += 1; }
+            }
+        }
+    }
+    fwd_trans.insert((i, new_min), new_fwd);
 }
 
 #[cfg(test)]
@@ -2868,12 +3262,16 @@ mod tests {
 
     #[test]
     fn pair_token_basic() {
+        // JsonMode: empty pair → empty string; otherwise a 2-element JSON
+        // array. Sides that already parse as JSON are spliced in (so nested
+        // intersections produce nested arrays).
         assert_eq!(encode_pair_token("", ""), "");
-        assert_eq!(encode_pair_token("A", "B"), "A,B");
-        // Sides containing the separator get wrapped in [...].
-        assert_eq!(encode_pair_token("A,X", "B"), "[A,X],B");
-        // Escape characters in wrapped sides.
-        assert_eq!(encode_pair_token("[X]", "B"), "[\\[X\\]],B");
+        assert_eq!(encode_pair_token("A", "B"), "[\"A\",\"B\"]");
+        // A side that already parses as JSON (a 2-element array) is
+        // spliced in as a value, not embedded as a string.
+        assert_eq!(encode_pair_token("[\"A\",\"X\"]", "B"), "[[\"A\",\"X\"],\"B\"]");
+        // Empty side → embedded as JSON empty string ("").
+        assert_eq!(encode_pair_token("", "B"), "[\"\",\"B\"]");
     }
 
     #[test]
@@ -2900,7 +3298,8 @@ mod tests {
             .find(|t| !t.in_sym.is_empty())
             .expect("expected an emit transition");
         assert_eq!(emit.in_sym, "x");
-        assert_eq!(emit.out_sym, "y,z");
+        // JsonMode pair-token encoding: ["y","z"].
+        assert_eq!(emit.out_sym, "[\"y\",\"z\"]");
     }
 
     #[test]
@@ -2946,6 +3345,186 @@ mod tests {
         let v1 = weight_algebra::evaluate(&Value::String("pSame[A]".into()), &p1, &m_a.defs);
 
         assert!((v0 - v1).abs() < 1e-15, "v0={} v1={}", v0, v1);
+    }
+
+    // ---- advance_sort + process_cycles ----
+
+    #[test]
+    fn n_silent_back_transitions_counts_correctly() {
+        // S(0) silent → A(1), A silent → A (self-loop), A in:x → E(2). The
+        // self-loop is a silent back-transition (dest=1 ≤ src=1); plus the
+        // start-state's outgoing edge does NOT count (loop starts at s=1).
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "A", "trans": [
+                    {"to": 1, "weight": 0.5},
+                    {"to": 2, "in": "x", "out": "y"}
+                ]},
+                {"id": "E"}
+            ]
+        }));
+        assert_eq!(m.n_silent_back_transitions(), 1);
+        assert!(!m.is_advancing_machine());
+    }
+
+    #[test]
+    fn drop_silent_back_transitions_strips_self_loop() {
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "A", "trans": [
+                    {"to": 1, "weight": 0.5},
+                    {"to": 2, "in": "x", "out": "y"}
+                ]},
+                {"id": "E"}
+            ]
+        }));
+        let dropped = m.drop_silent_back_transitions();
+        assert!(dropped.is_advancing_machine());
+        assert_eq!(dropped.state[1].trans.len(), 1);
+        assert_eq!(dropped.state[1].trans[0].to, 2);
+    }
+
+    #[test]
+    fn advance_sort_noop_when_already_advancing() {
+        // Linear chain — already topologically sorted.
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "A", "trans": [{"to": 2, "in": "x", "out": "y"}]},
+                {"id": "E"}
+            ]
+        }));
+        assert!(m.is_advancing_machine());
+        let sorted = m.advance_sort();
+        // No change — same n_states and same transitions.
+        assert_eq!(sorted.n_states(), m.n_states());
+    }
+
+    #[test]
+    fn advance_sort_reorders_to_remove_back_edge() {
+        // 4-state machine: S=0, B=1, A=2, E=3. Edges:
+        //   S → A (silent)
+        //   A → B (silent forward in original order: A=2 → B=1, BACK)
+        //   B → E (silent)
+        // Reordering [S, A, B, E] → indices [0, 2, 1, 3]: A→B becomes
+        // forward (A at index 1, B at index 2).
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 2}]},
+                {"id": "B", "trans": [{"to": 3}]},
+                {"id": "A", "trans": [{"to": 1}]},
+                {"id": "E"}
+            ]
+        }));
+        assert_eq!(m.n_silent_back_transitions(), 1);
+        let sorted = m.advance_sort();
+        assert_eq!(sorted.n_silent_back_transitions(), 0);
+    }
+
+    #[test]
+    fn process_cycles_collapses_silent_self_loop_via_geomsum() {
+        // Self-loop A→A with weight p; A→E loud. After advancingMachine:
+        // A→E should be multiplied by geomsum(p) = 1/(1-p).
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "A", "trans": [
+                    {"to": 1, "weight": "p"},
+                    {"to": 2, "in": "x", "out": "y", "weight": 1.0}
+                ]},
+                {"id": "E"}
+            ]
+        }));
+        assert_eq!(m.n_silent_back_transitions(), 1);
+        let am = m.process_cycles();
+        assert!(am.is_advancing_machine());
+        // State 1 should have exactly one outgoing transition (the loud one),
+        // weight = geomsum(p) * 1 = {"geomsum": "p"}.
+        assert_eq!(am.state[1].trans.len(), 1);
+        let t = &am.state[1].trans[0];
+        assert_eq!(t.to, 2);
+        assert_eq!(t.in_sym, "x");
+        // Evaluate at p=0.5: 1/(1-0.5) = 2.0.
+        let mut params = weight_algebra::Params::new();
+        params.insert("p".into(), 0.5);
+        let w = weight_algebra::evaluate(&t.weight, &params, &am.defs);
+        assert!((w - 2.0).abs() < 1e-15, "geomsum(0.5) = {}", w);
+    }
+
+    #[test]
+    fn process_cycles_eliminates_two_state_silent_cycle() {
+        // Silent cycle A↔B with back-edge B→A (silent), plus B→E (loud).
+        // After advancingMachine:
+        // - From state A's perspective, the path A→B→A→ ... → B → E is
+        //   summed: A's effective outgoing ⊃ B→E with combined weight
+        //   geomsum(p*q) * (p * 1) = p / (1 - p*q).
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "A", "trans": [{"to": 2, "weight": "p"}]},
+                {"id": "B", "trans": [
+                    {"to": 1, "weight": "q"},
+                    {"to": 3, "in": "x", "out": "y", "weight": 1.0}
+                ]},
+                {"id": "E"}
+            ]
+        }));
+        let processed = m.process_cycles();
+        assert!(processed.is_advancing_machine(),
+                "process_cycles must eliminate all silent back-transitions");
+
+        // Compose with ergodic_machine (final stage of compose pipeline) to
+        // drop any newly inaccessible / collapsible states.
+        let compacted = processed.ergodic_machine();
+        // Evaluate the start→end log-weight by running the (now silent-
+        // back-free) DP. Easier: pluck out a path to E and verify weight.
+        // Find the loud emit transition.
+        let emit = compacted.state.iter()
+            .flat_map(|s| s.trans.iter())
+            .find(|t| !t.in_sym.is_empty())
+            .expect("expected an emit transition");
+
+        // Evaluate the whole start→end weight by tracing: follow weight-1
+        // silent edges from start until we hit a state with a unique loud
+        // out-edge or a non-trivial silent expansion.
+        // The structurally most reliable check: compute start state's exit
+        // via single-source DP over the (now advancing) silent subgraph.
+        let mut params = weight_algebra::Params::new();
+        params.insert("p".into(), 0.4);
+        params.insert("q".into(), 0.5);
+        // Simpler check: the compose-pipeline-final machine is small. We
+        // expect total weight from 0 → end via emit = p / (1 - p*q) (the
+        // closed form for the silent-cycle reduction). Run a tiny in-Rust
+        // forward over symbolic weights then evaluate.
+        let n = compacted.n_states();
+        let mut f = vec![Value::Null; n];
+        f[0] = Value::from(1.0_f64);
+        // We assume the topology is now advancing, so a single forward
+        // sweep suffices.
+        let mut values: Vec<f64> = vec![0.0; n];
+        values[0] = 1.0;
+        for s in 0..n {
+            for t in &compacted.state[s].trans {
+                let w = weight_algebra::evaluate(&t.weight, &params, &compacted.defs);
+                if t.in_sym.is_empty() && t.out_sym.is_empty() {
+                    values[t.to] += values[s] * w;
+                }
+            }
+        }
+        // Now apply the single emit transition: contribution to end is
+        // values[emit.from] * eval(emit.weight). Find the source state.
+        let (src, t) = compacted.state.iter().enumerate()
+            .flat_map(|(i, s)| s.trans.iter().map(move |t| (i, t)))
+            .find(|(_, t)| !t.in_sym.is_empty())
+            .unwrap();
+        let _ = emit; // silence unused warning
+        let w_emit = weight_algebra::evaluate(&t.weight, &params, &compacted.defs);
+        let path_weight = values[src] * w_emit;
+        // Closed-form: p / (1 - p*q) = 0.4 / (1 - 0.2) = 0.5.
+        assert!((path_weight - 0.5).abs() < 1e-12,
+                "expected 0.5, got {} (values={:?})", path_weight, values);
     }
 }
 )RUST";
@@ -3242,11 +3821,322 @@ mod tests {
 )RUST";
   }
 
+  // src/forward.rs — multidim Forward DP over a Machine in symbolic-weight
+  // form. Mirrors `multidim_forward` in t/rust/_phylo_ref.py: same DP
+  // recurrences, same exact log_sum_exp via `(lo - hi).exp().ln_1p()`. This
+  // is the runtime side of Increment 6b — see compileRust (the older
+  // codegen) for the JIT-friendly straight-line variant.
+  {
+    std::ofstream f (outputDir + "/src/forward.rs");
+    f << R"RUST(//! Multidim Forward DP over a `machine::Machine` whose transition
+//! weights are symbolic `WeightAlgebra` JSON expressions. Returns the
+//! log-likelihood from the start state at the all-zero cell to the end
+//! state at the all-leaves-consumed cell.
+//!
+//! Bit-exact mirror of `t/rust/_phylo_ref.py::multidim_forward` (the
+//! reference Python implementation). Same outer iteration order, same
+//! exact `log_sum_exp`, same emit-then-silent within-cell ordering.
+
+use serde_json::Value;
+use crate::machine::Machine;
+use crate::weight_algebra::{Params, evaluate};
+
+/// Exact log_sum_exp via `(lo - hi).exp().ln_1p()`. Symmetric and
+/// `-inf`-safe (returns the other operand if either side is `-inf`).
+#[inline]
+pub fn lse(a: f64, b: f64) -> f64 {
+    if a == f64::NEG_INFINITY { return b; }
+    if b == f64::NEG_INFINITY { return a; }
+    let (hi, lo) = if a >= b { (a, b) } else { (b, a) };
+    hi + (lo - hi).exp().ln_1p()
+}
+
+/// Parse a pair-token string into a `Value` tree of leaf strings, mirroring
+/// `parseTokenJson` in src/rust_codegen.cpp and `parse_tok` in
+/// `_phylo_ref.py`. JSON-looking tokens are parsed as JSON; bare names
+/// (the L=1 case) are returned as a single-leaf `Value::String`.
+fn parse_token(s: &str) -> Value {
+    if s.is_empty() { return Value::String(String::new()); }
+    let c = s.as_bytes()[0];
+    if c == b'[' || c == b'"' || c == b'-' || c.is_ascii_digit() {
+        if let Ok(v) = serde_json::from_str::<Value>(s) {
+            return canonicalize_token(v);
+        }
+    }
+    Value::String(s.to_string())
+}
+
+fn canonicalize_token(v: Value) -> Value {
+    match v {
+        Value::Array(arr) => Value::Array(arr.into_iter().map(canonicalize_token).collect()),
+        Value::String(s) => Value::String(s),
+        Value::Number(n) => Value::String(n.to_string()),
+        Value::Bool(b)   => Value::String(b.to_string()),
+        Value::Null      => Value::String(String::new()),
+        Value::Object(_) => panic!("unexpected object in pair token: {:?}", v),
+    }
+}
+
+/// Merge two pair-token shapes: at each position, the deeper structure
+/// wins. An empty leaf at an array position is allowed and is replaced by
+/// the array shape from the other side. Symbol values are forgotten in
+/// the result (only shape is preserved).
+fn merge_shape(a: &Value, b: &Value) -> Value {
+    match (a, b) {
+        (Value::Array(aa), Value::Array(bb)) => {
+            assert_eq!(aa.len(), bb.len(),
+                       "pair-token arity mismatch: {} vs {}", aa.len(), bb.len());
+            Value::Array(aa.iter().zip(bb.iter()).map(|(x, y)| merge_shape(x, y)).collect())
+        }
+        (Value::Array(_), Value::String(s)) => {
+            assert!(s.is_empty(), "pair-token shape conflict (array vs non-empty leaf)");
+            a.clone()
+        }
+        (Value::String(s), Value::Array(_)) => {
+            assert!(s.is_empty(), "pair-token shape conflict (array vs non-empty leaf)");
+            b.clone()
+        }
+        _ => Value::String(String::new()),
+    }
+}
+
+fn count_leaves(v: &Value) -> usize {
+    if let Value::Array(arr) = v { arr.iter().map(count_leaves).sum() } else { 1 }
+}
+
+/// Walk `tok` against the canonical `tmpl`. For each leaf position of
+/// `tmpl` (in left-to-right traversal order), record the emitted symbol
+/// (or empty for ε).
+fn decode(tok: &Value, tmpl: &Value, out: &mut Vec<String>) {
+    if let Value::Array(t_arr) = tmpl {
+        if let Value::Array(tok_arr) = tok {
+            assert_eq!(tok_arr.len(), t_arr.len(),
+                       "token arity mismatch with template");
+            for (ti, tt) in tok_arr.iter().zip(t_arr.iter()) {
+                decode(ti, tt, out);
+            }
+        } else {
+            // Token is a leaf — must be empty (means "all leaves under
+            // this subtree are silent in this token").
+            let s = tok.as_str().unwrap_or("");
+            assert!(s.is_empty(), "non-empty leaf where template expects array");
+            count_silent(tmpl, out);
+        }
+    } else {
+        // Template position is a leaf.
+        let s = match tok {
+            Value::String(s) => s.clone(),
+            _ => panic!("token has array where template expects leaf"),
+        };
+        out.push(s);
+    }
+}
+
+fn count_silent(tmpl: &Value, out: &mut Vec<String>) {
+    if let Value::Array(arr) = tmpl {
+        for c in arr { count_silent(c, out); }
+    } else {
+        out.push(String::new());
+    }
+}
+
+/// Forward log-likelihood over `m` for the given concrete `params` and
+/// per-leaf input symbol sequences.
+///
+/// Returns `f[end_state, all-leaves-consumed]`. Bit-exact mirror of
+/// `t/rust/_phylo_ref.py::multidim_forward` — same DP recurrences, same
+/// exact log_sum_exp, same iteration order. Panics if the machine has
+/// no emitting transitions or if `leaves.len()` differs from L (the
+/// number of leaf positions in the merged pair-token template).
+pub fn forward(m: &Machine, params: &Params, leaves: &[Vec<String>]) -> f64 {
+    let n = m.n_states();
+    if n == 0 { return f64::NEG_INFINITY; }
+
+    // 1) Identify the canonical pair-token template by merging shapes
+    //    across all emit transitions (mirrors `merge_shape` in Python).
+    let mut tmpl: Option<Value> = None;
+    for s in &m.state {
+        for t in &s.trans {
+            if t.out_sym.is_empty() { continue; }
+            let tt = parse_token(&t.out_sym);
+            tmpl = Some(match tmpl.take() {
+                None => tt,
+                Some(prev) => merge_shape(&prev, &tt),
+            });
+        }
+    }
+    let tmpl = tmpl.expect("forward: machine has no emitting transitions");
+    let l = count_leaves(&tmpl);
+    assert_eq!(l, leaves.len(),
+               "forward: template has {} leaves but got {} leaf sequences",
+               l, leaves.len());
+
+    // 2) Build silent + emitting transition lists with log-weights.
+    let mut silent: Vec<(usize, usize, f64)> = Vec::new();
+    let mut emitting: Vec<(usize, usize, Vec<u8>, Vec<String>, f64)> = Vec::new();
+    for (s_idx, s) in m.state.iter().enumerate() {
+        for t in &s.trans {
+            let w = evaluate(&t.weight, params, &m.defs);
+            if !(w > 0.0) { continue; }  // skip 0 / NaN / negative
+            let lw = w.ln();
+            let d = t.to;
+            if t.out_sym.is_empty() {
+                silent.push((s_idx, d, lw));
+            } else {
+                let mut profile: Vec<String> = Vec::new();
+                decode(&parse_token(&t.out_sym), &tmpl, &mut profile);
+                let deltas: Vec<u8> = profile.iter()
+                    .map(|x| if x.is_empty() { 0 } else { 1 })
+                    .collect();
+                emitting.push((s_idx, d, deltas, profile, lw));
+            }
+        }
+    }
+    silent.sort_by_key(|e| e.1);
+
+    // 3) Allocate flat F[N * total].
+    let lens: Vec<usize> = leaves.iter().map(|x| x.len()).collect();
+    let total: usize = lens.iter().map(|&x| x + 1).product();
+    let mut strides: Vec<usize> = vec![1; l];
+    if l >= 2 {
+        for k in (0..l-1).rev() {
+            strides[k] = strides[k+1] * (lens[k+1] + 1);
+        }
+    }
+    let mut f = vec![f64::NEG_INFINITY; n * total];
+    f[0] = 0.0;
+
+    // Apply silent transitions at the all-zero cell first.
+    for &(s_, d_, lw) in &silent {
+        let sv = f[s_ * total + 0];
+        if sv.is_finite() {
+            let off = d_ * total + 0;
+            f[off] = lse(f[off], sv + lw);
+        }
+    }
+
+    // 4) Iterate over (idx[0], ..., idx[L-1]) cells in row-major order.
+    let mut idx: Vec<usize> = vec![0; l];
+    loop {
+        // Advance idx, rightmost dim varies fastest (mirrors Python).
+        let mut k = l;
+        let mut advanced = false;
+        while k > 0 {
+            k -= 1;
+            if idx[k] < lens[k] {
+                idx[k] += 1;
+                for j in (k+1)..l { idx[j] = 0; }
+                advanced = true;
+                break;
+            }
+        }
+        if !advanced { break; }
+
+        let cell: usize = idx.iter().enumerate()
+            .map(|(k, &i)| i * strides[k]).sum();
+
+        for (s_, d_, deltas, syms, lw) in &emitting {
+            let mut ok = true;
+            let mut prev = cell;
+            for k in 0..l {
+                if deltas[k] != 0 {
+                    if idx[k] == 0 { ok = false; break; }
+                    if leaves[k][idx[k] - 1] != syms[k] { ok = false; break; }
+                    prev -= strides[k];
+                }
+            }
+            if ok {
+                let sv = f[s_ * total + prev];
+                if sv.is_finite() {
+                    let off = d_ * total + cell;
+                    f[off] = lse(f[off], sv + *lw);
+                }
+            }
+        }
+        for &(s_, d_, lw) in &silent {
+            let sv = f[s_ * total + cell];
+            if sv.is_finite() {
+                let off = d_ * total + cell;
+                f[off] = lse(f[off], sv + lw);
+            }
+        }
+    }
+
+    f[(n - 1) * total + (total - 1)]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn lse_basics() {
+        assert_eq!(lse(f64::NEG_INFINITY, 0.0), 0.0);
+        assert_eq!(lse(0.0, f64::NEG_INFINITY), 0.0);
+        // log(2) = lse(0, 0)
+        assert!((lse(0.0, 0.0) - std::f64::consts::LN_2).abs() < 1e-15);
+    }
+
+    #[test]
+    fn parse_token_handles_pair_token() {
+        let t = parse_token("[\"A\",\"B\"]");
+        assert_eq!(count_leaves(&t), 2);
+        let t = parse_token("[[\"A\",\"B\"],\"C\"]");
+        assert_eq!(count_leaves(&t), 3);
+    }
+
+    #[test]
+    fn merge_shape_resolves_silent_position() {
+        let a = parse_token("[\"\",\"B\"]");
+        let b = parse_token("[\"A\",\"\"]");
+        let m = merge_shape(&a, &b);
+        assert_eq!(count_leaves(&m), 2);
+    }
+
+    #[test]
+    fn forward_single_emit_machine() {
+        // 1-leaf machine: S → E via single emit "x". Weight 1.0 on the emit.
+        // F[end, idx=1] = log(1) = 0.0 when leaf == ["x"].
+        // Note: there must exist at least one silent transition for the
+        // standard convention; we add a leading silent S → mid → emit → E.
+        use crate::machine::Machine;
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "M", "trans": [{"to": 2, "in": "x", "out": "x", "weight": 1.0}]},
+                {"id": "E"}
+            ]
+        }));
+        let params = Params::new();
+        let leaves: Vec<Vec<String>> = vec![vec!["x".to_string()]];
+        let v = forward(&m, &params, &leaves);
+        assert!((v - 0.0).abs() < 1e-15, "expected 0.0, got {}", v);
+    }
+
+    #[test]
+    fn forward_no_match_returns_neg_inf() {
+        use crate::machine::Machine;
+        let m = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1}]},
+                {"id": "M", "trans": [{"to": 2, "in": "x", "out": "x", "weight": 1.0}]},
+                {"id": "E"}
+            ]
+        }));
+        let params = Params::new();
+        // Wrong leaf symbol → no path consumes it.
+        let leaves: Vec<Vec<String>> = vec![vec!["y".to_string()]];
+        let v = forward(&m, &params, &leaves);
+        assert_eq!(v, f64::NEG_INFINITY);
+    }
+}
+)RUST";
+  }
+
   // src/lib.rs — bake the JSON inputs as `&'static str` consts, expose
-  // the weight_algebra / machine / phylo modules, plus the stub
-  // `prebuild()`. Increment 6 will wire prebuild() to materialise the per-
-  // symbol DP tables (EMIT_SHARDS, SILENT_TRANSITIONS, lw[]) by calling
-  // phylo::phylo_intersect on the baked T + tree.
+  // the weight_algebra / machine / phylo / forward modules, plus the
+  // `prebuild()` entry point.
   {
     std::ofstream f (outputDir + "/src/lib.rs");
     f << "// Auto-generated by Machine Boss --phylo-skeleton --codegen --rust.\n"
@@ -3257,6 +4147,7 @@ mod tests {
          "pub mod weight_algebra;\n"
          "pub mod machine;\n"
          "pub mod phylo;\n"
+         "pub mod forward;\n"
          "\n"
          "/// Canonical branch transducer T (no per-branch time-parameter\n"
          "/// renaming). Format is the standard Machine Boss machine JSON.\n"

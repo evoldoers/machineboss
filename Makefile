@@ -498,6 +498,16 @@ test-phylo-skeleton-expand:
 test-phylo-skeleton-bake:
 	@REPO_ROOT=$(CURDIR) python3 t/check_phylo_skeleton_bake.py
 
+# Deep-tree bake-and-expand validation: same pipeline as
+# test-phylo-skeleton-bake but on (((A,B)P,C)Q)D; and ((A,B)P,(C,D)Q)R;.
+# prebuild() takes minutes on these sizes (symbolic weight expressions
+# blow up under the unoptimised compose pipeline) so this target is
+# kept OUT of the default `make test` list. Run with:
+#   make test-phylo-skeleton-bake-deep
+.PHONY: test-phylo-skeleton-bake-deep
+test-phylo-skeleton-bake-deep:
+	@REPO_ROOT=$(CURDIR) python3 t/check_phylo_skeleton_bake_deep.py
+
 # -- MANUAL Rust codegen tests (NOT in default `make test`) -------------------
 # These exercise the Rust codegen on larger phylo machines (TKF92 + HKY85).
 # They take a minute or more wall time (cargo compile dominates), so they
