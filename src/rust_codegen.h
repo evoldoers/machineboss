@@ -30,6 +30,22 @@ namespace MachineBoss {
 void compileRust (const Machine& m, const std::string& outputDir,
                   bool emitViterbi = true);
 
+// Skeleton-bake mode: emit a minimal Rust crate at outputDir containing
+//   pub static T_JSON: &str = ...     // canonical branch transducer (un-renamed)
+//   pub static M_SKEL_JSON: &str = ...// skeleton phylo machine
+//   pub static TREE_NEWICK: &str = ...// Newick tree string
+//   pub static TIME_PARAM: &str = ... // name of T's per-branch time parameter
+// plus a stub `prebuild()` that panics. Subsequent increments will replace
+// the stub with a Rust port of the WFST algebra (compose / intersect /
+// waitingMachine / ergodicMachine / phylo recursion) that consumes the baked
+// inputs at startup to materialise the per-symbol M_full tables that the
+// existing Forward / Viterbi DP code expects, eliminating boss's role in
+// holding M_full in memory during codegen. See task #38.
+void compileRustSkeleton (const Machine& M_skel, const Machine& T,
+                          const std::string& tree_newick,
+                          const std::string& time_param,
+                          const std::string& outputDir);
+
 }  // namespace MachineBoss
 
 #endif  // RUST_CODEGEN_INCLUDED

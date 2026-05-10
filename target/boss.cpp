@@ -290,6 +290,13 @@ int main (int argc, char** argv) {
     // phylogenetic intersection: time-param name and optional branch-length output
     const string phyloTimeParam = vm.count("phylo-time-param") ? vm.at("phylo-time-param").as<string>() : string("t");
     const string phyloParamsOut = vm.count("phylo-params-out") ? vm.at("phylo-params-out").as<string>() : string();
+    // phylo-skeleton bake context: when --phylo-skeleton + --codegen --rust is used,
+    // we capture T (the canonical, unrenamed branch transducer) and the Newick string
+    // *before* phylo-fold replaces them, so the codegen path can emit a Rust crate
+    // with T + tree baked in alongside (or instead of) M_full's runtime tables.
+    Machine phyloSkeletonT;
+    string phyloSkeletonNewick;
+    bool phyloSkeletonCaptured = false;
     ParamAssign phyloBranchLengths;
     map<string, vguard<string> > phyloLeafClamps;
     bool havePhyloLeafClamps = false;
@@ -650,15 +657,29 @@ int main (int argc, char** argv) {
 	  Require (nwkIn, "Newick file not found");
 	  stringstream nwkBuf;
 	  nwkBuf << nwkIn.rdbuf();
-	  const PhyloTree tree = PhyloTree::parseNewick (nwkBuf.str());
-	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
+	  const string nwkStr = nwkBuf.str();
+	  const PhyloTree tree = PhyloTree::parseNewick (nwkStr);
+	  Machine T_canonical = popMachine();
+	  if (vm.count("phylo-skeleton") && vm.count("codegen") && vm.count("rust")) {
+	    phyloSkeletonT = T_canonical;
+	    phyloSkeletonNewick = nwkStr;
+	    phyloSkeletonCaptured = true;
+	  }
+	  m = phyloIntersect (T_canonical, tree, phyloTimeParam, &phyloBranchLengths,
 	                      Machine::SumSilentCycles,
 	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL,
 	                      !vm.count("phylo-no-felsenstein"),
 	                      vm.count("phylo-skeleton") > 0);
 	} else if (command == "--phylo-tree-string") {
-	  const PhyloTree tree = PhyloTree::parseNewick (getArg());
-	  m = phyloIntersect (popMachine(), tree, phyloTimeParam, &phyloBranchLengths,
+	  const string nwkStr = getArg();
+	  const PhyloTree tree = PhyloTree::parseNewick (nwkStr);
+	  Machine T_canonical = popMachine();
+	  if (vm.count("phylo-skeleton") && vm.count("codegen") && vm.count("rust")) {
+	    phyloSkeletonT = T_canonical;
+	    phyloSkeletonNewick = nwkStr;
+	    phyloSkeletonCaptured = true;
+	  }
+	  m = phyloIntersect (T_canonical, tree, phyloTimeParam, &phyloBranchLengths,
 	                      Machine::SumSilentCycles,
 	                      havePhyloLeafClamps ? &phyloLeafClamps : NULL,
 	                      !vm.count("phylo-no-felsenstein"),
@@ -813,7 +834,12 @@ int main (int argc, char** argv) {
       if (vm.count("wgsl")) {
 	WGSLCompiler::compile (machine, outputDir.c_str());
       } else if (vm.count("rust")) {
-	compileRust (machine, outputDir, !vm.count("no-viterbi"));
+	if (phyloSkeletonCaptured) {
+	  compileRustSkeleton (machine, phyloSkeletonT, phyloSkeletonNewick,
+	                       phyloTimeParam, outputDir);
+	} else {
+	  compileRust (machine, outputDir, !vm.count("no-viterbi"));
+	}
       } else if (vm.count("js")) {
 	JavaScriptCompiler compiler;
 	compileMachine (compiler);
