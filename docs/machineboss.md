@@ -131,12 +131,29 @@ Generate any TKF model + alphabet + substitution-model combination on the fly wi
 
 | Component | Allowed values |
 |---|---|
-| `YY` | `91`, `92` (TKF version; `92` adds a fragment-extension parameter `r`) |
+| `YY` | `91`, `92` (TKF version; `92` adds a fragment-extension parameter `r`), or `iid` (zero-indel-rate degeneration of TKF91 — see [§iid](#iid-zero-indel-rate)) |
 | `TTT` | `root` (geometric singlet over the alphabet) or `branch` (conditional WFST) |
 | `AAA` | `dna`, `rna`, `prot`, `binary`, `unary`, `custom` |
-| `MMM` | `jc` (Jukes-Cantor; uniform π), `f81` (Felsenstein 81; free π_X), `k80` (Kimura 1980; transition/transversion ratio `tsRatio`, DNA/RNA only), `hky85` (HKY 1985; free π_X + `tsRatio`, DNA/RNA only), `id` (no substitution; required for unary) |
+| `MMM` | `jc`, `f81`, `k80`, `hky85`, `id`, `telegraph`, `bsc`, `erasure` (see table below) |
+
+| Substitution model | Description |
+|---|---|
+| `jc` | Jukes-Cantor; uniform π. |
+| `f81` | Felsenstein 81; free per-symbol π_X. |
+| `k80` | Kimura 1980; transition/transversion ratio `tsRatio`, DNA/RNA only. |
+| `hky85` | HKY 1985; free π_X + `tsRatio`, DNA/RNA only. |
+| `id` | Identity (no substitution); required for unary alphabet root. |
+| `telegraph` | Binary 2-state CTMC with independent rates `rate01` and `rate10`. Stationary π_0 = `rate10/(rate01+rate10)`, π_1 = `rate01/(rate01+rate10)` (derived via defs from the rates, **not** free parameters). Binary alphabet only. |
+| `bsc` | Binary Symmetric Channel: symmetric Telegraph with single rate `flipRate` and uniform π = ½. Binary alphabet only. |
+| `erasure` | Binary Erasure Channel: 0-absorbing Telegraph with rate `eraseRate`. Only the (1→1) and (1→0) transitions are emitted. Binary alphabet only; not valid as a root preset (degenerate equilibrium π = (1, 0)). |
 
 For `AAA=custom`, supply the alphabet string as the next argument: `--tkf91-branch-custom-jc XYZW`.
+
+#### iid (zero-indel-rate)
+
+`--iid-branch-AAA-MMM` produces a memoryless 1:1 channel: a single emit state with self-loops for each `(input, output)` substitution pair, plus a silent exit edge. No insert or delete states — every input symbol maps to exactly one output symbol. Equivalent to taking the TKF91 branch transducer in the limit `insRate → 0`, `delRate → 0`. The substitution model `MMM` controls the per-position emission probabilities; the time parameter is named `time` (same as TKF91).
+
+`--iid-root-AAA-MMM` produces a 2-state geometric-length emitter — same WFST shape as `--tkf91-root-AAA-MMM`, but the length-extension probability is exposed as a free parameter `pExtend` instead of being derived from `insRate/delRate`. Useful when you want to fix the length distribution independently of any indel model. (If you *do* want the TKF91 root with `pExtend = insRate/delRate`, use `--tkf91-root-AAA-MMM` directly.)
 
 Examples:
 
@@ -145,6 +162,10 @@ boss --tkf91-root-dna-jc                  # equivalent to --preset tkf91-root-dn
 boss --tkf91-branch-prot-f81              # TKF91 indel + F81 substitution on amino acids
 boss --tkf92-branch-dna-hky85             # TKF92 + HKY85 on DNA
 boss --tkf91-branch-custom-jc 0123        # TKF91 + JC over a 4-character custom alphabet
+boss --iid-branch-binary-bsc              # zero-indel-rate BSC channel: 1:1 binary
+boss --iid-branch-binary-telegraph        # iid + asymmetric 2-state CTMC on {0, 1}
+boss --iid-branch-binary-erasure          # iid + 0-absorbing erasure channel
+boss --iid-root-binary-bsc                # geometric binary emitter (free pExtend) + BSC π
 ```
 | `bintern` | Binary (base-2) to ternary (base-3) converter. |
 | `terndna` | Ternary to non-repeating DNA. With `bintern`, implements the Goldman *et al.* DNA storage code. |

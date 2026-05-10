@@ -185,6 +185,32 @@ boss --preset tkf91-root-dna-jc --preset tkf91-branch-dna-jc \
      --input-chars ACGTACGT --output-chars ACGACGTT -L
 ```
 
+### Memoryless 1:1 channels (no indels) — iid
+
+When you don't want to model indels — only substitutions in a length-preserving channel — use the
+`iid` family. The branch transducer is a single emit state with a self-loop per `(input, output)`
+pair, plus a silent exit:
+
+```bash
+# Binary symmetric channel (BSC): symmetric flip rate on the binary alphabet.
+boss --iid-branch-binary-bsc --input-chars 0101 --output-chars 0001 -L
+
+# Asymmetric 2-state CTMC on {0, 1}.
+boss --iid-branch-binary-telegraph --input-chars 0101 --output-chars 0011 -L
+
+# Binary erasure channel: 0 is absorbing, only 1→0 transitions.
+boss --iid-branch-binary-erasure --input-chars 1101 --output-chars 1001 -L
+```
+
+The `iid` root preset (`--iid-root-AAA-MMM`) is structurally identical to `--tkf91-root-AAA-MMM`
+but exposes the length-extension probability as a free parameter `pExtend`, instead of deriving
+it from `insRate/delRate`:
+
+```bash
+# Binary geometric-length emitter with free pExtend, BSC π = ½.
+boss --iid-root-binary-bsc --output-chars 010 -L
+```
+
 ## Protein-to-DNA Alignment
 
 The `psw2dna` preset composes protein Smith-Waterman alignment with the genetic code,
