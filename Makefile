@@ -268,7 +268,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-tkf92-root-binary-bsc-match test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-tkf92-root-binary-bsc-match test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake test-rust-transducer
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -497,6 +497,12 @@ test-phylo-skeleton-expand:
 # tree constants parse correctly. Skipped when cargo is not in PATH.
 test-phylo-skeleton-bake:
 	@REPO_ROOT=$(CURDIR) python3 t/check_phylo_skeleton_bake.py
+
+# Regular in/out transducer Rust codegen: --rust-transducer flag.
+# Generates a crate exposing forward(p, &[input...], &[output...]) -> f64
+# and validates it against `boss -L` on the same machine + parameters.
+test-rust-transducer:
+	@REPO_ROOT=$(CURDIR) python3 t/check_rust_transducer.py
 
 # Deep-tree bake-and-expand validation: same pipeline as
 # test-phylo-skeleton-bake but on (((A,B)P,C)Q)D; and ((A,B)P,(C,D)Q)R;.

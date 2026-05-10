@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- New CLI flag `--rust-transducer` (mutually exclusive with `--rust`): emits a Rust crate for the standard 2D Forward / Viterbi DP on a regular Machine Boss transducer (string input, string output, no multi-leaf phylo intersection). Crate exposes `forward(p: &Params, input: &[&str], output: &[&str]) -> f64` and (unless `--no-viterbi`) `viterbi(...)`. Bakes the machine JSON; pre-evaluates per-call weights via the WeightAlgebra evaluator (no bytecode VM); silent / match / insert / delete transitions are bucketed at setup. Independent code path from `--rust` (compileRust) so the existing phylo-multidim Rust API is unchanged.
+
 ### Fixed
 - TKF92 root preset (`--tkf92-root-AAA-MMM`): the decide-state loop probability now uses ν = r + (1−r)·κ as specified by the TKF92 ν-modified geometric, instead of `r` directly. Previous output was P(L=k≥1) = κ·r^(k−1)·(1−r); now correctly P(L=k≥1) = κ·ν^(k−1)·(1−ν). The 4-state structure also reshaped to a 3-state `[start, insert, end]` shape so all silent transitions are strictly forward (standalone Forward DP no longer requires composition pre-processing).
 

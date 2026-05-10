@@ -223,7 +223,8 @@ int main (int argc, char** argv) {
       ("compileviterbi", "compile Viterbi instead of Forward")
       ("wgsl", "generate WGSL compute shader and ES module for WebGPU")
       ("rust", "generate Rust crate for multidimensional Forward DP on a phylo-composed generator (requires the machine to have been built with --pair-json so output tokens are JSON-decodable)")
-      ("no-viterbi", "with --rust, omit the Viterbi function from the generated crate")
+      ("rust-transducer", "generate Rust crate for the standard 2D Forward DP on a regular in/out transducer — string input, string output, no multi-leaf phylo intersection. Use this for any Machine Boss machine you want to call from Rust as `forward(p, &[input...], &[output...]) -> f64`. Mutually exclusive with --rust / --cpp32 / --cpp64 / --js / --wgsl.")
+      ("no-viterbi", "with --rust or --rust-transducer, omit the Viterbi function from the generated crate")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -832,7 +833,7 @@ int main (int argc, char** argv) {
       compiler.useMaxReduce = vm.count("compileviterbi");
       compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
-    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") + vm.count("rust") < 2, "Options --cpp32, --cpp64, --js, --wgsl, and --rust are mutually incompatible; choose a target language");
+    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") + vm.count("rust") + vm.count("rust-transducer") < 2, "Options --cpp32, --cpp64, --js, --wgsl, --rust, and --rust-transducer are mutually incompatible; choose a target language");
     if (vm.count("codegen")) {
       const string outputDir = vm.at("codegen").as<string>();
       if (vm.count("wgsl")) {
@@ -844,6 +845,8 @@ int main (int argc, char** argv) {
 	} else {
 	  compileRust (machine, outputDir, !vm.count("no-viterbi"));
 	}
+      } else if (vm.count("rust-transducer")) {
+	compileRustTransducer (machine, outputDir, !vm.count("no-viterbi"));
       } else if (vm.count("js")) {
 	JavaScriptCompiler compiler;
 	compileMachine (compiler);

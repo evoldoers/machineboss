@@ -673,8 +673,16 @@ Here are some examples of files that fit these schemas:
                                 DP on a phylo-composed generator (requires the
                                 machine to have been built with --pair-json so
                                 output tokens are JSON-decodable)
-      --no-viterbi              with --rust, omit the Viterbi function from the
-                                generated crate
+      --rust-transducer         generate Rust crate for the standard 2D Forward
+                                DP on a regular in/out transducer — string
+                                input, string output, no multi-leaf phylo
+                                intersection. Use this for any Machine Boss
+                                machine you want to call from Rust as
+                                `forward(p, &amp;[input...], &amp;[output...]) -&gt; f64`.
+                                Mutually exclusive with --rust / --cpp32 /
+                                --cpp64 / --js / --wgsl.
+      --no-viterbi              with --rust or --rust-transducer, omit the
+                                Viterbi function from the generated crate
       --inseq arg               input sequence type (String, Intvec, Profile)
       --outseq arg              output sequence type (String, Intvec, Profile)
 

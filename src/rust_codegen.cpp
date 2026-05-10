@@ -4257,4 +4257,312 @@ mod tests {
              << ", tree=" << tree_newick.size() << " bytes)" << std::endl);
 }
 
+// ---------------------------------------------------------------------------
+// compileRustTransducer: regular in/out transducer Forward / Viterbi.
+//
+// Bakes the machine JSON as a `&'static str`, parses it lazily on first
+// call (or on every call — there's no static memoisation in this minimal
+// version), pre-evaluates per-call weights once via the WeightAlgebra
+// evaluator, and runs a 2D DP over (input_index, output_index) with a
+// state dimension. This is the in/out counterpart to compileRust (the
+// phylo-multidim path) — separate function, separate CLI flag, no
+// touching of the existing API.
+
+void compileRustTransducer (const Machine& m, const std::string& outputDir, bool emitViterbi) {
+  if (m.inputAlphabet().empty() && m.outputAlphabet().empty())
+    throw std::runtime_error ("rust-codegen-transducer: machine has no input AND no output alphabet (no consuming or emitting transitions)");
+
+  mkdirP (outputDir);  // creates outputDir/ and outputDir/src/
+
+  // Defensively advance-sort so silent transitions go forward.
+  Machine sorted = m.advanceSort();
+
+  std::ostringstream mjson;
+  sorted.writeJson (mjson);
+
+  // ---------- Cargo.toml ----------
+  {
+    std::ofstream f (outputDir + "/Cargo.toml");
+    f << "[package]\n"
+         "name = \"transducer_dp\"\n"
+         "version = \"0.1.0\"\n"
+         "edition = \"2021\"\n"
+         "\n"
+         "[lib]\n"
+         "name = \"transducer_dp\"\n"
+         "path = \"src/lib.rs\"\n"
+         "\n"
+         "[dependencies]\n"
+         "serde_json = \"1\"\n"
+         "\n"
+         "[profile.release]\n"
+         "opt-level = 3\n"
+         "lto = true\n";
+  }
+
+  // ---------- src/weight_algebra.rs ----------
+  // Reuse the same WeightExpr evaluator the skeleton-bake mode generates.
+  // Inlined here to keep this crate fully self-contained (no path deps).
+  {
+    std::ofstream f (outputDir + "/src/weight_algebra.rs");
+    f << R"RUST(//! Weight algebra evaluator (subset). Mirrors `src/weight.cpp`'s
+//! `WeightAlgebra::fromJson` evaluator: parses the JSON weight-expression
+//! form used in machine.json and evaluates it against a Params map.
+use std::collections::HashMap;
+use serde_json::Value;
+
+pub type Params = HashMap<String, f64>;
+pub type Defs   = HashMap<String, Value>;
+
+pub fn parse_defs(machine_json: &Value) -> Defs {
+    let mut defs = Defs::new();
+    if let Some(d) = machine_json.get("defs").and_then(|d| d.as_object()) {
+        for (k, v) in d.iter() { defs.insert(k.clone(), v.clone()); }
+    }
+    defs
+}
+
+pub fn evaluate(expr: &Value, params: &Params, defs: &Defs) -> f64 {
+    let mut visiting: Vec<String> = Vec::new();
+    eval_inner(expr, params, defs, &mut visiting)
+}
+
+fn eval_inner(expr: &Value, params: &Params, defs: &Defs, visiting: &mut Vec<String>) -> f64 {
+    match expr {
+        Value::Number(n) => n.as_f64().expect("WeightExpr number not f64"),
+        Value::Bool(b)   => if *b { 1.0 } else { 0.0 },
+        Value::Null      => 0.0,
+        Value::String(s) => {
+            if visiting.iter().any(|v| v == s) {
+                panic!("WeightExpr cyclic def reference: {}", s);
+            }
+            if let Some(d) = defs.get(s) {
+                visiting.push(s.clone());
+                let v = eval_inner(d, params, defs, visiting);
+                visiting.pop();
+                v
+            } else if let Some(p) = params.get(s) {
+                *p
+            } else {
+                panic!("WeightExpr unknown name: {}", s);
+            }
+        }
+        Value::Object(map) => {
+            let (op, arg) = map.iter().next().expect("WeightExpr object empty");
+            match op.as_str() {
+                "log"     => eval_inner(arg, params, defs, visiting).ln(),
+                "exp"     => eval_inner(arg, params, defs, visiting).exp(),
+                "not"     => 1.0 - eval_inner(arg, params, defs, visiting),
+                "geomsum" => 1.0 / (1.0 - eval_inner(arg, params, defs, visiting)),
+                "*" | "/" | "+" | "-" | "pow" => {
+                    let arr = arg.as_array().expect("binary-op arg not array");
+                    assert_eq!(arr.len(), 2);
+                    let l = eval_inner(&arr[0], params, defs, visiting);
+                    let r = eval_inner(&arr[1], params, defs, visiting);
+                    match op.as_str() {
+                        "*" => l * r, "/" => l / r,
+                        "+" => l + r, "-" => l - r,
+                        "pow" => l.powf(r),
+                        _ => unreachable!(),
+                    }
+                }
+                _ => panic!("WeightExpr unknown opcode: {}", op),
+            }
+        }
+        _ => panic!("WeightExpr unsupported JSON type"),
+    }
+}
+)RUST";
+  }
+
+  // ---------- src/lib.rs ----------
+  // Bakes the machine JSON, exposes forward / viterbi taking &[&str] for
+  // both input and output. Per call: parse JSON → evaluate weights →
+  // bucket transitions into {silent, match, insert, delete} → run the 2D
+  // DP. JSON parse + evaluate dominate runtime for short sequences; the
+  // DP itself is straight f64 arithmetic.
+  {
+    std::ofstream f (outputDir + "/src/lib.rs");
+    f << "// Auto-generated by Machine Boss --codegen --rust-transducer.\n"
+         "// Do not edit.\n"
+         "\n"
+         "#![allow(dead_code)]\n"
+         "\n"
+         "pub mod weight_algebra;\n"
+         "\n"
+         "pub use weight_algebra::Params;\n"
+         "use serde_json::Value;\n"
+         "\n"
+         "/// The machine, baked as canonical Machine Boss JSON. Parsed on each\n"
+         "/// `forward` / `viterbi` call.\n"
+         "pub static MACHINE_JSON: &str = " << rustRawStringLit (mjson.str()) << ";\n"
+         "\n"
+         "#[inline]\n"
+         "fn lse(a: f64, b: f64) -> f64 {\n"
+         "    if a == f64::NEG_INFINITY { return b; }\n"
+         "    if b == f64::NEG_INFINITY { return a; }\n"
+         "    let (hi, lo) = if a >= b { (a, b) } else { (b, a) };\n"
+         "    hi + (lo - hi).exp().ln_1p()\n"
+         "}\n"
+         "\n"
+         "#[derive(Clone)]\n"
+         "struct Trans {\n"
+         "    src: usize, dst: usize,\n"
+         "    in_sym: String, out_sym: String,\n"
+         "    lw: f64,\n"
+         "}\n"
+         "\n"
+         "fn resolve_dst(to: &Value, name_to_idx: &std::collections::HashMap<String, usize>) -> usize {\n"
+         "    if let Some(n) = to.as_u64() { return n as usize; }\n"
+         "    if let Some(s) = to.as_str() {\n"
+         "        if let Some(i) = name_to_idx.get(s) { return *i; }\n"
+         "    }\n"
+         "    let key = to.to_string();\n"
+         "    *name_to_idx.get(&key).unwrap_or_else(|| panic!(\"cannot resolve `to` reference: {}\", key))\n"
+         "}\n"
+         "\n"
+         "/// Per-call setup: parse JSON, pre-evaluate every transition's weight\n"
+         "/// against `params`, bucket into silent / match / insert / delete.\n"
+         "/// Returns (n_states, silent_sorted_by_dst, match_trans, insert_trans, delete_trans).\n"
+         "fn prepare(params: &Params)\n"
+         "  -> (usize, Vec<Trans>, Vec<Trans>, Vec<Trans>, Vec<Trans>)\n"
+         "{\n"
+         "    let machine: Value = serde_json::from_str(MACHINE_JSON).expect(\"MACHINE_JSON parse\");\n"
+         "    let defs = weight_algebra::parse_defs(&machine);\n"
+         "    let states = machine[\"state\"].as_array().expect(\"machine.state not an array\");\n"
+         "    let n = states.len();\n"
+         "\n"
+         "    // Build name→index map for transitions whose `to` is a state name.\n"
+         "    let mut name_to_idx: std::collections::HashMap<String, usize> = std::collections::HashMap::new();\n"
+         "    for (i, s) in states.iter().enumerate() {\n"
+         "        if let Some(id) = s.get(\"id\") {\n"
+         "            name_to_idx.insert(id.to_string(), i);\n"
+         "            if let Some(s_str) = id.as_str() { name_to_idx.insert(s_str.to_string(), i); }\n"
+         "        }\n"
+         "        name_to_idx.insert(format!(\"{}\", i), i);\n"
+         "    }\n"
+         "\n"
+         "    let mut silent: Vec<Trans> = Vec::new();\n"
+         "    let mut match_t: Vec<Trans> = Vec::new();\n"
+         "    let mut insert_t: Vec<Trans> = Vec::new();\n"
+         "    let mut delete_t: Vec<Trans> = Vec::new();\n"
+         "    for (s_idx, s) in states.iter().enumerate() {\n"
+         "        let trans_arr = s.get(\"trans\").and_then(|x| x.as_array());\n"
+         "        let empty: Vec<Value> = Vec::new();\n"
+         "        let arr = trans_arr.unwrap_or(&empty);\n"
+         "        for t in arr.iter() {\n"
+         "            let dst = resolve_dst(t.get(\"to\").expect(\"trans missing `to`\"), &name_to_idx);\n"
+         "            let in_sym  = t.get(\"in\").and_then(|x| x.as_str()).unwrap_or(\"\").to_string();\n"
+         "            let out_sym = t.get(\"out\").and_then(|x| x.as_str()).unwrap_or(\"\").to_string();\n"
+         "            let weight  = t.get(\"weight\").cloned().unwrap_or(Value::from(1.0_f64));\n"
+         "            let w = weight_algebra::evaluate(&weight, params, &defs);\n"
+         "            if !(w > 0.0) { continue; }   // skip 0 / NaN / negative\n"
+         "            let lw = w.ln();\n"
+         "            let tr = Trans { src: s_idx, dst, in_sym: in_sym.clone(), out_sym: out_sym.clone(), lw };\n"
+         "            match (in_sym.is_empty(), out_sym.is_empty()) {\n"
+         "                (true,  true ) => silent.push(tr),\n"
+         "                (false, false) => match_t.push(tr),\n"
+         "                (true,  false) => insert_t.push(tr),\n"
+         "                (false, true ) => delete_t.push(tr),\n"
+         "            }\n"
+         "        }\n"
+         "    }\n"
+         "    silent.sort_by_key(|t| t.dst);\n"
+         "    (n, silent, match_t, insert_t, delete_t)\n"
+         "}\n"
+         "\n"
+         "// 2D DP shared by forward / viterbi. `combine` is `lse` for forward,\n"
+         "// `f64::max` for viterbi. Returns f[end_state, m_in, m_out].\n"
+         "fn run_dp<F>(input: &[&str], output: &[&str], params: &Params, combine: F) -> f64\n"
+         "where F: Fn(f64, f64) -> f64\n"
+         "{\n"
+         "    let (n, silent, match_t, insert_t, delete_t) = prepare(params);\n"
+         "    if n == 0 { return f64::NEG_INFINITY; }\n"
+         "    let m_in = input.len();\n"
+         "    let m_out = output.len();\n"
+         "    let row = m_out + 1;\n"
+         "    let plane = (m_in + 1) * row;\n"
+         "    let cell = |i: usize, j: usize, s: usize| s * plane + i * row + j;\n"
+         "    let mut f = vec![f64::NEG_INFINITY; n * plane];\n"
+         "    f[cell(0, 0, 0)] = 0.0;\n"
+         "    // Apply silent transitions at the all-zero cell.\n"
+         "    for t in &silent {\n"
+         "        let v = f[cell(0, 0, t.src)];\n"
+         "        if v.is_finite() {\n"
+         "            let off = cell(0, 0, t.dst);\n"
+         "            f[off] = combine(f[off], v + t.lw);\n"
+         "        }\n"
+         "    }\n"
+         "    for i in 0..=m_in {\n"
+         "        for j in 0..=m_out {\n"
+         "            if i == 0 && j == 0 { continue; }\n"
+         "            // Match transitions: consume input[i-1] AND emit output[j-1].\n"
+         "            if i > 0 && j > 0 {\n"
+         "                for t in &match_t {\n"
+         "                    if input[i-1] == t.in_sym && output[j-1] == t.out_sym {\n"
+         "                        let v = f[cell(i-1, j-1, t.src)];\n"
+         "                        if v.is_finite() {\n"
+         "                            let off = cell(i, j, t.dst);\n"
+         "                            f[off] = combine(f[off], v + t.lw);\n"
+         "                        }\n"
+         "                    }\n"
+         "                }\n"
+         "            }\n"
+         "            // Insert: emit output[j-1] without consuming input.\n"
+         "            if j > 0 {\n"
+         "                for t in &insert_t {\n"
+         "                    if output[j-1] == t.out_sym {\n"
+         "                        let v = f[cell(i, j-1, t.src)];\n"
+         "                        if v.is_finite() {\n"
+         "                            let off = cell(i, j, t.dst);\n"
+         "                            f[off] = combine(f[off], v + t.lw);\n"
+         "                        }\n"
+         "                    }\n"
+         "                }\n"
+         "            }\n"
+         "            // Delete: consume input[i-1] without emitting output.\n"
+         "            if i > 0 {\n"
+         "                for t in &delete_t {\n"
+         "                    if input[i-1] == t.in_sym {\n"
+         "                        let v = f[cell(i-1, j, t.src)];\n"
+         "                        if v.is_finite() {\n"
+         "                            let off = cell(i, j, t.dst);\n"
+         "                            f[off] = combine(f[off], v + t.lw);\n"
+         "                        }\n"
+         "                    }\n"
+         "                }\n"
+         "            }\n"
+         "            // Silent transitions at (i, j).\n"
+         "            for t in &silent {\n"
+         "                let v = f[cell(i, j, t.src)];\n"
+         "                if v.is_finite() {\n"
+         "                    let off = cell(i, j, t.dst);\n"
+         "                    f[off] = combine(f[off], v + t.lw);\n"
+         "                }\n"
+         "            }\n"
+         "        }\n"
+         "    }\n"
+         "    f[cell(m_in, m_out, n - 1)]\n"
+         "}\n"
+         "\n"
+         "/// Forward log-likelihood for the given input / output strings under\n"
+         "/// `params`. Returns `f64::NEG_INFINITY` for impossible alignments.\n"
+         "pub fn forward(params: &Params, input: &[&str], output: &[&str]) -> f64 {\n"
+         "    run_dp(input, output, params, lse)\n"
+         "}\n";
+    if (emitViterbi)
+      f << "\n"
+           "/// Viterbi log-score for the given input / output strings under `params`.\n"
+           "pub fn viterbi(params: &Params, input: &[&str], output: &[&str]) -> f64 {\n"
+           "    run_dp(input, output, params, f64::max)\n"
+           "}\n";
+  }
+
+  LogThisAt (2, "Wrote regular-transducer Rust crate to " << outputDir
+             << " (states=" << sorted.nStates()
+             << ", input |Σ|=" << m.inputAlphabet().size()
+             << ", output |Σ|=" << m.outputAlphabet().size()
+             << ")" << std::endl);
+}
+
 }  // namespace MachineBoss

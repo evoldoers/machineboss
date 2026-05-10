@@ -624,6 +624,75 @@ The output machine is bit-identical to C++ M_full (state count,
 state IDs in order, transition counts, and forward log-likelihood
 to 1e-12 floating-point noise).
 
+## Regular in/out transducer mode (`--rust-transducer`)
+
+For machines with both input and output alphabets (a "regular" WFST —
+no phylo intersection, no multi-leaf pair tokens), use `--codegen DIR
+--rust-transducer`. The emitted crate exposes the standard 2D Forward
+DP for a string-in / string-out transducer:
+
+```rust
+pub fn forward(p: &Params, input: &[&str], output: &[&str]) -> f64;
+pub fn viterbi(p: &Params, input: &[&str], output: &[&str]) -> f64;   // unless --no-viterbi
+
+pub use weight_algebra::Params;   // alias for HashMap<String, f64>
+```
+
+Each element of `input` / `output` is a symbol-string reference; the
+DP iterates over `(input_index, output_index)` cells with a state
+dimension and a 4-way transition bucketing (silent, match, insert,
+delete) into which each machine transition falls based on whether it
+consumes input and/or emits output.
+
+This is a separate code path from `--rust` (`compileRust`, the phylo
+multidim mode) — the existing phylo Rust API is unchanged. `--rust`
+and `--rust-transducer` are mutually exclusive.
+
+```bash
+# Generate
+bin/boss --tkf91-branch-dna-jc --codegen path/to/dp --rust-transducer
+cd path/to/dp
+cargo build --release
+
+# Use it (examples/run.rs):
+cat <<'EOF' > examples/run.rs
+use transducer_dp::{forward, viterbi, Params};
+fn main() {
+    let mut p = Params::new();
+    p.insert("time".into(),    0.1);
+    p.insert("insRate".into(), 0.01);
+    p.insert("delRate".into(), 0.02);
+    let input  = ["A", "C", "G", "T"];
+    let output = ["A", "C", "G", "A"];
+    println!("forward = {}", forward(&p, &input, &output));
+    println!("viterbi = {}", viterbi(&p, &input, &output));
+}
+EOF
+cargo run --release --example run
+```
+
+**Implementation note:** the current emitter is a *minimum-viable*
+version that bakes the machine JSON, parses it on each call, and
+evaluates weights via the `WeightAlgebra` evaluator. The DP itself is
+straight `f64` arithmetic and is not the bottleneck for short
+sequences; for hot inner-loop production use, a bytecode-VM variant
+(matching the one `compileRust` uses) is a natural follow-up.
+
+**Use case:** combined with the default (string, comma-separated) pair
+token encoder — i.e. *not* `--pair-json` — a phylo composition's MSA
+columns become single string tokens. You can then condition on an
+observed MSA by passing the column-string sequence as `output` to
+`forward`, getting a 1D DP over MSA columns rather than the
+multidimensional DP that `--rust` emits.
+
+### Verification
+
+  - `make test-rust-transducer` — generates a crate from
+    `--tkf91-branch-dna-jc`, builds it with `cargo`, runs `forward`
+    and compares to `boss -L` on the same machine and parameters
+    (within 1e-3 — boss's lookup-table lse approximation drops
+    sub-leading contributions, while the Rust crate uses exact lse).
+
 ## Notes / caveats
 
   - **`--pair-json` is required** at codegen time. The codegen recovers the
