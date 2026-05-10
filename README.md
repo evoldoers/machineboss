@@ -460,13 +460,22 @@ Here are some examples of files that fit these schemas:
   -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
                                 multiple alignment
       --tkfYY-TTT-AAA-MMM       build a TKF-family transducer from scratch. YY
-                                in {91,92}; TTT in {root,branch}; AAA in
+                                in {91,92,iid} (iid is the zero-indel-rate limit
+                                of tkf91; iid branches consume one input per
+                                output, with no insert/delete states); TTT in
+                                {root,branch}; AAA in
                                 {dna,rna,prot,binary,unary,custom} (custom takes
                                 the alphabet string as the next argument); MMM
-                                in {jc,f81,k80,hky85,id} (k80/hky85 require a
-                                nucleotide alphabet). Examples:
+                                in {jc,f81,k80,hky85,id,telegraph,bsc,erasure}
+                                (k80/hky85 require a nucleotide alphabet;
+                                telegraph/bsc/erasure require the binary
+                                alphabet — telegraph is a generic 2-state
+                                CTMC, bsc its symmetric version, erasure its
+                                0-absorbing version). Examples:
                                 --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85,
-                                --tkf91-branch-custom-jc XYZW
+                                --iid-branch-binary-bsc,
+                                --iid-branch-binary-telegraph,
+                                --iid-branch-custom-jc XYZW
   -z [ --zero-or-one ]          union with null &#x27;?&#x27;
   -k [ --kleene-star ]          Kleene star &#x27;*&#x27;
   -K [ --kleene-plus ]          Kleene plus &#x27;+&#x27;

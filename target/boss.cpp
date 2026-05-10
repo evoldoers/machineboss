@@ -86,7 +86,7 @@ int main (int argc, char** argv) {
       ("hmmer-plan7", po::value<string>(), "create Plan7 generator from HMMER3 model file (single-hit with N/C flanks)")
       ("hmmer-multihit", po::value<string>(), "create Plan7 generator from HMMER3 model file (multi-hit with J loop)")
       ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
-      ("tkfYY-TTT-AAA-MMM", "build a TKF-family transducer from scratch. YY in {91,92}; TTT in {root,branch}; AAA in {dna,rna,prot,binary,unary,custom} (custom takes the alphabet string as the next argument); MMM in {jc,f81,k80,hky85,id} (k80/hky85 require a nucleotide alphabet). Examples: --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85, --tkf91-branch-custom-jc XYZW")
+      ("tkfYY-TTT-AAA-MMM", "build a TKF-family transducer from scratch. YY in {91,92,iid} (iid is the zero-indel-rate limit of tkf91; iid branches consume one input per output, with no insert/delete states); TTT in {root,branch}; AAA in {dna,rna,prot,binary,unary,custom} (custom takes the alphabet string as the next argument); MMM in {jc,f81,k80,hky85,id,telegraph,bsc,erasure} (k80/hky85 require a nucleotide alphabet; telegraph/bsc/erasure require the binary alphabet — telegraph is a generic 2-state CTMC, bsc its symmetric version, erasure its 0-absorbing version). Examples: --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85, --iid-branch-binary-bsc, --iid-branch-binary-telegraph, --iid-branch-custom-jc XYZW")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -259,7 +259,7 @@ int main (int argc, char** argv) {
 
     const regex presetAlphRegex ("^--(generate|recognize|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
     // Pattern for parameterised TKF presets: --tkfYY-TTT-AAA-MMM[-<alphabet>] for AAA=custom.
-    const regex tkfPresetRegex ("^--tkf(91|92)-(root|branch)-(dna|rna|prot|binary|unary|custom)-(jc|f81|k80|hky85|id)$");
+    const regex tkfPresetRegex ("^--(tkf91|tkf92|iid)-(root|branch)-(dna|rna|prot|binary|unary|custom)-(jc|f81|k80|hky85|id|telegraph|bsc|erasure)$");
     map<string,string> presetAlph;
     const string dnaAlphabet = presetAlph[string("dna")] = "ACGT";
     const string rnaAlphabet = presetAlph[string("rna")] = "ACGU";
@@ -422,7 +422,11 @@ int main (int argc, char** argv) {
 	  m = MachinePresets::makePreset (getArg().c_str());
 	else if (isTkfPresetArg) {
 	  TkfPreset::Spec spec;
-	  spec.version = (tkfPresetMatch.str(1) == "91") ? TkfPreset::Version::TKF91 : TkfPreset::Version::TKF92;
+	  const string vstr = tkfPresetMatch.str(1);
+	  if      (vstr == "tkf91") spec.version = TkfPreset::Version::TKF91;
+	  else if (vstr == "tkf92") spec.version = TkfPreset::Version::TKF92;
+	  else if (vstr == "iid")   spec.version = TkfPreset::Version::IID;
+	  else throw runtime_error ("unknown TKF version in preset flag: " + vstr);
 	  spec.kind    = (tkfPresetMatch.str(2) == "root") ? TkfPreset::Kind::Root : TkfPreset::Kind::Branch;
 	  if (!TkfPreset::parseAlphabetKind (tkfPresetMatch.str(3), spec.alphabetKind))
 	    throw runtime_error ("unknown alphabet kind in TKF preset flag");

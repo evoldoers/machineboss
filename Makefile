@@ -268,7 +268,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -533,6 +533,19 @@ test-rust-codegen-tkf92-quartet:
 # Confirm CLI generators match the hardcoded presets via Forward log-likelihood equivalence.
 test-tkf91-root-dna-jc-match:
 	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-root-dna-jc -P t/io/tkf-rate-params.json --output-chars ACGT -L t/expect/tkf91-root-dna-jc-loglike.json
+
+# Binary-alphabet substitution presets (telegraph / bsc / erasure) and the
+# zero-indel-rate iid branch + root variants. See t/io/iid-*.json for the
+# concrete parameter sets and t/expect/iid-*.json for the round-tripped
+# log-likelihood fixtures.
+test-iid-branch-binary-bsc:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --iid-branch-binary-bsc -P t/io/iid-bsc-params.json --input-chars 01 --output-chars 11 -L t/expect/iid-branch-binary-bsc-loglike.json
+test-iid-branch-binary-telegraph:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --iid-branch-binary-telegraph -P t/io/iid-telegraph-params.json --input-chars 01 --output-chars 01 -L t/expect/iid-branch-binary-telegraph-loglike.json
+test-iid-branch-binary-erasure:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --iid-branch-binary-erasure -P t/io/iid-erasure-params.json --input-chars 01 --output-chars 00 -L t/expect/iid-branch-binary-erasure-loglike.json
+test-iid-root-binary-bsc:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --iid-root-binary-bsc -P t/io/iid-root-bsc-params.json --output-chars 01 -L t/expect/iid-root-binary-bsc-loglike.json
 
 test-tkf91-branch-dna-jc-match:
 	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-branch-dna-jc -P t/io/tkf91-branch-params.json --input-chars ACGT --output-chars ACGA -L t/expect/tkf91-branch-dna-jc-loglike.json

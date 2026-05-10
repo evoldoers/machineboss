@@ -8,10 +8,17 @@ namespace MachineBoss {
 
 namespace TkfPreset {
 
-enum class Version { TKF91, TKF92 };
+// IID is a zero-indel-rate degenerate sibling of TKF91/TKF92: the branch
+// transducer has no insert/delete states, only matches; the root is a
+// geometric-length emitter with a free `pExtend` probability.
+enum class Version { TKF91, TKF92, IID };
 enum class Kind { Root, Branch };
 enum class AlphabetKind { DNA, RNA, Protein, Binary, Unary, Custom };
-enum class Model { JC, F81, K80, HKY85, ID };
+// Telegraph, BSC, and Erasure are binary-only substitution kernels:
+//   Telegraph: 2-state CTMC with independent rates rate01, rate10.
+//   BSC:       symmetric Telegraph (rate01 == rate10 == flipRate).
+//   Erasure:   0-absorbing Telegraph (rate01 = 0; only 1→0 with eraseRate).
+enum class Model { JC, F81, K80, HKY85, ID, Telegraph, BSC, Erasure };
 
 struct Spec {
   Version version = Version::TKF91;

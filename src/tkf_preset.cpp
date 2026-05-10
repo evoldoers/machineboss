@@ -45,12 +45,19 @@ bool parseAlphabetKind (const string& s, AlphabetKind& out) {
 }
 
 bool parseModel (const string& s, Model& out) {
-  if (s == "jc")    { out = Model::JC;    return true; }
-  if (s == "f81")   { out = Model::F81;   return true; }
-  if (s == "k80")   { out = Model::K80;   return true; }
-  if (s == "hky85") { out = Model::HKY85; return true; }
-  if (s == "id")    { out = Model::ID;    return true; }
+  if (s == "jc")        { out = Model::JC;        return true; }
+  if (s == "f81")       { out = Model::F81;       return true; }
+  if (s == "k80")       { out = Model::K80;       return true; }
+  if (s == "hky85")     { out = Model::HKY85;     return true; }
+  if (s == "id")        { out = Model::ID;        return true; }
+  if (s == "telegraph") { out = Model::Telegraph; return true; }
+  if (s == "bsc")       { out = Model::BSC;       return true; }
+  if (s == "erasure")   { out = Model::Erasure;   return true; }
   return false;
+}
+
+static bool isBinaryOnlyModel (Model m) {
+  return m == Model::Telegraph || m == Model::BSC || m == Model::Erasure;
 }
 
 // ---------- Validation ----------
@@ -59,17 +66,24 @@ static void validateSpec (const Spec& spec, const vguard<string>& alph) {
   if ((spec.model == Model::K80 || spec.model == Model::HKY85)
       && !isNucleotideAlphabet (spec.alphabetKind))
     throw runtime_error ("substitution model k80/hky85 requires DNA or RNA alphabet");
+  if (isBinaryOnlyModel (spec.model)
+      && spec.alphabetKind != AlphabetKind::Binary)
+    throw runtime_error ("substitution model telegraph/bsc/erasure requires binary alphabet (use --...-binary-{telegraph,bsc,erasure})");
   if (spec.alphabetKind == AlphabetKind::Unary && spec.model != Model::ID)
     cerr << "Warning: unary alphabet with non-identity substitution model is degenerate; consider --tkfNN-XXX-unary-id" << endl;
   if (spec.model == Model::ID && alph.size() > 1 && spec.kind == Kind::Root)
     throw runtime_error ("identity substitution model on a root preset requires unary alphabet (no equilibrium frequencies are defined)");
+  if (spec.model == Model::Erasure && spec.kind == Kind::Root)
+    throw runtime_error ("erasure substitution model has a degenerate equilibrium (pi=(1,0)) and is not meaningful as a root preset");
 }
 
 // ---------- Substitution model expressions ----------
 
 // Time parameter name per TKF version (matches the existing presets).
+// IID reuses TKF91's "time" name.
 static string timeParamName (Version v) {
-  return v == Version::TKF91 ? string("time") : string("t");
+  if (v == Version::TKF92) return string("t");
+  return string("time");
 }
 
 // Equilibrium frequency expression for symbol `sym` under a given model.
@@ -88,6 +102,15 @@ static WeightExpr piExpr (Model model, size_t alphSize, const string& sym) {
   case Model::ID:
     if (alphSize == 1) return WeightAlgebra::one();
     throw runtime_error ("piExpr: identity model requires unary alphabet");
+  case Model::Telegraph:
+    // Stationary: pi_0 = rate10/(rate01+rate10), pi_1 = rate01/(rate01+rate10).
+    return WeightAlgebra::param (string("pi_") + sym);
+  case Model::BSC:
+    // Symmetric: pi_0 = pi_1 = 1/2.
+    return WeightAlgebra::divide (WeightAlgebra::one(),
+                                  WeightAlgebra::intConstant (2));
+  case Model::Erasure:
+    throw runtime_error ("piExpr: erasure model has degenerate equilibrium and no root preset");
   }
   throw runtime_error ("unknown model");
 }
@@ -277,6 +300,88 @@ static SubModel makeSubModel (const Spec& spec, const vguard<string>& alph) {
     return sm;
   }
 
+  case Model::Telegraph: {
+    // Asymmetric 2-state CTMC on {0, 1}:
+    //   Q = [[-rate01, rate01], [rate10, -rate10]]
+    //   λ = rate01 + rate10  (non-zero eigenvalue)
+    //   pi_0 = rate10/λ, pi_1 = rate01/λ (stationary)
+    //   P(0|0,t) = pi_0 + pi_1 * exp(-λt)
+    //   P(1|0,t) = pi_1 * (1 - exp(-λt))
+    //   P(0|1,t) = pi_0 * (1 - exp(-λt))
+    //   P(1|1,t) = pi_1 + pi_0 * exp(-λt)
+    WeightExpr tExpr = WeightAlgebra::param (tParam);
+    WeightExpr sumRate = WeightAlgebra::add (WeightAlgebra::param ("rate01"),
+                                              WeightAlgebra::param ("rate10"));
+    sm.defs["telLambdaT"] = WeightAlgebra::multiply (sumRate, tExpr);
+    sm.defs["telPNoSub"]  = WeightAlgebra::expOf (
+      WeightAlgebra::multiply (WeightAlgebra::intConstant(-1),
+                                WeightAlgebra::param ("telLambdaT")));
+    sm.defs["telPSub"]    = WeightAlgebra::negate (WeightAlgebra::param ("telPNoSub"));
+    // pi_0 and pi_1 are functions of (rate01, rate10), but we expose them
+    // as the per-symbol pi parameters so the rest of the pipeline (root
+    // preset, intersection sums) can use the same `pi_X` convention.
+    sm.defs["pi_0"] = WeightAlgebra::divide (WeightAlgebra::param ("rate10"), sumRate);
+    sm.defs["pi_1"] = WeightAlgebra::divide (WeightAlgebra::param ("rate01"), sumRate);
+    sm.emit = [](const string& a, const string& b) -> WeightExpr {
+      WeightExpr piB = WeightAlgebra::param (string("pi_") + b);
+      WeightExpr offDiag = WeightAlgebra::multiply (WeightAlgebra::param ("telPSub"), piB);
+      if (a == b) {
+        // P(a|a) = pi_a + pi_~a * pNoSub = pi_a*(1 - pNoSub) + pNoSub = pi_a*pSub + pNoSub
+        WeightExpr piA = WeightAlgebra::param (string("pi_") + a);
+        WeightExpr selfTerm = WeightAlgebra::multiply (
+          WeightAlgebra::param ("telPSub"), piA);
+        return WeightAlgebra::add (WeightAlgebra::param ("telPNoSub"), selfTerm);
+      }
+      return offDiag;
+    };
+    return sm;
+  }
+
+  case Model::BSC: {
+    // Binary symmetric channel: rate01 = rate10 = flipRate. λ = 2*flipRate.
+    //   pi_0 = pi_1 = 1/2.
+    //   P(stay) = 1/2 + 1/2 * exp(-2*flipRate*t)
+    //   P(flip) = 1/2 - 1/2 * exp(-2*flipRate*t)
+    WeightExpr tExpr = WeightAlgebra::param (tParam);
+    WeightExpr negLam = WeightAlgebra::multiply (
+      WeightAlgebra::intConstant (-2),
+      WeightAlgebra::multiply (WeightAlgebra::param ("flipRate"), tExpr));
+    sm.defs["bscPNoFlip"] = WeightAlgebra::expOf (negLam);
+    WeightExpr half = WeightAlgebra::divide (WeightAlgebra::one(),
+                                              WeightAlgebra::intConstant (2));
+    sm.defs["pStay"] = WeightAlgebra::multiply (
+      half,
+      WeightAlgebra::add (WeightAlgebra::one(), WeightAlgebra::param ("bscPNoFlip")));
+    sm.defs["pFlip"] = WeightAlgebra::multiply (
+      half,
+      WeightAlgebra::subtract (WeightAlgebra::one(), WeightAlgebra::param ("bscPNoFlip")));
+    sm.emit = [](const string& a, const string& b) -> WeightExpr {
+      return a == b ? WeightAlgebra::param ("pStay") : WeightAlgebra::param ("pFlip");
+    };
+    return sm;
+  }
+
+  case Model::Erasure: {
+    // Binary erasure channel: 0 is absorbing; 1 → 0 with rate eraseRate.
+    //   Q = [[0, 0], [eraseRate, -eraseRate]]
+    //   P(0|0,t) = 1; P(1|0,t) = 0 (omit)
+    //   P(1|1,t) = exp(-eraseRate*t); P(0|1,t) = 1 - exp(-eraseRate*t)
+    WeightExpr tExpr = WeightAlgebra::param (tParam);
+    WeightExpr negET = WeightAlgebra::multiply (
+      WeightAlgebra::intConstant (-1),
+      WeightAlgebra::multiply (WeightAlgebra::param ("eraseRate"), tExpr));
+    sm.defs["pPersist"] = WeightAlgebra::expOf (negET);
+    sm.defs["pErased"]  = WeightAlgebra::negate (WeightAlgebra::param ("pPersist"));
+    sm.emit = [](const string& a, const string& b) -> WeightExpr {
+      if (a == "0" && b == "0") return WeightAlgebra::one();
+      if (a == "0" && b == "1") return WeightExpr();        // 0 absorbing → omit
+      if (a == "1" && b == "1") return WeightAlgebra::param ("pPersist");
+      if (a == "1" && b == "0") return WeightAlgebra::param ("pErased");
+      throw runtime_error ("erasure model expects binary alphabet {\"0\",\"1\"}");
+    };
+    return sm;
+  }
+
   } // switch
   throw runtime_error ("unknown substitution model");
 }
@@ -286,17 +391,35 @@ static SubModel makeSubModel (const Spec& spec, const vguard<string>& alph) {
 // Populate cons.{rate,prob,norm} so that --use-defaults, normalisation, and
 // training operations have sensible defaults for every free parameter.
 
+// Rate parameters for the substitution model only (NOT insRate/delRate).
+// Used by both branch and root constraint helpers.
+static void addSubModelRateConstraints (Machine& m, Model model) {
+  switch (model) {
+  case Model::HKY85:                 m.cons.rate.push_back ("tsRatio");   break;
+  case Model::Telegraph:
+    m.cons.rate.push_back ("rate01");
+    m.cons.rate.push_back ("rate10");
+    break;
+  case Model::BSC:                   m.cons.rate.push_back ("flipRate");  break;
+  case Model::Erasure:               m.cons.rate.push_back ("eraseRate"); break;
+  default: break;  // JC, F81, K80, ID — no extra rates beyond the per-branch time
+  }
+}
+
 static void addConstraintsForSpec (Machine& m, const Spec& spec, const vguard<string>& alph) {
   // Rate parameters (default 1).
   m.cons.rate.push_back (timeParamName (spec.version));
-  m.cons.rate.push_back ("insRate");
-  m.cons.rate.push_back ("delRate");
-  if (spec.model == Model::HKY85)
-    m.cons.rate.push_back ("tsRatio");
+  if (spec.version != Version::IID) {
+    m.cons.rate.push_back ("insRate");
+    m.cons.rate.push_back ("delRate");
+  }
+  addSubModelRateConstraints (m, spec.model);
   // TKF92 fragment-extension is a probability (default 0.5).
   if (spec.version == Version::TKF92)
     m.cons.prob.push_back ("r");
   // Free pi parameters (default uniform 1/n) — only for F81 and HKY85.
+  // Telegraph's pi_0/pi_1 are DERIVED from (rate01, rate10) via defs,
+  // so they are not added to cons (no free pi parameters).
   if (spec.model == Model::F81 || spec.model == Model::HKY85) {
     vguard<string> piGroup;
     for (const auto& s: alph) piGroup.push_back (string("pi_") + s);
@@ -353,11 +476,16 @@ static void addTkfBdiDefs (ParamDefs& defs, Version version) {
 // stationary-frequency parameter for F81/HKY85.
 
 static void addRootConstraints (Machine& m, const Spec& spec, const vguard<string>& alph) {
-  if (spec.model == Model::HKY85) m.cons.rate.push_back ("tsRatio");
-  m.cons.rate.push_back ("insRate");
-  m.cons.rate.push_back ("delRate");
-  if (spec.version == Version::TKF92) m.cons.prob.push_back ("r");
-  if (spec.model == Model::F81 || spec.model == Model::HKY85) {
+  addSubModelRateConstraints (m, spec.model);
+  if (spec.version == Version::IID) {
+    m.cons.prob.push_back ("pExtend");      // free length-extension probability
+  } else {
+    m.cons.rate.push_back ("insRate");
+    m.cons.rate.push_back ("delRate");
+    if (spec.version == Version::TKF92) m.cons.prob.push_back ("r");
+  }
+  if (spec.model == Model::F81 || spec.model == Model::HKY85
+      || spec.model == Model::Telegraph) {
     vguard<string> piGroup;
     for (const auto& s: alph) piGroup.push_back (string("pi_") + s);
     m.cons.norm.push_back (piGroup);
@@ -426,7 +554,32 @@ static Machine buildTkf92Root (const Spec& spec, const vguard<string>& alph, con
   return m;
 }
 
+// IID root: same shape as TKF91 root (emit-or-stop) but with a free
+// `pExtend` probability instead of pExtend = insRate/delRate. Matches the
+// "geometric-length emitter with substitution-model emission frequencies"
+// interpretation of iid as a zero-indel-rate degeneration of TKF91.
+static Machine buildIidRoot (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  Machine m;
+  m.state.resize(2);
+  m.state[0].name = json("emit");
+  m.state[1].name = json("stop");
+
+  m.funcs.defs = sm.defs;
+  m.funcs.defs["pNoExtend"] = WeightAlgebra::negate (WeightAlgebra::param ("pExtend"));
+
+  for (size_t k = 0; k < alph.size(); ++k) {
+    WeightExpr pi = piExpr (spec.model, alph.size(), alph[k]);
+    WeightExpr w  = WeightAlgebra::multiply (WeightAlgebra::param ("pExtend"), pi);
+    m.state[0].trans.push_back (MachineTransition (string(), alph[k], 0, w));
+  }
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 1,
+                                                  WeightAlgebra::param ("pNoExtend")));
+  addRootConstraints (m, spec, alph);
+  return m;
+}
+
 static Machine buildRoot (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  if (spec.version == Version::IID)   return buildIidRoot   (spec, alph, sm);
   if (spec.version == Version::TKF91) return buildTkf91Root (spec, alph, sm);
   return buildTkf92Root (spec, alph, sm);
 }
@@ -608,11 +761,36 @@ static Machine buildTkf92Branch (const Spec& spec, const vguard<string>& alph, c
   return m;
 }
 
+// IID branch: zero-indel-rate limit of TKF91. Single emit state (with
+// optional substitution-model omissions, e.g. for ID or Erasure) plus a
+// silent exit edge to end. No insert/delete states.
+static Machine buildIidBranch (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  Machine m;
+  m.state.resize(2);
+  m.state[0].name = json("begin");
+  m.state[1].name = json("end");
+
+  m.funcs.defs = sm.defs;
+
+  for (const auto& a: alph)
+    for (const auto& b: alph) {
+      WeightExpr w = sm.emit (a, b);
+      if (!w) continue;  // ID off-diagonal / Erasure 0→1: omitted
+      m.state[0].trans.push_back (MachineTransition (a, b, 0, w));
+    }
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 1,
+                                                  WeightAlgebra::one()));
+
+  addConstraintsForSpec (m, spec, alph);
+  return m;
+}
+
 Machine build (const Spec& spec) {
   const vguard<string> alph = alphabetSymbols (spec.alphabetKind, spec.customAlphabet);
   validateSpec (spec, alph);
   const SubModel sm = makeSubModel (spec, alph);
   if (spec.kind == Kind::Root)        return buildRoot         (spec, alph, sm);
+  if (spec.version == Version::IID)   return buildIidBranch   (spec, alph, sm);
   if (spec.version == Version::TKF91) return buildTkf91Branch (spec, alph, sm);
   return buildTkf92Branch (spec, alph, sm);
 }
