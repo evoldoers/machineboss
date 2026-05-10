@@ -1906,6 +1906,43 @@ pub fn eval_weight(m: &Machine, weight: &Value, params: &weight_algebra::Params)
     weight_algebra::evaluate(weight, params, &m.defs)
 }
 
+// ---- Pair-token encoder (default-config mirror of Machine::encodePairToken)
+
+const PAIR_SEP: char = ',';
+const PAIR_OPEN: char = '[';
+const PAIR_CLOSE: char = ']';
+const PAIR_ESCAPE: char = '\\';
+
+fn pair_needs_wrap(s: &str) -> bool {
+    s.chars().any(|c| c == PAIR_SEP || c == PAIR_OPEN || c == PAIR_CLOSE || c == PAIR_ESCAPE)
+}
+
+fn pair_wrap(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push(PAIR_OPEN);
+    for c in s.chars() {
+        if c == PAIR_OPEN || c == PAIR_CLOSE || c == PAIR_ESCAPE {
+            out.push(PAIR_ESCAPE);
+        }
+        out.push(c);
+    }
+    out.push(PAIR_CLOSE);
+    out
+}
+
+fn encode_pair_side(s: &str) -> String {
+    if pair_needs_wrap(s) { pair_wrap(s) } else { s.to_string() }
+}
+
+/// Mirror of `Machine::encodePairToken` in default mode.
+pub fn encode_pair_token(a: &str, b: &str) -> String {
+    if a.is_empty() && b.is_empty() { return String::new(); }
+    let mut out = encode_pair_side(a);
+    out.push(PAIR_SEP);
+    out.push_str(&encode_pair_side(b));
+    out
+}
+
 // ---- Transducer composition ---------------------------------------------
 
 /// Symbolic accumulator for transitions sharing the same (in, out, dest)
@@ -2078,6 +2115,122 @@ pub fn compose(first: &Machine, second: &Machine) -> Machine {
     };
     // Post-processing: only ergodic_machine for now (advance_sort and
     // process_cycles are TODO; inputs without silent cycles are unaffected).
+    raw.ergodic_machine()
+}
+
+// ---- Transducer intersection --------------------------------------------
+
+/// Whether any state has a transition with non-empty output. Used to
+/// decide between dual-output (pair-token) and asymmetric-merge intersect
+/// semantics.
+fn has_nonempty_output(m: &Machine) -> bool {
+    m.state.iter().any(|s| s.trans.iter().any(|t| !t.out_sym.is_empty()))
+}
+
+/// Mirror of `Machine::intersect(first, second, ...)` from src/machine.cpp.
+///
+/// Cross-product state space (i, j); transitions per state per the three
+/// classical intersect cases (sync on INPUT, not output as in compose).
+/// When both inputs have non-empty output alphabets, transitions emit pair
+/// tokens encoded via `encode_pair_token`; otherwise the asymmetric-merge
+/// fallback preserves whichever output is non-empty.
+///
+/// Unlike compose, the C++ intersect does NOT pre-filter the cross product
+/// for accessibility — it builds all i*j states first, then relies on
+/// `ergodic_machine` to prune. This port matches that ordering.
+pub fn intersect(first: &Machine, second: &Machine) -> Machine {
+    let second_w = if second.is_waiting_machine() {
+        second.clone()
+    } else {
+        second.waiting_machine()
+    };
+    debug_assert!(second_w.is_waiting_machine());
+
+    let dual_output = has_nonempty_output(first) && has_nonempty_output(&second_w);
+    let pair_out = |a: &str, b: &str| -> String {
+        if a.is_empty() && b.is_empty() { return String::new(); }
+        if !dual_output {
+            return if a.is_empty() { b.to_string() } else { a.to_string() };
+        }
+        encode_pair_token(a, b)
+    };
+
+    let i_states = first.state.len();
+    let j_states = second_w.state.len();
+    let n_pairs = i_states * j_states;
+    let inter_state = |i: usize, j: usize| -> usize { i * j_states + j };
+
+    let mut inter_state_vec: Vec<State> = Vec::with_capacity(n_pairs);
+    for i in 0..i_states {
+        for j in 0..j_states {
+            let id = Value::Array(vec![first.state[i].id.clone(),
+                                       second_w.state[j].id.clone()]);
+            inter_state_vec.push(State { id, trans: Vec::new() });
+        }
+    }
+
+    for i in 0..i_states {
+        for j in 0..j_states {
+            let msi = &first.state[i];
+            let msj = &second_w.state[j];
+            let trans_buf: &mut Vec<Transition> = &mut inter_state_vec[inter_state(i, j)].trans;
+            if msj.waits() || msj.terminates() {
+                for it in &msi.trans {
+                    if it.input_empty() {
+                        // Silent advance of first only; second stays at j.
+                        let out_sym = if dual_output && !it.out_sym.is_empty() {
+                            pair_out(&it.out_sym, "")
+                        } else {
+                            it.out_sym.clone()
+                        };
+                        trans_buf.push(Transition {
+                            to: inter_state(it.to, j),
+                            in_sym: it.in_sym.clone(),
+                            out_sym,
+                            weight: it.weight.clone(),
+                        });
+                    } else {
+                        for jt in &msj.trans {
+                            if it.in_sym == jt.in_sym {
+                                trans_buf.push(Transition {
+                                    to: inter_state(it.to, jt.to),
+                                    in_sym: it.in_sym.clone(),
+                                    out_sym: pair_out(&it.out_sym, &jt.out_sym),
+                                    weight: weight_algebra::multiply(&it.weight, &jt.weight),
+                                });
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Second advances silently; first stays at i.
+                for jt in &msj.trans {
+                    let out_sym = if dual_output && !jt.out_sym.is_empty() {
+                        pair_out("", &jt.out_sym)
+                    } else {
+                        jt.out_sym.clone()
+                    };
+                    trans_buf.push(Transition {
+                        to: inter_state(i, jt.to),
+                        in_sym: String::new(),
+                        out_sym,
+                        weight: jt.weight.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    let mut inter_defs = first.defs.clone();
+    for (k, v) in &second_w.defs {
+        inter_defs.insert(k.clone(), v.clone());
+    }
+
+    let raw = Machine {
+        state: inter_state_vec,
+        defs: inter_defs,
+        cons: first.cons.clone(),
+    };
     raw.ergodic_machine()
 }
 
@@ -2710,6 +2863,70 @@ mod tests {
             .find(|t| !t.in_sym.is_empty())
             .expect("an emit transition should exist");
         let v = weight_algebra::evaluate(&emit.weight, &p, &c.defs);
+        assert!((v - 0.4 * 0.5).abs() < 1e-15, "v={}", v);
+    }
+
+    #[test]
+    fn pair_token_basic() {
+        assert_eq!(encode_pair_token("", ""), "");
+        assert_eq!(encode_pair_token("A", "B"), "A,B");
+        // Sides containing the separator get wrapped in [...].
+        assert_eq!(encode_pair_token("A,X", "B"), "[A,X],B");
+        // Escape characters in wrapped sides.
+        assert_eq!(encode_pair_token("[X]", "B"), "[\\[X\\]],B");
+    }
+
+    #[test]
+    fn intersect_simple_two_machines() {
+        // Two trivial transducers, both consume input "x" and emit "y" / "z".
+        // After intersect (sync on INPUT "x"), produce one transition with
+        // input "x" and output pair-token "y,z".
+        let m1 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "y", "weight": "p"}]},
+                {"id": "E"}
+            ]
+        }));
+        let m2 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "z", "weight": "q"}]},
+                {"id": "E"}
+            ]
+        }));
+        let i = intersect(&m1, &m2);
+        // Find the emit transition in the result.
+        let emit = i.state.iter()
+            .flat_map(|s| s.trans.iter())
+            .find(|t| !t.in_sym.is_empty())
+            .expect("expected an emit transition");
+        assert_eq!(emit.in_sym, "x");
+        assert_eq!(emit.out_sym, "y,z");
+    }
+
+    #[test]
+    fn intersect_evaluates_consistently() {
+        // Composed weight should be p * q after intersect.
+        let m1 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "y", "weight": "p"}]},
+                {"id": "E"}
+            ]
+        }));
+        let m2 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "z", "weight": "q"}]},
+                {"id": "E"}
+            ]
+        }));
+        let i = intersect(&m1, &m2);
+        let mut p = weight_algebra::Params::new();
+        p.insert("p".into(), 0.4);
+        p.insert("q".into(), 0.5);
+        let emit = i.state.iter()
+            .flat_map(|s| s.trans.iter())
+            .find(|t| !t.in_sym.is_empty())
+            .expect("expected an emit transition");
+        let v = weight_algebra::evaluate(&emit.weight, &p, &i.defs);
         assert!((v - 0.4 * 0.5).abs() < 1e-15, "v={}", v);
     }
 
