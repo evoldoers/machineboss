@@ -61,6 +61,18 @@ use serde_json::Value;
 #[test] #[should_panic(expected = "not yet implemented")]
 fn prebuild_panics() { phylo_skeleton::prebuild(); }
 
+#[test] fn baked_t_is_already_waiting() {
+    // TKF91-branch-dna-jc T has begin/orphan/wait/insert as silent-only
+    // states and match/delete as consuming-only states, so T should already
+    // satisfy is_waiting_machine; the transform is a state-preserving clone.
+    use phylo_skeleton::machine::Machine;
+    let t_json: Value = serde_json::from_str(T_JSON).expect("T_JSON parses");
+    let t = Machine::from_json(&t_json);
+    assert!(t.is_waiting_machine());
+    let tw = t.waiting_machine();
+    assert_eq!(tw.n_states(), t.n_states());
+}
+
 #[test] fn baked_t_renames_for_branch() {
     // Parse T_JSON, rename for branch "X", check defs/cons are suffixed and
     // that pSame[X] evaluates against time[X] to the same value as pSame

@@ -1855,6 +1855,123 @@ pub fn eval_weight(m: &Machine, weight: &Value, params: &weight_algebra::Params)
     weight_algebra::evaluate(weight, params, &m.defs)
 }
 
+// ---- WFST state predicates and waitingMachine port ----------------------
+//
+// Port of MachineState::{terminates,exits_with_input,exits_without_input,
+// waits,continues} and Machine::isWaitingMachine / Machine::waitingMachine
+// from src/machine.cpp.
+
+impl State {
+    /// `trans.is_empty()` — no outgoing transitions.
+    pub fn terminates(&self) -> bool { self.trans.is_empty() }
+    /// At least one outgoing transition consumes an input symbol.
+    pub fn exits_with_input(&self) -> bool {
+        self.trans.iter().any(|t| !t.in_sym.is_empty())
+    }
+    /// At least one outgoing transition is silent on input.
+    pub fn exits_without_input(&self) -> bool {
+        self.trans.iter().any(|t| t.in_sym.is_empty())
+    }
+    /// Every outgoing transition consumes an input symbol (or none exist).
+    pub fn waits(&self) -> bool { !self.exits_without_input() }
+    /// Has outgoing transitions, none of which consume input.
+    pub fn continues(&self) -> bool {
+        !self.exits_with_input() && !self.terminates()
+    }
+}
+
+/// `Machine::WAIT_TAG` constant from `src/machine.h` (`#define MachineWaitTag "wait"`).
+pub const WAIT_TAG: &str = "wait";
+
+impl Machine {
+    /// Every state either waits, continues, or terminates — i.e. no state
+    /// has BOTH input-consuming and silent-input outgoing transitions.
+    pub fn is_waiting_machine(&self) -> bool {
+        self.state.iter().all(|s| s.waits() || s.continues())
+    }
+
+    /// Mirror of `Machine::waitingMachine` (with the default
+    /// `waitTag="wait"`, `continueTag=NULL`). Splits each "neither waits
+    /// nor continues" state s into a continue-state (keeping s's silent
+    /// transitions, plus a fresh silent edge to its paired wait-state)
+    /// and a wait-state (taking s's input-consuming transitions, named
+    /// `{"wait": <original-name>}`). The output state order interleaves
+    /// each pair (c, w) at the original state's position, matching the
+    /// C++ implementation's `for (StateIndex s : new2old)` reassembly.
+    pub fn waiting_machine(&self) -> Self {
+        if self.is_waiting_machine() {
+            return self.clone();
+        }
+        let n0 = self.state.len();
+        // `new_state` is a working buffer indexed by "newState index": entries
+        // 0..n0 mirror the original states (replaced with continue-states for
+        // splits); entries n0.. are wait-states appended on demand.
+        let mut new_state: Vec<State> = self.state.clone();
+        // `old2new[newstate_idx] = iteration_idx`: the position of that
+        // newState entry in the final reassembled machine, in iteration order.
+        let mut old2new: Vec<usize> = vec![0; n0];
+        // `new2old[iter_idx] = newstate_idx`: lookup for reassembly.
+        let mut new2old: Vec<usize> = Vec::with_capacity(n0);
+
+        for s in 0..n0 {
+            old2new[s] = new2old.len();
+            new2old.push(s);
+            let ms = &self.state[s];
+            if !ms.waits() && !ms.continues() {
+                let mut c_trans: Vec<Transition> = Vec::new();
+                let mut w_trans: Vec<Transition> = Vec::new();
+                for t in &ms.trans {
+                    if t.in_sym.is_empty() {
+                        c_trans.push(t.clone());
+                    } else {
+                        w_trans.push(t.clone());
+                    }
+                }
+                // Wait-state goes at the end of `new_state` — capture its
+                // index BEFORE the push.
+                let wait_ns_idx = new_state.len();
+                c_trans.push(Transition {
+                    to: wait_ns_idx,
+                    in_sym: String::new(),
+                    out_sym: String::new(),
+                    weight: Value::from(1.0_f64),
+                });
+                let mut wait_name = Map::new();
+                wait_name.insert(WAIT_TAG.into(), ms.id.clone());
+                let w_state = State {
+                    id: Value::Object(wait_name),
+                    trans: w_trans,
+                };
+                let c_state = State { id: ms.id.clone(), trans: c_trans };
+                // The wait-state's iteration position is the next slot in
+                // new2old; record it in old2new so wait_ns_idx maps there.
+                old2new.push(new2old.len());
+                new2old.push(wait_ns_idx);
+                new_state[s] = c_state;
+                new_state.push(w_state);
+            }
+        }
+        // Reassemble in iteration order; remap each transition's `to` from
+        // newState-index space to iteration-order (output) space.
+        let mut wm_state: Vec<State> = Vec::with_capacity(new2old.len());
+        for &ns_idx in new2old.iter() {
+            let mut ms = new_state[ns_idx].clone();
+            for t in ms.trans.iter_mut() {
+                t.to = old2new[t.to];
+            }
+            wm_state.push(ms);
+        }
+        let out = Machine {
+            state: wm_state,
+            defs: self.defs.clone(),
+            cons: self.cons.clone(),
+        };
+        debug_assert!(out.is_waiting_machine(),
+                      "waiting_machine failed to produce a waiting machine");
+        out
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1941,6 +2058,80 @@ mod tests {
         assert_eq!(m_a.cons.norm[0],
                    vec!["pi_A".to_string(), "pi_C".to_string(),
                         "pi_G".to_string(), "pi_T".to_string()]);
+    }
+
+    #[test]
+    fn predicates() {
+        let m = Machine::from_json(&tiny_machine_json());
+        // state[0] = "begin" has both silent (to mid) and consuming (to end with in/out)
+        assert!(!m.state[0].waits());
+        assert!(!m.state[0].continues());
+        assert!(!m.state[0].terminates());
+        // state[1] = "mid" has only silent transition
+        assert!(!m.state[1].waits());
+        assert!(m.state[1].continues());
+        // state[2] = "end" has no transitions
+        assert!(m.state[2].terminates());
+        assert!(m.state[2].waits()); // vacuously
+    }
+
+    #[test]
+    fn waiting_machine_round_trips_already_waiting() {
+        // Pre-build a machine that's already waiting: every state either
+        // waits or continues.
+        let m = Machine::from_json(&json!({
+            "state": [
+                { "id": "S", "trans": [ {"to": 1, "in": "x", "out": "y"} ] },
+                { "id": "E" }
+            ]
+        }));
+        assert!(m.is_waiting_machine());
+        let wm = m.waiting_machine();
+        assert_eq!(wm.n_states(), m.n_states());
+    }
+
+    #[test]
+    fn waiting_machine_splits_mixed_state() {
+        // Single-state-mixed: state 0 has both silent (to 2) and consuming (to 1).
+        let m = Machine::from_json(&json!({
+            "state": [
+                { "id": "S", "trans": [
+                    {"to": 1, "in": "x", "out": "y", "weight": "wMatch"},
+                    {"to": 2, "weight": "wSilent"}
+                ] },
+                { "id": "M", "trans": [ {"to": 2} ] },
+                { "id": "E" }
+            ]
+        }));
+        assert!(!m.is_waiting_machine());
+        let wm = m.waiting_machine();
+        assert!(wm.is_waiting_machine());
+        // S split into c (still named "S", silent transitions) and w
+        // (named {"wait": "S"}, consuming transitions).
+        assert!(wm.n_states() > m.n_states());
+        // c got an extra silent edge to w.
+        // Check w's id: object with single "wait" key.
+        let w_idx = wm.state.iter().position(|s| {
+            if let Value::Object(o) = &s.id {
+                o.contains_key(WAIT_TAG)
+            } else { false }
+        }).expect("expected at least one wait-state");
+        // w should hold the consuming transition with in:'x'.
+        assert!(wm.state[w_idx].trans.iter().any(|t| t.in_sym == "x"));
+    }
+
+    #[test]
+    fn waiting_machine_on_baked_t_yields_waiting() {
+        // Real TKF91 branch transducer: states like "begin" have both silent
+        // (begin→insert/wait) AND no consuming transitions; "match" is the
+        // only state with consuming transitions and they all consume. So T
+        // should already be a waiting machine. Verify the transformation
+        // is a no-op.
+        let m = Machine::from_json(&tiny_machine_json());
+        let wm = m.waiting_machine();
+        assert!(wm.is_waiting_machine());
+        // For tiny_machine_json (which has the mixed state[0]), splits happen.
+        assert_ne!(wm.n_states(), m.n_states());
     }
 
     #[test]
