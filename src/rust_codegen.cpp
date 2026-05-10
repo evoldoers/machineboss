@@ -1883,11 +1883,178 @@ impl State {
 /// `Machine::WAIT_TAG` constant from `src/machine.h` (`#define MachineWaitTag "wait"`).
 pub const WAIT_TAG: &str = "wait";
 
+/// Mirror of `Transition::isSilent` from src/machine.h: both `in` and `out`
+/// are empty.
+impl Transition {
+    pub fn is_silent(&self) -> bool {
+        self.in_sym.is_empty() && self.out_sym.is_empty()
+    }
+}
+
+/// Mirror of `WeightAlgebra::isOne`: structural check, only the literal
+/// constants 1 (int / double / bool true). General algebraic
+/// simplification is intentionally NOT performed here, matching the C++.
+pub fn weight_is_one(w: &Value) -> bool {
+    match w {
+        Value::Bool(true) => true,
+        Value::Number(n) => n.as_f64() == Some(1.0),
+        _ => false,
+    }
+}
+
 impl Machine {
     /// Every state either waits, continues, or terminates — i.e. no state
     /// has BOTH input-consuming and silent-input outgoing transitions.
     pub fn is_waiting_machine(&self) -> bool {
         self.state.iter().all(|s| s.waits() || s.continues())
+    }
+
+    /// Set of state indices that are both reachable from state 0 and can
+    /// reach the end state (last state by index). Mirror of
+    /// `Machine::accessibleStates`.
+    pub fn accessible_states(&self) -> std::collections::BTreeSet<usize> {
+        let n = self.state.len();
+        if n == 0 { return Default::default(); }
+        let start: usize = 0;
+        let end: usize = n - 1;
+
+        // Forward BFS from start.
+        let mut from_start = vec![false; n];
+        let mut q: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+        from_start[start] = true;
+        q.push_back(start);
+        while let Some(c) = q.pop_front() {
+            for t in &self.state[c].trans {
+                if !from_start[t.to] {
+                    from_start[t.to] = true;
+                    q.push_back(t.to);
+                }
+            }
+        }
+
+        // Reverse BFS to end.
+        let mut sources: Vec<Vec<usize>> = vec![Vec::new(); n];
+        for s in 0..n {
+            for t in &self.state[s].trans {
+                sources[t.to].push(s);
+            }
+        }
+        let mut to_end = vec![false; n];
+        to_end[end] = true;
+        q.clear();
+        q.push_back(end);
+        while let Some(c) = q.pop_front() {
+            for &src in &sources[c] {
+                if !to_end[src] {
+                    to_end[src] = true;
+                    q.push_back(src);
+                }
+            }
+        }
+
+        let mut acc = std::collections::BTreeSet::new();
+        for s in 0..n {
+            if from_start[s] && to_end[s] { acc.insert(s); }
+        }
+        acc
+    }
+
+    /// All states accessible AND end state is accessible. Mirror of
+    /// `Machine::isErgodicMachine`.
+    pub fn is_ergodic_machine(&self) -> bool {
+        let acc = self.accessible_states();
+        acc.len() == self.state.len() && self.state.len() > 0 && acc.contains(&(self.state.len() - 1))
+    }
+
+    /// Mirror of `Machine::ergodicMachine`: trim inaccessible states and
+    /// collapse silent-weight-1 chains where the intermediate state has
+    /// exactly one outgoing transition (silent, weight=1).
+    pub fn ergodic_machine(&self) -> Self {
+        if self.is_ergodic_machine() {
+            return self.clone();
+        }
+        let n = self.state.len();
+        let acc = self.accessible_states();
+        let mut keep = vec![false; n];
+        for &s in acc.iter() { keep[s] = true; }
+
+        if !keep.last().copied().unwrap_or(false) {
+            // End state inaccessible → return an empty/zero machine.
+            // We approximate by returning a single-state empty machine.
+            return Machine {
+                state: Vec::new(),
+                defs: HashMap::new(),
+                cons: Constraints::default(),
+            };
+        }
+
+        // null-equivalence: for each kept state s, follow chain forward
+        // while state has exactly one outgoing trans that is silent and
+        // weight-1. The final reached state is the equivalence target.
+        let mut null_equiv: HashMap<usize, usize> = HashMap::new();
+        for s in 0..n {
+            if !keep[s] { continue; }
+            let mut d = s;
+            loop {
+                let st = &self.state[d];
+                if st.trans.len() == 1 && st.trans[0].is_silent() && weight_is_one(&st.trans[0].weight) {
+                    d = st.trans[0].to;
+                } else { break; }
+            }
+            if d != s { null_equiv.insert(s, d); }
+        }
+
+        // Build old2new mapping: kept-and-not-null-equiv states get fresh
+        // indices in order; null-equiv states get the index of their target.
+        let mut old2new = vec![0usize; n];
+        let mut ns: usize = 0;
+        for s in 0..n {
+            if keep[s] && !null_equiv.contains_key(&s) {
+                old2new[s] = ns;
+                ns += 1;
+            }
+        }
+        for s in 0..n {
+            if keep[s] && null_equiv.contains_key(&s) {
+                old2new[s] = old2new[null_equiv[&s]];
+            }
+        }
+
+        if ns == 0 {
+            return Machine {
+                state: Vec::new(), defs: self.defs.clone(),
+                cons: self.cons.clone(),
+            };
+        }
+
+        // Emit kept-and-not-null-equiv states in order, with transitions
+        // remapped via old2new (skipping any whose dest is not kept).
+        let mut new_state: Vec<State> = Vec::with_capacity(ns);
+        for s in 0..n {
+            if keep[s] && !null_equiv.contains_key(&s) {
+                let mut nt: Vec<Transition> = Vec::new();
+                for t in &self.state[s].trans {
+                    if keep[t.to] {
+                        nt.push(Transition {
+                            to: old2new[t.to],
+                            in_sym: t.in_sym.clone(),
+                            out_sym: t.out_sym.clone(),
+                            weight: t.weight.clone(),
+                        });
+                    }
+                }
+                new_state.push(State { id: self.state[s].id.clone(), trans: nt });
+            }
+        }
+
+        let out = Machine {
+            state: new_state,
+            defs: self.defs.clone(),
+            cons: self.cons.clone(),
+        };
+        debug_assert!(out.is_ergodic_machine() || out.state.is_empty(),
+                      "ergodic_machine failed to produce ergodic output");
+        out
     }
 
     /// Mirror of `Machine::waitingMachine` (with the default
@@ -2118,6 +2285,98 @@ mod tests {
         }).expect("expected at least one wait-state");
         // w should hold the consuming transition with in:'x'.
         assert!(wm.state[w_idx].trans.iter().any(|t| t.in_sym == "x"));
+    }
+
+    #[test]
+    fn weight_is_one_basics() {
+        assert!(weight_is_one(&json!(1.0)));
+        assert!(weight_is_one(&json!(1)));
+        assert!(weight_is_one(&json!(true)));
+        assert!(!weight_is_one(&json!(0.0)));
+        assert!(!weight_is_one(&json!(0.5)));
+        assert!(!weight_is_one(&json!("p")));
+        assert!(!weight_is_one(&json!({"+": [1, 0]}))); // not structurally simplified
+    }
+
+    #[test]
+    fn accessible_states_filters_unreachable() {
+        // 4 states: 0 -> 1 -> 3, plus orphan state 2 (unreachable from 0).
+        let m = Machine::from_json(&json!({
+            "state": [
+                { "id": "S",  "trans": [{"to": 1}] },
+                { "id": "M",  "trans": [{"to": 3}] },
+                { "id": "X",  "trans": [{"to": 3}] },
+                { "id": "E" }
+            ]
+        }));
+        let acc = m.accessible_states();
+        assert_eq!(acc, [0, 1, 3].iter().copied().collect());
+        assert!(!m.is_ergodic_machine()); // state 2 inaccessible
+    }
+
+    #[test]
+    fn ergodic_machine_short_circuits_when_ergodic() {
+        // C++ short-circuits: if the input is already ergodic, the chain-
+        // collapse pass does NOT fire. So a trivially-collapsible-looking
+        // input is returned unchanged.
+        let m = Machine::from_json(&json!({
+            "state": [
+                { "id": "S", "trans": [{"to": 1}] },
+                { "id": "A", "trans": [{"to": 2}] },
+                { "id": "E" }
+            ]
+        }));
+        assert!(m.is_ergodic_machine());
+        let em = m.ergodic_machine();
+        assert_eq!(em.n_states(), m.n_states());
+    }
+
+    #[test]
+    fn ergodic_machine_trims_and_collapses_chain() {
+        // 0 -> 1 -> 3 silent-weight-1 chain, plus orphan state 2 (unreachable).
+        // Non-ergodic → trim path runs → both states 0,1 chain-collapse to 3.
+        // Result: 1 state.
+        let m = Machine::from_json(&json!({
+            "state": [
+                { "id": "S",  "trans": [{"to": 1}] },
+                { "id": "M",  "trans": [{"to": 3}] },
+                { "id": "X",  "trans": [{"to": 3}] },
+                { "id": "E" }
+            ]
+        }));
+        assert!(!m.is_ergodic_machine());
+        let em = m.ergodic_machine();
+        assert_eq!(em.n_states(), 1);
+    }
+
+    #[test]
+    fn ergodic_machine_trims_but_chain_blocked_by_branching() {
+        // 0 -> 1 (silent w=1) and 0 -> 3 (silent w=p) both reach end via
+        // different paths. State 0 has TWO outgoing transitions, so it
+        // doesn't satisfy the chain-collapse condition (trans.len()==1).
+        // Plus orphan state 2. Expected: trim drops 2; states 0, 1, 3 kept;
+        // chain at state 1 collapses (1→3) so 1 maps to 3's slot. Result:
+        // 2 states (0 and 3).
+        let m = Machine::from_json(&json!({
+            "state": [
+                { "id": "S", "trans": [{"to": 1}, {"to": 3, "weight": "p"}] },
+                { "id": "A", "trans": [{"to": 3}] },
+                { "id": "X", "trans": [{"to": 3}] },
+                { "id": "E" }
+            ]
+        }));
+        assert!(!m.is_ergodic_machine());
+        let em = m.ergodic_machine();
+        // S kept (no chain collapse because 2 outgoing); A null-equiv to E;
+        // X dropped (unreachable); E kept. → 2 states.
+        assert_eq!(em.n_states(), 2);
+        assert!(em.is_ergodic_machine());
+        // Both of S's outgoing transitions remap to E (slot 1):
+        // - {"to": 1} (originally to A) → A null-equivs to E → slot 1
+        // - {"to": 3, "weight": "p"} (originally to E) → slot 1
+        for t in &em.state[0].trans {
+            assert_eq!(t.to, 1);
+        }
     }
 
     #[test]

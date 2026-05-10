@@ -61,6 +61,16 @@ use serde_json::Value;
 #[test] #[should_panic(expected = "not yet implemented")]
 fn prebuild_panics() { phylo_skeleton::prebuild(); }
 
+#[test] fn baked_t_is_already_ergodic() {
+    // TKF91-branch-dna-jc T has all states reachable from begin and able to
+    // reach end → already ergodic; ergodic_machine should be a no-op.
+    use phylo_skeleton::machine::Machine;
+    let t_json: Value = serde_json::from_str(T_JSON).expect("T_JSON parses");
+    let t = Machine::from_json(&t_json);
+    assert!(t.is_ergodic_machine());
+    assert_eq!(t.ergodic_machine().n_states(), t.n_states());
+}
+
 #[test] fn baked_t_is_already_waiting() {
     // TKF91-branch-dna-jc T has begin/orphan/wait/insert as silent-only
     // states and match/delete as consuming-only states, so T should already
