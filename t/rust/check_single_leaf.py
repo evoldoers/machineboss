@@ -53,7 +53,7 @@ def main():
                      '--phylo-tree-string', case['tree'],
                      '--phylo-time-param', 'time', '--end']
 
-        run([BOSS] + open_args + ['--codegen', crate, '--rust'])
+        run([BOSS] + open_args + ['--codegen', crate, '--rust-phylo-hmm'])
         machine_json = run([BOSS] + open_args)
         ref = multidim_forward(machine_json, case['params'], [list(case['leaf'])])
 

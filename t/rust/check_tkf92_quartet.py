@@ -53,7 +53,7 @@ def main():
 
     # Codegen
     t0 = time.time()
-    r = subprocess.run([BOSS] + open_args + ['--codegen', crate, '--rust', '-v', '2'],
+    r = subprocess.run([BOSS] + open_args + ['--codegen', crate, '--rust-phylo-hmm', '-v', '2'],
                        capture_output=True, text=True)
     t_codegen = time.time() - t0
     if r.returncode != 0:

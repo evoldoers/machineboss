@@ -6,7 +6,7 @@ permalink: /rust-codegen/
 
 # Rust Codegen — multidimensional Forward / Viterbi for phylo composition
 
-Two emission methods are available, both invoked via `--codegen DIR --rust`.
+Two emission methods are available, both invoked via `--codegen DIR --rust-phylo-hmm`.
 They differ in what the emitted crate bakes in vs. computes at startup:
 
   1. **Straight-line codegen** *(default)* — boss runs the full WFST algebra
@@ -17,10 +17,10 @@ They differ in what the emitted crate bakes in vs. computes at startup:
      Viterbi loops over delta-vector-sharded emit transitions. The crate
      compiles in ~50 s for a TKF92+HKY85 quartet and runs at the
      wall-clock numbers in the [length sweep table](#performance--quartet-length-sweep) below.
-     This is what you get from `bin/boss --pair-json … --codegen DIR --rust`.
+     This is what you get from `bin/boss --pair-json … --codegen DIR --rust-phylo-hmm`.
 
   2. **Baked-in unary skeleton, expanded from Rust**
-     *(`--phylo-skeleton --codegen DIR --rust`)* — boss bakes the
+     *(`--phylo-skeleton --codegen DIR --rust-phylo-hmm`)* — boss bakes the
      **branch transducer T** (un-renamed), the **unary phylo skeleton
      `M_skel`** (same accessible-state set as `M_full` but with placeholder
      emit transitions and chain-collapsed silent transitions), the
@@ -180,7 +180,7 @@ bin/boss \
   --begin --tkf92-branch-dna-hky85 \
   --phylo-tree-string '(A,B,(C,D)Y)X;' \
   --end \
-  --codegen path/to/quartet --rust
+  --codegen path/to/quartet --rust-phylo-hmm
 ```
 
 This emits `path/to/quartet/Cargo.toml` and `path/to/quartet/src/lib.rs`.
@@ -458,7 +458,7 @@ One-time costs for the quartet:
 
 ## Skeleton-bake mode
 
-The `--phylo-skeleton --codegen DIR --rust` invocation emits a **Rust crate
+The `--phylo-skeleton --codegen DIR --rust-phylo-hmm` invocation emits a **Rust crate
 that contains only the inputs to phylo composition**, not the result.
 The crate carries faithful ports of the WFST algebra (compose, intersect,
 waitingMachine, ergodicMachine, advanceSort, processCycles, plus the
@@ -534,7 +534,7 @@ bin/boss \
   --begin --tkf92-branch-dna-hky85 \
   --phylo-tree-string '(((A,B)P,C)Q)D;' --phylo-time-param time \
   --end \
-  --phylo-skeleton --codegen path/to/depth3 --rust
+  --phylo-skeleton --codegen path/to/depth3 --rust-phylo-hmm
 ```
 
 This emits the four baked constants + the Rust modules listed above. The
@@ -644,8 +644,8 @@ dimension and a 4-way transition bucketing (silent, match, insert,
 delete) into which each machine transition falls based on whether it
 consumes input and/or emits output.
 
-This is a separate code path from `--rust` (`compileRust`, the phylo
-multidim mode) — the existing phylo Rust API is unchanged. `--rust`
+This is a separate code path from `--rust-phylo-hmm` (`compileRust`, the phylo
+multidim mode) — the existing phylo Rust API is unchanged. `--rust-phylo-hmm`
 and `--rust-transducer` are mutually exclusive.
 
 ```bash
@@ -683,7 +683,7 @@ token encoder — i.e. *not* `--pair-json` — a phylo composition's MSA
 columns become single string tokens. You can then condition on an
 observed MSA by passing the column-string sequence as `output` to
 `forward`, getting a 1D DP over MSA columns rather than the
-multidimensional DP that `--rust` emits.
+multidimensional DP that `--rust-phylo-hmm` emits.
 
 ### Verification
 

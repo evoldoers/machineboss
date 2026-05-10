@@ -2,7 +2,7 @@
 """Validate the skeleton-bake Rust codegen mode (Increment 1 of the
 bake-and-expand work).
 
-Runs `boss --phylo-skeleton --codegen <dir> --rust` on a small TKF91-DNA
+Runs `boss --phylo-skeleton --codegen <dir> --rust-phylo-hmm` on a small TKF91-DNA
 tree, then `cargo build` + `cargo test` on the resulting crate. Confirms:
 - the four baked `&'static str` constants (T_JSON, M_SKEL_JSON, TREE_NEWICK,
   TIME_PARAM) parse as well-formed JSON / Newick,
@@ -33,7 +33,7 @@ def main():
 
     run([BOSS, '--tkf91-branch-dna-jc',
          '--phylo-tree-string', '(A,B)P;', '--phylo-time-param', 'time',
-         '--phylo-skeleton', '--codegen', crate, '--rust'])
+         '--phylo-skeleton', '--codegen', crate, '--rust-phylo-hmm'])
 
     # Layout sanity
     assert os.path.isfile(os.path.join(crate, 'Cargo.toml'))
@@ -396,7 +396,7 @@ def run_tree_case(tree, leaves, time_params):
 
     run([BOSS, '--tkf91-branch-dna-jc',
          '--phylo-tree-string', tree, '--phylo-time-param', 'time',
-         '--phylo-skeleton', '--codegen', crate, '--rust'])
+         '--phylo-skeleton', '--codegen', crate, '--rust-phylo-hmm'])
 
     # C++ reference: the multidim Forward DP (exact lse) over C++ M_full.
     machine_json = run([BOSS, '--tkf91-branch-dna-jc',

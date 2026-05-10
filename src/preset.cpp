@@ -40,7 +40,9 @@ struct PresetCache {
 
 #include "preset/tkf91-root-dna-jc.h"
 #include "preset/tkf91-branch-dna-jc.h"
-#include "preset/tkf92-branch-prot-f81.h"
+// (preset/tkf92-branch-prot-f81 removed — superseded by the parameterised
+//  --tkf92-branch-prot-f81 CLI flag, which now emits the canonical
+//  6-state factoring of the zero-inflated TKF92 root singlet.)
 
 #include "preset/tolower.h"
 #include "preset/toupper.h"
@@ -75,7 +77,7 @@ PresetCache::PresetCache() {
 
   addPresetAs(tkf91_root_dna_jc,   "tkf91-root-dna-jc");
   addPresetAs(tkf91_branch_dna_jc, "tkf91-branch-dna-jc");
-  addPresetAs(tkf92_branch_prot_f81, "tkf92-branch-prot-f81");
+  // tkf92-branch-prot-f81: superseded by --tkf92-branch-prot-f81 CLI flag.
 
   addPreset(tolower);
   addPreset(toupper);

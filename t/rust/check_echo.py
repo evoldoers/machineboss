@@ -39,7 +39,7 @@ def main():
     # 1) Codegen
     run([BOSS, '--pair-json', '--generate-uniform', '01', '-m',
          '--begin', echo_machine, '--phylo-tree-string', tree, '--end',
-         '--codegen', crate, '--rust'])
+         '--codegen', crate, '--rust-phylo-hmm'])
 
     # 2) M_clamped reference
     out = run([BOSS, '--pair-json', '--generate-uniform', '01', '-m',

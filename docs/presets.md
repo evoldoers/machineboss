@@ -49,8 +49,15 @@ and (for `psw2dna` and `pswint`) the genetic code.
 | `jukescantor` | Jukes-Cantor model of DNA sequence divergence |
 | `tkf91-root-dna-jc` | TKF91 root: geometric DNA singlet, P(L=k)=κ^k(1−κ) with κ=insRate/delRate |
 | `tkf91-branch-dna-jc` | TKF91 branch transducer: 7-state DNA + Jukes-Cantor substitutions |
-| `tkf92-root-prot-f81` | TKF92 root: ν-modified geometric protein singlet, P(L=0)=1−κ, P(L≥1)=κ·ν^(k−1)·(1−ν), with ν=`r`. F81 equilibrium |
-| `tkf92-branch-prot-f81` | TKF92 branch transducer (5-state canonical WFST): protein + F81 substitutions, fragment extension parameter `r`. Per [tkf-mixdom/tkf92-wfst-derivation](https://github.com/ihh/tkf-mixdom) |
+
+The standalone `tkf92-branch-prot-f81` preset was retired in favour of
+the parameterised CLI flag `--tkf92-branch-prot-f81` (see below) — the
+new preset emits a 6-state WFST that correctly factors the joint TKF92
+pair HMM by the zero-inflated `--tkf92-root` singlet (ν = r + (1−r)κ);
+the old hand-tuned 5-state version did not. Use the parameterised flag
+or `--evolmoves-branch-prot-f81` (the 5-state regularised conditional
+pair HMM that composes with `--evolmoves-root` to recover the same
+joint matrix).
 
 The TKF91 (Thorne, Kishino, Felsenstein 1991) and TKF92 (1992) models are continuous-time
 Markov models of sequence evolution with insertions, deletions, and substitutions; TKF92 adds
@@ -64,14 +71,34 @@ sequence to an output sequence. Together root and branch model pairwise evolutio
 Any combination of TKF version, root/branch, alphabet, and substitution model can be
 constructed on the fly via the CLI flag `--tkfYY-TTT-AAA-MMM`:
 
-- `YY` is `91`, `92`, or `iid`. `iid` is the **zero-indel-rate degeneration of TKF91**:
-  the branch transducer collapses to a single emit state with self-loops, with no
-  insert/delete states (every input symbol maps 1:1 to an output symbol). The iid root
-  is structurally identical to the TKF91 root (a 2-state geometric-length emitter), but
-  the length-extension probability is exposed as a free parameter `pExtend` instead of
-  being derived from `insRate/delRate` — useful when you want to fix the length
-  distribution independently of any indel model. (TKF92 adds the fragment-extension
-  parameter `r`.)
+- `YY` is `91`, `92`, `iid`, or `evolmoves`.
+  - `91` and `92` give the canonical TKF91 / TKF92 root + branch
+    transducers. The TKF92 branch is the **6-state WFST** `[begin, match,
+    hold, insert, delete, end]` that correctly factors the joint TKF92
+    pair HMM by the zero-inflated TKF92 root singlet (the extra `hold`
+    state distinguishes pre-input from post-input inserts so the divisor
+    on transitions out of `begin`/`hold` is κ — singlet still at start —
+    while out of `match`/`insert`/`delete` it is ν — singlet in its
+    insert loop). See `~/tkf-mixdom/tkf/tkf92-wfst-derivation.tex`.
+  - `iid` is the **zero-indel-rate degeneration of TKF91**: the branch
+    transducer collapses to a single emit state with self-loops, with no
+    insert/delete states (every input symbol maps 1:1 to an output
+    symbol). The iid root is structurally identical to the TKF91 root (a
+    2-state geometric-length emitter), but the length-extension
+    probability is exposed as a free parameter `pExtend` instead of being
+    derived from `insRate/delRate`.
+  - `evolmoves` is a **TKF92 variant whose root is a non-zero-inflated
+    ν-geometric singlet** — P(L=0)=1−ν, P(L=k≥1)=ν^k·(1−ν) — and whose
+    5-state branch is the regularised conditional pair HMM that uniformly
+    divides input-consuming transitions by ν. Composing
+    `--evolmoves-root` with `--evolmoves-branch` recovers the standard
+    TKF92 5-state joint pair HMM matrix entries to ulp; composing
+    `--tkf92-root` with `--tkf92-branch` (the 6-state) recovers the same
+    joint. The two pairs are equivalent factorisations of the same model;
+    evolmoves uses the 5-state regularised branch as its move-proposal
+    likelihood and the 6-state TKF92 branch as its per-branch simulator.
+  - All four versions accept the TKF92 fragment-extension probability
+    `r`; for `iid` `r` is unused.
 - `TTT` is `root` or `branch`.
 - `AAA` is `dna`, `rna`, `prot`, `binary`, `unary`, or `custom` (followed by the alphabet string).
 - `MMM` is one of:
@@ -98,6 +125,8 @@ boss --iid-branch-binary-bsc               # zero-indel-rate BSC: input/output b
 boss --iid-branch-binary-telegraph         # iid + asymmetric 2-state CTMC on {0, 1}
 boss --iid-branch-binary-erasure           # iid + 0-absorbing erasure channel
 boss --iid-root-binary-bsc                 # geometric binary emitter (free pExtend) + BSC π
+boss --evolmoves-root-prot-f81             # plain ν-geometric protein singlet (no zero-inflation)
+boss --evolmoves-branch-prot-f81           # 5-state regularised conditional pair HMM (factors above singlet)
 ```
 
 The closed-form formulas for K80 and HKY85 transition probabilities are encoded directly in

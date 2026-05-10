@@ -36,7 +36,7 @@ def run_tree_case(tree, leaves, time_params):
 
     run([BOSS, '--tkf91-branch-dna-jc',
          '--phylo-tree-string', tree, '--phylo-time-param', 'time',
-         '--phylo-skeleton', '--codegen', crate, '--rust'])
+         '--phylo-skeleton', '--codegen', crate, '--rust-phylo-hmm'])
 
     machine_json = run([BOSS, '--tkf91-branch-dna-jc',
                         '--phylo-tree-string', tree,

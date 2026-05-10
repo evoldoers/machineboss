@@ -217,9 +217,6 @@ preset/translate.json: js/translate.js
 preset/translate-spliced.json: js/translate.js
 	node $< -e base -e intron >$@
 
-preset/tkf92-branch-prot-f81.json: js/tkf92branch.py python/machineboss/neural/tkf92.py python/machineboss/machine.py
-	python3 $< >$@
-
 preset/%.json: js/%.js
 	node $< >$@
 
@@ -268,7 +265,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-tkf92-root-binary-bsc-match test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake test-rust-transducer
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-tkf92-root-binary-bsc-match test-evolmoves-branch-binary-bsc-match test-evolmoves-root-binary-bsc-match test-tkf92-compose test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake test-rust-transducer
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -493,7 +490,7 @@ test-phylo-skeleton-expand:
 	@REPO_ROOT=$(CURDIR) python3 t/check_phylo_skeleton_expand.py
 
 # Phylo skeleton bake (Rust codegen Increment 1): runs --phylo-skeleton --codegen
-# --rust, asserts the resulting crate compiles and that the baked T / M_skel /
+# --rust-phylo-hmm, asserts the resulting crate compiles and that the baked T / M_skel /
 # tree constants parse correctly. Skipped when cargo is not in PATH.
 test-phylo-skeleton-bake:
 	@REPO_ROOT=$(CURDIR) python3 t/check_phylo_skeleton_bake.py
@@ -561,6 +558,20 @@ test-iid-root-binary-bsc:
 # was using `r` directly instead of ν.
 test-tkf92-root-binary-bsc-match:
 	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --tkf92-root-binary-bsc -P t/io/tkf92-root-binary-bsc-params.json --output-chars 01 -L t/expect/tkf92-root-binary-bsc-loglike.json
+
+# Evolmoves preset family (TKF92 with non-zero-inflated singlet).
+test-evolmoves-branch-binary-bsc-match:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --evolmoves-branch-binary-bsc -P t/io/evolmoves-branch-binary-bsc-params.json --input-chars 01 --output-chars 01 -L t/expect/evolmoves-branch-binary-bsc-loglike.json
+test-evolmoves-root-binary-bsc-match:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --evolmoves-root-binary-bsc -P t/io/evolmoves-root-binary-bsc-params.json --output-chars 01 -L t/expect/evolmoves-root-binary-bsc-loglike.json
+
+# Cross-check that compose(tkf92-root, tkf92-branch [6-state]) and
+# compose(evolmoves-root, evolmoves-branch [5-state]) produce identical
+# Forward log-likelihoods on multiple output sequences (both are valid
+# generator factorisations of the same TKF92 joint pair HMM), and that
+# the empty-output case matches the closed-form analytical marginal.
+test-tkf92-compose:
+	@REPO_ROOT=$(CURDIR) python3 t/check_tkf92_compose.py
 
 test-tkf91-branch-dna-jc-match:
 	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-branch-dna-jc -P t/io/tkf91-branch-params.json --input-chars ACGT --output-chars ACGA -L t/expect/tkf91-branch-dna-jc-loglike.json
@@ -868,7 +879,7 @@ test-regex:
 	@$(TEST) $(WRAPBOSS) --regex '[01]+' t/expect/regex-01plus.json
 
 # Preset load tests
-PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91-root-dna-jc tkf91-branch-dna-jc tkf92-branch-prot-f81 tolower toupper hamming31 hamming74
+PRESETS = null compdna comprna dnapsw protpsw translate prot2dna psw2dna iupacdna iupacaa dna2rna rna2dna bintern terndna jukescantor dnapswnbr tkf91-root-dna-jc tkf91-branch-dna-jc tolower toupper hamming31 hamming74
 PRESET_TESTS = $(addprefix test-preset-,$(PRESETS))
 $(PRESET_TESTS): test-preset-%:
 	@$(WRAPBOSS) --preset $* >t/expect/preset-$*.tmp.json 2>/dev/null

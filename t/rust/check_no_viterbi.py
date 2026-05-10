@@ -26,7 +26,7 @@ def main():
 
     run([BOSS, '--pair-json', '--generate-uniform', '01', '-m',
          '--begin', echo, '--phylo-tree-string', '(A,B)P;', '--end',
-         '--codegen', crate, '--rust', '--no-viterbi'])
+         '--codegen', crate, '--rust-phylo-hmm', '--no-viterbi'])
 
     with open(os.path.join(crate, 'src', 'lib.rs')) as f:
         lib = f.read()

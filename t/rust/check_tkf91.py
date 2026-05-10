@@ -42,7 +42,7 @@ def main():
                  '--end']
 
     # 1) Codegen
-    run([BOSS] + open_args + ['--codegen', crate, '--rust'])
+    run([BOSS] + open_args + ['--codegen', crate, '--rust-phylo-hmm'])
 
     # 2) Reference: exact-lse Python multidim Forward over the same machine
     machine_json = run([BOSS] + open_args)

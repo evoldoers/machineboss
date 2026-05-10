@@ -123,7 +123,12 @@ Selected via `--preset NAME` or `-p NAME`.
 | `jukescantor` | Jukes-Cantor (1969) DNA substitution model. |
 | `tkf91-branch-dna-jc` | Thorne-Kishino-Felsenstein (1991) DNA indel model + Jukes-Cantor substitutions. |
 | `tkf91-root-dna-jc` | Equilibrium distribution of the TKF91 model. |
-| `tkf92-branch-prot-f81` | Thorne-Kishino-Felsenstein (1992) protein indel model with fragment extension + F81 substitutions. The conditional WFST `P(descendant|ancestor)` per [tkf-mixdom/tkf92-wfst-derivation](https://github.com/ihh/tkf-mixdom). |
+
+(The standalone `tkf92-branch-prot-f81` preset was retired; use the
+parameterised `--tkf92-branch-prot-f81` CLI flag instead — see the
+"Parameterised TKF presets" section below for the correct 6-state WFST,
+and the `evolmoves` family for the equivalent 5-state regularised
+factorisation.)
 
 ### Parameterised TKF presets
 
@@ -131,7 +136,7 @@ Generate any TKF model + alphabet + substitution-model combination on the fly wi
 
 | Component | Allowed values |
 |---|---|
-| `YY` | `91`, `92` (TKF version; `92` adds a fragment-extension parameter `r`), or `iid` (zero-indel-rate degeneration of TKF91 — see [§iid](#iid-zero-indel-rate)) |
+| `YY` | `91`, `92`, `iid`, or `evolmoves`. `92` adds the fragment-extension parameter `r` and emits the canonical 6-state TKF92 branch (factoring the zero-inflated singlet); `iid` is the zero-indel-rate degeneration of TKF91 (see [§iid](#iid-zero-indel-rate)); `evolmoves` is a TKF92 variant whose root is a non-zero-inflated ν-geometric singlet and whose branch is the 5-state regularised conditional pair HMM (see [§evolmoves](#evolmoves-non-zero-inflated-tkf92-variant)). |
 | `TTT` | `root` (geometric singlet over the alphabet) or `branch` (conditional WFST) |
 | `AAA` | `dna`, `rna`, `prot`, `binary`, `unary`, `custom` |
 | `MMM` | `jc`, `f81`, `k80`, `hky85`, `id`, `telegraph`, `bsc`, `erasure` (see table below) |
@@ -155,6 +160,42 @@ For `AAA=custom`, supply the alphabet string as the next argument: `--tkf91-bran
 
 `--iid-root-AAA-MMM` produces a 2-state geometric-length emitter — same WFST shape as `--tkf91-root-AAA-MMM`, but the length-extension probability is exposed as a free parameter `pExtend` instead of being derived from `insRate/delRate`. Useful when you want to fix the length distribution independently of any indel model. (If you *do* want the TKF91 root with `pExtend = insRate/delRate`, use `--tkf91-root-AAA-MMM` directly.)
 
+#### evolmoves (non-zero-inflated TKF92 variant)
+
+The `evolmoves` preset family emits a TKF92 model whose root is a **plain
+ν-geometric singlet** (P(L=0)=1−ν, P(L=k≥1)=ν^k·(1−ν)) rather than the
+zero-inflated ν-modified geometric (P(L=0)=1−κ, P(L=k≥1)=κ·ν^(k−1)·(1−ν))
+that `--tkf92-root-AAA-MMM` emits. Both factorisations recover the same
+canonical 5-state TKF92 joint pair HMM matrix when composed with their
+matching branch:
+
+  - `--evolmoves-root-AAA-MMM` — 3-state plain ν-geometric singlet (start
+    emits ν·π_X going to insert, insert self-loops with ν·π_X, both can
+    silent-exit with 1−ν).
+  - `--evolmoves-branch-AAA-MMM` — **5-state** `[begin, match, insert,
+    delete, end]` regularised conditional pair HMM. Every input-consuming
+    transition (M / D destination) is uniformly divided by ν; every →end
+    transition by 1−ν; insert transitions (no input consumed) are
+    unchanged. Conditional normalisation: from any non-end state x, the
+    sum over all alignment paths consuming exactly one input symbol
+    (preceded by any number of insert self-loops) equals 1.
+
+The default `--tkf92-branch-AAA-MMM` is now the **6-state** WFST
+`[begin, match, hold, insert, delete, end]` that factors the joint by
+the **zero-inflated** `--tkf92-root-AAA-MMM` singlet — the extra `hold`
+state distinguishes pre-input from post-input inserts so transitions out
+of `begin`/`hold` divide by κ (singlet still at start) while transitions
+out of `match`/`insert`/`delete` divide by ν (singlet in its insert
+loop). This is the LaTeX-spec WFST per
+`~/tkf-mixdom/tkf/tkf92-wfst-derivation.tex`.
+
+Both pairs `(--tkf92-root, --tkf92-branch [6-state])` and
+`(--evolmoves-root, --evolmoves-branch [5-state])` compose to the same
+joint TKF92 pair HMM matrix; pick whichever factorisation is more
+convenient for your downstream code (the `evolmoves` family conditionally
+normalises uniformly, the `tkf92` family pulls the κ-vs-ν distinction
+into a separate `hold` state).
+
 Examples:
 
 ```bash
@@ -166,6 +207,8 @@ boss --iid-branch-binary-bsc              # zero-indel-rate BSC channel: 1:1 bin
 boss --iid-branch-binary-telegraph        # iid + asymmetric 2-state CTMC on {0, 1}
 boss --iid-branch-binary-erasure          # iid + 0-absorbing erasure channel
 boss --iid-root-binary-bsc                # geometric binary emitter (free pExtend) + BSC π
+boss --evolmoves-root-prot-f81            # 3-state plain ν-geometric protein singlet
+boss --evolmoves-branch-prot-f81          # 5-state regularised conditional pair HMM (factors above)
 ```
 | `bintern` | Binary (base-2) to ternary (base-3) converter. |
 | `terndna` | Ternary to non-repeating DNA. With `bintern`, implements the Goldman *et al.* DNA storage code. |
@@ -301,8 +344,8 @@ Machine Boss can generate standalone C++, JavaScript, or WGSL (WebGPU) code impl
 | `--cpp32` | Generate C++ code (32-bit). |
 | `--js` | Generate JavaScript code. |
 | `--wgsl` | Generate WGSL compute shader and ES module for WebGPU. |
-| `--rust` | Generate a Rust crate implementing multidimensional Forward / Viterbi for a phylogenetic composition; see [Rust Codegen](/rust-codegen/). |
-| `--no-viterbi` | With `--rust`, omit the Viterbi function from the generated crate. |
+| `--rust-phylo-hmm` | Generate a Rust crate implementing multidimensional Forward / Viterbi for a phylogenetic composition; see [Rust Codegen](/rust-codegen/). |
+| `--no-viterbi` | With `--rust-phylo-hmm`, omit the Viterbi function from the generated crate. |
 | `--inseq TYPE` | Input sequence type: `String`, `Intvec`, or `Profile`. |
 | `--outseq TYPE` | Output sequence type: `String`, `Intvec`, or `Profile`. |
 | `--showcells` | Include debugging output in generated code. |

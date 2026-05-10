@@ -86,7 +86,7 @@ int main (int argc, char** argv) {
       ("hmmer-plan7", po::value<string>(), "create Plan7 generator from HMMER3 model file (single-hit with N/C flanks)")
       ("hmmer-multihit", po::value<string>(), "create Plan7 generator from HMMER3 model file (multi-hit with J loop)")
       ("jphmm,J", po::value<string>(), "create jumping profile HMM generator from FASTA multiple alignment")
-      ("tkfYY-TTT-AAA-MMM", "build a TKF-family transducer from scratch. YY in {91,92,iid} (iid is the zero-indel-rate limit of tkf91; iid branches consume one input per output, with no insert/delete states); TTT in {root,branch}; AAA in {dna,rna,prot,binary,unary,custom} (custom takes the alphabet string as the next argument); MMM in {jc,f81,k80,hky85,id,telegraph,bsc,erasure} (k80/hky85 require a nucleotide alphabet; telegraph/bsc/erasure require the binary alphabet — telegraph is a generic 2-state CTMC, bsc its symmetric version, erasure its 0-absorbing version). Examples: --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85, --iid-branch-binary-bsc, --iid-branch-binary-telegraph, --iid-branch-custom-jc XYZW")
+      ("tkfYY-TTT-AAA-MMM", "build a TKF-family transducer from scratch. YY in {91,92,iid,evolmoves}: iid is the zero-indel-rate limit of tkf91 (branches consume one input per output, no insert/delete states); evolmoves is a TKF92 variant whose root is a non-zero-inflated ν-geometric singlet (P(L=0)=1−ν instead of 1−κ) and whose 5-state branch is the regularised conditional pair HMM that composes with this singlet to recover the standard 5-state TKF92 joint pair HMM matrix. The (default) tkf92-branch is the canonical 6-state WFST that factors the joint by the zero-inflated tkf92-root singlet (extra `hold` state distinguishes pre-input from post-input inserts). TTT in {root,branch}; AAA in {dna,rna,prot,binary,unary,custom} (custom takes the alphabet string as the next argument); MMM in {jc,f81,k80,hky85,id,telegraph,bsc,erasure} (k80/hky85 require a nucleotide alphabet; telegraph/bsc/erasure require the binary alphabet — telegraph is a generic 2-state CTMC, bsc its symmetric version, erasure its 0-absorbing version). Examples: --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85, --evolmoves-branch-prot-f81, --iid-branch-binary-bsc, --iid-branch-custom-jc XYZW")
       ;
 
     po::options_description postfixOpts("Postfix operators");
@@ -222,9 +222,9 @@ int main (int argc, char** argv) {
       ("showcells", "include debugging output in generated code")
       ("compileviterbi", "compile Viterbi instead of Forward")
       ("wgsl", "generate WGSL compute shader and ES module for WebGPU")
-      ("rust", "generate Rust crate for multidimensional Forward DP on a phylo-composed generator (requires the machine to have been built with --pair-json so output tokens are JSON-decodable)")
-      ("rust-transducer", "generate Rust crate for the standard 2D Forward DP on a regular in/out transducer — string input, string output, no multi-leaf phylo intersection. Use this for any Machine Boss machine you want to call from Rust as `forward(p, &[input...], &[output...]) -> f64`. Mutually exclusive with --rust / --cpp32 / --cpp64 / --js / --wgsl.")
-      ("no-viterbi", "with --rust or --rust-transducer, omit the Viterbi function from the generated crate")
+      ("rust-phylo-hmm", "generate Rust crate for multidimensional Forward DP on a phylo-composed generator — i.e. a multi-leaf phylo HMM (requires the machine to have been built with --pair-json so output tokens are JSON-decodable). For regular in/out transducers (string in, string out, no phylo) use --rust-transducer instead.")
+      ("rust-transducer", "generate Rust crate for the standard 2D Forward DP on a regular in/out transducer — string input, string output, no multi-leaf phylo intersection. Use this for any Machine Boss machine you want to call from Rust as `forward(p, &[input...], &[output...]) -> f64`. Mutually exclusive with --rust-phylo-hmm / --cpp32 / --cpp64 / --js / --wgsl.")
+      ("no-viterbi", "with --rust-phylo-hmm or --rust-transducer, omit the Viterbi function from the generated crate")
       ("inseq", po::value<string>(), "input sequence type (String, Intvec, Profile)")
       ("outseq", po::value<string>(), "output sequence type (String, Intvec, Profile)")
       ;
@@ -260,7 +260,7 @@ int main (int argc, char** argv) {
 
     const regex presetAlphRegex ("^--(generate|recognize|echo)-(one|wild|iid|uniform)-(dna|rna|aa)$");
     // Pattern for parameterised TKF presets: --tkfYY-TTT-AAA-MMM[-<alphabet>] for AAA=custom.
-    const regex tkfPresetRegex ("^--(tkf91|tkf92|iid)-(root|branch)-(dna|rna|prot|binary|unary|custom)-(jc|f81|k80|hky85|id|telegraph|bsc|erasure)$");
+    const regex tkfPresetRegex ("^--(tkf91|tkf92|iid|evolmoves)-(root|branch)-(dna|rna|prot|binary|unary|custom)-(jc|f81|k80|hky85|id|telegraph|bsc|erasure)$");
     map<string,string> presetAlph;
     const string dnaAlphabet = presetAlph[string("dna")] = "ACGT";
     const string rnaAlphabet = presetAlph[string("rna")] = "ACGU";
@@ -291,7 +291,7 @@ int main (int argc, char** argv) {
     // phylogenetic intersection: time-param name and optional branch-length output
     const string phyloTimeParam = vm.count("phylo-time-param") ? vm.at("phylo-time-param").as<string>() : string("t");
     const string phyloParamsOut = vm.count("phylo-params-out") ? vm.at("phylo-params-out").as<string>() : string();
-    // phylo-skeleton bake context: when --phylo-skeleton + --codegen --rust is used,
+    // phylo-skeleton bake context: when --phylo-skeleton + --codegen --rust-phylo-hmm is used,
     // we capture T (the canonical, unrenamed branch transducer) and the Newick string
     // *before* phylo-fold replaces them, so the codegen path can emit a Rust crate
     // with T + tree baked in alongside (or instead of) M_full's runtime tables.
@@ -424,9 +424,10 @@ int main (int argc, char** argv) {
 	else if (isTkfPresetArg) {
 	  TkfPreset::Spec spec;
 	  const string vstr = tkfPresetMatch.str(1);
-	  if      (vstr == "tkf91") spec.version = TkfPreset::Version::TKF91;
-	  else if (vstr == "tkf92") spec.version = TkfPreset::Version::TKF92;
-	  else if (vstr == "iid")   spec.version = TkfPreset::Version::IID;
+	  if      (vstr == "tkf91")     spec.version = TkfPreset::Version::TKF91;
+	  else if (vstr == "tkf92")     spec.version = TkfPreset::Version::TKF92;
+	  else if (vstr == "iid")       spec.version = TkfPreset::Version::IID;
+	  else if (vstr == "evolmoves") spec.version = TkfPreset::Version::Evolmoves;
 	  else throw runtime_error ("unknown TKF version in preset flag: " + vstr);
 	  spec.kind    = (tkfPresetMatch.str(2) == "root") ? TkfPreset::Kind::Root : TkfPreset::Kind::Branch;
 	  if (!TkfPreset::parseAlphabetKind (tkfPresetMatch.str(3), spec.alphabetKind))
@@ -665,7 +666,7 @@ int main (int argc, char** argv) {
 	  const string nwkStr = nwkBuf.str();
 	  const PhyloTree tree = PhyloTree::parseNewick (nwkStr);
 	  Machine T_canonical = popMachine();
-	  if (vm.count("phylo-skeleton") && vm.count("codegen") && vm.count("rust")) {
+	  if (vm.count("phylo-skeleton") && vm.count("codegen") && vm.count("rust-phylo-hmm")) {
 	    phyloSkeletonT = T_canonical;
 	    phyloSkeletonNewick = nwkStr;
 	    phyloSkeletonCaptured = true;
@@ -679,7 +680,7 @@ int main (int argc, char** argv) {
 	  const string nwkStr = getArg();
 	  const PhyloTree tree = PhyloTree::parseNewick (nwkStr);
 	  Machine T_canonical = popMachine();
-	  if (vm.count("phylo-skeleton") && vm.count("codegen") && vm.count("rust")) {
+	  if (vm.count("phylo-skeleton") && vm.count("codegen") && vm.count("rust-phylo-hmm")) {
 	    phyloSkeletonT = T_canonical;
 	    phyloSkeletonNewick = nwkStr;
 	    phyloSkeletonCaptured = true;
@@ -833,12 +834,12 @@ int main (int argc, char** argv) {
       compiler.useMaxReduce = vm.count("compileviterbi");
       compiler.compileForward (machine, xSeqType, ySeqType, filenamePrefix.c_str());
     };
-    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") + vm.count("rust") + vm.count("rust-transducer") < 2, "Options --cpp32, --cpp64, --js, --wgsl, --rust, and --rust-transducer are mutually incompatible; choose a target language");
+    Assert (vm.count("cpp32") + vm.count("cpp64") + vm.count("js") + vm.count("wgsl") + vm.count("rust-phylo-hmm") + vm.count("rust-transducer") < 2, "Options --cpp32, --cpp64, --js, --wgsl, --rust-phylo-hmm, and --rust-transducer are mutually incompatible; choose a target language");
     if (vm.count("codegen")) {
       const string outputDir = vm.at("codegen").as<string>();
       if (vm.count("wgsl")) {
 	WGSLCompiler::compile (machine, outputDir.c_str());
-      } else if (vm.count("rust")) {
+      } else if (vm.count("rust-phylo-hmm")) {
 	if (phyloSkeletonCaptured) {
 	  compileRustSkeleton (machine, phyloSkeletonT, phyloSkeletonNewick,
 	                       phyloTimeParam, outputDir);

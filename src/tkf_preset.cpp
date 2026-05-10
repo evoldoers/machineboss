@@ -80,9 +80,9 @@ static void validateSpec (const Spec& spec, const vguard<string>& alph) {
 // ---------- Substitution model expressions ----------
 
 // Time parameter name per TKF version (matches the existing presets).
-// IID reuses TKF91's "time" name.
+// IID reuses TKF91's "time" name. Evolmoves shares TKF92's "t".
 static string timeParamName (Version v) {
-  if (v == Version::TKF92) return string("t");
+  if (v == Version::TKF92 || v == Version::Evolmoves) return string("t");
   return string("time");
 }
 
@@ -414,8 +414,8 @@ static void addConstraintsForSpec (Machine& m, const Spec& spec, const vguard<st
     m.cons.rate.push_back ("delRate");
   }
   addSubModelRateConstraints (m, spec.model);
-  // TKF92 fragment-extension is a probability (default 0.5).
-  if (spec.version == Version::TKF92)
+  // TKF92 / Evolmoves fragment-extension is a probability (default 0.5).
+  if (spec.version == Version::TKF92 || spec.version == Version::Evolmoves)
     m.cons.prob.push_back ("r");
   // Free pi parameters (default uniform 1/n) — only for F81 and HKY85.
   // Telegraph's pi_0/pi_1 are DERIVED from (rate01, rate10) via defs,
@@ -482,7 +482,8 @@ static void addRootConstraints (Machine& m, const Spec& spec, const vguard<strin
   } else {
     m.cons.rate.push_back ("insRate");
     m.cons.rate.push_back ("delRate");
-    if (spec.version == Version::TKF92) m.cons.prob.push_back ("r");
+    if (spec.version == Version::TKF92 || spec.version == Version::Evolmoves)
+      m.cons.prob.push_back ("r");
   }
   if (spec.model == Model::F81 || spec.model == Model::HKY85
       || spec.model == Model::Telegraph) {
@@ -543,12 +544,20 @@ static Machine buildTkf92Root (const Spec& spec, const vguard<string>& alph, con
   m.funcs.defs["pExtend"]   = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
                                                       WeightAlgebra::param ("delRate"));
   m.funcs.defs["pNoExtend"] = WeightAlgebra::negate (WeightAlgebra::param ("pExtend"));
-  // ν = r + (1−r)·κ  (κ = pExtend = insRate/delRate)
+  // κ — defined directly as insRate/delRate to match the branch's `kappa`
+  // expression structurally so root and branch defs merge cleanly during
+  // composition. Numerically identical to pExtend.
+  m.funcs.defs["kappa"]    = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
+                                                     WeightAlgebra::param ("delRate"));
+  m.funcs.defs["pNoKappa"] = WeightAlgebra::negate (WeightAlgebra::param ("kappa"));
+  // ν = r + (1−r)·κ  (κ = pExtend = insRate/delRate). Branch uses the
+  // same `kappa` name so this expression is structurally identical to
+  // the branch's `nu` def → no merge conflict on compose.
   m.funcs.defs["nu"]        = WeightAlgebra::add (
     WeightAlgebra::param ("r"),
     WeightAlgebra::multiply (
       WeightAlgebra::negate (WeightAlgebra::param ("r")),
-      WeightAlgebra::param ("pExtend")));
+      WeightAlgebra::param ("kappa")));
   m.funcs.defs["pNoNu"]     = WeightAlgebra::negate (WeightAlgebra::param ("nu"));
 
   // state 0 (emit_first): emit X with weight κ·π_X → emit_more
@@ -598,9 +607,68 @@ static Machine buildIidRoot (const Spec& spec, const vguard<string>& alph, const
   return m;
 }
 
+// ---------- Evolmoves root: 3-state plain ν-geometric singlet ------------
+//
+// Same SIE shape as the (zero-inflated) tkf92-root, but BOTH the start
+// and insert states use a uniform ν per emission — there's no κ-vs-ν
+// distinction for the first emission. The marginal length distribution
+// is therefore the standard non-zero-inflated geometric:
+//   P(L=0) = 1−ν,  P(L=k≥1) = ν^k · (1−ν)
+// rather than tkf92-root's zero-inflated P(L=0)=1−κ, P(L=k≥1)=κ·ν^(k−1)·(1−ν).
+//
+//   0 start   emit X (ν·π_X) → insert;  silent → end (1−ν)
+//   1 insert  emit X (ν·π_X) → insert;  silent → end (1−ν)
+//   2 end
+//
+// Evolmoves uses this as the per-singlet length prior in its move
+// proposals. See also `--evolmoves-branch-AAA-MMM` (the conditional
+// pair HMM that composes with this singlet to recover the standard
+// 5-state TKF92 joint pair HMM matrix).
+static Machine buildEvolmovesRoot (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  Machine m;
+  m.state.resize(3);
+  m.state[0].name = json("start");
+  m.state[1].name = json("insert");
+  m.state[2].name = json("end");
+
+  m.funcs.defs = sm.defs;
+  m.funcs.defs["kappa"] = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
+                                                  WeightAlgebra::param ("delRate"));
+  // ν = r + (1−r)·κ. Same definition as the tkf92 branch / root.
+  m.funcs.defs["nu"] = WeightAlgebra::add (
+    WeightAlgebra::param ("r"),
+    WeightAlgebra::multiply (
+      WeightAlgebra::negate (WeightAlgebra::param ("r")),
+      WeightAlgebra::param ("kappa")));
+  m.funcs.defs["pNoNu"] = WeightAlgebra::negate (WeightAlgebra::param ("nu"));
+
+  // start (0): emit X → insert with weight ν·π_X
+  for (size_t k = 0; k < alph.size(); ++k) {
+    WeightExpr pi = piExpr (spec.model, alph.size(), alph[k]);
+    WeightExpr w  = WeightAlgebra::multiply (WeightAlgebra::param ("nu"), pi);
+    m.state[0].trans.push_back (MachineTransition (string(), alph[k], 1, w));
+  }
+  // start → end (silent, weight 1−ν)
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 2,
+                                                  WeightAlgebra::param ("pNoNu")));
+  // insert (1): emit X → insert (self-loop) with weight ν·π_X
+  for (size_t k = 0; k < alph.size(); ++k) {
+    WeightExpr pi = piExpr (spec.model, alph.size(), alph[k]);
+    WeightExpr w  = WeightAlgebra::multiply (WeightAlgebra::param ("nu"), pi);
+    m.state[1].trans.push_back (MachineTransition (string(), alph[k], 1, w));
+  }
+  // insert → end (silent, weight 1−ν)
+  m.state[1].trans.push_back (MachineTransition (string(), string(), 2,
+                                                  WeightAlgebra::param ("pNoNu")));
+
+  addRootConstraints (m, spec, alph);
+  return m;
+}
+
 static Machine buildRoot (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
-  if (spec.version == Version::IID)   return buildIidRoot   (spec, alph, sm);
-  if (spec.version == Version::TKF91) return buildTkf91Root (spec, alph, sm);
+  if (spec.version == Version::IID)        return buildIidRoot       (spec, alph, sm);
+  if (spec.version == Version::Evolmoves)  return buildEvolmovesRoot (spec, alph, sm);
+  if (spec.version == Version::TKF91)      return buildTkf91Root     (spec, alph, sm);
   return buildTkf92Root (spec, alph, sm);
 }
 
@@ -667,50 +735,99 @@ static Machine buildTkf91Branch (const Spec& spec, const vguard<string>& alph, c
   return m;
 }
 
-// ---------- TKF92 branch: 5-state canonical WFST ----------
+// ---------- Common TKF92 / evolmoves derived defs ----------
 //
-// Matches preset/tkf92-branch-prot-f81.json. States: begin (0), match (1),
-// insert (2), delete (3), end (4). Each non-end source has full mat/ins/del/fin
-// transitions with named t_{a,b} weights from tkf92-wfst-derivation.tex.
-
-static Machine buildTkf92Branch (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
-  Machine m;
-  m.state.resize(5);
-  m.state[0].name = json("begin");
-  m.state[1].name = json("match");
-  m.state[2].name = json("insert");
-  m.state[3].name = json("delete");
-  m.state[4].name = json("end");
-
-  m.funcs.defs = sm.defs;
-  addTkfBdiDefs (m.funcs.defs, spec.version);
-  m.funcs.defs["pOrphans"] = WeightAlgebra::negate (
+// pOrphans / pNoOrphans, kappa, nu (= r + (1-r)*kappa), and pNoNu, plus
+// the basic alpha / beta from addTkfBdiDefs. All four flavours of branch
+// (5-state evolmoves, 6-state TKF92) share these.
+static void addTkf92BranchDefs (ParamDefs& defs) {
+  defs["pOrphans"] = WeightAlgebra::negate (
     WeightAlgebra::multiply (
-      WeightAlgebra::divide (WeightAlgebra::param ("delRate"), WeightAlgebra::param ("insRate")),
-      WeightAlgebra::divide (WeightAlgebra::param ("pDescendants"), WeightAlgebra::param ("pDeletion"))));
-  m.funcs.defs["pNoOrphans"] = WeightAlgebra::negate (WeightAlgebra::param ("pOrphans"));
-  // TKF92 singlet: kappa = lambda/mu (continuation prob at equilibrium),
-  // pSinglet = r + (1-r)*kappa (ext + (1-ext)*kappa from the derivation).
-  m.funcs.defs["kappa"] = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
-                                                 WeightAlgebra::param ("delRate"));
-  m.funcs.defs["pSinglet"] = WeightAlgebra::add (
+      WeightAlgebra::divide (WeightAlgebra::param ("delRate"),
+                             WeightAlgebra::param ("insRate")),
+      WeightAlgebra::divide (WeightAlgebra::param ("pDescendants"),
+                             WeightAlgebra::param ("pDeletion"))));
+  defs["pNoOrphans"] = WeightAlgebra::negate (WeightAlgebra::param ("pOrphans"));
+  defs["kappa"] = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
+                                         WeightAlgebra::param ("delRate"));
+  defs["pNoKappa"] = WeightAlgebra::negate (WeightAlgebra::param ("kappa"));
+  // nu = r + (1-r) * kappa  (the ν-modified geometric continuation
+  // probability used by both the TKF92 root singlet and the conditional
+  // branch divisors). pNoNu = 1 − ν.
+  defs["nu"] = WeightAlgebra::add (
     WeightAlgebra::param ("r"),
     WeightAlgebra::multiply (
       WeightAlgebra::negate (WeightAlgebra::param ("r")),
       WeightAlgebra::param ("kappa")));
+  defs["pNoNu"] = WeightAlgebra::negate (WeightAlgebra::param ("nu"));
+}
 
-  // sta row
+// ---------- TKF92 branch: 6-state factoring of zero-inflated singlet ----
+//
+// States: S (0), M (1), H (2), I (3), D (4), E (5).
+//
+// H = "post-insert from S, no input consumed yet". This split is what
+// distinguishes the 6-state form from the 5-state evolmoves-branch: the
+// zero-inflated TKF92 root singlet (--tkf92-root) emits the FIRST input
+// with weight κ and SUBSEQUENT inputs with weight ν, so the conditional
+// pair HMM divisor on input-consuming transitions out of S/H is κ
+// (singlet still at its start state) while out of M/I/D it is ν (singlet
+// in its insert loop). Without H, the path S → I^k → M would incorrectly
+// divide the first input by ν (the M→I→I→...→M path's divisor) instead
+// of κ. Similarly, S → E and H → E divide by 1−κ (singlet's S→E weight),
+// while M/I/D → E divide by 1−ν.
+//
+// See ~/tkf-mixdom/tkf/tkf92-wfst-derivation.tex for the full derivation.
+static Machine buildTkf92Branch (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  Machine m;
+  m.state.resize(6);
+  m.state[0].name = json("begin");
+  m.state[1].name = json("match");
+  m.state[2].name = json("hold");      // post-insert from S, no input consumed yet
+  m.state[3].name = json("insert");
+  m.state[4].name = json("delete");
+  m.state[5].name = json("end");
+
+  m.funcs.defs = sm.defs;
+  addTkfBdiDefs (m.funcs.defs, spec.version);
+  addTkf92BranchDefs (m.funcs.defs);
+
+  // Convenience: 1 − r (algebraic complement of fragment-extension prob).
+  WeightExpr oneMinusR = WeightAlgebra::negate (WeightAlgebra::param ("r"));
+
+  // ---- S row (singlet at S, divisor κ on input-consuming, 1−κ on E) ----
+  // joint S → M = (1−β)·κ·α; cond = (1−β)·α
   m.funcs.defs["tStaMat"] = WeightAlgebra::multiply (
     WeightAlgebra::param ("pNoDescendants"), WeightAlgebra::param ("pNoDeletion"));
+  // S → H (insert before any input): joint = β; no divisor (no input consumed).
   m.funcs.defs["tStaIns"] = WeightAlgebra::param ("pDescendants");
+  // joint S → D = (1−β)·κ·(1−α); cond = (1−β)·(1−α)
   m.funcs.defs["tStaDel"] = WeightAlgebra::multiply (
     WeightAlgebra::param ("pNoDescendants"), WeightAlgebra::param ("pDeletion"));
+  // joint S → E = (1−β)·(1−κ); cond = (1−β)
   m.funcs.defs["tStaFin"] = WeightAlgebra::param ("pNoDescendants");
 
+  // ---- H row (singlet at S, divisor κ on M/D, 1−κ on E; insert stays in H)
+  // joint H → M ≡ joint I → M = (1−r)(1−β)·κ·α; cond = (1−r)(1−β)·α.
+  m.funcs.defs["tHldMat"] = WeightAlgebra::multiply (
+    oneMinusR,
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::param ("pNoDeletion")));
+  // joint H → H ≡ joint I → I = r + (1−r)·β; no divisor.
+  m.funcs.defs["tHldHld"] = WeightAlgebra::add (
+    WeightAlgebra::param ("r"),
+    WeightAlgebra::multiply (oneMinusR, WeightAlgebra::param ("pDescendants")));
+  // joint H → D = (1−r)(1−β)·κ·(1−α); cond = (1−r)(1−β)·(1−α).
+  m.funcs.defs["tHldDel"] = WeightAlgebra::multiply (
+    oneMinusR,
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::param ("pDeletion")));
+  // joint H → E = (1−r)(1−β)(1−κ); cond = (1−r)(1−β).
+  m.funcs.defs["tHldFin"] = WeightAlgebra::multiply (
+    oneMinusR, WeightAlgebra::param ("pNoDescendants"));
+
+  // ---- M / I / D rows (singlet in I loop; divisor ν on M/D, 1−ν on E) ----
   auto build_TmatNum_or_TdelNum = [](bool selfLoop, const string& bdiNoIns, const string& alphaOrComp) {
-    // [r + (1-r)*pNoDescOrOrphans*kappa*(pNoDel or pDel)] / pSinglet (selfLoop=true)
-    //  or
-    // [(1-r)*pNoDescOrOrphans*kappa*(pNoDel or pDel)] / pSinglet (selfLoop=false)
     WeightExpr inner = WeightAlgebra::multiply (
       WeightAlgebra::param (bdiNoIns),
       WeightAlgebra::multiply (WeightAlgebra::param ("kappa"),
@@ -720,62 +837,194 @@ static Machine buildTkf92Branch (const Spec& spec, const vguard<string>& alph, c
     WeightExpr num = selfLoop
       ? WeightAlgebra::add (WeightAlgebra::param ("r"), scaled)
       : scaled;
-    return WeightAlgebra::divide (num, WeightAlgebra::param ("pSinglet"));
+    return WeightAlgebra::divide (num, WeightAlgebra::param ("nu"));
   };
+  // tFinNu = (1−r)(1−β)(1−κ) / (1−ν)  (M/I → E divisor; D → E uses (1−γ) instead)
+  WeightExpr finBetaNum = WeightAlgebra::multiply (
+    oneMinusR,
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::param ("pNoKappa")));
+  WeightExpr finGammaNum = WeightAlgebra::multiply (
+    oneMinusR,
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoOrphans"),
+                             WeightAlgebra::param ("pNoKappa")));
 
   // mat row
   m.funcs.defs["tMatMat"] = build_TmatNum_or_TdelNum (true,  "pNoDescendants", "pNoDeletion");
   m.funcs.defs["tMatIns"] = WeightAlgebra::multiply (
-    WeightAlgebra::negate (WeightAlgebra::param ("r")), WeightAlgebra::param ("pDescendants"));
+    oneMinusR, WeightAlgebra::param ("pDescendants"));
   m.funcs.defs["tMatDel"] = build_TmatNum_or_TdelNum (false, "pNoDescendants", "pDeletion");
-  m.funcs.defs["tMatFin"] = WeightAlgebra::param ("pNoDescendants");
+  m.funcs.defs["tMatFin"] = WeightAlgebra::divide (finBetaNum, WeightAlgebra::param ("pNoNu"));
 
   // ins row
   m.funcs.defs["tInsMat"] = build_TmatNum_or_TdelNum (false, "pNoDescendants", "pNoDeletion");
   m.funcs.defs["tInsIns"] = WeightAlgebra::add (
     WeightAlgebra::param ("r"),
-    WeightAlgebra::multiply (WeightAlgebra::negate (WeightAlgebra::param ("r")),
-                              WeightAlgebra::param ("pDescendants")));
+    WeightAlgebra::multiply (oneMinusR, WeightAlgebra::param ("pDescendants")));
   m.funcs.defs["tInsDel"] = WeightAlgebra::param ("tMatDel");
-  m.funcs.defs["tInsFin"] = WeightAlgebra::param ("pNoDescendants");
+  m.funcs.defs["tInsFin"] = WeightAlgebra::divide (finBetaNum, WeightAlgebra::param ("pNoNu"));
 
   // del row
   m.funcs.defs["tDelMat"] = build_TmatNum_or_TdelNum (false, "pNoOrphans", "pNoDeletion");
   m.funcs.defs["tDelIns"] = WeightAlgebra::multiply (
-    WeightAlgebra::negate (WeightAlgebra::param ("r")), WeightAlgebra::param ("pOrphans"));
+    oneMinusR, WeightAlgebra::param ("pOrphans"));
   m.funcs.defs["tDelDel"] = build_TmatNum_or_TdelNum (true,  "pNoOrphans", "pDeletion");
-  m.funcs.defs["tDelFin"] = WeightAlgebra::param ("pNoOrphans");
+  m.funcs.defs["tDelFin"] = WeightAlgebra::divide (finGammaNum, WeightAlgebra::param ("pNoNu"));
 
-  // Per-source row builder.
+  // Per-source row builder. `insDest` is the state index reached by an
+  // insert event from `src`: H (=2) for S/H rows, I (=3) for M/I/D rows.
+  const StateIndex M_STATE = 1, H_STATE = 2, I_STATE = 3, D_STATE = 4, E_STATE = 5;
   auto rowFor = [&](StateIndex src,
                     const string& tMatRef, const string& tInsRef,
-                    const string& tDelRef, const string& tFinRef) {
-    // src -> match (X | Y)
+                    const string& tDelRef, const string& tFinRef,
+                    StateIndex insDest) {
     for (const auto& x: alph)
       for (const auto& y: alph) {
         WeightExpr emit = sm.emit (x, y);
         if (!emit) continue;
         WeightExpr w = WeightAlgebra::multiply (WeightAlgebra::param (tMatRef), emit);
-        m.state[src].trans.push_back (MachineTransition (x, y, 1, w));
+        m.state[src].trans.push_back (MachineTransition (x, y, M_STATE, w));
       }
-    // src -> insert (eps | Y)
     for (const auto& y: alph) {
       WeightExpr pi = piExpr (spec.model, alph.size(), y);
       WeightExpr w = WeightAlgebra::multiply (WeightAlgebra::param (tInsRef), pi);
-      m.state[src].trans.push_back (MachineTransition (string(), y, 2, w));
+      m.state[src].trans.push_back (MachineTransition (string(), y, insDest, w));
     }
-    // src -> delete (X | eps)
     for (const auto& x: alph)
-      m.state[src].trans.push_back (MachineTransition (x, string(), 3,
+      m.state[src].trans.push_back (MachineTransition (x, string(), D_STATE,
         WeightAlgebra::param (tDelRef)));
-    // src -> end (eps | eps)
-    m.state[src].trans.push_back (MachineTransition (string(), string(), 4,
+    m.state[src].trans.push_back (MachineTransition (string(), string(), E_STATE,
       WeightAlgebra::param (tFinRef)));
   };
-  rowFor (0, "tStaMat", "tStaIns", "tStaDel", "tStaFin");
-  rowFor (1, "tMatMat", "tMatIns", "tMatDel", "tMatFin");
-  rowFor (2, "tInsMat", "tInsIns", "tInsDel", "tInsFin");
-  rowFor (3, "tDelMat", "tDelIns", "tDelDel", "tDelFin");
+  rowFor (0,        "tStaMat", "tStaIns", "tStaDel", "tStaFin", H_STATE);  // S → ..., insert→H
+  rowFor (H_STATE,  "tHldMat", "tHldHld", "tHldDel", "tHldFin", H_STATE);  // H → ..., insert→H
+  rowFor (M_STATE,  "tMatMat", "tMatIns", "tMatDel", "tMatFin", I_STATE);  // M → ..., insert→I
+  rowFor (I_STATE,  "tInsMat", "tInsIns", "tInsDel", "tInsFin", I_STATE);  // I → ..., insert→I
+  rowFor (D_STATE,  "tDelMat", "tDelIns", "tDelDel", "tDelFin", I_STATE);  // D → ..., insert→I
+
+  addConstraintsForSpec (m, spec, alph);
+  return m;
+}
+
+// ---------- Evolmoves branch: 5-state factoring of plain ν-geometric singlet
+//
+// States: begin (0), match (1), insert (2), delete (3), end (4).
+//
+// Same shape as a vanilla TKF92-pair-HMM-style 5-state, but uniformly
+// divided by the evolmoves-root singlet's continuation weights:
+//   - input-consuming transitions (M, D destinations)        → divide by ν
+//   - end transitions (E destination)                         → divide by 1−ν
+//   - insert transitions (no input consumed)                  → no divisor
+//
+// Composing with --evolmoves-root recovers the standard 5-state TKF92
+// joint pair HMM matrix entries to ulp; see check_tkf92_compose.py.
+//
+// (The evolmoves-root singlet uses a uniform ν per emission and 1−ν per
+//  end, with no zero-inflation; hence the uniform divisor.)
+static Machine buildEvolmovesBranch (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
+  Machine m;
+  m.state.resize(5);
+  m.state[0].name = json("begin");
+  m.state[1].name = json("match");
+  m.state[2].name = json("insert");
+  m.state[3].name = json("delete");
+  m.state[4].name = json("end");
+
+  m.funcs.defs = sm.defs;
+  addTkfBdiDefs (m.funcs.defs, Version::TKF92);
+  addTkf92BranchDefs (m.funcs.defs);
+
+  WeightExpr oneMinusR = WeightAlgebra::negate (WeightAlgebra::param ("r"));
+
+  // S row (joint divided by ν on M/D, 1−ν on E).
+  WeightExpr nuRecip    = WeightAlgebra::reciprocal (WeightAlgebra::param ("nu"));
+  WeightExpr pNoNuRecip = WeightAlgebra::reciprocal (WeightAlgebra::param ("pNoNu"));
+  // joint S → M = (1−β)·κ·α; cond S → M = joint / ν
+  m.funcs.defs["tStaMat"] = WeightAlgebra::multiply (
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::multiply (WeightAlgebra::param ("kappa"),
+                                                      WeightAlgebra::param ("pNoDeletion"))),
+    nuRecip);
+  // joint S → I = β; no divisor
+  m.funcs.defs["tStaIns"] = WeightAlgebra::param ("pDescendants");
+  // joint S → D = (1−β)·κ·(1−α); cond / ν
+  m.funcs.defs["tStaDel"] = WeightAlgebra::multiply (
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::multiply (WeightAlgebra::param ("kappa"),
+                                                      WeightAlgebra::param ("pDeletion"))),
+    nuRecip);
+  // joint S → E = (1−β)·(1−κ); cond / (1−ν)
+  m.funcs.defs["tStaFin"] = WeightAlgebra::multiply (
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::param ("pNoKappa")),
+    pNoNuRecip);
+
+  // M / I / D rows: identical structure modulo β↔γ swap on the D row.
+  auto build_TmatNum_or_TdelNum = [&](bool selfLoop, const string& bdiNoIns, const string& alphaOrComp) {
+    WeightExpr inner = WeightAlgebra::multiply (
+      WeightAlgebra::param (bdiNoIns),
+      WeightAlgebra::multiply (WeightAlgebra::param ("kappa"),
+                                WeightAlgebra::param (alphaOrComp)));
+    WeightExpr scaled = WeightAlgebra::multiply (oneMinusR, inner);
+    WeightExpr num = selfLoop
+      ? WeightAlgebra::add (WeightAlgebra::param ("r"), scaled)
+      : scaled;
+    return WeightAlgebra::divide (num, WeightAlgebra::param ("nu"));
+  };
+  WeightExpr finBetaNum  = WeightAlgebra::multiply (
+    oneMinusR,
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoDescendants"),
+                             WeightAlgebra::param ("pNoKappa")));
+  WeightExpr finGammaNum = WeightAlgebra::multiply (
+    oneMinusR,
+    WeightAlgebra::multiply (WeightAlgebra::param ("pNoOrphans"),
+                             WeightAlgebra::param ("pNoKappa")));
+
+  m.funcs.defs["tMatMat"] = build_TmatNum_or_TdelNum (true,  "pNoDescendants", "pNoDeletion");
+  m.funcs.defs["tMatIns"] = WeightAlgebra::multiply (
+    oneMinusR, WeightAlgebra::param ("pDescendants"));
+  m.funcs.defs["tMatDel"] = build_TmatNum_or_TdelNum (false, "pNoDescendants", "pDeletion");
+  m.funcs.defs["tMatFin"] = WeightAlgebra::divide (finBetaNum, WeightAlgebra::param ("pNoNu"));
+
+  m.funcs.defs["tInsMat"] = build_TmatNum_or_TdelNum (false, "pNoDescendants", "pNoDeletion");
+  m.funcs.defs["tInsIns"] = WeightAlgebra::add (
+    WeightAlgebra::param ("r"),
+    WeightAlgebra::multiply (oneMinusR, WeightAlgebra::param ("pDescendants")));
+  m.funcs.defs["tInsDel"] = WeightAlgebra::param ("tMatDel");
+  m.funcs.defs["tInsFin"] = WeightAlgebra::divide (finBetaNum, WeightAlgebra::param ("pNoNu"));
+
+  m.funcs.defs["tDelMat"] = build_TmatNum_or_TdelNum (false, "pNoOrphans", "pNoDeletion");
+  m.funcs.defs["tDelIns"] = WeightAlgebra::multiply (
+    oneMinusR, WeightAlgebra::param ("pOrphans"));
+  m.funcs.defs["tDelDel"] = build_TmatNum_or_TdelNum (true,  "pNoOrphans", "pDeletion");
+  m.funcs.defs["tDelFin"] = WeightAlgebra::divide (finGammaNum, WeightAlgebra::param ("pNoNu"));
+
+  const StateIndex M_STATE = 1, I_STATE = 2, D_STATE = 3, E_STATE = 4;
+  auto rowFor = [&](StateIndex src,
+                    const string& tMatRef, const string& tInsRef,
+                    const string& tDelRef, const string& tFinRef) {
+    for (const auto& x: alph)
+      for (const auto& y: alph) {
+        WeightExpr emit = sm.emit (x, y);
+        if (!emit) continue;
+        WeightExpr w = WeightAlgebra::multiply (WeightAlgebra::param (tMatRef), emit);
+        m.state[src].trans.push_back (MachineTransition (x, y, M_STATE, w));
+      }
+    for (const auto& y: alph) {
+      WeightExpr pi = piExpr (spec.model, alph.size(), y);
+      WeightExpr w = WeightAlgebra::multiply (WeightAlgebra::param (tInsRef), pi);
+      m.state[src].trans.push_back (MachineTransition (string(), y, I_STATE, w));
+    }
+    for (const auto& x: alph)
+      m.state[src].trans.push_back (MachineTransition (x, string(), D_STATE,
+        WeightAlgebra::param (tDelRef)));
+    m.state[src].trans.push_back (MachineTransition (string(), string(), E_STATE,
+      WeightAlgebra::param (tFinRef)));
+  };
+  rowFor (0,       "tStaMat", "tStaIns", "tStaDel", "tStaFin");
+  rowFor (M_STATE, "tMatMat", "tMatIns", "tMatDel", "tMatFin");
+  rowFor (I_STATE, "tInsMat", "tInsIns", "tInsDel", "tInsFin");
+  rowFor (D_STATE, "tDelMat", "tDelIns", "tDelDel", "tDelFin");
 
   addConstraintsForSpec (m, spec, alph);
   return m;
@@ -809,9 +1058,10 @@ Machine build (const Spec& spec) {
   const vguard<string> alph = alphabetSymbols (spec.alphabetKind, spec.customAlphabet);
   validateSpec (spec, alph);
   const SubModel sm = makeSubModel (spec, alph);
-  if (spec.kind == Kind::Root)        return buildRoot         (spec, alph, sm);
-  if (spec.version == Version::IID)   return buildIidBranch   (spec, alph, sm);
-  if (spec.version == Version::TKF91) return buildTkf91Branch (spec, alph, sm);
+  if (spec.kind == Kind::Root)             return buildRoot            (spec, alph, sm);
+  if (spec.version == Version::IID)        return buildIidBranch       (spec, alph, sm);
+  if (spec.version == Version::Evolmoves)  return buildEvolmovesBranch (spec, alph, sm);
+  if (spec.version == Version::TKF91)      return buildTkf91Branch     (spec, alph, sm);
   return buildTkf92Branch (spec, alph, sm);
 }
 

@@ -40,7 +40,7 @@ def main():
                  '--phylo-tree-string', '(A,B,C)X;', '--end']
 
     print("[1/4] codegen ...", file=sys.stderr)
-    run([BOSS] + open_args + ['--codegen', crate, '--rust'])
+    run([BOSS] + open_args + ['--codegen', crate, '--rust-phylo-hmm'])
     print("[2/4] open machine JSON ...", file=sys.stderr)
     machine_json = run([BOSS] + open_args)
     print("[3/4] Python multidim Forward (reference) ...", file=sys.stderr)

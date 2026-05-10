@@ -82,8 +82,16 @@ class TestBeamAlignTKF92:
     """Test beam-align on TKF92."""
 
     @pytest.fixture
-    def tkf92_machine(self, repo_root):
-        m = Machine.from_file(str(repo_root / "preset" / "tkf92-branch-prot-f81.json"))
+    def tkf92_machine(self, repo_root, boss_path):
+        # The standalone preset/tkf92-branch-prot-f81.json was removed in
+        # favour of the parameterised --tkf92-branch-prot-f81 CLI flag
+        # (which now emits the canonical 6-state factoring of the
+        # zero-inflated TKF92 root singlet). Generate the JSON via boss
+        # on demand instead of loading from disk.
+        import subprocess as _sp
+        result = _sp.run([boss_path, "--tkf92-branch-prot-f81"],
+                         capture_output=True, text=True, check=True)
+        m = Machine.from_json(result.stdout)
         base_params = {"t": 0.5, "insRate": 0.01, "delRate": 0.02, "r": 0.3}
         for aa in "ACDEFGHIKLMNPQRSTVWY":
             base_params[f"pi_{aa}"] = 0.05
@@ -151,7 +159,7 @@ class TestBeamAlignTKF92:
             params_file = f.name
         try:
             result = subprocess.run(
-                [boss_path, "--preset", "tkf92-branch-prot-f81",
+                [boss_path, "--tkf92-branch-prot-f81",
                  "--functions", params_file,
                  "--input-chars", "AC", "--output-chars", "AC",
                  "--beam-align", "--beam-width", "1000", "-v", "0"],

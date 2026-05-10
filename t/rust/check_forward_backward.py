@@ -31,7 +31,7 @@ def main():
 
     run([BOSS, '--pair-json', '--generate-uniform', '01', '-m',
          '--begin', echo, '--phylo-tree-string', '(A,B)P;', '--end',
-         '--codegen', crate, '--rust'])
+         '--codegen', crate, '--rust-phylo-hmm'])
 
     # Confirm machine.json was emitted and has __C sentinels.
     with open(os.path.join(crate, 'machine.json')) as f:

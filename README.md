@@ -414,8 +414,8 @@ Here are some examples of files that fit these schemas:
                                 protpsw, translate, prot2dna, psw2dna, iupacdna,
                                 iupacaa, dna2rna, rna2dna, bintern, terndna,
                                 jukescantor, dnapswnbr, tkf91-root-dna-jc,
-                                tkf91-branch-dna-jc, tkf92-branch-prot-f81,
-                                tolower, toupper, hamming31, hamming74)
+                                tkf91-branch-dna-jc, tolower, toupper,
+                                hamming31, hamming74)
   -g [ --generate-chars ] arg   generator for explicit character sequence &#x27;&lt;&lt;&#x27;
       --generate-one arg        generator for any one of specified characters
       --generate-wild arg       generator for Kleene closure over specified
@@ -460,22 +460,33 @@ Here are some examples of files that fit these schemas:
   -J [ --jphmm ] arg            create jumping profile HMM generator from FASTA
                                 multiple alignment
       --tkfYY-TTT-AAA-MMM       build a TKF-family transducer from scratch. YY
-                                in {91,92,iid} (iid is the zero-indel-rate limit
-                                of tkf91; iid branches consume one input per
-                                output, with no insert/delete states); TTT in
-                                {root,branch}; AAA in
-                                {dna,rna,prot,binary,unary,custom} (custom takes
-                                the alphabet string as the next argument); MMM
-                                in {jc,f81,k80,hky85,id,telegraph,bsc,erasure}
+                                in {91,92,iid,evolmoves}: iid is the
+                                zero-indel-rate limit of tkf91 (branches consume
+                                one input per output, no insert/delete states);
+                                evolmoves is a TKF92 variant whose root is a
+                                non-zero-inflated ν-geometric singlet
+                                (P(L=0)=1−ν instead of 1−κ) and whose
+                                5-state branch is the regularised conditional
+                                pair HMM that composes with this singlet to
+                                recover the standard 5-state TKF92 joint pair
+                                HMM matrix. The (default) tkf92-branch is the
+                                canonical 6-state WFST that factors the joint by
+                                the zero-inflated tkf92-root singlet (extra
+                                `hold` state distinguishes pre-input from
+                                post-input inserts). TTT in {root,branch}; AAA
+                                in {dna,rna,prot,binary,unary,custom} (custom
+                                takes the alphabet string as the next argument);
+                                MMM in
+                                {jc,f81,k80,hky85,id,telegraph,bsc,erasure}
                                 (k80/hky85 require a nucleotide alphabet;
                                 telegraph/bsc/erasure require the binary
                                 alphabet — telegraph is a generic 2-state
                                 CTMC, bsc its symmetric version, erasure its
                                 0-absorbing version). Examples:
                                 --tkf91-branch-dna-jc, --tkf92-branch-dna-hky85,
-                                --iid-branch-binary-bsc,
-                                --iid-branch-binary-telegraph,
-                                --iid-branch-custom-jc XYZW
+                                --evolmoves-branch-prot-f81,
+                                --iid-branch-binary-bsc, --iid-branch-custom-jc
+                                XYZW
   -z [ --zero-or-one ]          union with null &#x27;?&#x27;
   -k [ --kleene-star ]          Kleene star &#x27;*&#x27;
   -K [ --kleene-plus ]          Kleene plus &#x27;+&#x27;
@@ -669,20 +680,23 @@ Here are some examples of files that fit these schemas:
       --compileviterbi          compile Viterbi instead of Forward
       --wgsl                    generate WGSL compute shader and ES module for
                                 WebGPU
-      --rust                    generate Rust crate for multidimensional Forward
-                                DP on a phylo-composed generator (requires the
-                                machine to have been built with --pair-json so
-                                output tokens are JSON-decodable)
+      --rust-phylo-hmm          generate Rust crate for multidimensional Forward
+                                DP on a phylo-composed generator — i.e. a
+                                multi-leaf phylo HMM (requires the machine to
+                                have been built with --pair-json so output
+                                tokens are JSON-decodable). For regular in/out
+                                transducers (string in, string out, no phylo)
+                                use --rust-transducer instead.
       --rust-transducer         generate Rust crate for the standard 2D Forward
                                 DP on a regular in/out transducer — string
                                 input, string output, no multi-leaf phylo
                                 intersection. Use this for any Machine Boss
                                 machine you want to call from Rust as
                                 `forward(p, &amp;[input...], &amp;[output...]) -&gt; f64`.
-                                Mutually exclusive with --rust / --cpp32 /
-                                --cpp64 / --js / --wgsl.
-      --no-viterbi              with --rust or --rust-transducer, omit the
-                                Viterbi function from the generated crate
+                                Mutually exclusive with --rust-phylo-hmm /
+                                --cpp32 / --cpp64 / --js / --wgsl.
+      --no-viterbi              with --rust-phylo-hmm or --rust-transducer, omit
+                                the Viterbi function from the generated crate
       --inseq arg               input sequence type (String, Intvec, Profile)
       --outseq arg              output sequence type (String, Intvec, Profile)
 

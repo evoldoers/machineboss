@@ -7,6 +7,7 @@
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { execFileSync } from 'child_process';
 
 import { prepareMachine, tokenize } from '../internal/machine-prep.mjs';
 import { beamAlign2D } from '../cpu/beam-align.mjs';
@@ -17,6 +18,15 @@ const ROOT = join(__dirname, '..', '..', '..');
 
 function loadJSON(path) {
   return JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
+}
+
+// The standalone preset/tkf92-branch-prot-f81.json was removed in favour
+// of the parameterised --tkf92-branch-prot-f81 CLI flag (now emits the
+// canonical 6-state factoring of the zero-inflated TKF92 root singlet).
+// Generate the JSON via boss on demand.
+function bossJSON(...args) {
+  const boss = join(ROOT, 'bin', 'boss');
+  return JSON.parse(execFileSync(boss, args, { encoding: 'utf8' }));
 }
 
 let passed = 0;
@@ -84,7 +94,7 @@ console.log('Testing beam-align on bitnoise...');
 console.log('Testing beam-align on TKF92...');
 
 {
-  const tkf92 = loadJSON('preset/tkf92-branch-prot-f81.json');
+  const tkf92 = bossJSON('--tkf92-branch-prot-f81');
   const params = { t: 0.5, insRate: 0.01, delRate: 0.02, r: 0.3 };
   for (const aa of 'ACDEFGHIKLMNPQRSTVWY') params[`pi_${aa}`] = 0.05;
 
@@ -102,7 +112,7 @@ console.log('Testing beam-align on TKF92...');
 // Test: TKF92 with different sequences
 // ============================================================
 {
-  const tkf92 = loadJSON('preset/tkf92-branch-prot-f81.json');
+  const tkf92 = bossJSON('--tkf92-branch-prot-f81');
   const params = { t: 0.5, insRate: 0.01, delRate: 0.02, r: 0.3 };
   for (const aa of 'ACDEFGHIKLMNPQRSTVWY') params[`pi_${aa}`] = 0.05;
 

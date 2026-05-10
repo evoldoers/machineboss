@@ -50,9 +50,9 @@ def main():
     open_args = ['--pair-json', '--tkf92-root-prot-f81',
                  '-m', '--begin', '--tkf92-branch-prot-f81',
                  '--phylo-tree-string', '(A,B)P;', '--end']
-    run([BOSS] + open_args + ['--codegen', crate_fels, '--rust'])
+    run([BOSS] + open_args + ['--codegen', crate_fels, '--rust-phylo-hmm'])
     run([BOSS] + open_args + ['--phylo-no-felsenstein',
-                              '--codegen', crate_nofels, '--rust'])
+                              '--codegen', crate_nofels, '--rust-phylo-hmm'])
     sz_lib_fels   = os.path.getsize(os.path.join(crate_fels,   'src/lib.rs'))
     sz_lib_nofels = os.path.getsize(os.path.join(crate_nofels, 'src/lib.rs'))
     sz_mj_fels    = os.path.getsize(os.path.join(crate_fels,   'machine.json'))
