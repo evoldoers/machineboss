@@ -35,17 +35,22 @@ def main():
     assert os.path.isfile(os.path.join(crate, 'Cargo.toml'))
     assert os.path.isfile(os.path.join(crate, 'src', 'lib.rs'))
 
-    # Drop a tests/ file that asserts the four constants and the panic.
+    # Drop a tests/ file that asserts the four constants and the panic, and
+    # exercises weight_algebra against the baked TKF91 defs with reference
+    # values pre-computed in Python (see comments inline).
     tests_dir = os.path.join(crate, 'tests')
     os.makedirs(tests_dir, exist_ok=True)
     with open(os.path.join(tests_dir, 'bake_parses.rs'), 'w') as f:
         f.write('''use phylo_skeleton::{T_JSON, M_SKEL_JSON, TREE_NEWICK, TIME_PARAM};
+use phylo_skeleton::weight_algebra::{Defs, Params, evaluate, parse_defs};
+use serde_json::Value;
+
 #[test] fn t_json_parses() {
-    let v: serde_json::Value = serde_json::from_str(T_JSON).expect("T_JSON parses");
+    let v: Value = serde_json::from_str(T_JSON).expect("T_JSON parses");
     assert!(v.get("state").is_some());
 }
 #[test] fn m_skel_json_parses() {
-    let v: serde_json::Value = serde_json::from_str(M_SKEL_JSON).expect("M_SKEL_JSON parses");
+    let v: Value = serde_json::from_str(M_SKEL_JSON).expect("M_SKEL_JSON parses");
     assert!(v.get("state").is_some());
 }
 #[test] fn tree_newick_well_formed() {
@@ -55,6 +60,37 @@ def main():
 #[test] fn time_param_nonempty() { assert!(!TIME_PARAM.is_empty()); }
 #[test] #[should_panic(expected = "not yet implemented")]
 fn prebuild_panics() { phylo_skeleton::prebuild(); }
+
+#[test] fn baked_tkf91_defs_evaluate() {
+    // TKF91-DNA-JC defs at time[A]=0.5, time[B]=0.3, insRate=0.005,
+    // delRate=0.01; reference values pre-computed in Python (see
+    // t/check_phylo_skeleton_bake.py docstring).
+    let m: Value = serde_json::from_str(M_SKEL_JSON).expect("M_SKEL_JSON parses");
+    let defs: Defs = parse_defs(&m);
+    let mut params: Params = Params::new();
+    params.insert("time[A]".into(),  0.5);
+    params.insert("time[B]".into(),  0.3);
+    params.insert("insRate".into(), 0.005);
+    params.insert("delRate".into(), 0.01);
+
+    let close = |actual: f64, expected: f64, tag: &str| {
+        let rel = (actual - expected).abs() / expected.abs().max(1e-30);
+        assert!(rel < 1e-12, "{}: actual {} expected {}", tag, actual, expected);
+    };
+
+    close(evaluate(&Value::String("pNoSub[A]".into()), &params, &defs),
+          0.606530659712633424, "pNoSub[A]");
+    close(evaluate(&Value::String("pSub[A]".into()), &params, &defs),
+          0.393469340287366576, "pSub[A]");
+    close(evaluate(&Value::String("pDiff[A]".into()), &params, &defs),
+          0.0983673350718416439, "pDiff[A]");
+    close(evaluate(&Value::String("pSame[A]".into()), &params, &defs),
+          0.704897994784475124, "pSame[A]");
+    close(evaluate(&Value::String("pNoDescendants[A]".into()), &params, &defs),
+          0.997509341267465044, "pNoDescendants[A]");
+    close(evaluate(&Value::String("pDescendants[A]".into()), &params, &defs),
+          0.00249065873253496734, "pDescendants[A]");
+}
 ''')
 
     run(['cargo', 'build', '--release'], cwd=crate)

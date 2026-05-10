@@ -1381,22 +1381,225 @@ void compileRustSkeleton (const Machine& M_skel, const Machine& T,
          "lto = true\n";
   }
 
-  // src/lib.rs — bake the JSON inputs as `&'static str` consts, expose a
-  // stub `prebuild()` that panics. Subsequent increments will replace the
-  // stub with a Rust port of the WFST algebra.
+  // src/weight_algebra.rs — Rust port of weight.h's WeightExpr evaluator.
+  // Parses Machine Boss JSON weight expressions and evaluates them against
+  // a Params map, with recursive resolution of `defs` references.
+  {
+    std::ofstream f (outputDir + "/src/weight_algebra.rs");
+    f << R"RUST(//! Weight algebra evaluator. Rust port of `src/weight.cpp` in the
+//! Machine Boss C++ codebase. Parses the JSON weight-expression form
+//! used in machine.json and evaluates it against a Params map.
+//!
+//! JSON encoding (mirrors `WeightAlgebra::fromJson`):
+//!   - JSON number              → constant
+//!   - JSON string `"name"`     → parameter; resolved via `defs` first,
+//!                                then `params` (for free parameters)
+//!   - `{"log": expr}`          → ln(expr)
+//!   - `{"exp": expr}`          → e^expr
+//!   - `{"not": expr}`          → 1 - expr
+//!   - `{"geomsum": expr}`      → 1 / (1 - expr)
+//!   - `{"*": [a, b]}`          → a * b
+//!   - `{"/": [a, b]}`          → a / b
+//!   - `{"+": [a, b]}`          → a + b
+//!   - `{"-": [a, b]}`          → a - b
+//!   - `{"pow": [a, b]}`        → a.powf(b)   (output-side only in C++)
+//!
+//! `defs` are themselves WeightExprs that may transitively reference other
+//! defs / params; we cycle-protect with a small `visiting` stack.
+
+use std::collections::HashMap;
+use serde_json::Value;
+
+pub type Params = HashMap<String, f64>;
+pub type Defs = HashMap<String, Value>;
+
+/// Parse the `defs` section of a Machine Boss machine JSON into a Defs
+/// map. Returns an empty map if `machine_json` has no defs.
+pub fn parse_defs(machine_json: &Value) -> Defs {
+    let mut defs = Defs::new();
+    if let Some(d) = machine_json.get("defs").and_then(|d| d.as_object()) {
+        for (k, v) in d.iter() {
+            defs.insert(k.clone(), v.clone());
+        }
+    }
+    defs
+}
+
+/// Evaluate a WeightExpr against the given parameter assignments and defs.
+///
+/// Panics on undefined names or cyclic def references.
+pub fn evaluate(expr: &Value, params: &Params, defs: &Defs) -> f64 {
+    let mut visiting: Vec<String> = Vec::new();
+    eval_inner(expr, params, defs, &mut visiting)
+}
+
+fn eval_inner(expr: &Value, params: &Params, defs: &Defs, visiting: &mut Vec<String>) -> f64 {
+    match expr {
+        Value::Number(n) => n.as_f64().expect("WeightExpr number not f64-convertible"),
+        Value::Bool(b) => if *b { 1.0 } else { 0.0 },
+        Value::String(s) => {
+            if visiting.iter().any(|v| v == s) {
+                panic!("WeightExpr cyclic def reference: {}", s);
+            }
+            if let Some(d) = defs.get(s) {
+                visiting.push(s.clone());
+                let v = eval_inner(d, params, defs, visiting);
+                visiting.pop();
+                v
+            } else if let Some(p) = params.get(s) {
+                *p
+            } else {
+                panic!("WeightExpr unknown name: {}", s);
+            }
+        }
+        Value::Object(map) => {
+            // Single-keyed object; first key is the operator.
+            let (op, arg) = map.iter().next()
+                .expect("WeightExpr object has no opcode");
+            match op.as_str() {
+                "log" => eval_inner(arg, params, defs, visiting).ln(),
+                "exp" => eval_inner(arg, params, defs, visiting).exp(),
+                "not" => 1.0 - eval_inner(arg, params, defs, visiting),
+                "geomsum" => 1.0 / (1.0 - eval_inner(arg, params, defs, visiting)),
+                "*" | "/" | "+" | "-" | "pow" => {
+                    let arr = arg.as_array().expect("binary op arg not an array");
+                    assert_eq!(arr.len(), 2, "binary op arg has wrong arity: {}", op);
+                    let l = eval_inner(&arr[0], params, defs, visiting);
+                    let r = eval_inner(&arr[1], params, defs, visiting);
+                    match op.as_str() {
+                        "*" => l * r,
+                        "/" => l / r,
+                        "+" => l + r,
+                        "-" => l - r,
+                        "pow" => l.powf(r),
+                        _ => unreachable!(),
+                    }
+                }
+                _ => panic!("WeightExpr unknown opcode: {}", op),
+            }
+        }
+        _ => panic!("WeightExpr unsupported JSON type: {:?}", expr),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn empty_defs() -> Defs { Defs::new() }
+    fn empty_params() -> Params { Params::new() }
+
+    #[test]
+    fn constants() {
+        assert_eq!(evaluate(&json!(0.5), &empty_params(), &empty_defs()), 0.5);
+        assert_eq!(evaluate(&json!(3),   &empty_params(), &empty_defs()), 3.0);
+        assert_eq!(evaluate(&json!(true),  &empty_params(), &empty_defs()), 1.0);
+        assert_eq!(evaluate(&json!(false), &empty_params(), &empty_defs()), 0.0);
+    }
+
+    #[test]
+    fn param_lookup() {
+        let mut p = Params::new();
+        p.insert("x".into(), 2.5);
+        assert_eq!(evaluate(&json!("x"), &p, &empty_defs()), 2.5);
+    }
+
+    #[test]
+    fn arithmetic() {
+        assert_eq!(evaluate(&json!({"+": [1.0, 2.0]}), &empty_params(), &empty_defs()), 3.0);
+        assert_eq!(evaluate(&json!({"-": [5.0, 2.0]}), &empty_params(), &empty_defs()), 3.0);
+        assert_eq!(evaluate(&json!({"*": [3.0, 4.0]}), &empty_params(), &empty_defs()), 12.0);
+        assert_eq!(evaluate(&json!({"/": [10.0, 4.0]}), &empty_params(), &empty_defs()), 2.5);
+        assert_eq!(evaluate(&json!({"pow": [2.0, 3.0]}), &empty_params(), &empty_defs()), 8.0);
+    }
+
+    #[test]
+    fn unary_ops() {
+        // ln(e) ≈ 1
+        let v = evaluate(&json!({"log": std::f64::consts::E}), &empty_params(), &empty_defs());
+        assert!((v - 1.0).abs() < 1e-12, "log(e) = {}", v);
+        // exp(0) = 1
+        assert_eq!(evaluate(&json!({"exp": 0.0}), &empty_params(), &empty_defs()), 1.0);
+        // not(0.3) = 0.7
+        let v = evaluate(&json!({"not": 0.3}), &empty_params(), &empty_defs());
+        assert!((v - 0.7).abs() < 1e-12);
+        // geomsum(0.5) = 1/(1-0.5) = 2
+        let v = evaluate(&json!({"geomsum": 0.5}), &empty_params(), &empty_defs());
+        assert!((v - 2.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn def_resolution() {
+        // pHalf = 0.5; pSquared = pHalf * pHalf
+        let mut defs = Defs::new();
+        defs.insert("pHalf".into(),    json!(0.5));
+        defs.insert("pSquared".into(), json!({"*": ["pHalf", "pHalf"]}));
+        let v = evaluate(&json!("pSquared"), &empty_params(), &defs);
+        assert_eq!(v, 0.25);
+    }
+
+    #[test]
+    fn def_with_param() {
+        // pNoSub = exp(-mu * t)
+        let mut defs = Defs::new();
+        defs.insert("pNoSub".into(),
+            json!({"exp": {"-": [0.0, {"*": ["mu", "t"]}]}}));
+        let mut p = Params::new();
+        p.insert("mu".into(), 2.0);
+        p.insert("t".into(),  0.5);
+        let v = evaluate(&json!("pNoSub"), &p, &defs);
+        assert!((v - (-1.0_f64).exp()).abs() < 1e-12);
+    }
+
+    #[test]
+    #[should_panic(expected = "cyclic")]
+    fn cyclic_def_panics() {
+        let mut defs = Defs::new();
+        defs.insert("a".into(), json!("b"));
+        defs.insert("b".into(), json!("a"));
+        evaluate(&json!("a"), &empty_params(), &defs);
+    }
+
+    #[test]
+    #[should_panic(expected = "unknown name")]
+    fn unknown_name_panics() {
+        evaluate(&json!("never_defined"), &empty_params(), &empty_defs());
+    }
+
+    /// Smoke test: parse the canonical TKF91 branch transducer's defs and
+    /// evaluate `pSame` against concrete params; verify against the closed
+    /// form pSame = pNoSub + pSub * pi where pi = 0.25 for JC. (This test
+    /// only runs when the bake is present, so it lives in tests/ not here.)
+    #[test]
+    fn def_chain_via_arithmetic() {
+        // pSub = 1 - pNoSub; with pNoSub = 0.5, pSub = 0.5.
+        let mut defs = Defs::new();
+        defs.insert("pNoSub".into(), json!(0.5));
+        defs.insert("pSub".into(), json!({"not": "pNoSub"}));
+        defs.insert("pSame".into(),
+            json!({"+": ["pNoSub", {"*": ["pSub", 0.25]}]}));
+        let v = evaluate(&json!("pSame"), &empty_params(), &defs);
+        assert!((v - 0.625).abs() < 1e-12);  // 0.5 + 0.5 * 0.25
+    }
+}
+)RUST";
+  }
+
+  // src/lib.rs — bake the JSON inputs as `&'static str` consts, expose
+  // the weight_algebra module, expose a stub `prebuild()` that panics.
+  // Subsequent increments will replace the stub with a Rust port of the
+  // WFST algebra (Machine + compose / intersect / waitingMachine /
+  // ergodicMachine + phylo recursion) so prebuild() can materialise
+  // M_full's per-symbol DP tables in shape with M_skel.
   {
     std::ofstream f (outputDir + "/src/lib.rs");
     f << "// Auto-generated by Machine Boss --phylo-skeleton --codegen --rust.\n"
-         "// Do not edit. Increment 1 of the skeleton bake-and-expand work:\n"
-         "// the canonical branch transducer T, the unary phylo skeleton M_skel,\n"
-         "// the Newick tree, and the per-branch time parameter name are baked\n"
-         "// in as JSON / Newick string constants. The intended expansion path\n"
-         "// (a Rust port of compose / intersect / waitingMachine /\n"
-         "// ergodicMachine / phylo recursion that consumes T + tree at startup\n"
-         "// and materialises M_full's per-symbol DP tables in shape with M_skel)\n"
-         "// is not yet implemented; `prebuild()` panics with a TODO.\n"
+         "// Do not edit.\n"
          "\n"
          "#![allow(dead_code)]\n"
+         "\n"
+         "pub mod weight_algebra;\n"
          "\n"
          "/// Canonical branch transducer T (no per-branch time-parameter\n"
          "/// renaming). Format is the standard Machine Boss machine JSON.\n"
