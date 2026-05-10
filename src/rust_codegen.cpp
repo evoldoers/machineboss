@@ -1433,6 +1433,57 @@ pub fn evaluate(expr: &Value, params: &Params, defs: &Defs) -> f64 {
     eval_inner(expr, params, defs, &mut visiting)
 }
 
+/// Structural literal-1 check.  Mirror of `WeightAlgebra::isOne`.
+pub fn is_one(w: &Value) -> bool {
+    match w {
+        Value::Bool(true) => true,
+        Value::Number(n) => n.as_f64() == Some(1.0),
+        _ => false,
+    }
+}
+
+/// Structural literal-0 check.  Mirror of `WeightAlgebra::isZero`.
+pub fn is_zero(w: &Value) -> bool {
+    match w {
+        Value::Null => true,
+        Value::Bool(false) => true,
+        Value::Number(n) => n.as_f64() == Some(0.0),
+        _ => false,
+    }
+}
+
+fn as_number(w: &Value) -> Option<f64> {
+    match w {
+        Value::Number(n) => n.as_f64(),
+        Value::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
+    }
+}
+
+/// Symbolic multiplication of two WeightExprs.  Mirror of
+/// `WeightAlgebra::multiply`: applies the same identity/zero/numeric
+/// short-circuits, otherwise returns `{"*": [l, r]}`.
+pub fn multiply(l: &Value, r: &Value) -> Value {
+    if is_one(l) { return r.clone(); }
+    if is_one(r) { return l.clone(); }
+    if is_zero(l) || is_zero(r) { return Value::from(0.0_f64); }
+    if let (Some(a), Some(b)) = (as_number(l), as_number(r)) {
+        return Value::from(a * b);
+    }
+    serde_json::json!({"*": [l.clone(), r.clone()]})
+}
+
+/// Symbolic addition.  Mirror of `WeightAlgebra::add` with the same
+/// 0+x → x, num+num → num short-circuits.
+pub fn add(l: &Value, r: &Value) -> Value {
+    if is_zero(l) { return r.clone(); }
+    if is_zero(r) { return l.clone(); }
+    if let (Some(a), Some(b)) = (as_number(l), as_number(r)) {
+        return Value::from(a + b);
+    }
+    serde_json::json!({"+": [l.clone(), r.clone()]})
+}
+
 fn eval_inner(expr: &Value, params: &Params, defs: &Defs, visiting: &mut Vec<String>) -> f64 {
     match expr {
         Value::Number(n) => n.as_f64().expect("WeightExpr number not f64-convertible"),
@@ -1855,6 +1906,181 @@ pub fn eval_weight(m: &Machine, weight: &Value, params: &weight_algebra::Params)
     weight_algebra::evaluate(weight, params, &m.defs)
 }
 
+// ---- Transducer composition ---------------------------------------------
+
+/// Symbolic accumulator for transitions sharing the same (in, out, dest)
+/// triple. Mirrors `TransAccumulator` in machine.cpp: when the same triple
+/// is accumulated multiple times, the weights are added (via WeightAlgebra
+/// add) — this is the natural Felsenstein-style sum-over-intermediate-symbol
+/// that emerges from the compose inner loop.
+#[derive(Default)]
+struct TransAccumulator {
+    by_key: std::collections::BTreeMap<(String, String, usize), Value>,
+}
+
+impl TransAccumulator {
+    fn clear(&mut self) { self.by_key.clear(); }
+    fn accumulate(&mut self, in_sym: &str, out_sym: &str, dest: usize, weight: &Value) {
+        let key = (in_sym.to_string(), out_sym.to_string(), dest);
+        match self.by_key.remove(&key) {
+            Some(existing) => {
+                let combined = weight_algebra::add(&existing, weight);
+                self.by_key.insert(key, combined);
+            }
+            None => {
+                self.by_key.insert(key, weight.clone());
+            }
+        }
+    }
+    fn into_transitions(self) -> Vec<Transition> {
+        self.by_key.into_iter().map(|((in_sym, out_sym, to), weight)| Transition {
+            to, in_sym, out_sym, weight
+        }).collect()
+    }
+}
+
+/// Mirror of `Machine::compose(first, second, ...)` from src/machine.cpp.
+///
+/// Cross-product state space (i, j); accessibility DFS from (0, 0) prunes
+/// unreachable states; each kept state's outgoing transitions are computed
+/// per the three classical compose cases and accumulated through a
+/// `TransAccumulator` (so duplicates with the same (in, out, dest) sum
+/// their weights — this is what produces the implicit Felsenstein sum).
+///
+/// The C++ post-processing chain
+/// `.ergodicMachine().advanceSort().processCycles().ergodicMachine()` is
+/// approximated here by a single `ergodic_machine()` call. `advance_sort`
+/// and `process_cycles` ports are pending (Increment 4d/e); for inputs
+/// without silent cycles this short pipeline produces a topologically valid
+/// result.
+pub fn compose(first: &Machine, second: &Machine) -> Machine {
+    let second_w = if second.is_waiting_machine() {
+        second.clone()
+    } else {
+        second.waiting_machine()
+    };
+    debug_assert!(second_w.is_waiting_machine());
+
+    let i_states = first.state.len();
+    let j_states = second_w.state.len();
+    let n_pairs = i_states * j_states;
+    let comp = |i: usize, j: usize| -> usize { i * j_states + j };
+
+    // Accessibility DFS from (0, 0).
+    let mut keep = vec![false; n_pairs];
+    let mut to_visit: Vec<usize> = Vec::new();
+    keep[0] = true;
+    to_visit.push(0);
+    while let Some(c) = to_visit.pop() {
+        let i = c / j_states;
+        let j = c % j_states;
+        let msi = &first.state[i];
+        let msj = &second_w.state[j];
+        let mut dest_buf: Vec<usize> = Vec::new();
+        if msj.waits() || msj.terminates() {
+            for it in &msi.trans {
+                if it.output_empty() {
+                    dest_buf.push(comp(it.to, j));
+                } else {
+                    for jt in &msj.trans {
+                        if it.out_sym == jt.in_sym {
+                            dest_buf.push(comp(it.to, jt.to));
+                        }
+                    }
+                }
+            }
+        } else {
+            for jt in &msj.trans {
+                dest_buf.push(comp(i, jt.to));
+            }
+        }
+        for &d in &dest_buf {
+            if !keep[d] {
+                keep[d] = true;
+                to_visit.push(d);
+            }
+        }
+    }
+    if !keep[n_pairs - 1] {
+        // End state inaccessible; return an empty machine.
+        return Machine { state: Vec::new(), defs: HashMap::new(),
+                         cons: Constraints::default() };
+    }
+
+    // Build kept-state list (sorted) and comp→kept index map.
+    let mut kept_states: Vec<usize> = (0..n_pairs).filter(|&c| keep[c]).collect();
+    kept_states.sort();
+    let mut comp_to_kept: Vec<usize> = vec![0; n_pairs];
+    for (k, &c) in kept_states.iter().enumerate() {
+        comp_to_kept[c] = k;
+    }
+
+    // Initialise composite states (state names + empty transition lists).
+    let mut comp_state: Vec<State> = Vec::with_capacity(kept_states.len());
+    for &c in &kept_states {
+        let i = c / j_states;
+        let j = c % j_states;
+        // Composite state name: ordered 2-array (matches the post-fix C++).
+        let name = Value::Array(vec![first.state[i].id.clone(),
+                                     second_w.state[j].id.clone()]);
+        comp_state.push(State { id: name, trans: Vec::new() });
+    }
+
+    // Compute transitions per kept state via TransAccumulator.
+    let mut ta = TransAccumulator::default();
+    for k in 0..kept_states.len() {
+        let c = kept_states[k];
+        let i = c / j_states;
+        let j = c % j_states;
+        let msi = &first.state[i];
+        let msj = &second_w.state[j];
+        ta.clear();
+        if msj.waits() || msj.terminates() {
+            for it in &msi.trans {
+                if it.output_empty() {
+                    let d = comp(it.to, j);
+                    if keep[d] {
+                        ta.accumulate(&it.in_sym, "", comp_to_kept[d], &it.weight);
+                    }
+                } else {
+                    for jt in &msj.trans {
+                        if it.out_sym == jt.in_sym {
+                            let d = comp(it.to, jt.to);
+                            if keep[d] {
+                                let w = weight_algebra::multiply(&it.weight, &jt.weight);
+                                ta.accumulate(&it.in_sym, &jt.out_sym, comp_to_kept[d], &w);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            for jt in &msj.trans {
+                let d = comp(i, jt.to);
+                if keep[d] {
+                    ta.accumulate("", &jt.out_sym, comp_to_kept[d], &jt.weight);
+                }
+            }
+        }
+        comp_state[k].trans = std::mem::take(&mut ta).into_transitions();
+    }
+
+    // Merge defs from both inputs (later writers win on key collision).
+    let mut comp_defs = first.defs.clone();
+    for (k, v) in &second_w.defs {
+        comp_defs.insert(k.clone(), v.clone());
+    }
+
+    let raw = Machine {
+        state: comp_state,
+        defs: comp_defs,
+        cons: first.cons.clone(),  // approximate: cons-merging is an open issue
+    };
+    // Post-processing: only ergodic_machine for now (advance_sort and
+    // process_cycles are TODO; inputs without silent cycles are unaffected).
+    raw.ergodic_machine()
+}
+
 // ---- WFST state predicates and waitingMachine port ----------------------
 //
 // Port of MachineState::{terminates,exits_with_input,exits_without_input,
@@ -1889,6 +2115,10 @@ impl Transition {
     pub fn is_silent(&self) -> bool {
         self.in_sym.is_empty() && self.out_sym.is_empty()
     }
+    /// `in` is empty (silent on input).
+    pub fn input_empty(&self) -> bool { self.in_sym.is_empty() }
+    /// `out` is empty (silent on output).
+    pub fn output_empty(&self) -> bool { self.out_sym.is_empty() }
 }
 
 /// Mirror of `WeightAlgebra::isOne`: structural check, only the literal
@@ -2391,6 +2621,96 @@ mod tests {
         assert!(wm.is_waiting_machine());
         // For tiny_machine_json (which has the mixed state[0]), splits happen.
         assert_ne!(wm.n_states(), m.n_states());
+    }
+
+    #[test]
+    fn compose_simple_two_state_pair() {
+        // Two trivial single-state-with-self-loop machines.
+        let m1 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "y", "weight": "p"}]},
+                {"id": "E"}
+            ]
+        }));
+        let m2 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "y", "out": "z", "weight": "q"}]},
+                {"id": "E"}
+            ]
+        }));
+        let c = compose(&m1, &m2);
+        // Cross-product reachable from (0,0) with end-state accessible:
+        // (0,0) -> (1,1) via y-symbol sync. So 2 states total.
+        assert!(c.n_states() >= 2);
+        // First state's name is the array [m1.state[0].id, m2.state[0].id].
+        if let Value::Array(name) = &c.state[0].id {
+            assert_eq!(name.len(), 2);
+            assert_eq!(name[0], json!("S"));
+            assert_eq!(name[1], json!("S"));
+        } else {
+            panic!("expected array state name, got {:?}", c.state[0].id);
+        }
+    }
+
+    #[test]
+    fn compose_collapses_degenerate_transitions() {
+        // m1 has TWO match transitions S→E for the same (in, out).
+        // m2 trivially echoes. Compose should collapse the duplicates by
+        // summing their weights.
+        let m1 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [
+                    {"to": 1, "in": "x", "out": "y", "weight": "p"},
+                    {"to": 1, "in": "x", "out": "y", "weight": "q"}
+                ]},
+                {"id": "E"}
+            ]
+        }));
+        let m2 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "y", "out": "y", "weight": 1.0}]},
+                {"id": "E"}
+            ]
+        }));
+        let c = compose(&m1, &m2);
+        // The two duplicate transitions in m1 collapse into one in c with
+        // weight = p + q (after multiply with m2's weight 1).
+        let s0 = &c.state[0];
+        assert_eq!(s0.trans.len(), 1, "expected collapsed; got {:?}", s0.trans);
+        // Weight should be {"+": [p, q]} or simplified equivalent.
+        let w = &s0.trans[0].weight;
+        let s = w.to_string();
+        assert!(s.contains("p") && s.contains("q"), "weight string: {}", s);
+    }
+
+    #[test]
+    fn compose_evaluates_consistently_against_eval() {
+        // m1 = identity-on-x with weight p. m2 = identity-on-x with weight q.
+        // After compose: weight on the combined transition should evaluate
+        // to p * q.
+        let m1 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "x", "weight": "p"}]},
+                {"id": "E"}
+            ]
+        }));
+        let m2 = Machine::from_json(&json!({
+            "state": [
+                {"id": "S", "trans": [{"to": 1, "in": "x", "out": "x", "weight": "q"}]},
+                {"id": "E"}
+            ]
+        }));
+        let c = compose(&m1, &m2);
+        let mut p = weight_algebra::Params::new();
+        p.insert("p".into(), 0.4);
+        p.insert("q".into(), 0.5);
+        // Find the single emit transition.
+        let emit = c.state.iter()
+            .flat_map(|s| s.trans.iter())
+            .find(|t| !t.in_sym.is_empty())
+            .expect("an emit transition should exist");
+        let v = weight_algebra::evaluate(&emit.weight, &p, &c.defs);
+        assert!((v - 0.4 * 0.5).abs() < 1e-15, "v={}", v);
     }
 
     #[test]
