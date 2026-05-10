@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- TKF92 root preset (`--tkf92-root-AAA-MMM`): the decide-state loop probability now uses ν = r + (1−r)·κ as specified by the TKF92 ν-modified geometric, instead of `r` directly. Previous output was P(L=k≥1) = κ·r^(k−1)·(1−r); now correctly P(L=k≥1) = κ·ν^(k−1)·(1−ν). The 4-state structure also reshaped to a 3-state `[start, insert, end]` shape so all silent transitions are strictly forward (standalone Forward DP no longer requires composition pre-processing).
+
 ### Added
 - TKF preset family extended:
   - New substitution kernels for the binary alphabet: `telegraph` (asymmetric 2-state CTMC with `rate01`, `rate10`), `bsc` (Binary Symmetric Channel — symmetric Telegraph with single `flipRate`), `erasure` (Binary Erasure Channel — 0-absorbing Telegraph with `eraseRate`).

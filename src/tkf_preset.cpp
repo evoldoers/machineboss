@@ -516,39 +516,59 @@ static Machine buildTkf91Root (const Spec& spec, const vguard<string>& alph, con
 }
 
 static Machine buildTkf92Root (const Spec& spec, const vguard<string>& alph, const SubModel& sm) {
-  // 4 states:
-  //   0 begin    silent → emit (κ);  silent → stop (1−κ)
-  //   1 emit     emit X (π_X) → decide
-  //   2 decide   silent → emit (ν);  silent → stop (1−ν)
-  //   3 stop     end
+  // TKF92 ν-modified geometric, P(L=0)=1−κ, P(L=k≥1)=κ·ν^(k−1)·(1−ν),
+  // where κ = insRate/delRate, ν = r + (1−r)·κ. Realised as a 3-state
+  // S/I/E shape (the M, D states of the branch SMIDE collapse for a
+  // root: there's no input, so neither match nor delete applies):
+  //
+  //   0 start   emit X (κ·π_X) → insert;  silent → end (1−κ)
+  //   1 insert  emit X (ν·π_X) → insert;  silent → end (1−ν)
+  //   2 end
+  //
+  // The *first* emission carries κ; subsequent emissions carry ν. All
+  // silent transitions are strictly forward, so standalone Forward DP
+  // runs without any composition pre-processing.
+  //
+  // Earlier 4-state designs put a silent decide-state loop between
+  // `emit` and `decide`, which (a) was incorrectly using `r` directly
+  // instead of ν, producing P(L=k≥1) = κ·r^(k−1)·(1−r), and (b) caused
+  // standalone Forward to fail topological sort. Both are fixed here.
   Machine m;
-  m.state.resize(4);
-  m.state[0].name = json("begin");
-  m.state[1].name = json("emit");
-  m.state[2].name = json("decide");
-  m.state[3].name = json("stop");
+  m.state.resize(3);
+  m.state[0].name = json("start");
+  m.state[1].name = json("insert");
+  m.state[2].name = json("end");
 
   m.funcs.defs = sm.defs;
   m.funcs.defs["pExtend"]   = WeightAlgebra::divide (WeightAlgebra::param ("insRate"),
                                                       WeightAlgebra::param ("delRate"));
   m.funcs.defs["pNoExtend"] = WeightAlgebra::negate (WeightAlgebra::param ("pExtend"));
-  m.funcs.defs["pNoR"]      = WeightAlgebra::negate (WeightAlgebra::param ("r"));
+  // ν = r + (1−r)·κ  (κ = pExtend = insRate/delRate)
+  m.funcs.defs["nu"]        = WeightAlgebra::add (
+    WeightAlgebra::param ("r"),
+    WeightAlgebra::multiply (
+      WeightAlgebra::negate (WeightAlgebra::param ("r")),
+      WeightAlgebra::param ("pExtend")));
+  m.funcs.defs["pNoNu"]     = WeightAlgebra::negate (WeightAlgebra::param ("nu"));
 
-  // begin → emit (κ);  begin → stop (1−κ)
-  m.state[0].trans.push_back (MachineTransition (string(), string(), 1,
-                                                  WeightAlgebra::param ("pExtend")));
-  m.state[0].trans.push_back (MachineTransition (string(), string(), 3,
-                                                  WeightAlgebra::param ("pNoExtend")));
-  // emit → decide, emitting X with weight π_X
+  // state 0 (emit_first): emit X with weight κ·π_X → emit_more
   for (size_t k = 0; k < alph.size(); ++k) {
     WeightExpr pi = piExpr (spec.model, alph.size(), alph[k]);
-    m.state[1].trans.push_back (MachineTransition (string(), alph[k], 2, pi));
+    WeightExpr w  = WeightAlgebra::multiply (WeightAlgebra::param ("pExtend"), pi);
+    m.state[0].trans.push_back (MachineTransition (string(), alph[k], 1, w));
   }
-  // decide → emit (ν);  decide → stop (1−ν)
-  m.state[2].trans.push_back (MachineTransition (string(), string(), 1,
-                                                  WeightAlgebra::param ("r")));
-  m.state[2].trans.push_back (MachineTransition (string(), string(), 3,
-                                                  WeightAlgebra::param ("pNoR")));
+  // state 0 → stop (silent, weight 1−κ)
+  m.state[0].trans.push_back (MachineTransition (string(), string(), 2,
+                                                  WeightAlgebra::param ("pNoExtend")));
+  // state 1 (emit_more): emit X with weight ν·π_X → emit_more (self-loop)
+  for (size_t k = 0; k < alph.size(); ++k) {
+    WeightExpr pi = piExpr (spec.model, alph.size(), alph[k]);
+    WeightExpr w  = WeightAlgebra::multiply (WeightAlgebra::param ("nu"), pi);
+    m.state[1].trans.push_back (MachineTransition (string(), alph[k], 1, w));
+  }
+  // state 1 → stop (silent, weight 1−ν)
+  m.state[1].trans.push_back (MachineTransition (string(), string(), 2,
+                                                  WeightAlgebra::param ("pNoNu")));
 
   addRootConstraints (m, spec, alph);
   return m;

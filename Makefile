@@ -268,7 +268,7 @@ test-machine-params:
 	@$(TEST) $(WRAPBOSS) t/machine/params.json -idem
 
 # Transducer construction tests
-CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake
+CONSTRUCT_TESTS = test-generator test-recognizer test-wild-generator test-wild-recognizer test-union test-intersection test-intersect-transducer test-intersect-dual-output test-intersect-pair-collision test-intersect-pair-escape test-intersect-pair-custom-sep test-intersect-pair-json test-intersect-pair-json-3way test-brackets test-kleene test-loop test-noisy-loop test-concat test-eliminate test-merge test-reverse test-revcomp test-transpose test-weight test-shorthand test-hmmer test-hmmer-plan7 test-hmmer-multihit test-jphmm test-csv test-csv-tiny test-csv-tiny-fail test-csv-tiny-empty test-nanopore test-nanopore-prefix test-nanopore-decode test-dnastore test-phylo-trivial test-phylo-depth3 test-phylo-polytomy test-phylo-tkf91-triad test-phylo-trivial-loglike test-phylo-tkf91-triad-loglike test-tkf91-root-dna-jc-match test-tkf91-branch-dna-jc-match test-tkf92-branch-prot-f81-match test-iid-branch-binary-bsc test-iid-branch-binary-telegraph test-iid-branch-binary-erasure test-iid-root-binary-bsc test-tkf92-root-binary-bsc-match test-rust-codegen-echo test-rust-codegen-tkf91 test-rust-codegen-no-viterbi test-rust-codegen-single-leaf test-rust-codegen-forward-backward test-phylo-felsenstein test-phylo-skeleton test-phylo-skeleton-expand test-phylo-skeleton-bake
 test-generator:
 	@$(TEST) $(WRAPBOSS) --generate-json t/io/seq101.json t/expect/generator101.json
 
@@ -546,6 +546,15 @@ test-iid-branch-binary-erasure:
 	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --iid-branch-binary-erasure -P t/io/iid-erasure-params.json --input-chars 01 --output-chars 00 -L t/expect/iid-branch-binary-erasure-loglike.json
 test-iid-root-binary-bsc:
 	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --iid-root-binary-bsc -P t/io/iid-root-bsc-params.json --output-chars 01 -L t/expect/iid-root-binary-bsc-loglike.json
+
+# TKF92 root regression test for the ν-modified geometric. Pinned at
+# (insRate=0.1, delRate=0.12, r=0.5) so κ=0.833, ν=r+(1-r)·κ=0.917; for
+# binary BSC π=½ and L=2 sequence "01" the closed form is
+# log(κ·ν·(1-ν)·π_0·π_1) = log(0.833·0.917·0.083·0.25) = -4.141. Catches
+# the off-by-substitution bug where the decide-state loop probability
+# was using `r` directly instead of ν.
+test-tkf92-root-binary-bsc-match:
+	@$(TEST) python3 t/roundfloats.py 4 $(WRAPBOSS) --tkf92-root-binary-bsc -P t/io/tkf92-root-binary-bsc-params.json --output-chars 01 -L t/expect/tkf92-root-binary-bsc-loglike.json
 
 test-tkf91-branch-dna-jc-match:
 	@$(TEST) python3 t/roundfloats.py 6 $(WRAPBOSS) --tkf91-branch-dna-jc -P t/io/tkf91-branch-params.json --input-chars ACGT --output-chars ACGA -L t/expect/tkf91-branch-dna-jc-loglike.json
