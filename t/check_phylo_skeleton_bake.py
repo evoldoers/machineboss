@@ -58,8 +58,47 @@ use serde_json::Value;
     assert_eq!(TREE_NEWICK.matches('(').count(), TREE_NEWICK.matches(')').count());
 }
 #[test] fn time_param_nonempty() { assert!(!TIME_PARAM.is_empty()); }
-#[test] #[should_panic(expected = "not yet implemented")]
-fn prebuild_panics() { phylo_skeleton::prebuild(); }
+
+#[test] fn prebuild_returns_phylo_machine() {
+    // prebuild() now actually builds the phylo-composed machine from the
+    // baked T + tree. Smoke check the result has a non-zero state set with
+    // the array-format state ids that compose/intersect produce, plus at
+    // least one emit transition.
+    let m = phylo_skeleton::prebuild();
+    assert!(m.n_states() > 0);
+    if let Value::Array(arr) = &m.state[0].id {
+        assert_eq!(arr.len(), 2, "expected 2-array state id from compose; got {:?}", arr);
+    } else {
+        panic!("state 0 id not a 2-array: {:?}", m.state[0].id);
+    }
+    let emit_count: usize = m.state.iter()
+        .map(|s| s.trans.iter().filter(|t| !t.out_sym.is_empty()).count())
+        .sum();
+    assert!(emit_count > 0, "expected at least one emit transition");
+}
+
+#[test] fn prebuild_evaluates_to_finite_weights() {
+    // Pick a concrete parameter assignment and verify every transition
+    // weight in the prebuild()-produced machine evaluates to a finite f64
+    // (so the WeightAlgebra port sees no malformed / unreachable expressions
+    // in the actual phylo composition output).
+    use phylo_skeleton::weight_algebra::{Params, evaluate};
+    let m = phylo_skeleton::prebuild();
+    let mut p = Params::new();
+    p.insert("insRate".into(), 0.005);
+    p.insert("delRate".into(), 0.01);
+    p.insert(format!("{}[A]", phylo_skeleton::TIME_PARAM), 0.3);
+    p.insert(format!("{}[B]", phylo_skeleton::TIME_PARAM), 0.2);
+    let mut emit_evaluated = 0usize;
+    for s in &m.state {
+        for t in &s.trans {
+            let v = evaluate(&t.weight, &p, &m.defs);
+            assert!(v.is_finite(), "non-finite weight: {} = {}", t.weight, v);
+            if !t.out_sym.is_empty() { emit_evaluated += 1; }
+        }
+    }
+    assert!(emit_evaluated > 0, "no emit transitions evaluated");
+}
 
 #[test] fn phylo_intersect_runs_on_baked_t_and_tree() {
     // End-to-end smoke: parse the baked T_JSON + TREE_NEWICK, run the
