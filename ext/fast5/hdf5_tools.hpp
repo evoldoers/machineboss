@@ -1027,7 +1027,8 @@ struct Reader_helper< 2, Data_Type >
             for (size_t i = 0; i < tmp.size(); ++i)
             {
                 std::memset(&out[i][0], '\0', sizeof(Data_Type));
-                std::memcpy(&out[i][0], tmp[i].data(), std::min(tmp[i].size(), sizeof(Data_Type) - 1));
+                if (sizeof(Data_Type) > 0)
+                    std::memcpy(&out[i][0], tmp[i].data(), std::min(tmp[i].size(), sizeof(Data_Type) - 1));
             }
         }
     }
@@ -1091,10 +1092,13 @@ struct Reader_helper< 4, Data_Type >
             {
                 for (size_t i = 0; i < tmp.size(); ++i)
                 {
-                    std::memset(reinterpret_cast< char * >(&out[i]) + p.second, '\0', e.char_array_size);
-                    std::memcpy(reinterpret_cast< char * >(&out[i]) + p.second,
-                                tmp[i].data(),
-                                std::min(tmp[i].size(), e.char_array_size - 1));
+                    if (e.char_array_size > 0 && p.second + e.char_array_size <= sizeof(Data_Type))
+                    {
+                        std::memset(reinterpret_cast< char * >(&out[i]) + p.second, '\0', e.char_array_size);
+                        std::memcpy(reinterpret_cast< char * >(&out[i]) + p.second,
+                                    tmp[i].data(),
+                                    std::min(tmp[i].size(), e.char_array_size - 1));
+                    }
                 }
             }
             else if (e.is_string())
