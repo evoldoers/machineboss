@@ -90,6 +90,34 @@ a warning is emitted and a zero-probability machine is returned.
 After the DFS, accessible states are sorted by index and assigned compact
 sequential indices in the output machine.
 
+### Composite state names
+
+Each accessible composite state is given a JSON `id` of the form
+
+```json
+"id": [<A's state name>, <B's state name>]
+```
+
+i.e. an ordered 2-element JSON array. The first element is the source state's
+name in `A`, the second is the source state's name in `B`. The same convention
+applies to `intersect`. Names compose recursively: when `compose` or `intersect`
+is applied to machines that are themselves products, the result has nested
+arrays mirroring the operator tree, so a phylogenetic intersection over a
+4-leaf tree produces names like
+`[[<BA name>, <leaf-A wildEcho name>], [<BB name>, <leaf-B wildEcho name>]]`
+for each child of the root, then wrapped one more level for the root intersect.
+
+The array form is unambiguous: distinct composite states always carry distinct
+names even when their per-component states are the same set in different
+positions. (Earlier versions used an initializer-list form that nlohmann's
+constructor heuristic could collapse into a merged JSON object — losing
+left-vs-right order — but that has been fixed.)
+
+`Machine::waitingMachine` separately wraps wait-states with the JSON object
+`{"wait": <original state name>}` to mark them; this wrap can appear inside a
+component's name. Decoders should recursively unwrap any `{"wait": ...}` they
+encounter to recover the underlying state name.
+
 ## Transition Cases
 
 At each composite state (i, j), transitions are computed based on whether

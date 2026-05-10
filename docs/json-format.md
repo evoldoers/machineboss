@@ -58,7 +58,7 @@ This is the [binary symmetric channel](https://en.wikipedia.org/wiki/Binary_symm
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | any (not number) | id or n | State identifier (string, object, array, boolean, or null). Used in `"to"` references. |
+| `id` | any (not number) | id or n | State identifier (string, object, array, boolean, or null). Used in `"to"` references. Composite states from `compose`/`intersect` use a 2-element array `[A's id, B's id]`; nested products produce nested arrays. `waitingMachine` wraps wait-states as `{"wait": <original id>}`. See [composite state names](composition.html#composite-state-names). |
 | `n` | number | id or n | Numeric state index (alternative to `id`). |
 | `trans` | array of transitions | no | Outgoing transitions. Omitted for the end state (or any absorbing state). |
 

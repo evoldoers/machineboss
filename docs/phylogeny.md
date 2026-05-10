@@ -173,9 +173,54 @@ to inspect state-set growth, to sanity-check pair-token shapes for new
 trees, or to drive future per-column symbol expansion). It is not a drop-in
 replacement for inference: you cannot compute a Forward log-likelihood from
 the skeleton output directly, since the per-symbol weights are not present.
-A follow-up will add a Felsenstein-pruning expansion pass that recovers the
-full inference-ready machine from the skeleton at a fraction of the legacy
-cost.
+
+### Skeleton state names and decoding
+
+After `--phylo-skeleton`, every M_skel state's `id` is an ordered nested
+JSON array that recursively mirrors the tree topology (the
+[composite-state-name](composition.html#composite-state-names) convention
+applies here). For a binary tree `(A,B)P;` the `id` is
+`[[T_BA_state, ['*']], [T_BB_state, ['*']]]` — the outer pair encodes the
+intersect of the two children at the root, each inner pair encodes a
+compose of `T` (renamed for that branch) with the leaf's wildEcho. For
+deeper trees the structure recurses one level per intersect/compose, with
+`{"wait": ...}` wraps appearing inside whenever `waitingMachine` introduced
+wait-states. A consumer can recover the per-branch T state at every M_skel
+state by walking this name in lockstep with the tree, unwrapping any
+`{"wait": ...}` it encounters. See
+`t/check_phylo_skeleton_expand.py` for a reference Python decoder.
+
+### Symbol expansion (validation tool)
+
+`t/check_phylo_skeleton_expand.py` is a Python validator that, given M_skel
+plus the original branch transducer and the tree, expands each emit
+transition back into the per-symbol family by:
+
+1. Decoding M_skel's state names into per-branch T-states (per the
+   convention above).
+2. For each emit transition, looking up T's symbol-aware transitions on
+   each advancing branch and cross-multiplying under the intersect
+   input-sync constraint to produce expanded `(in, root_sym; out,
+   pair_token; weight)` transitions.
+3. Copying silent transitions verbatim (M_skel preserves their full
+   structural weights, including any chain-collapsed factors from
+   ergodicMachine, since skeletonisation only resets *emit* weights to 1).
+4. Feeding the expanded machine through `boss -L` and comparing the Forward
+   log-likelihood bit-exactly against the legacy `--phylo-no-felsenstein`
+   path on the same observation.
+
+The validator currently passes on trees with no internal nodes (trees in
+which every leaf is a direct child of the root, e.g. `(A,B)P;` or
+`(A,B,C)P;`). Trees with internal nodes (e.g. the protein quartet
+`((A,B)P,(C,D)Q)R;`) require an additional Felsenstein-per-column sum over
+internal-node symbol assignments — every such weight in the legacy machine
+factors as `Σ_internal_symbol Π_branch P_branch[parent_sym, child_sym]`,
+which the cross-product expansion cannot reproduce on its own. Generalising
+the validator is straightforward (post-order Felsenstein recursion at each
+internal node) and is intended as the next increment.
+
+A follow-up will port the expansion to C++ behind a CLI flag once the
+Felsenstein-per-column generalisation is in place.
 
 ## Multidimensional Forward via Rust codegen
 
