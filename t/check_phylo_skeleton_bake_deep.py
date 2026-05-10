@@ -6,18 +6,12 @@ internal nodes.
 These tests are kept out of the default `make test` because prebuild()
 is slow (~3 min) on a 270-state phylo machine — the symbolic weight
 expressions blow up under the unoptimised compose / intersect pipeline.
-The state count and bit-exact forward checks below validate that the
-larger trees nonetheless drive the same code paths to the same C++
-ground truth.
+The state count and bit-exact forward checks below assert exact
+agreement with the C++ phylo-intersect output — same state count,
+same state IDs in the same order, same forward log-likelihood to
+within 1e-12.
 
 Run with: `make test-phylo-skeleton-bake-deep`.
-
-NB: the depth-3 case currently exhibits a 1-state shortfall vs C++
-(270 vs 271) — likely the absent `padWithNullStates` fallback in the
-Rust port's advance_sort. Bit-exact forward against C++ M_full passes
-nonetheless (the dropped state is unreachable in the DP). The state-
-count test is therefore loosened to a tolerance check pending a port
-of padWithNullStates.
 """
 import os, sys, subprocess, tempfile, shutil, json
 
@@ -36,7 +30,7 @@ def run(cmd, cwd=None):
     return r.stdout
 
 
-def run_tree_case(tree, leaves, time_params, state_count_tolerance=0):
+def run_tree_case(tree, leaves, time_params):
     work  = tempfile.mkdtemp(prefix='skelbake_deep_')
     crate = os.path.join(work, 'crate')
 
@@ -68,10 +62,7 @@ def run_tree_case(tree, leaves, time_params, state_count_tolerance=0):
 //! Leaves: {[''.join(l) for l in leaves]}
 //!
 //! Asserts (against C++ phylo-intersect as ground truth):
-//!   1. prebuild() state count is within ±{state_count_tolerance} of C++
-//!      ({cpp_states}). The tolerance allows for the missing
-//!      padWithNullStates fallback in the Rust port; bit-exact forward
-//!      below confirms the dropped state is unreachable in DP.
+//!   1. prebuild() state count == C++ M_full state count ({cpp_states}).
 //!   2. prebuild() is advancing (no silent back-transitions).
 //!   3. forward(prebuild(), ...) matches Python multidim_forward bit-
 //!      exactly to within 1e-12.
@@ -79,16 +70,13 @@ use phylo_skeleton::forward::forward;
 use phylo_skeleton::weight_algebra::Params;
 
 const CPP_STATES: usize = {cpp_states};
-const STATE_TOLERANCE: usize = {state_count_tolerance};
 const REFERENCE_LK: f64 = {ref!r};
 
-#[test] fn prebuild_state_count_close_to_cpp() {{
+#[test] fn prebuild_state_count_matches_cpp() {{
     let m = phylo_skeleton::prebuild();
-    let n = m.n_states();
-    let diff = if n >= CPP_STATES {{ n - CPP_STATES }} else {{ CPP_STATES - n }};
-    assert!(diff <= STATE_TOLERANCE,
-            "Rust prebuild() = {{}} states, C++ M_full = {{}} (|diff| = {{}}, tolerance = {{}})",
-            n, CPP_STATES, diff, STATE_TOLERANCE);
+    assert_eq!(m.n_states(), CPP_STATES,
+               "Rust prebuild() state count {{}} != C++ M_full state count {{}}",
+               m.n_states(), CPP_STATES);
 }}
 
 #[test] fn prebuild_is_advancing_after_full_pipeline() {{
@@ -128,18 +116,18 @@ def main():
         print("test-phylo-skeleton-bake-deep    skip: cargo not in PATH")
         return
     cases = [
-        # (tree, leaves, branch-times, state_count_tolerance)
+        # (tree, leaves, branch-times)
         ('(((A,B)P,C)Q)D;',
          [list('AC'), list('AC'), list('AC')],
          {'time[A]': 0.3, 'time[B]': 0.2, 'time[C]': 0.4,
-          'time[P]': 0.15, 'time[Q]': 0.25}, 1),
+          'time[P]': 0.15, 'time[Q]': 0.25}),
         ('((A,B)P,(C,D)Q)R;',
          [list('AC'), list('A'), list('A'), list('A')],
          {'time[A]': 0.3, 'time[B]': 0.2, 'time[C]': 0.4, 'time[D]': 0.5,
-          'time[P]': 0.15, 'time[Q]': 0.25}, 5),
+          'time[P]': 0.15, 'time[Q]': 0.25}),
     ]
-    for tree, leaves, time_params, tol in cases:
-        run_tree_case(tree, leaves, time_params, tol)
+    for tree, leaves, time_params in cases:
+        run_tree_case(tree, leaves, time_params)
     print("OK")
 
 

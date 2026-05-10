@@ -596,10 +596,9 @@ cargo run --release --example run
     `forward(prebuild(), …)` matches the exact-lse Python multidim
     Forward bit-exactly to within 1e-12. Default-set test.
   - `make test-phylo-skeleton-bake-deep` *(manual, not in default test set)* —
-    same checks on `(((A,B)P,C)Q)D;` and `((A,B)P,(C,D)Q)R;`. The
-    state-count check is loosened to a small tolerance pending a Rust
-    port of `padWithNullStates` (the C++ advance_sort fallback). Bit-
-    exact forward against C++ M_full passes.
+    same checks on `(((A,B)P,C)Q)D;` and `((A,B)P,(C,D)Q)R;`. State
+    count, state ID set, and forward log-likelihood all match C++
+    exactly (271 / 271 IDs match by index for the depth-3 caterpillar).
 
 ### Tradeoffs vs. straight-line codegen
 
@@ -618,11 +617,12 @@ The Rust port of the WFST algebra is currently a faithful (un-optimised)
 translation of the C++. `prebuild()` on `(((A,B)P,C)Q)D;` with TKF91-DNA-JC
 takes ~3 minutes wall-clock — the symbolic weight expressions blow up
 through the nested `compose` / `intersect` calls and the per-stage
-`ergodic_machine` clones dominate runtime. Two known follow-ups:
-amortising state cloning across the post-processing chain, and porting
-the `padWithNullStates` fallback in `advance_sort` (which would also
-close the off-by-one state-count discrepancy seen on the depth-3 tree).
-Bit-exact forward against C++ M_full passes regardless.
+`ergodic_machine` clones dominate runtime. Known follow-ups:
+amortising state cloning across the post-processing chain and
+constant-folding weight expressions when free parameters are bound.
+The output machine is bit-identical to C++ M_full (state count,
+state IDs in order, transition counts, and forward log-likelihood
+to 1e-12 floating-point noise).
 
 ## Notes / caveats
 

@@ -2264,6 +2264,11 @@ impl State {
 /// `Machine::WAIT_TAG` constant from `src/machine.h` (`#define MachineWaitTag "wait"`).
 pub const WAIT_TAG: &str = "wait";
 
+/// `MachineCatLeftTag` / `MachineCatRightTag` from `src/machine.h`. Used by
+/// `concatenate` to wrap left-side / right-side state names.
+pub const MACHINE_CAT_LEFT_TAG:  &str = "concat-l";
+pub const MACHINE_CAT_RIGHT_TAG: &str = "concat-r";
+
 /// Mirror of `Transition::isSilent` from src/machine.h: both `in` and `out`
 /// are empty.
 impl Transition {
@@ -2592,20 +2597,22 @@ impl Machine {
     /// Mirror of `Machine::advanceSort` with the default (silent
     /// back-transition) cost function. Reorders states to minimize the
     /// count of silent backward transitions; reverts to the original
-    /// order if reordering doesn't help.
+    /// order if reordering doesn't help. Falls back to `padWithNullStates`
+    /// + retry if the un-padded sort fails to eliminate all silent backs
+    /// (matches C++).
     pub fn advance_sort(&self) -> Self {
-        self.advance_sort_inner(
-            |m| m.n_silent_back_transitions(),
-            |t| t.is_silent(),
-        )
+        let count_back: fn(&Machine) -> usize = |m| m.n_silent_back_transitions();
+        let must_advance: fn(&Transition) -> bool = |t| t.is_silent();
+        self.advance_sort_inner(&count_back, &must_advance)
     }
 
     /// Generic version with custom counter / predicate (mirrors the
-    /// templated C++ signature).
+    /// templated C++ signature). The closures are passed by reference so
+    /// they can be re-used in the recursive padding fallback.
     fn advance_sort_inner(
         &self,
-        count_back: impl Fn(&Machine) -> usize,
-        must_advance: impl Fn(&Transition) -> bool,
+        count_back: &dyn Fn(&Machine) -> usize,
+        must_advance: &dyn Fn(&Transition) -> bool,
     ) -> Self {
         let n_silent_before = count_back(self);
         if n_silent_before == 0 {
@@ -2710,13 +2717,66 @@ impl Machine {
             Machine { state: new_state, defs: self.defs.clone(), cons: self.cons.clone() }
         };
 
+        // NB: `n_silent_after` is the count on the *sorted* result (the
+        // sort attempt's output), NOT on the restored-original `result`.
+        // C++ deliberately keeps the post-sort number around as the
+        // comparison baseline for the padding fallback below, so a
+        // padded-and-unsorted machine that drops back to the pre-sort
+        // count (e.g. 7 < 8 here) is preferred over the un-padded
+        // failed-sort attempt. Updating this to `n_silent_before` would
+        // make the comparison `n_silent_dummy < n_silent_before`, which
+        // diverges from C++ when reordering increases the count.
         let n_silent_after = count_back(&result);
+        let mut result = result;
         if n_silent_after >= n_silent_before {
-            // Reordering didn't help — restore original (matches C++).
-            // C++ also tries `padWithNullStates` if no padding is present;
-            // we omit that fallback for now (silent cycles will be handled
-            // by process_cycles → advancing_machine via geomsum).
-            return self.clone();
+            result = self.clone();
+        }
+
+        // C++ fallback: if the post-sort count is still > 0 and the
+        // machine isn't already null-padded, try again with dummy null
+        // start/end states. We accept the padded result iff its silent-
+        // back count is strictly less than `n_silent_after` — the
+        // post-sort count, NOT n_silent_before. This is the C++
+        // `if (nSilentBackDummy < nSilentBackAfter)` check verbatim.
+        if n_silent_after > 0 && !self.has_null_padding_states() {
+            let with_dummy = self.pad_with_null_states();
+            debug_assert!(with_dummy.has_null_padding_states(),
+                          "pad_with_null_states failed to produce padded machine");
+            let sorted_with_dummy = with_dummy.advance_sort_inner(count_back, must_advance);
+            let n_silent_dummy = count_back(&sorted_with_dummy);
+            if n_silent_dummy < n_silent_after {
+                return sorted_with_dummy;
+            }
+        }
+
+        result
+    }
+
+    /// Mirror of `Machine::padWithNullStates`: returns a copy with a null
+    /// state prepended (if state 0 doesn't already look like one) and a
+    /// null state appended (if the result still doesn't satisfy
+    /// `has_null_padding_states`). Used by `advance_sort` as a fallback.
+    pub fn pad_with_null_states(&self) -> Self {
+        let n = self.state.len();
+        let has_null_start = n > 0
+            && self.state[0].trans.len() == 1
+            && self.state[0].trans[0].is_silent();
+        // C++ also rejects `hasNullStart` if any state has a transition
+        // back to the start state; mirror that.
+        let has_null_start = has_null_start && {
+            let start = 0usize;
+            !self.state.iter().flat_map(|s| s.trans.iter()).any(|t| t.to == start)
+        };
+        let dummy = Machine::null_machine();
+        let mut result = if has_null_start {
+            self.clone()
+        } else {
+            Machine::concatenate(&dummy, self,
+                                 MACHINE_CAT_LEFT_TAG, MACHINE_CAT_RIGHT_TAG)
+        };
+        if !result.has_null_padding_states() {
+            result = Machine::concatenate(&result, &dummy,
+                                          MACHINE_CAT_LEFT_TAG, MACHINE_CAT_RIGHT_TAG);
         }
         result
     }
