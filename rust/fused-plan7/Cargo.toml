@@ -1,0 +1,18 @@
+[package]
+name = "fused_plan7"
+version = "0.1.0"
+edition = "2021"
+description = "Fused Plan7 + transducer Forward/Viterbi kernel (Rust port of Machine Boss js/webgpu/cpu/fused-plan7.mjs). Native + wasm32."
+license = "MIT"
+
+[lib]
+name = "fused_plan7"
+path = "src/lib.rs"
+
+[dependencies]
+# serde_json + std only; the hot-path DP touches neither (wasm-safe).
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
